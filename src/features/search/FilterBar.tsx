@@ -115,7 +115,7 @@ export const FilterBar = forwardRef<HTMLDivElement, Props>(function FilterBar({ 
   const { state, entradas, update } = model
   const nMais = contarMaisFiltros(state)
   return (
-    <div ref={ref} className="sticky top-16 z-[900] border-b border-black/[0.06] bg-white/90 backdrop-blur-xl backdrop-saturate-150">
+    <div ref={ref} className="sticky top-16 z-[900] border-b border-black/[0.06] bg-white/95 backdrop-blur-xl backdrop-saturate-150">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-6 py-3 xl:px-8">
         <PlaceCombobox
           className="min-w-[26rem] max-w-[38rem] flex-1"

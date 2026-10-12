@@ -75,6 +75,11 @@ export default function PerfilPage() {
             </ul>
           </nav>
         )}
+        {novo && (
+          <p className="text-xl text-ink-soft">
+            {perfis.length ? 'Outra pessoa de quem cuida, com o seu próprio perfil.' : 'Leva dois minutos. Pode mudar tudo depois.'}
+          </p>
+        )}
         <p className="flex items-start gap-2 text-sm text-ink-mute">
           <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>

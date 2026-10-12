@@ -27,19 +27,44 @@ const PAGINA = 8
 /** O motor escreve "A 2 km de Porto"; em PT-PT é "do Porto", "da Maia", "da sua localização". */
 function comArtigo(m: MatchResult, label: string): MatchResult {
   const fim = ` de ${label}`
-  return { ...m, razoes: m.razoes.map((x) => (x.texto.endsWith(fim) ? { ...x, texto: `${x.texto.slice(0, -fim.length)} ${deLocal(label)}` } : x)) }
+  return {
+    ...m,
+    razoes: m.razoes.map((x) =>
+      x.texto.endsWith(fim) ? { ...x, texto: `${x.texto.slice(0, -fim.length)} ${deLocal(label)}` } : x,
+    ),
+  }
 }
 
-export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; acoes: AcoesSessao; lares: Lar[]; user: User | null }) {
+export function ResultsView({
+  sessao,
+  acoes,
+  lares,
+  user,
+}: {
+  sessao: Sessao
+  acoes: AcoesSessao
+  lares: Lar[]
+  user: User | null
+}) {
   const { r } = sessao
   const p = useMemo(() => pessoa(r), [r])
   const perfil = useMemo(() => paraPerfilMatch(r), [r])
-  const matches = useMemo(() => (perfil ? recomendar(lares, perfil, 80).map((m) => comArtigo(m, perfil.local.label)) : []), [lares, perfil])
+  const matches = useMemo(
+    () => (perfil ? recomendar(lares, perfil, 80).map((m) => comArtigo(m, perfil.local.label)) : []),
+    [lares, perfil],
+  )
   const larPorId = useMemo(() => new Map(lares.map((l) => [l.id, l])), [lares])
   const boas = useMemo(() => matches.filter((m) => m.compativel && m.score >= 50), [matches])
   const outras = useMemo(() => matches.filter((m) => !(m.compativel && m.score >= 50)), [matches])
   const comVaga = boas.filter((m) => vagasLivres(larPorId.get(m.larId)!) > 0).length
-  const diag = useMemo(() => (boas.length < 3 ? diagnosticar(lares, r, p, matches) : null), [boas.length, lares, r, p, matches])
+  // nenhuma sugestão cabe no orçamento: também vale a pena explicar o que limita
+  const semNenhumaNoOrcamento = boas.length > 0 && perfil != null && !boas.some((m) => m.precoRef <= perfil.orcamentoMax)
+  const diag = useMemo(
+    () => (boas.length < 3 || semNenhumaNoOrcamento ? diagnosticar(lares, r, p, matches) : null),
+    [boas.length, semNenhumaNoOrcamento, lares, r, p, matches],
+  )
+  // com muitas sugestões, o diagnóstico vem antes da lista; com uma ou duas, depois
+  const diagAntes = diag != null && boas.length >= 3
 
   const [verOutras, setVerOutras] = useState(false)
   const [limite, setLimite] = useState(PAGINA)
@@ -119,10 +144,15 @@ export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; ac
 
       {n > 0 && <ResultsStats n={n} comVaga={comVaga} melhor={boas[0]?.score ?? null} />}
       <p className="sr-only" aria-live="polite">
-        {n ? `${plural(n, 'sugestão compatível', 'sugestões compatíveis')}, ${comVaga} com vaga agora.` : 'Sem sugestões compatíveis.'}
+        {n
+          ? `${plural(n, 'sugestão compatível', 'sugestões compatíveis')}, ${comVaga} com vaga agora.`
+          : 'Sem sugestões compatíveis.'}
       </p>
 
-      <section aria-labelledby="lista-t" className={n > 0 ? 'container-narrow py-16 sm:py-24' : 'container-narrow pb-16 sm:pb-24'}>
+      <section
+        aria-labelledby="lista-t"
+        className={n > 0 ? 'container-narrow py-16 sm:py-24' : 'container-narrow pb-16 sm:pb-24'}
+      >
         {n === 0 && (
           <div className="mb-16">
             {diag ? (
@@ -136,6 +166,8 @@ export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; ac
             )}
           </div>
         )}
+
+        {diag && diagAntes && <DiagnosisCard d={diag} variante="poucas" onAjuste={aplicar} className="mb-16" />}
 
         {n > 0 && (
           <div>
@@ -169,7 +201,7 @@ export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; ac
           </div>
         )}
 
-        {diag && n > 0 && <DiagnosisCard d={diag} variante="poucas" onAjuste={aplicar} className="mt-12" />}
+        {diag && n > 0 && !diagAntes && <DiagnosisCard d={diag} variante="poucas" onAjuste={aplicar} className="mt-12" />}
 
         {outras.length > 0 && (
           <Switch
@@ -201,9 +233,9 @@ export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; ac
           <SavePanel key={JSON.stringify({ ...r, id: undefined })} r={r} user={user} onGuardado={(id) => acoes.patch({ id })} />
         </Reveal>
         <p className="mx-auto mt-10 max-w-2xl text-center text-sm text-ink-mute">
-          Ordenamos por cuidados de saúde ({PESOS.cuidados} pontos), orçamento ({PESOS.orcamento}), distância ({PESOS.distancia}), vaga
-          para o prazo ({PESOS.disponibilidade}) e preferências ({PESOS.preferencias}). A previsão de vagas é uma estimativa, não uma
-          garantia.{' '}
+          Ordenamos por cuidados de saúde ({PESOS.cuidados} pontos), orçamento ({PESOS.orcamento}), distância ({PESOS.distancia}),
+          vaga para o prazo ({PESOS.disponibilidade}) e preferências ({PESOS.preferencias}). A previsão de vagas é uma estimativa,
+          não uma garantia.{' '}
           <Link to="/sobre#previsao" className="link inline-flex items-center">
             Como calculamos
             <ChevronRight aria-hidden className="size-3.5" />

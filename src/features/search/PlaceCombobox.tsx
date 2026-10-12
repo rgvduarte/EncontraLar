@@ -17,6 +17,8 @@ interface Props {
   onTexto: (q: string) => void
   /** controlos dentro da pílula, à direita do campo (raio, "Perto de mim") */
   trailing?: ReactNode
+  /** pílula mais baixa (barra do telemóvel) */
+  compact?: boolean
   className?: string
 }
 
@@ -46,7 +48,7 @@ function Meta({ n, vagas }: { n: number; vagas: number }) {
 }
 
 /** Campo "Onde" — combobox acessível (padrão ARIA 1.2): localidades, distritos, códigos postais e nomes. */
-export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTexto, trailing, className }: Props) {
+export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTexto, trailing, compact, className }: Props) {
   const uid = useId()
   const inputId = `${uid}-input`
   const listId = `${uid}-list`
@@ -159,7 +161,8 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
     >
       <div
         className={cn(
-          'flex min-h-14 items-center rounded-full pr-1.5 pl-5 transition-[background-color,box-shadow] duration-200',
+          'flex items-center rounded-full transition-[background-color,box-shadow] duration-200',
+          compact ? 'min-h-12 pr-1 pl-4.5' : 'min-h-14 pr-1.5 pl-5',
           open ? 'bg-white shadow-card ring-1 ring-line' : 'bg-sand hover:bg-sand-deep/70',
         )}
       >

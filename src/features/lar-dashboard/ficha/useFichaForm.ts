@@ -56,7 +56,8 @@ export function validar(r: Rascunho): Erros {
   if (r.resumo.length > MAX_RESUMO) e.resumo = `Use no máximo ${MAX_RESUMO} caracteres.`
   if (!r.email.trim()) e.email = 'Indique um email de contacto.'
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email.trim())) e.email = 'O email não parece válido.'
-  if (r.telefone.trim() && r.telefone.replace(/\D/g, '').length < 9) e.telefone = 'O telefone deve ter pelo menos 9 algarismos.'
+  const digitos = r.telefone.replace(/\D/g, '').length
+  if (r.telefone.trim() && (digitos < 8 || digitos > 15 || /[^\d\s+()-]/.test(r.telefone))) e.telefone = 'Confirme o número de telefone.'
   if (r.website.trim() && !/^(https?:\/\/)?[^\s.]+\.[^\s]{2,}$/i.test(r.website.trim())) e.website = 'O endereço não parece válido (ex.: www.exemplo.pt).'
   if (r.codigoPostal.trim() && !/^\d{4}-\d{3}$/.test(r.codigoPostal.trim())) e.codigoPostal = 'Use o formato 0000-000.'
   if (r.graus.length === 0) e.graus = 'Escolha pelo menos um grau de dependência.'

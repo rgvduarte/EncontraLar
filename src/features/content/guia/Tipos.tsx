@@ -132,7 +132,7 @@ export function Tipos() {
           Peça à equipa do hospital, antes da alta, que avalie a referenciação para cuidados continuados. Em paralelo, procure lar com vaga: uma
           coisa não exclui a outra.
         </p>
-        <MoreLink to="/pesquisa?vaga=agora" className="mt-2">
+        <MoreLink to="/pesquisa?vaga=agora" tone="sand" className="mt-2">
           Lares com vaga agora
         </MoreLink>
       </div>

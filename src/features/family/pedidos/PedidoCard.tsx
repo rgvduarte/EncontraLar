@@ -97,8 +97,7 @@ export function PedidoCard({ c, lar }: { c: Candidatura; lar: Lar }) {
 
       {c.estado === 'aceite' && (
         <p className="mt-8 rounded-[1.75rem] bg-sand p-6 text-ink-soft">
-          A instituição liga-lhe para combinar o dia de entrada. Costumam pedir cartão de cidadão e de utente, relatório médico
-          recente e a lista da medicação.
+          Para a entrada, costumam pedir o cartão de cidadão e de utente, um relatório médico recente e a lista da medicação.
         </p>
       )}
 
@@ -111,7 +110,7 @@ export function PedidoCard({ c, lar }: { c: Candidatura; lar: Lar }) {
           </h3>
           <Historico c={c} />
         </section>
-        {ativa && (
+        {ativa && (c.estado !== 'aceite' || c.visita) && (
           <section aria-labelledby={`${titleId}-visita`}>
             <h3 id={`${titleId}-visita`} className="mb-5 text-sm font-semibold text-ink-mute">
               Visita

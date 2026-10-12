@@ -6,6 +6,9 @@ import { Numero, Secao, Subtitulo } from '../Secao'
 
 const dec = (v: number) => v.toLocaleString('pt-PT', { maximumFractionDigits: 1 })
 
+/** Só a primeira letra em minúscula ("Demência e Alzheimer" → "demência e Alzheimer"). */
+const minuscula = (t: string) => t.charAt(0).toLowerCase() + t.slice(1)
+
 /** "a, b e c" */
 const juntar = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}`)
 
@@ -62,7 +65,7 @@ export function CuidadosSection({ lar }: { lar: Lar }) {
         )}
         {criticosEmFalta.length > 0 && (
           <p className="mt-5 max-w-[65ch] text-ink-mute">
-            <span className="font-medium text-ink">Não assegura:</span> {juntar(criticosEmFalta.map((c) => CUIDADO_LABEL[c].toLowerCase()))}. Se a
+            <span className="font-medium text-ink">Não assegura:</span> {juntar(criticosEmFalta.map((c) => minuscula(CUIDADO_LABEL[c])))}. Se a
             pessoa precisar, confirme diretamente com a instituição.
           </p>
         )}

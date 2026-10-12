@@ -17,9 +17,7 @@ const RAZAO: Record<TipoRazao, { sr: string; Icon: LucideIcon; cor: string }> = 
   falta: { sr: 'Em falta', Icon: CircleX, cor: 'text-alert-600' },
 }
 
-const MAX_PESO = Math.max(...Object.values(PESOS))
-
-/** Quanto cada critério contribuiu, sobre o seu peso (o comprimento do trilho é proporcional ao peso). */
+/** Quanto cada critério contribuiu, sobre o seu peso máximo. */
 function Parcelas({ m }: { m: MatchResult }) {
   return (
     <ul className="flex flex-col gap-4">
@@ -34,7 +32,7 @@ function Parcelas({ m }: { m: MatchResult }) {
                 <span className="font-medium text-ink">{v}</span> de {peso}
               </span>
             </p>
-            <span aria-hidden className="mt-1.5 block h-1 rounded-full bg-black/[0.08]" style={{ width: `${(peso / MAX_PESO) * 100}%` }}>
+            <span aria-hidden className="mt-1.5 block h-1 rounded-full bg-black/[0.08]">
               <span className="block h-full rounded-full bg-ink" style={{ width: `${(m.parcelas[k] / peso) * 100}%` }} />
             </span>
           </li>
@@ -70,7 +68,10 @@ export function WhyPanel({ m, nome }: { m: MatchResult; nome: string }) {
       </div>
 
       {aberto && (
-        <div id={id} className="mt-2 grid animate-fade-in gap-10 rounded-[1.5rem] bg-sand p-6 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] sm:p-8">
+        <div
+          id={id}
+          className="mt-2 grid animate-fade-in gap-10 rounded-[1.5rem] bg-sand p-6 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] sm:p-8"
+        >
           <ul className="flex flex-col gap-2.5">
             {m.razoes.map((r, i) => {
               const g = RAZAO[r.tipo]
@@ -92,7 +93,9 @@ export function WhyPanel({ m, nome }: { m: MatchResult; nome: string }) {
             </p>
             <Parcelas m={m} />
             {!m.compativel && (
-              <p className="mt-4 text-sm text-ink-soft">Falha um requisito essencial, por isso a pontuação fica limitada a 35%.</p>
+              <p className="mt-4 text-sm text-ink-soft">
+                Falha um requisito essencial, por isso a pontuação fica limitada a 35%.
+              </p>
             )}
           </div>
         </div>

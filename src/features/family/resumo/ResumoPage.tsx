@@ -53,17 +53,28 @@ export default function ResumoPage() {
         </div>
       )}
 
+      {/* sem perfil, o primeiro passo é descrevê-lo: vem antes de tudo */}
+      {!principal && !bemvindo && (
+        <Reveal>
+          <Sugestoes perfil={principal} excluir={excluir} />
+        </Reveal>
+      )}
+
       <Reveal>
         <PedidosResumo ativos={ativos} terminados={terminados.length} pesquisa={pesquisa} />
       </Reveal>
 
-      <Reveal>
-        <ProximaVisita visita={visitas[0]} outras={visitas.length - 1} temPedidos={ativos.length > 0} />
-      </Reveal>
+      {(visitas.length > 0 || ativos.length > 0) && (
+        <Reveal>
+          <ProximaVisita visita={visitas[0]} outras={visitas.length - 1} temPedidos={ativos.length > 0} />
+        </Reveal>
+      )}
 
-      <Reveal>
-        <Sugestoes perfil={principal} excluir={excluir} />
-      </Reveal>
+      {principal && (
+        <Reveal>
+          <Sugestoes perfil={principal} excluir={excluir} />
+        </Reveal>
+      )}
 
       <div className="grid gap-16 xl:grid-cols-2 xl:gap-12">
         <Reveal>

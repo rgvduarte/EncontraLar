@@ -34,12 +34,20 @@ export function PrevisaoSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
         )}
       </p>
 
-      <ForecastStrip curva={est.curva} meses={6} className="mt-12" />
+      {!est.imediata && <ForecastStrip curva={est.curva} meses={6} className="mt-12" />}
 
       <div className="mt-16">
         <Subtitulo>Nos próximos 12 meses</Subtitulo>
-        <p className="mt-2 mb-6 text-ink-mute">Barras: {unidade.varios} que deverão libertar-se em cada mês. Linha: a sua probabilidade acumulada.</p>
-        <ForecastChart data={previsao} probabilidade={est.curva} caption={`Previsão de ${unidade.varios} em ${lar.nome} nos próximos 12 meses`} />
+        <p className="mt-2 mb-6 text-ink-mute">
+          {est.imediata
+            ? `${unidade.varios[0]!.toUpperCase()}${unidade.varios.slice(1)} que deverão libertar-se em cada mês, além dos que já estão livres.`
+            : `Barras: ${unidade.varios} que deverão libertar-se em cada mês. Linha: a sua probabilidade acumulada.`}
+        </p>
+        <ForecastChart
+          data={previsao}
+          probabilidade={est.imediata ? undefined : est.curva}
+          caption={`Previsão de ${unidade.varios} em ${lar.nome} nos próximos 12 meses`}
+        />
       </div>
 
       <div className="mt-16 max-w-[65ch]">

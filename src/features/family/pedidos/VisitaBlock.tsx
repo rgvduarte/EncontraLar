@@ -90,7 +90,7 @@ export function VisitaBlock({ c, lar }: { c: Candidatura; lar: Lar }) {
               Adicionar ao calendário
             </Button>
           )}
-          <button type="button" className="link min-h-11" onClick={() => setEditar(true)}>
+          <button type="button" className="link min-h-12" onClick={() => setEditar(true)}>
             {passou ? 'Marcar outra visita' : 'Alterar data'}
           </button>
         </div>
@@ -105,7 +105,7 @@ export function VisitaBlock({ c, lar }: { c: Candidatura; lar: Lar }) {
       </p>
       <VisitaForm c={c} lar={lar} inicial={editar && v ? { data: v.data, hora: v.hora } : undefined} onDone={() => setEditar(false)} />
       {editar && (
-        <button type="button" className="link mt-3 min-h-11" onClick={() => setEditar(false)}>
+        <button type="button" className="link mt-3 min-h-12" onClick={() => setEditar(false)}>
           Manter a data atual
         </button>
       )}

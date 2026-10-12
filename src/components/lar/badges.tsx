@@ -8,8 +8,12 @@ const DOT: Record<Disponibilidade, string> = { disponivel: 'bg-leaf-500', breve:
 const TXT: Record<Disponibilidade, string> = { disponivel: 'text-leaf-700', breve: 'text-sun-800', espera: 'text-dusk-700' }
 const BG: Record<Disponibilidade, string> = { disponivel: 'bg-leaf-50', breve: 'bg-sun-50', espera: 'bg-dusk-50' }
 
-export function disponibilidadeTexto(lar: Lar | undefined, d: Disponibilidade, showCount = true) {
+export function disponibilidadeTexto(lar: Lar | undefined, d: Disponibilidade, showCount = true, curto = false) {
   const n = lar ? vagasLivres(lar) : 0
+  if (curto) {
+    if (d === 'disponivel') return n > 1 && showCount ? `${n} vagas` : 'Com vaga'
+    return d === 'breve' ? 'Vaga em breve' : 'Lista de espera'
+  }
   return d === 'disponivel' && showCount && n > 0 ? (n === 1 ? '1 vaga disponível' : `${n} vagas disponíveis`) : DISPONIBILIDADE_LABEL[d]
 }
 
@@ -31,11 +35,12 @@ export function AvailabilityBadge({
   className?: string
 }) {
   const d = estado ?? (lar ? disponibilidade(lar) : 'espera')
-  const text = disponibilidadeTexto(lar, d, showCount)
+  // sobre imagens o espaço é curto (ao lado do coração): texto abreviado
+  const text = disponibilidadeTexto(lar, d, showCount, overlay)
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-2 rounded-full font-medium whitespace-nowrap',
+        'inline-flex max-w-full items-center gap-2 rounded-full font-medium whitespace-nowrap',
         size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-sm',
         overlay ? 'bg-white/90 text-ink shadow-soft backdrop-blur-md' : cn(BG[d], TXT[d]),
         className,

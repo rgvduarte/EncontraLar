@@ -19,15 +19,15 @@ function hashFromWindow(): string {
   return i >= 0 ? raw.slice(i + 1) : ''
 }
 
-type Scroller = { scrollTo: (target: HTMLElement, opts?: { immediate?: boolean }) => void } | null
+type Scroller = { scrollTo: (target: HTMLElement, opts?: { immediate?: boolean; force?: boolean }) => void } | null
 
 /** Faz scroll até ao elemento com este id. Devolve false se ainda não existir. */
 function scrollToId(id: string, lenis: Scroller, { smooth = true, focus = true } = {}): boolean {
   const el = document.getElementById(id)
   if (!el) return false
   const animate = smooth && !reducedMotion()
-  if (lenis) lenis.scrollTo(el, { immediate: !animate })
-  else el.scrollIntoView({ behavior: animate ? 'smooth' : 'auto', block: 'start' })
+  if (lenis) lenis.scrollTo(el, { immediate: !animate, force: true })
+  else el.scrollIntoView({ behavior: animate ? 'smooth' : ('instant' as ScrollBehavior), block: 'start' })
   if (focus) {
     if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1')
     el.focus({ preventScroll: true })
@@ -43,6 +43,9 @@ export function useAnchorNavigation(validIds?: readonly string[]) {
   const location = useLocation()
   const navigate = useNavigate()
   const lenis = useLenis()
+  // o scroll suave é criado depois da página montar: o temporizador lê sempre a instância atual
+  const lenisRef = useRef<Scroller>(lenis)
+  lenisRef.current = lenis
   const skip = useRef<string | null>(null)
 
   useEffect(() => {
@@ -52,25 +55,33 @@ export function useAnchorNavigation(validIds?: readonly string[]) {
       skip.current = null
       return
     }
-    // O Layout volta ao topo depois de os filhos montarem e a página é carregada de forma diferida:
-    // esperamos um instante e repetimos quando as fontes acabam de carregar (a altura muda).
+    // A página é carregada de forma diferida e a altura muda (fontes, revelações, scroll suave a arrancar):
+    // repetimos até a secção ficar no sítio, durante no máximo ~2 segundos.
     let cancelled = false
     let tries = 0
     let timer = 0
-    const attempt = () => {
-      if (cancelled) return
-      if (scrollToId(id, lenis, { smooth: false, focus: false }) || tries++ > 30) return
-      timer = window.setTimeout(attempt, 50)
+    const noSitio = () => {
+      const el = document.getElementById(id)
+      if (!el) return false
+      const top = el.getBoundingClientRect().top
+      return top >= -2 && top <= 160
     }
-    timer = window.setTimeout(attempt, 80)
-    const started = Date.now()
-    document.fonts?.ready.then(() => {
-      if (!cancelled && Date.now() - started < 2000)
-        window.setTimeout(() => !cancelled && scrollToId(id, lenis, { smooth: false, focus: false }), 30)
-    })
+    const attempt = () => {
+      if (cancelled || (tries > 3 && noSitio())) return
+      scrollToId(id, lenisRef.current, { smooth: false, focus: false })
+      if (tries++ < 20) timer = window.setTimeout(attempt, 100)
+    }
+    // se a pessoa começar a fazer scroll, deixamos de insistir
+    const parar = () => {
+      cancelled = true
+    }
+    const eventos = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const
+    eventos.forEach((e) => window.addEventListener(e, parar, { passive: true, once: true }))
+    timer = window.setTimeout(attempt, 60)
     return () => {
       cancelled = true
       window.clearTimeout(timer)
+      eventos.forEach((e) => window.removeEventListener(e, parar))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.hash])

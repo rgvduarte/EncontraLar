@@ -6,7 +6,9 @@ import { InputField } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/components/ui/Toast'
 import { atualizarLar, getDB } from '@/lib/store'
-import { QUARTO_CURTO, QUARTO_LABEL } from '@/lib/labels'
+import { QUARTO_CURTO } from '@/lib/labels'
+import { nomeQuarto } from '../lib/derive'
+import { capitalizar } from '../shared/ui'
 import { validarQuarto } from './RoomPriceForm'
 
 const TIPOS: TipoQuarto[] = ['individual', 'duplo', 'casal']
@@ -36,7 +38,7 @@ export function AddRoomType({ lar }: { lar: Lar }) {
     atualizarLar(lar.id, {
       quartos: [...atual.quartos, { tipo, total: Number(v.total), livres: 0, precoMin: Number(v.precoMin), precoMax: Number(v.precoMax) }],
     })
-    toast.success(`${QUARTO_LABEL[tipo]} adicionado`, 'Indique agora quantos lugares deste tipo estão livres.')
+    toast.success(`${capitalizar(nomeQuarto(tipo))} adicionado`, 'Indique agora quantos lugares deste tipo estão livres.')
     setTipo(null)
   }
 
@@ -54,7 +56,7 @@ export function AddRoomType({ lar }: { lar: Lar }) {
       <Modal
         open={tipo != null}
         onClose={() => setTipo(null)}
-        title={tipo ? `Adicionar ${QUARTO_LABEL[tipo].toLowerCase()}` : ''}
+        title={tipo ? `Adicionar ${nomeQuarto(tipo)}` : ''}
         description="Começa com 0 lugares livres. Depois, mude o número no contador."
       >
         <form onSubmit={adicionar} noValidate className="flex flex-col gap-4">

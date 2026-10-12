@@ -82,7 +82,6 @@ export function ResultsSummary({ model, desktop }: Props) {
       <div className="mt-1 flex flex-wrap items-center justify-between gap-x-4">
         <p aria-live="polite" aria-atomic="true" className="text-base text-ink-mute">
           <span className="font-medium text-ink tabular">{num(n)}</span> {n === 1 ? 'instituição' : 'instituições'}
-          {!desktop && centro && <> até {state.raio} km</>}
           {n > 0 && (
             <>
               <span aria-hidden> · </span>

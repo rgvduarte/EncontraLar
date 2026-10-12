@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/cn'
-import { SECOES, irParaSecao } from './helpers'
-import { useScrollSpy } from './hooks'
+import { SECOES } from './helpers'
+import { useIrParaSecao, useScrollSpy } from './hooks'
 
 const IDS = SECOES.map((s) => s.id)
 
@@ -12,6 +12,7 @@ const IDS = SECOES.map((s) => s.id)
  */
 export function SectionNav({ nome }: { nome: string }) {
   const ativo = useScrollSpy(IDS, 150)
+  const irParaSecao = useIrParaSecao()
   const lista = useRef<HTMLUListElement>(null)
 
   // mantém a secção ativa visível na faixa deslizante (telemóvel)

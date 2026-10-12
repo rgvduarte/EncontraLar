@@ -172,13 +172,6 @@ export const URGENCIA_FRASE: Record<Urgencia, string> = {
   planeamento: 'a planear com tempo',
 }
 
-export const URGENCIA_CURTA: Record<Urgencia, string> = {
-  imediata: 'Já — o mais depressa possível',
-  '1-3meses': 'Em 1 a 3 meses',
-  '3-6meses': 'Em 3 a 6 meses',
-  planeamento: 'A planear com tempo',
-}
-
 // ————————————————————————————————————————— resumo do perfil, por partes
 
 export interface ParteResumo {

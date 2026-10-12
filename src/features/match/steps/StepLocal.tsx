@@ -27,14 +27,23 @@ export function StepLocal({ r, patch, erros, lares }: StepProps) {
 
   const usarGps = () => {
     if (!('geolocation' in navigator)) {
-      setGps({ s: 'erro', msg: 'Este navegador não permite partilhar a localização. Escreva a localidade.' })
+      setGps({
+        s: 'erro',
+        msg: 'Este navegador não permite partilhar a localização. Escreva a localidade.',
+      })
       return
     }
     setGps({ s: 'a-procurar' })
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setGps({ s: 'parado' })
-        patch({ local: { label: LABEL_GPS, lat: pos.coords.latitude, lng: pos.coords.longitude } })
+        patch({
+          local: {
+            label: LABEL_GPS,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          },
+        })
       },
       (err) =>
         setGps({
@@ -87,29 +96,31 @@ export function StepLocal({ r, patch, erros, lares }: StepProps) {
         </p>
       </div>
 
-      <div className={cn('transition-opacity duration-300', !r.local && 'opacity-40')}>
-        <div className="flex items-baseline justify-between gap-4">
-          <label htmlFor={raioId} className="text-base font-medium text-ink">
-            Até que distância?
-          </label>
-          <p aria-hidden className="text-3xl font-semibold text-ink tabular">
-            {r.raioKm} km
-          </p>
-        </div>
-        <RangeSlider
-          id={raioId}
-          className="mt-2"
-          min={RAIO_MIN}
-          max={RAIO_MAX}
-          step={5}
-          value={r.raioKm}
-          onValue={(raioKm) => patch({ raioKm })}
-          aria-valuetext={`${r.raioKm} quilómetros`}
-          aria-describedby={`${raioId}-conta`}
-        />
-        <div aria-hidden className="flex justify-between text-sm text-ink-mute tabular">
-          <span>{RAIO_MIN} km</span>
-          <span>{RAIO_MAX} km</span>
+      <div>
+        <div className={cn('transition-opacity duration-300', !r.local && 'opacity-40')}>
+          <div className="flex items-baseline justify-between gap-4">
+            <label htmlFor={raioId} className="text-base font-medium text-ink">
+              Até que distância?
+            </label>
+            <p aria-hidden className="text-3xl font-semibold text-ink tabular">
+              {r.raioKm} km
+            </p>
+          </div>
+          <RangeSlider
+            id={raioId}
+            className="mt-2"
+            min={RAIO_MIN}
+            max={RAIO_MAX}
+            step={5}
+            value={r.raioKm}
+            onValue={(raioKm) => patch({ raioKm })}
+            aria-valuetext={`${r.raioKm} quilómetros`}
+            aria-describedby={`${raioId}-conta`}
+          />
+          <div aria-hidden className="flex justify-between text-sm text-ink-mute tabular">
+            <span>{RAIO_MIN} km</span>
+            <span>{RAIO_MAX} km</span>
+          </div>
         </div>
 
         <div id={`${raioId}-conta`} aria-live="polite" className="mt-6 text-center sm:mt-10">
@@ -119,7 +130,9 @@ export function StepLocal({ r, patch, erros, lares }: StepProps) {
             <>
               <p className="text-ink">
                 <span className="block text-5xl font-semibold tracking-tight tabular sm:text-6xl">{noRaio.length}</span>
-                <span className="mt-1 block text-lg">{noRaio.length === 1 ? 'instituição neste raio' : 'instituições neste raio'}</span>
+                <span className="mt-1 block text-lg">
+                  {noRaio.length === 1 ? 'instituição neste raio' : 'instituições neste raio'}
+                </span>
               </p>
               <p className="mt-2 inline-flex items-center gap-2 text-base text-ink-mute">
                 <span aria-hidden className={cn('size-2 rounded-full', comVaga ? 'bg-leaf-500' : 'bg-dusk-500')} />

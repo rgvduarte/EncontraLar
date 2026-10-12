@@ -22,6 +22,7 @@ import { recomendar } from '@/lib/matching'
 import { vagasLivres } from '@/lib/forecast'
 import { useDebounced } from '@/lib/hooks'
 import { euro } from '@/lib/format'
+import { cn } from '@/lib/cn'
 import { pesquisaUrl } from '../shared/data'
 import { ConfirmModal, MoreLink } from '../shared/ui'
 import { FormSection, Pill, PillGroup } from './controls'
@@ -276,17 +277,25 @@ export function PerfilForm({
         )}
       </div>
 
-      {/* barra de gravação: estado + feedback imediato + ação */}
-      <div className="sticky bottom-[var(--tabbar-h,0px)] z-10 -mx-5 mt-10 border-t border-line bg-white/90 px-5 py-4 backdrop-blur-xl sm:mx-0 sm:rounded-full sm:border-t-0 sm:px-3 sm:py-3 sm:pl-7 sm:shadow-card sm:ring-1 sm:ring-line">
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-          <p className="text-sm text-ink-mute" aria-live="polite">
+      {/* barra de gravação: feedback imediato + ação (fixa ao fundo só quando há algo por guardar) */}
+      <div
+        className={cn(
+          dirty || !perfil ? 'sticky' : 'relative',
+          'bottom-[var(--tabbar-h,0px)] z-10 -mx-5 mt-10 border-t border-line bg-white/90 px-5 py-3 backdrop-blur-xl',
+          'sm:mx-0 sm:rounded-full sm:border-t-0 sm:py-3 sm:pr-3 sm:pl-7 sm:shadow-card sm:ring-1 sm:ring-line',
+        )}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <p className="min-w-0 text-sm leading-snug text-ink-mute" aria-live="polite">
             <span className="font-semibold text-ink tabular">{contagem.compativeis}</span> compatíveis ·{' '}
-            <span className="font-semibold text-ink tabular">{contagem.comVaga}</span> com vaga agora
-            <MoreLink to={pesquisaUrl(contagem.f)} className="ml-3 text-sm">
-              Ver no mapa
-            </MoreLink>
+            <span className="whitespace-nowrap">
+              <span className="font-semibold text-ink tabular">{contagem.comVaga}</span> com vaga
+            </span>
+            <span className="ml-3 hidden sm:inline">
+              <MoreLink to={pesquisaUrl(contagem.f)}>Ver no mapa</MoreLink>
+            </span>
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1">
             {dirty && perfil && (
               <Button
                 variant="ghost"
@@ -299,7 +308,7 @@ export function PerfilForm({
               </Button>
             )}
             <Button type="submit" disabled={!dirty && Boolean(perfil)}>
-              {perfil ? (dirty ? 'Guardar alterações' : 'Guardado') : 'Criar perfil'}
+              {perfil ? (dirty ? 'Guardar' : 'Guardado') : 'Criar perfil'}
             </Button>
           </div>
         </div>

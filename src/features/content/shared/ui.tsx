@@ -19,7 +19,12 @@ export function ExternalLink({ href, children, className }: { href: string; chil
 }
 
 const MORE = 'inline-flex min-h-12 items-center gap-0.5 font-medium transition-colors hover:underline underline-offset-4'
-const MORE_TONE = { light: 'text-terra-600 hover:text-terra-700', dark: 'text-terra-300 hover:text-terra-200' } as const
+const MORE_TONE = {
+  light: 'text-terra-600 hover:text-terra-700',
+  /** sobre bg-sand: o azul mais escuro mantém o contraste AA */
+  sand: 'text-terra-700 hover:text-terra-800',
+  dark: 'text-terra-300 hover:text-terra-200',
+} as const
 
 /** Ligação de texto estilo Apple: "Saber mais ›". Com `to` é uma rota; com `onClick` é um botão. */
 export function MoreLink({
@@ -33,7 +38,7 @@ export function MoreLink({
   onClick?: () => void
   children: ReactNode
   className?: string
-  /** 'dark' sobre fundos pretos */
+  /** 'sand' sobre cinza claro, 'dark' sobre preto */
   tone?: keyof typeof MORE_TONE
 }) {
   const inner = (

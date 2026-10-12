@@ -45,7 +45,10 @@ export function CandidaturaAtiva({ lar, c, onVisita }: { lar: Lar; c: Candidatur
       {naLista && est && (
         <div className="mt-5">
           <p className="flex items-baseline gap-3">
-            <span className="text-6xl font-semibold tracking-tight text-ink tabular">{c.posicao}.º</span>
+            <span className="text-6xl font-semibold tracking-tight text-ink tabular">
+              {c.posicao}
+              <span className="text-4xl">.º</span>
+            </span>
             <span className="text-sm text-ink-soft">lugar na lista de espera</span>
           </p>
           {est.imediata ? (

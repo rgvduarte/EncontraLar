@@ -48,21 +48,21 @@ export default function FichaPage({ lar }: { lar: Lar }) {
           <Mensalidade {...form} />
           <Equipa {...form} />
 
-          <div className="sticky bottom-[calc(var(--tabbar-h)+1rem)] z-10 flex items-center justify-between gap-3 rounded-full bg-white/90 py-2 pr-2 pl-6 shadow-lift ring-1 ring-black/5 backdrop-blur-xl">
-            <p aria-live="polite" className="text-sm text-ink-mute max-sm:sr-only">
-              {form.sujo ? 'Tem alterações por guardar.' : 'Tudo guardado.'}
-            </p>
-            <div className="flex gap-2 max-sm:w-full">
-              {form.sujo && (
+          {form.sujo ? (
+            <div className="sticky bottom-[calc(var(--tabbar-h)+1rem)] z-10 flex animate-fade-up items-center justify-between gap-3 rounded-full bg-white py-2 pr-2 pl-6 shadow-lift ring-1 ring-black/5 max-sm:pl-2">
+              <p className="text-sm whitespace-nowrap text-ink-mute max-sm:sr-only">Alterações por guardar</p>
+              <div className="flex gap-2 max-sm:w-full">
                 <Button variant="subtle" onClick={form.repor} className="max-sm:flex-1">
                   Repor
                 </Button>
-              )}
-              <Button type="submit" disabled={!form.sujo} className="max-sm:flex-1">
-                Guardar alterações
-              </Button>
+                <Button type="submit" className="max-sm:flex-1">
+                  Guardar alterações
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="text-sm text-ink-mute">As alterações aparecem na ficha pública assim que as guardar.</p>
+          )}
         </form>
       </div>
 

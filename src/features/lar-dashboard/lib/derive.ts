@@ -5,7 +5,7 @@
 import type { Candidatura, DB, EstadoCandidatura, Lar, PerfilIdoso, TipoQuarto, User } from '@/types'
 import { FATOR_LISTA_EFETIVA, ocupados, poissonQuantile, previsaoMensal, taxaOcupacao, taxaSaidasMensal, vagasLivres } from '@/lib/forecast'
 import { precoReferencia } from '@/lib/matching'
-import { CUIDADO_LABEL, CUIDADOS_CRITICOS, GRAU_LABEL, QUARTO_CURTO } from '@/lib/labels'
+import { CUIDADO_LABEL, CUIDADOS_CRITICOS, GRAU_LABEL } from '@/lib/labels'
 import { euro } from '@/lib/format'
 
 export const HORA_MS = 3_600_000
@@ -178,6 +178,10 @@ export interface CompatCheck {
   texto: string
 }
 
+const NOME_QUARTO: Record<TipoQuarto, string> = { individual: 'quarto individual', duplo: 'quarto duplo', casal: 'quarto de casal' }
+/** "quarto de casal" — nome do tipo de quarto para meio de frase. */
+export const nomeQuarto = (t: TipoQuarto) => NOME_QUARTO[t]
+
 /** Só a primeira letra em minúscula — mantém nomes próprios ("demência e Alzheimer"). */
 export const minuscula = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
 
@@ -207,16 +211,16 @@ export function verificarCompatibilidade(lar: Lar, perfil: PerfilIdoso): CompatC
     out.push({ id: 'quarto', estado: 'ok', titulo: 'Quarto', texto: 'Aceita qualquer tipo de quarto' })
   } else {
     const q = lar.quartos.find((r) => r.tipo === perfil.quarto)
-    const nome = QUARTO_CURTO[perfil.quarto].toLowerCase()
+    const nome = nomeQuarto(perfil.quarto)
     out.push(
       q
-        ? { id: 'quarto', estado: 'ok', titulo: 'Quarto', texto: `Pede quarto ${nome} — tem ${q.total} (${q.livres === 1 ? '1 livre' : `${q.livres} livres`})` }
-        : { id: 'quarto', estado: 'falta', titulo: 'Quarto', texto: `Pede quarto ${nome}, que não tem` },
+        ? { id: 'quarto', estado: 'ok', titulo: 'Quarto', texto: `Pede ${nome} — tem ${q.total} (${q.livres === 1 ? '1 livre' : `${q.livres} livres`})` }
+        : { id: 'quarto', estado: 'falta', titulo: 'Quarto', texto: `Pede ${nome}, que não tem` },
     )
   }
 
   const preco = precoReferencia(lar, perfil.quarto)
-  const tipoTxt = perfil.quarto === 'indiferente' ? 'o quarto mais económico' : `o quarto ${QUARTO_CURTO[perfil.quarto].toLowerCase()}`
+  const tipoTxt = perfil.quarto === 'indiferente' ? 'o quarto mais económico' : `o ${nomeQuarto(perfil.quarto)}`
   out.push(
     perfil.orcamentoMax >= preco
       ? { id: 'orcamento', estado: 'ok', titulo: 'Orçamento', texto: `Até ${euro(perfil.orcamentoMax)} — ${tipoTxt} começa em ${euro(preco)}` }

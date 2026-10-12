@@ -72,25 +72,27 @@ export function SaidasChart({ valores, agora = new Date() }: { valores: number[]
           ))}
         </ol>
       </div>
-      <table id={tabelaId} className="sr-only">
-        <caption>Saídas por mês</caption>
-        <thead>
-          <tr>
-            <th scope="col">Mês</th>
-            <th scope="col">Saídas</th>
-          </tr>
-        </thead>
-        <tbody>
-          {dados.map((d) => (
-            <tr key={`${d.ano}-${d.mes}`}>
-              <th scope="row">
-                {MESES_LONGOS[d.mes]} {d.ano}
-              </th>
-              <td>{d.v}</td>
+      <div className="sr-only">
+        <table id={tabelaId}>
+          <caption>Saídas por mês</caption>
+          <thead>
+            <tr>
+              <th scope="col">Mês</th>
+              <th scope="col">Saídas</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {dados.map((d) => (
+              <tr key={`${d.ano}-${d.mes}`}>
+                <th scope="row">
+                  {MESES_LONGOS[d.mes]} {d.ano}
+                </th>
+                <td>{d.v}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   )
 }

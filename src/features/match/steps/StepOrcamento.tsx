@@ -48,13 +48,28 @@ export function StepOrcamento({ r, patch, lares, p }: StepProps) {
           Mensalidade máxima, por pessoa
         </label>
         <div className="flex items-center justify-center gap-3 sm:gap-8">
-          <button type="button" onClick={() => mudar(orc - ORCAMENTO_PASSO)} disabled={orc <= ORCAMENTO_MIN} aria-label={`Menos ${ORCAMENTO_PASSO} euros`} className={passoBtn}>
+          <button
+            type="button"
+            onClick={() => mudar(orc - ORCAMENTO_PASSO)}
+            disabled={orc <= ORCAMENTO_MIN}
+            aria-label={`Menos ${ORCAMENTO_PASSO} euros`}
+            className={passoBtn}
+          >
             <Minus aria-hidden className="size-5" />
           </button>
-          <p aria-hidden className="min-w-[5.5ch] text-center text-[3.25rem] leading-none font-semibold tracking-tight whitespace-nowrap text-ink tabular sm:text-7xl">
+          <p
+            aria-hidden
+            className="min-w-[5.5ch] text-center text-[3.25rem] leading-none font-semibold tracking-tight whitespace-nowrap text-ink tabular sm:text-7xl"
+          >
             {euro(orc)}
           </p>
-          <button type="button" onClick={() => mudar(orc + ORCAMENTO_PASSO)} disabled={orc >= ORCAMENTO_MAX} aria-label={`Mais ${ORCAMENTO_PASSO} euros`} className={passoBtn}>
+          <button
+            type="button"
+            onClick={() => mudar(orc + ORCAMENTO_PASSO)}
+            disabled={orc >= ORCAMENTO_MAX}
+            aria-label={`Mais ${ORCAMENTO_PASSO} euros`}
+            className={passoBtn}
+          >
             <Plus aria-hidden className="size-5" />
           </button>
         </div>
@@ -93,12 +108,15 @@ export function StepOrcamento({ r, patch, lares, p }: StepProps) {
               </div>
               <div className="flex flex-col-reverse gap-1 px-2">
                 <dt className="text-sm text-ink-mute">IPSS: depende dos rendimentos</dt>
-                <dd className="text-xl font-semibold whitespace-nowrap text-ink tabular sm:text-3xl">{ctx.ipss ? intervalo(ctx.ipss.min, ctx.ipss.max) : '—'}</dd>
+                <dd className="text-xl font-semibold whitespace-nowrap text-ink tabular sm:text-3xl">
+                  {ctx.ipss ? intervalo(ctx.ipss.min, ctx.ipss.max) : '—'}
+                </dd>
               </div>
             </dl>
             {ctx.alargado && (
               <p className="mt-6 text-center text-sm text-ink-mute">
-                Não há instituições a menos de {r.raioKm} km: usamos as {ctx.n} mais próximas (até {km(ctx.ateKm)}) como referência.
+                Não há instituições a menos de {r.raioKm} km: usamos as {ctx.n} mais próximas (até {km(ctx.ateKm)}) como
+                referência.
               </p>
             )}
           </div>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useLenis } from '@/components/motion/SmoothScroll'
 import { useDocumentTitle, useMediaQuery } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
 import { EmptyResults } from './EmptyResults'
@@ -32,6 +33,7 @@ export default function SearchPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [visiveis, setVisiveis] = useState(PAGINA)
   const scrollPendente = useRef<string | null>(null)
+  const lenis = useLenis()
 
   // chave dos filtros (sem ordenação nem vista): reenquadra o mapa e repõe a paginação
   const fitKey = useMemo(() => toSearchParams({ ...state, ordem: 'relevancia', vista: 'lista' }).toString(), [state])
@@ -63,9 +65,10 @@ export default function SearchPage() {
     const el = document.getElementById(cardDomId(id))
     if (!el) return
     scrollPendente.current = null
-    const reduzir = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    el.scrollIntoView({ behavior: reduzir ? 'auto' : 'smooth', block: 'center' })
-  }, [selectedId, visiveis])
+    // centrar o cartão (com o scroll suave do site, quando ativo)
+    if (lenis) lenis.scrollTo(el, { offset: -Math.max(0, (window.innerHeight - el.offsetHeight) / 2) })
+    else el.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' })
+  }, [selectedId, visiveis, lenis])
 
   // ——— geolocalização
   const onGeo = useCallback((lat: number, lng: number) => update({ local: { tipo: 'coords', lat, lng } }), [update])
@@ -146,7 +149,7 @@ export default function SearchPage() {
       <div className="flex flex-1 flex-col" style={estilo}>
         <FilterBar ref={barRef} model={model} geo={geo} precos={precos} onMaisFiltros={() => setModal('mais')} />
         <div className="flex flex-1 items-stretch">
-          <div className="w-[46%] max-w-[46rem] shrink-0 xl:w-[44rem]">{lista}</div>
+          <div className="w-[54%] shrink-0 xl:w-[44rem]">{lista}</div>
           <div className="relative min-w-0 flex-1">
             <div className="sticky top-[calc(4rem+var(--barra))] h-[calc(100dvh-4rem-var(--barra))] py-4 pr-4">
               {mapa('relative h-full w-full rounded-[1.75rem]')}
@@ -185,7 +188,8 @@ export default function SearchPage() {
           vista={vistaMapa ? 'mapa' : 'lista'}
           onChange={(vista) => {
             update({ vista })
-            window.scrollTo({ top: 0 })
+            if (lenis) lenis.scrollTo(0, { immediate: true, force: true })
+            else window.scrollTo({ top: 0 })
           }}
         />
       )}

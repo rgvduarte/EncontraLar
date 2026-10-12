@@ -48,16 +48,18 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
   // 1. nada no raio
   if (!area.length) {
     const prox = perto[0]
-    const alargar = prox ? teto5(Math.max(prox.d, (perto[2]?.d ?? prox.d)) + 0.5) : null
+    const alargar = prox ? teto5(Math.max(prox.d, perto[2]?.d ?? prox.d) + 0.5) : null
     return {
       chave: 'raio',
       titulo: 'Não há instituições tão perto',
       texto: prox
-        ? `Não temos instituições a menos de ${r.raioKm} km ${onde}. A mais próxima fica a ${km(prox.d)}.`
+        ? `Não temos instituições a menos de ${r.raioKm}\u00a0km ${onde}. A mais próxima fica a ${km(prox.d)}.`
         : `Ainda não temos instituições registadas perto ${onde}.`,
       ajustes: [
         ...(alargar && alargar <= RAIO_MAX ? [{ label: `Alargar o raio para ${alargar} km`, patch: { raioKm: alargar } }] : []),
-        ...(alargar && alargar > RAIO_MAX && r.raioKm < RAIO_MAX ? [{ label: `Alargar o raio para ${RAIO_MAX} km`, patch: { raioKm: RAIO_MAX } }] : []),
+        ...(alargar && alargar > RAIO_MAX && r.raioKm < RAIO_MAX
+          ? [{ label: `Alargar o raio para ${RAIO_MAX} km`, patch: { raioKm: RAIO_MAX } }]
+          : []),
         { label: 'Escolher outra localidade', passo: 3 },
       ],
     }
@@ -75,8 +77,8 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
       titulo: `O grau de dependência é o que mais limita`,
       texto:
         (area.length === 1
-          ? `A única instituição a menos de ${r.raioKm} km ${onde} não admite pessoas com ${GRAU_LABEL[grau].toLowerCase()}.`
-          : `Nenhuma das ${area.length} instituições a menos de ${r.raioKm} km ${onde} admite pessoas com ${GRAU_LABEL[grau].toLowerCase()}.`) +
+          ? `A única instituição a menos de ${r.raioKm}\u00a0km ${onde} não admite pessoas com ${GRAU_LABEL[grau].toLowerCase()}.`
+          : `Nenhuma das ${area.length} instituições a menos de ${r.raioKm}\u00a0km ${onde} admite pessoas com ${GRAU_LABEL[grau].toLowerCase()}.`) +
         (grau === 'grave'
           ? ' Para dependência grave é preciso um lar preparado para pessoas acamadas, com enfermagem permanente — e são menos.'
           : ''),
@@ -106,7 +108,9 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
             : `Das ${admitem.length} instituições da zona que admitem ${GRAU_LABEL[grau].toLowerCase()}, nenhuma assegura ${CUIDADO_LABEL[pior.c].toLowerCase()}.`
           : `Há instituições na zona com cada um destes cuidados, mas nenhuma assegura ao mesmo tempo ${nomes(criticos)}.`,
       ajustes: [
-        ...(alt ? [{ label: `Alargar o raio para ${alt.raio} km (a mais próxima fica a ${km(alt.d)})`, patch: { raioKm: alt.raio } }] : []),
+        ...(alt
+          ? [{ label: `Alargar o raio para ${alt.raio} km (a mais próxima fica a ${km(alt.d)})`, patch: { raioKm: alt.raio } }]
+          : []),
         {
           label: `Procurar sem exigir ${CUIDADO_LABEL[pior.c].toLowerCase()}`,
           patch: { necessidades: r.necessidades.filter((n) => n !== pior.c) },
@@ -126,8 +130,8 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
       titulo: 'Falta acordo com a Segurança Social',
       texto:
         compat.length === 1
-          ? `A única instituição compatível a menos de ${r.raioKm} km não tem vagas com acordo de cooperação.`
-          : `Nenhuma das ${compat.length} instituições compatíveis a menos de ${r.raioKm} km tem vagas com acordo de cooperação.`,
+          ? `A única instituição compatível a menos de ${r.raioKm}\u00a0km não tem vagas com acordo de cooperação.`
+          : `Nenhuma das ${compat.length} instituições compatíveis a menos de ${r.raioKm}\u00a0km tem vagas com acordo de cooperação.`,
       ajustes: [
         ...(alt ? [{ label: `Alargar o raio para ${alt.raio} km`, patch: { raioKm: alt.raio } }] : []),
         { label: 'Ver também sem comparticipação', patch: { precisaAcordoSS: false } },
@@ -145,12 +149,17 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
     return {
       chave: 'orcamento',
       titulo: 'O orçamento está abaixo dos preços da zona',
-      texto: `${compat.length === 1 ? `A única instituição que pode receber ${p.a} a menos de ${r.raioKm} km pede` : `As ${compat.length} instituições que podem receber ${p.a} a menos de ${r.raioKm} km pedem`}, no mínimo, ${euro(min)} por mês${
+      texto: `${compat.length === 1 ? `A única instituição que pode receber ${p.a} a menos de ${r.raioKm}\u00a0km pede` : `As ${compat.length} instituições que podem receber ${p.a} a menos de ${r.raioKm}\u00a0km pedem`}, no mínimo, ${euro(min)} por mês${
         compat.length > 2 ? ` (mediana ${euro(med)})` : ''
       }. O orçamento indicado é ${euro(orc)}.`,
       ajustes: [
-        ...opcoes.map((v, i) => ({ label: `Subir para ${euro(v)}${i === 0 ? ' (o mais acessível)' : ' (mediana)'}`, patch: { orcamentoMax: v } })),
-        ...(r.quarto !== 'indiferente' && r.quarto !== 'duplo' ? [{ label: 'Considerar quarto duplo', patch: { quarto: 'duplo' as const } }] : []),
+        ...opcoes.map((v, i) => ({
+          label: `Subir para ${euro(v)}${i === 0 ? ' (o mais acessível)' : ' (mediana)'}`,
+          patch: { orcamentoMax: v },
+        })),
+        ...(r.quarto !== 'indiferente' && r.quarto !== 'duplo'
+          ? [{ label: 'Considerar quarto duplo', patch: { quarto: 'duplo' as const } }]
+          : []),
       ],
     }
   }

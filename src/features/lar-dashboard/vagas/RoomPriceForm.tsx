@@ -5,7 +5,8 @@ import { InputField } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/components/ui/Toast'
 import { atualizarLar, getDB } from '@/lib/store'
-import { QUARTO_LABEL } from '@/lib/labels'
+import { nomeQuarto } from '../lib/derive'
+import { capitalizar } from '../shared/ui'
 
 interface Valores {
   total: string
@@ -47,7 +48,7 @@ export function RoomPriceForm({
   const [tentou, setTentou] = useState(false)
   const [remover, setRemover] = useState(false)
   const erros = tentou ? validarQuarto(v) : {}
-  const nome = QUARTO_LABEL[quarto.tipo].toLowerCase()
+  const nome = nomeQuarto(quarto.tipo)
 
   const mudar = (k: keyof Valores) => (e: ChangeEvent<HTMLInputElement>) => setV({ ...v, [k]: e.target.value })
 
@@ -63,7 +64,7 @@ export function RoomPriceForm({
         q.tipo === quarto.tipo ? { ...q, total, livres: Math.min(q.livres, total), precoMin: inteiro(v.precoMin), precoMax: inteiro(v.precoMax) } : q,
       ),
     })
-    toast.success('Lugares e preços guardados', `${QUARTO_LABEL[quarto.tipo]}: as famílias já veem os novos valores.`)
+    toast.success('Lugares e preços guardados', `${capitalizar(nome)}: as famílias já veem os novos valores.`)
     onDone()
   }
 

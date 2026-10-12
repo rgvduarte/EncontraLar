@@ -1,6 +1,5 @@
 import { Link } from 'react-router'
 import type { Candidatura, Lar } from '@/types'
-import { ButtonLink } from '@/components/ui/Button'
 import { LarCover } from '@/components/lar/LarCover'
 import { ForecastStrip } from '@/components/brand/ForecastStrip'
 import type { PedidoComLar } from '../shared/data'
@@ -35,7 +34,7 @@ function Situacao({ c, lar }: { c: Candidatura; lar: Lar }) {
     <div className="flex items-center gap-5">
       <p className="sm:text-right">
         <span className="block text-sm text-ink-mute">{pessoal ? 'Estimativa' : 'Se entrar na lista hoje'}</span>
-        <span className="font-semibold first-letter:uppercase">{texto}</span>
+        <span className="font-semibold">{texto}</span>
       </p>
       {!est.imediata && <ForecastStrip curva={est.curva} meses={6} variant="mini" />}
     </div>
@@ -54,13 +53,13 @@ export function PedidosResumo({ ativos, terminados, pesquisa }: { ativos: Pedido
       />
 
       {ativos.length === 0 ? (
-        <div className="mt-6 tile">
-          <p className="max-w-xl text-lg text-ink-soft">
+        <div className="mt-6 border-y border-line py-6">
+          <p className="max-w-xl text-ink-soft">
             Ainda sem pedidos em curso. Pode pedir vaga em várias instituições ao mesmo tempo — um pedido não obriga a nada.
           </p>
-          <ButtonLink to={`${pesquisa}${pesquisa.includes('?') ? '&' : '?'}vaga=breve`} className="mt-6">
+          <MoreLink to={`${pesquisa}${pesquisa.includes('?') ? '&' : '?'}vaga=breve`} className="mt-2">
             Encontrar instituições com vaga
-          </ButtonLink>
+          </MoreLink>
         </div>
       ) : (
         <ul className="mt-6 divide-y divide-line border-y border-line">

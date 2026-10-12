@@ -3,7 +3,7 @@ import type { Candidatura, Lar } from '@/types'
 import { estimarEspera, vagasLivres } from '@/lib/forecast'
 import { duracaoHumana, tempoRelativo } from '@/lib/format'
 import { QUARTO_CURTO } from '@/lib/labels'
-import { linhasListaEspera, quartoParaPropor, verificarCompatibilidade } from '../lib/derive'
+import { linhasListaEspera, nomeQuarto, quartoParaPropor, verificarCompatibilidade } from '../lib/derive'
 import { perfilLinha, procuraTexto, relacaoTexto } from '../shared/pedidoBits'
 import { MoreLink } from '../shared/ui'
 import { PedidoAcoes } from './PedidoAcoes'
@@ -38,7 +38,7 @@ function LinhaOnline({
   const faltas = verificarCompatibilidade(lar, p).filter((x) => x.estado === 'falta').length
   const est = estimarEspera(lar, { posicao })
   const q = c.estado === 'lista_espera' ? quartoParaPropor(lar, p) : null
-  const outroQuarto = q && !q.preferido && p.quarto !== 'indiferente' ? `Pediu quarto ${QUARTO_CURTO[p.quarto].toLowerCase()}; o lugar livre é ${QUARTO_CURTO[q.tipo].toLowerCase()}` : null
+  const outroQuarto = q && !q.preferido && p.quarto !== 'indiferente' ? `Pediu ${nomeQuarto(p.quarto)}; o lugar livre é em ${nomeQuarto(q.tipo)}` : null
   const espera = est.imediata ? 'Há lugar livre para esta posição' : est.diasMediana != null ? `Espera estimada: ${duracaoHumana(est.diasMediana)}` : 'Espera estimada: mais de 2 anos'
   return (
     <li className="grid grid-cols-[3.5rem_1fr] gap-x-4 py-8 sm:grid-cols-[4.5rem_1fr]">

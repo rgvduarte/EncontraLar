@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { Checkbox, Switch } from '@/components/ui/Field'
 import { EmptyState } from '@/components/ui/misc'
@@ -127,12 +126,9 @@ export default function GuardadosPage() {
                 <LarCard lar={lar} distanciaKm={principal ? distanceKm(principal.local, lar) : undefined} />
                 <div className="mt-3 flex flex-col px-1">
                   {pedido && (
-                    <p className="text-sm text-ink-mute">
+                    <p className="flex flex-wrap items-center gap-x-2 text-sm text-ink-mute">
                       Pedido: {ESTADO_CANDIDATURA_LABEL[pedido.estado].toLowerCase()}
-                      {' · '}
-                      <Link to={`/familia/pedidos#pedido-${pedido.id}`} className="link">
-                        Ver pedido
-                      </Link>
+                      <MoreLink to={`/familia/pedidos#pedido-${pedido.id}`}>Ver pedido</MoreLink>
                     </p>
                   )}
                   <Switch

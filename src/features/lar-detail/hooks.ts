@@ -1,4 +1,6 @@
-import { useEffect, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useState, type RefObject } from 'react'
+import { useLenis } from '@/components/motion/SmoothScroll'
+import { prefereMenosMovimento } from './helpers'
 
 /**
  * Scroll-spy: devolve o id da última secção cujo topo já passou a linha `offset` (px a partir do topo).
@@ -69,4 +71,23 @@ export function useStickyTop(ref: RefObject<HTMLElement | null>, base = 140, mar
     }
   }, [ref, base, margem])
   return top
+}
+
+/**
+ * Desloca até uma secção da ficha e coloca lá o foco. Usa o scroll suave global (Lenis) quando existe;
+ * sem ele, scrollIntoView. Nunca '#id' — colide com o HashRouter.
+ */
+export function useIrParaSecao(): (id: string) => void {
+  const lenis = useLenis()
+  return useCallback(
+    (id: string) => {
+      const el = document.getElementById(id)
+      if (!el) return
+      // ambos respeitam o scroll-margin-top da secção (scroll-mt-36: cabeçalho + navegação da ficha)
+      if (lenis) lenis.scrollTo(el, { duration: 1.1 })
+      else el.scrollIntoView({ behavior: prefereMenosMovimento() ? 'auto' : 'smooth', block: 'start' })
+      el.focus({ preventScroll: true })
+    },
+    [lenis],
+  )
 }

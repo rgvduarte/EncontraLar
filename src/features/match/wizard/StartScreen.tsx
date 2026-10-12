@@ -43,13 +43,20 @@ export function StartScreen({
             Diga-nos quem é. <br className="hidden sm:block" />
             Mostramos onde há <em>lugar</em>.
           </h1>
-          <p className="mx-auto mt-6 max-w-xl text-xl text-ink-mute sm:text-2xl">Seis perguntas, cerca de três minutos. Sem criar conta.</p>
+          <p className="mx-auto mt-6 max-w-2xl text-xl text-ink-mute sm:text-2xl">
+            Seis perguntas, cerca de três minutos. Sem criar conta.
+          </p>
         </div>
 
         <div className="mt-10 flex animate-fade-up flex-col items-center gap-3 [animation-delay:120ms] sm:flex-row sm:justify-center">
           {emCurso ? (
             <>
-              <Button size="lg" onClick={() => acoes.irPara(sessao.passo)} iconRight={<ChevronRight aria-hidden />} className="px-8">
+              <Button
+                size="lg"
+                onClick={() => acoes.irPara(sessao.passo)}
+                iconRight={<ChevronRight aria-hidden />}
+                className="px-8"
+              >
                 Continuar no passo {sessao.passo + 1}
               </Button>
               <Button variant="subtle" size="lg" onClick={acoes.recomecar} icon={<RotateCcw aria-hidden />}>
@@ -91,7 +98,8 @@ export function StartScreen({
         <p className="mt-16 inline-flex animate-fade-in items-center gap-2 text-sm text-ink-mute [animation-delay:300ms]">
           <span aria-hidden className="size-2 animate-pulse-ring rounded-full bg-leaf-500" />
           <span>
-            <span className="font-medium text-ink tabular">{num(comVaga)}</span> com vaga agora, entre {num(res.length)} instituições
+            <span className="font-medium text-ink tabular">{num(comVaga)}</span> com vaga agora, entre {num(res.length)}{' '}
+            instituições
           </span>
         </p>
       </section>

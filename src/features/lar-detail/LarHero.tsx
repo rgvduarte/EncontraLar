@@ -6,7 +6,8 @@ import { VerifiedBadge } from '@/components/lar/badges'
 import { NATUREZA_LABEL, TIPO_LABEL } from '@/lib/labels'
 import { tempoRelativo } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { dividirNome, frescura, irParaSecao } from './helpers'
+import { dividirNome, frescura } from './helpers'
+import { useIrParaSecao } from './hooks'
 
 export function Breadcrumbs({ lar }: { lar: Lar }) {
   const itens = [
@@ -48,6 +49,7 @@ function Frescura({ lar }: { lar: Lar }) {
 /** Título, linha de contexto e sinais de confiança. */
 export function LarHero({ lar }: { lar: Lar }) {
   const { prefixo, nucleo } = dividirNome(lar.nome)
+  const irParaSecao = useIrParaSecao()
   const media = lar.avaliacao.toLocaleString('pt-PT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
   return (

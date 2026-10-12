@@ -15,7 +15,9 @@ export function StepPessoa({ r, patch, erros, p }: StepProps) {
         name="relacao"
         legend="A pessoa é"
         value={r.relacao}
-        onChange={(relacao) => patch({ relacao, genero: GENERO_DA_RELACAO[relacao] ?? (GENERO_DA_RELACAO[r.relacao] ? '' : r.genero) })}
+        onChange={(relacao) =>
+          patch({ relacao, genero: GENERO_DA_RELACAO[relacao] ?? (GENERO_DA_RELACAO[r.relacao] ? '' : r.genero) })
+        }
         options={RELACOES.map((v) => ({ value: v, label: v }))}
         error={erros.relacao}
       />

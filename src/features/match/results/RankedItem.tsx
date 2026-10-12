@@ -20,7 +20,7 @@ export const RankedItem = memo(function RankedItem({
   apagado?: boolean
 }) {
   return (
-    <li id={`sugestao-${lar.id}`} className="scroll-mt-24 py-6 sm:py-8">
+    <li id={`sugestao-${lar.id}`} className="scroll-mt-24 py-6 first:pt-2 sm:py-8 sm:first:pt-4">
       {melhor && <p className="mb-2 px-3 text-sm font-semibold text-terra-600 sm:px-0">Melhor compatibilidade</p>}
       <LarCard
         lar={lar}

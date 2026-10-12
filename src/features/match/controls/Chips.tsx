@@ -94,7 +94,11 @@ export function ToggleChip({
       aria-pressed={pressed}
       disabled={disabled}
       onClick={onToggle}
-      className={cn(chipBase, pressed ? ON : cn(OFF, 'disabled:bg-sand/60 disabled:text-ink-mute disabled:hover:bg-sand/60'), className)}
+      className={cn(
+        chipBase,
+        pressed ? ON : cn(OFF, 'disabled:bg-sand/60 disabled:text-ink-mute disabled:hover:bg-sand/60'),
+        className,
+      )}
     >
       {pressed && <Check aria-hidden strokeWidth={2.5} />}
       {children}

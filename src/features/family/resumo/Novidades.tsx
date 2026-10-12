@@ -23,7 +23,7 @@ export function Novidades({ notifs, limite = 4 }: { notifs: Notificacao[]; limit
       <SectionHeader
         id="novidades"
         title="Novidades"
-        sub={porLer > 0 ? (porLer === 1 ? '1 por ler' : `${porLer} por ler`) : 'Tudo lido'}
+        sub={porLer > 0 ? (porLer === 1 ? '1 por ler' : `${porLer} por ler`) : lista.length ? 'Tudo lido' : undefined}
         action={
           porLer > 0 ? (
             <button type="button" onClick={() => marcarTodasLidas()} className="link inline-flex min-h-12 items-center">
@@ -54,7 +54,7 @@ export function Novidades({ notifs, limite = 4 }: { notifs: Notificacao[]; limit
                   {(link || !n.lida) && (
                     <p className="mt-1 flex flex-wrap gap-x-5 text-sm">
                       {link && (
-                        <Link to={link} onClick={() => !n.lida && marcarNotificacaoLida(n.id)} className="link inline-flex min-h-11 items-center">
+                        <Link to={link} onClick={() => !n.lida && marcarNotificacaoLida(n.id)} className="link inline-flex min-h-12 items-center">
                           {ACAO[n.tipo]}
                         </Link>
                       )}
@@ -62,7 +62,7 @@ export function Novidades({ notifs, limite = 4 }: { notifs: Notificacao[]; limit
                         <button
                           type="button"
                           onClick={() => marcarNotificacaoLida(n.id)}
-                          className="inline-flex min-h-11 items-center text-ink-mute hover:text-ink hover:underline"
+                          className="inline-flex min-h-12 items-center text-ink-mute hover:text-ink hover:underline"
                         >
                           Marcar como lida
                         </button>

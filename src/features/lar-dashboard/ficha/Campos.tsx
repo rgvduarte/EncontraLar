@@ -57,7 +57,7 @@ export function Apresentacao({ r, erros, set }: Form) {
       <TextareaField
         label="Descrição"
         hint="Dois ou três parágrafos: a casa, a equipa, o dia a dia. Separe-os com uma linha em branco."
-        rows={7}
+        rows={Math.min(14, Math.max(6, Math.ceil(r.descricao.length / 70) + r.descricao.split('\n').length))}
         value={r.descricao}
         onChange={(e) => set('descricao', e.target.value)}
       />
@@ -125,7 +125,7 @@ export function Mensalidade({ r, erros, set }: Form) {
       <TextareaField
         label="Incluído"
         hint="Um por linha."
-        rows={5}
+        rows={Math.max(4, r.incluido.split('\n').length + 1)}
         value={r.incluido}
         onChange={(e) => set('incluido', e.target.value)}
         placeholder={'Alojamento e todas as refeições\nHigiene pessoal e apoio diário'}
@@ -133,9 +133,9 @@ export function Mensalidade({ r, erros, set }: Form) {
       <div>
         <p className="text-base font-medium">Extras pagos à parte</p>
         {extras.length > 0 && (
-          <ul className="mt-3 flex flex-col gap-3">
+          <ul className="mt-3 flex flex-col gap-6 sm:gap-3">
             {extras.map((x, i) => (
-              <li key={i} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-2 sm:grid-cols-[minmax(0,1fr)_12rem_auto]">
+              <li key={i} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)_auto]">
                 <InputField label={<span className="sr-only">Extra {i + 1}: nome</span>} value={x.nome} onChange={(e) => mudarExtra(i, 'nome', e.target.value)} placeholder="Ex.: Cabeleireiro" />
                 <InputField
                   label={<span className="sr-only">Extra {i + 1}: preço</span>}
@@ -179,7 +179,7 @@ export function Mensalidade({ r, erros, set }: Form) {
 export function Equipa({ r, erros, set }: Form) {
   return (
     <Bloco id="f-equipa" titulo="Equipa" texto="Números simples, que as famílias comparam entre instituições.">
-      <div className="grid gap-5 sm:grid-cols-3">
+      <div className="grid items-end gap-5 sm:grid-cols-3">
         <InputField label="Cuidadores por 10 residentes" inputMode="decimal" value={r.cuidadoresPor10} onChange={(e) => set('cuidadoresPor10', e.target.value)} error={erros.cuidadoresPor10} placeholder="0" />
         <InputField label="Enfermeiros" inputMode="numeric" value={r.enfermeiros} onChange={(e) => set('enfermeiros', e.target.value)} error={erros.enfermeiros} placeholder="0" />
         <InputField label="Horas de médico por semana" inputMode="decimal" value={r.medicoHorasSemana} onChange={(e) => set('medicoHorasSemana', e.target.value)} error={erros.medicoHorasSemana} placeholder="0" />

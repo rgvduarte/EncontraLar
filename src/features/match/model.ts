@@ -65,7 +65,6 @@ export const PASSOS = [
   { id: 'orcamento', nome: 'Orçamento' },
   { id: 'quando', nome: 'Quando' },
 ] as const
-export type PassoId = (typeof PASSOS)[number]['id']
 export const TOTAL_PASSOS = PASSOS.length
 
 export const MAX_PREFERENCIAS = 5
@@ -115,8 +114,7 @@ export function validarPasso(passo: number, r: Rascunho): Erros {
       if (!r.grau) e.grau = 'Escolha a opção mais próxima. Pode mudar depois.'
       break
     case 2:
-      if (!r.necessidades.length && !r.semNecessidades)
-        e.necessidades = 'Escolha pelo menos uma opção, ou "Nenhuma em especial".'
+      if (!r.necessidades.length && !r.semNecessidades) e.necessidades = 'Escolha pelo menos uma opção, ou "Nenhuma em especial".'
       break
     case 3:
       if (!r.local) e.local = 'Escolha uma localidade da lista, ou toque em "Perto de mim".'

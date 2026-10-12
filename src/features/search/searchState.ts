@@ -1,16 +1,15 @@
 /**
  * Estado da pesquisa ⇄ URL (contrato em docs/DESIGN.md §5).
  *
- * Parâmetros do contrato: lugar, lat, lng, raio, distrito, tipo, vaga, max, grau, cuidados, ss, q, ordem.
- * Extensões locais (documentadas no relatório):
- *   - `natureza` (ipss, misericordia, privado — vírgulas), filtro do modal "Mais filtros";
- *   - `zona` (s,w,n,e) — "Pesquisar nesta zona" do mapa;
- *   - `vista=mapa` — ligação direta para a vista de mapa no telemóvel.
+ * Contrato: lugar, lat, lng, raio, distrito, tipo, vaga, max, grau, cuidados, ss, q, ordem, vista=mapa.
+ * Extensões locais:
+ *   - `natureza` (ipss, misericordia, privado — vírgulas), do painel "Mais filtros";
+ *   - `zona` (s,w,n,e) — "Pesquisar nesta zona" no mapa.
  */
 import type { Cuidado, Distrito, GrauDependencia, Natureza, TipoResposta } from '@/types'
-import { CENTRO_DISTRITO, DISTRITOS, LUGARES, type LugarPesquisa } from '@/data/localidades'
+import { DISTRITOS, LUGARES, type LugarPesquisa } from '@/data/localidades'
 import { CUIDADOS_ORDEM, GRAUS_ORDEM } from '@/lib/labels'
-import { distanceKm, type LatLng } from '@/lib/geo'
+import type { LatLng } from '@/lib/geo'
 
 export type Ordem = 'relevancia' | 'distancia' | 'preco' | 'disponibilidade' | 'avaliacao'
 export type VagaFiltro = 'agora' | 'breve'
@@ -125,17 +124,6 @@ export function opcoesRaio(local: Local): number[] {
 
 export function dentroDe(b: Bounds, p: LatLng) {
   return p.lat >= b.s && p.lat <= b.n && p.lng >= b.w && p.lng <= b.e
-}
-
-/** Lugar conhecido mais próximo de umas coordenadas (para dar contexto a "Perto de mim"). */
-export function lugarMaisProximo(p: LatLng): { lugar: LugarPesquisa; km: number } | null {
-  let best: { lugar: LugarPesquisa; km: number } | null = null
-  for (const l of LUGARES) {
-    if (l.label.includes(' — ')) continue
-    const d = distanceKm(p, l)
-    if (!best || d < best.km) best = { lugar: l, km: d }
-  }
-  return best
 }
 
 // ————————————————————————————————————————— URL → estado
@@ -303,8 +291,4 @@ export function rotuloLocal(local: Local): string {
     default:
       return ''
   }
-}
-
-export function centroDistrito(d: Distrito) {
-  return CENTRO_DISTRITO[d]
 }

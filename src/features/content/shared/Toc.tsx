@@ -83,7 +83,12 @@ export function TocBar({ items, active, onGo, pathname, label }: TocProps) {
         </span>
         <ChevronDown aria-hidden className={cn('size-5 shrink-0 text-ink-mute transition-transform duration-300', open && 'rotate-180')} />
       </button>
-      <nav id={listId} aria-label={label} hidden={!open} className="animate-pop-in border-t border-line px-5 pt-1 pb-3 sm:px-8">
+      <nav
+        id={listId}
+        aria-label={label}
+        hidden={!open}
+        className="absolute inset-x-0 top-full animate-pop-in border-y border-line bg-white px-5 pt-1 pb-3 shadow-card sm:px-8"
+      >
         <ul className="flex flex-col">
           {items.map((it) => (
             <li key={it.id}>

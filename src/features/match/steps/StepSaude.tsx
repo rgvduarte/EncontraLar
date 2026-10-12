@@ -31,7 +31,9 @@ export function StepSaude({ r, patch, erros, p }: StepProps) {
   const alternar = (c: Cuidado) => {
     const tem = r.necessidades.includes(c)
     patch({
-      necessidades: tem ? r.necessidades.filter((n) => n !== c) : CUIDADOS_ORDEM.filter((n) => n === c || r.necessidades.includes(n)),
+      necessidades: tem
+        ? r.necessidades.filter((n) => n !== c)
+        : CUIDADOS_ORDEM.filter((n) => n === c || r.necessidades.includes(n)),
       semNecessidades: false,
     })
   }

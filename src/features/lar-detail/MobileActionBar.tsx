@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import type { Candidatura, Lar } from '@/types'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { ESTADO_CANDIDATURA_LABEL } from '@/lib/labels'
@@ -6,7 +7,11 @@ import { precoResumo, type DadosLar } from './helpers'
 
 const PONTO = { disponivel: 'bg-leaf-500', breve: 'bg-sun-500', espera: 'bg-dusk-500' } as const
 
-/** Barra fixa no fundo (telemóvel/tablet): preço + ação principal. Some quando o cartão de vagas está à vista. */
+/**
+ * Barra fixa no fundo (telemóvel/tablet): preço + ação principal. Some quando o cartão de vagas está à vista.
+ * Vai para o <body> num portal: a transição de página aplica transform ao contentor, o que prenderia o
+ * `position: fixed` ao fundo do documento em vez do ecrã.
+ */
 export function MobileActionBar({
   lar,
   dados,
@@ -30,10 +35,10 @@ export function MobileActionBar({
       ? `${livres} ${livres === 1 ? `${unidade.um} livre` : `${unidade.varios} livres`}`
       : 'Lista de espera'
 
-  return (
+  return createPortal(
     <div
       className={cn(
-        'fixed inset-x-0 bottom-0 z-[950] border-t border-black/[0.06] bg-white/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 lg:hidden',
+        'fixed inset-x-0 bottom-[var(--tabbar-h)] z-[950] border-t border-black/[0.06] bg-white/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 lg:hidden',
         'transition-transform duration-300 ease-[cubic-bezier(.25,.1,.25,1)]',
         visivel ? 'translate-y-0' : 'pointer-events-none translate-y-full',
       )}
@@ -66,6 +71,7 @@ export function MobileActionBar({
           <Button onClick={onPedir}>{livres > 0 ? (dados.centroDia ? 'Pedir lugar' : 'Pedir vaga') : 'Entrar na lista'}</Button>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

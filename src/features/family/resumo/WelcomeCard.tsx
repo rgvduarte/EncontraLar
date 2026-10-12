@@ -23,7 +23,7 @@ export function WelcomeCard({
       >
         <X aria-hidden className="size-5" />
       </button>
-      <h2 id="bemvindo" className="pr-12 text-3xl font-semibold sm:text-4xl">
+      <h2 id="bemvindo" className="pr-12 text-3xl font-semibold">
         Olá, {nome}. A conta está pronta.
       </h2>
       <p className="mt-3 max-w-xl text-lg text-ink-mute">

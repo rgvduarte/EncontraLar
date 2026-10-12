@@ -57,8 +57,8 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
     {
       id: 'preco',
       label: 'Mensalidade',
-      hint: perfil && perfil.quarto !== 'indiferente' ? `quarto ${QUARTO_CURTO[perfil.quarto].toLowerCase()}` : undefined,
-      cells: dados.map((d) => <Num v={`desde ${euro(d.preco)}`} sub={d.lar.natureza === 'privado' ? 'preço fixo' : 'conforme rendimentos'} />),
+      hint: perfil && perfil.quarto !== 'indiferente' ? `desde, quarto ${QUARTO_CURTO[perfil.quarto].toLowerCase()}` : 'desde',
+      cells: dados.map((d) => <Num v={euro(d.preco)} sub={d.lar.natureza === 'privado' ? 'preço fixo' : 'conforme rendimentos'} />),
       valores: dados.map((d) => d.preco),
       melhor: 'min',
     },
@@ -174,45 +174,86 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
     return new Set(l.valores.flatMap((x, i) => (x === alvo ? [i] : [])))
   }
 
+  const n = dados.length
+  const cols = n === 3 ? 'grid-cols-3' : 'grid-cols-2'
+
   return (
-    <div className="-mx-5 overflow-x-auto px-5 [scrollbar-width:thin] sm:mx-0 sm:px-0">
-      <table className="w-full min-w-[36rem] border-collapse text-left">
-        <caption className="sr-only">
-          Comparação de {lares.length} instituições guardadas. “Melhor” assinala o valor mais favorável de cada linha.
-        </caption>
-        <thead>
-          <tr>
-            <td className="sticky left-0 z-[1] w-32 bg-white sm:w-44" />
-            {dados.map(({ lar }) => (
-              <th key={lar.id} scope="col" className="px-4 pb-5 align-bottom font-normal sm:px-6">
-                <Link to={`/lar/${lar.id}`} className="block text-lg leading-snug font-semibold hover:underline">
-                  {lar.nome}
-                </Link>
-                <span className="mt-0.5 block text-sm text-ink-mute">{lar.localidade}</span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {linhas.map((l) => {
-            const best = melhores(l)
-            return (
-              <tr key={l.id} className="border-t border-line">
-                <th scope="row" className="sticky left-0 z-[1] bg-white py-5 pr-4 align-top font-normal">
-                  <span className="block text-sm font-medium text-ink">{l.label}</span>
-                  {l.hint && <span className="mt-0.5 block text-xs text-ink-mute">{l.hint}</span>}
-                </th>
+    <>
+      {/* telemóvel: critério a critério, valores lado a lado */}
+      <div className="sm:hidden">
+        <ul className={cn('grid gap-3 pb-4', cols)} aria-label="Instituições em comparação">
+          {dados.map(({ lar }) => (
+            <li key={lar.id}>
+              <Link to={`/lar/${lar.id}`} className="block text-base leading-snug font-semibold hover:underline">
+                {lar.nome}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        {linhas.map((l) => {
+          const best = melhores(l)
+          return (
+            <section key={l.id} aria-label={l.label} className="border-t border-line py-5">
+              <p className="text-sm font-medium">
+                {l.label}
+                {l.hint && <span className="font-normal text-ink-mute"> · {l.hint}</span>}
+              </p>
+              <dl className={cn('mt-3 grid gap-3', cols)}>
                 {l.cells.map((cell, i) => (
-                  <td key={i} className="px-4 py-5 align-top sm:px-6">
-                    {cell}
-                    {best.has(i) && <span className="mt-2 block text-xs font-semibold text-terra-700">Melhor</span>}
-                  </td>
+                  <div key={i} className="min-w-0">
+                    <dt className="truncate text-xs text-ink-mute">{dados[i]!.lar.nome}</dt>
+                    <dd className="mt-1 text-[0.9375rem] [&_.text-2xl]:text-xl">
+                      {cell}
+                      {best.has(i) && <span className="mt-1.5 block text-xs font-semibold text-terra-700">Melhor</span>}
+                    </dd>
+                  </div>
                 ))}
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+              </dl>
+            </section>
+          )
+        })}
+      </div>
+
+      {/* ecrãs largos: tabela */}
+      <div className="hidden overflow-x-auto [scrollbar-width:thin] sm:block">
+        <table className="w-full min-w-[36rem] border-collapse text-left">
+          <caption className="sr-only">
+            Comparação de {lares.length} instituições guardadas. “Melhor” assinala o valor mais favorável de cada linha.
+          </caption>
+          <thead>
+            <tr>
+              <td className="w-44" />
+              {dados.map(({ lar }) => (
+                <th key={lar.id} scope="col" className="px-6 pb-5 align-bottom font-normal">
+                  <Link to={`/lar/${lar.id}`} className="block text-lg leading-snug font-semibold hover:underline">
+                    {lar.nome}
+                  </Link>
+                  <span className="mt-0.5 block text-sm text-ink-mute">{lar.localidade}</span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map((l) => {
+              const best = melhores(l)
+              return (
+                <tr key={l.id} className="border-t border-line">
+                  <th scope="row" className="py-5 pr-4 align-top font-normal">
+                    <span className="block text-sm font-medium text-ink">{l.label}</span>
+                    {l.hint && <span className="mt-0.5 block text-xs text-ink-mute">{l.hint}</span>}
+                  </th>
+                  {l.cells.map((cell, i) => (
+                    <td key={i} className="px-6 py-5 align-top">
+                      {cell}
+                      {best.has(i) && <span className="mt-2 block text-xs font-semibold text-terra-700">Melhor</span>}
+                    </td>
+                  ))}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }

@@ -4,10 +4,10 @@ import type { Lar, TipoQuarto } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
 import { getDB, registarVagaLibertada } from '@/lib/store'
-import { QUARTO_CURTO, QUARTO_LABEL } from '@/lib/labels'
+import { QUARTO_CURTO } from '@/lib/labels'
 import { cn } from '@/lib/cn'
-import { destinatariosAviso } from '../lib/derive'
-import { MoreLink } from '../shared/ui'
+import { destinatariosAviso, nomeQuarto } from '../lib/derive'
+import { MoreLink, capitalizar } from '../shared/ui'
 
 interface Resultado {
   tipo: TipoQuarto
@@ -42,7 +42,7 @@ function Sucesso({ r, onOutra }: { r: Resultado; onOutra: () => void }) {
     <div role="status" className="animate-fade-in">
       <p className="text-7xl leading-none font-semibold tracking-tight">{n}</p>
       <p className="mt-2 text-xl font-semibold">{r.avisadas === 1 ? 'família foi avisada.' : 'famílias foram avisadas.'}</p>
-      <p className="mt-2 text-ink-mute">O {QUARTO_LABEL[r.tipo].toLowerCase()} já aparece como livre no mapa de vagas.</p>
+      <p className="mt-2 text-ink-mute">O {nomeQuarto(r.tipo)} já aparece como livre no mapa de vagas.</p>
       <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2">
         {r.lista > 0 && <MoreLink to="/gestao/pedidos?filtro=lista">Propor à lista de espera</MoreLink>}
         <button type="button" onClick={onOutra} className="link min-h-11">
@@ -70,7 +70,7 @@ export function VagaLibertadaPanel({ lar }: { lar: Lar }) {
     setResultado({ tipo, avisadas, lista: d.lista })
     toast.success(
       avisadas === 0 ? 'Vaga registada' : avisadas === 1 ? '1 família foi avisada' : `${avisadas} famílias foram avisadas`,
-      `${QUARTO_LABEL[tipo]}: mais um lugar livre no mapa de vagas.`,
+      `${capitalizar(nomeQuarto(tipo))}: mais um lugar livre no mapa de vagas.`,
     )
   }
 

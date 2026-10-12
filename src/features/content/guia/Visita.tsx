@@ -153,7 +153,7 @@ export function Visita() {
             <Button variant="primary" onClick={imprimir} icon={<Printer aria-hidden />}>
               Imprimir
             </Button>
-            <Button variant="ghost" onClick={() => setFeitos([])} disabled={!n}>
+            <Button variant="secondary" onClick={() => setFeitos([])} disabled={!n}>
               Limpar
             </Button>
           </div>

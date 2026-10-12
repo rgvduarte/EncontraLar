@@ -47,9 +47,9 @@ export function StepQuando({ r, patch, erros, p }: StepProps) {
         )}
         {r.urgencia === 'imediata' && (
           <p className="mt-5 animate-fade-in text-base text-ink-soft">
-            Se {p.proprio ? '' : `${p.pronome} `}está {flex(p.fem, 'internado', 'internada')}, fale já com a
-            assistente social do hospital: pode pedir a referenciação para a Rede Nacional de Cuidados Continuados, que faz a ponte até
-            haver vaga num lar.
+            Se {p.proprio ? '' : `${p.pronome} `}está {flex(p.fem, 'internado', 'internada')}, fale já com a assistente social do
+            hospital: pode pedir a referenciação para a Rede Nacional de Cuidados Continuados, que faz a ponte até haver vaga num
+            lar.
           </p>
         )}
       </fieldset>
@@ -64,7 +64,9 @@ export function StepQuando({ r, patch, erros, p }: StepProps) {
           </p>
         </div>
         <p className="mt-0.5 text-sm text-ink-mute">
-          {cheio ? 'Chegou ao máximo. Retire uma para escolher outra.' : `Escolha até ${MAX_PREFERENCIAS}. Contam a favor, mas não excluem nenhum lar.`}
+          {cheio
+            ? 'Chegou ao máximo. Retire uma para escolher outra.'
+            : `Escolha até ${MAX_PREFERENCIAS}. Contam a favor, mas não excluem nenhum lar.`}
         </p>
         <ul className="mt-5 flex flex-wrap gap-2">
           {COMODIDADES_ORDEM.map((c) => {

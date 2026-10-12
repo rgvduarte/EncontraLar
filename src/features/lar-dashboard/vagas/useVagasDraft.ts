@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { TipoQuarto } from '@/types'
 import { definirVagas, getDB } from '@/lib/store'
 import { toast } from '@/components/ui/Toast'
-import { QUARTO_LABEL } from '@/lib/labels'
+import { nomeQuarto } from '../lib/derive'
+import { capitalizar } from '../shared/ui'
 
 export type EstadoGravacao = 'idle' | 'pendente' | 'guardado'
 
@@ -35,7 +36,7 @@ export function useVagasDraft(larId: string, tipo: TipoQuarto, livres: number) {
     }
     const avisadas = definirVagas(id, t, v)
     setEstado('guardado')
-    const linha = `${QUARTO_LABEL[t]}: ${v === 0 ? 'nenhum lugar livre' : v === 1 ? '1 lugar livre' : `${v} lugares livres`}.`
+    const linha = `${capitalizar(nomeQuarto(t))}: ${v === 0 ? 'nenhum lugar livre' : v === 1 ? '1 lugar livre' : `${v} lugares livres`}.`
     if (avisadas > 0) toast.success(avisadas === 1 ? '1 família foi avisada' : `${avisadas} famílias foram avisadas`, linha)
     else toast.success('Vagas atualizadas', `${linha} As famílias já veem a alteração.`)
   }, [])

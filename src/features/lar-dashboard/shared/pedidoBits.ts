@@ -1,7 +1,8 @@
 import type { Candidatura, Urgencia } from '@/types'
-import { CUIDADO_LABEL, GRAU_LABEL, QUARTO_CURTO } from '@/lib/labels'
+import { CUIDADO_LABEL, GRAU_LABEL } from '@/lib/labels'
 import { euro } from '@/lib/format'
-import { minuscula } from '../lib/derive'
+import { minuscula, nomeQuarto } from '../lib/derive'
+import { capitalizar } from './ui'
 
 /** Urgência em texto simples — só a imediata é destacada. */
 export const URGENCIA_CURTA: Record<Urgencia, string> = {
@@ -37,7 +38,7 @@ export function perfilLinha(c: Candidatura, maxCuidados = 2): string {
 
 /** "Qualquer quarto · até 2100 €/mês" */
 export function procuraTexto(c: Candidatura): string {
-  const q = c.perfil.quarto === 'indiferente' ? 'Qualquer quarto' : `Quarto ${QUARTO_CURTO[c.perfil.quarto].toLowerCase()}`
+  const q = c.perfil.quarto === 'indiferente' ? 'Qualquer quarto' : capitalizar(nomeQuarto(c.perfil.quarto))
   return `${q} · até ${euro(c.perfil.orcamentoMax)}/mês`
 }
 

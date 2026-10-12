@@ -86,7 +86,7 @@ export function Planos({ lar }: { lar: Lar }) {
             >
               <p className="flex items-center justify-between gap-3">
                 <span className="text-xl font-semibold text-ink">{p.nome}</span>
-                {destaque && <span className="text-sm font-medium text-terra-600">Recomendado</span>}
+                {destaque && <span className="text-sm font-medium text-terra-700">Recomendado</span>}
               </p>
               <p className="mt-6 flex h-16 items-end gap-1 font-semibold tracking-tight text-ink tabular">
                 <span className={cn('leading-none', p.id === 'rede' ? 'text-3xl' : 'text-4xl sm:text-5xl')}>{p.preco}</span>

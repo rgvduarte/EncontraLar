@@ -73,7 +73,7 @@ export default function PedidosPage() {
                 aba === k ? 'bg-white text-ink shadow-soft' : 'text-ink-mute hover:text-ink',
               )}
             >
-              {label}
+              {label}{' '}
               <span className="text-ink-mute tabular">{contagem[k]}</span>
             </button>
           ))}

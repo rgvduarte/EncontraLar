@@ -14,8 +14,7 @@ import { StepLocal } from '../steps/StepLocal'
 import { StepOrcamento } from '../steps/StepOrcamento'
 import { StepQuando } from '../steps/StepQuando'
 
-const reduzMovimento = () =>
-  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const reduzMovimento = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
  * Uma pergunta por ecrã, ao estilo do assistente de configuração da Apple:
@@ -90,9 +89,16 @@ export function Wizard({ sessao, acoes, lares }: { sessao: Sessao; acoes: AcoesS
         />
       </div>
 
-      <form ref={formRef} noValidate onSubmit={onSubmit} onKeyDown={onKeyDown} aria-labelledby="pergunta" className="flex flex-1 flex-col">
+      <form
+        ref={formRef}
+        noValidate
+        onSubmit={onSubmit}
+        onKeyDown={onKeyDown}
+        aria-labelledby="pergunta"
+        className="flex flex-1 flex-col"
+      >
         <div className="container-narrow flex-1 pt-9 pb-12 sm:pt-20 sm:pb-14 lg:pt-24">
-          <header key={`h${passo}`} className="mx-auto max-w-3xl animate-fade-up text-center">
+          <header key={`h${passo}`} className="mx-auto max-w-3xl animate-fade-up text-center [animation-fill-mode:backwards]">
             <p className="text-sm font-medium text-ink-mute tabular">
               Passo {passo + 1} de {TOTAL_PASSOS}
               {completo && !ultimo && (
@@ -118,7 +124,10 @@ export function Wizard({ sessao, acoes, lares }: { sessao: Sessao; acoes: AcoesS
             <p className="mx-auto mt-3 max-w-2xl text-lg text-ink-mute sm:mt-4 sm:text-xl">{ledePasso(passo)}</p>
           </header>
 
-          <div key={`c${passo}`} className="mx-auto mt-10 max-w-2xl animate-fade-up [animation-delay:90ms] sm:mt-16">
+          <div
+            key={`c${passo}`}
+            className="relative z-10 mx-auto mt-10 max-w-2xl animate-fade-up [animation-delay:90ms] [animation-fill-mode:backwards] sm:mt-16"
+          >
             {passo === 0 && <StepPessoa {...props} />}
             {passo === 1 && <StepAutonomia {...props} />}
             {passo === 2 && <StepSaude {...props} />}
@@ -132,12 +141,12 @@ export function Wizard({ sessao, acoes, lares }: { sessao: Sessao; acoes: AcoesS
         <div
           className={cn(
             'sticky bottom-[var(--tabbar-h,0px)] z-[900] border-t border-black/[0.06] bg-white/85 backdrop-blur-xl backdrop-saturate-150',
-            'sm:static sm:border-0 sm:bg-transparent sm:backdrop-blur-none',
+            'sm:static sm:z-auto sm:border-0 sm:bg-transparent sm:backdrop-blur-none',
           )}
         >
           <div className="container-narrow">
             <div className="mx-auto flex max-w-2xl items-center gap-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pt-0 sm:pb-24">
-              <Button variant="subtle" size="lg" onClick={voltar} icon={<ChevronLeft aria-hidden />} className="px-5 sm:px-6">
+              <Button variant="subtle" size="lg" onClick={voltar} icon={<ChevronLeft aria-hidden />} className="max-sm:px-4 sm:px-6">
                 Voltar
               </Button>
               <p className="ml-auto hidden items-center gap-1.5 text-sm text-ink-mute md:flex">
@@ -149,7 +158,7 @@ export function Wizard({ sessao, acoes, lares }: { sessao: Sessao; acoes: AcoesS
                 variant="primary"
                 size="lg"
                 iconRight={<ChevronRight aria-hidden />}
-                className="ml-auto flex-1 sm:flex-none sm:px-9 md:ml-2"
+                className="ml-auto min-w-0 flex-1 max-sm:px-5 sm:flex-none sm:px-9 md:ml-2"
               >
                 {ultimo ? 'Ver sugestões' : 'Continuar'}
               </Button>

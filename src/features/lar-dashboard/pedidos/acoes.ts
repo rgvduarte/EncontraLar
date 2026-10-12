@@ -2,8 +2,7 @@ import type { Candidatura, EstadoCandidatura, Lar } from '@/types'
 import type { ButtonVariant } from '@/components/ui/Button'
 import { estimarEspera } from '@/lib/forecast'
 import { duracaoHumana, euro } from '@/lib/format'
-import { QUARTO_CURTO, QUARTO_LABEL } from '@/lib/labels'
-import { prazo, quartoParaPropor } from '../lib/derive'
+import { nomeQuarto, prazo, quartoParaPropor } from '../lib/derive'
 
 export interface Acao {
   id: string
@@ -90,7 +89,7 @@ export function acoesDoPedido(c: Candidatura, lar: Lar, agora = Date.now()): Aca
     }
     case 'lista_espera': {
       const q = quartoParaPropor(lar, c.perfil)
-      const pedido = c.perfil.quarto !== 'indiferente' ? QUARTO_CURTO[c.perfil.quarto].toLowerCase() : null
+      const pedido = c.perfil.quarto !== 'indiferente' ? nomeQuarto(c.perfil.quarto) : null
       const preco = q ? lar.quartos.find((r) => r.tipo === q.tipo)?.precoMin : undefined
       return [
         {
@@ -101,12 +100,12 @@ export function acoesDoPedido(c: Candidatura, lar: Lar, agora = Date.now()): Aca
           confirmVariant: 'accent',
           titulo: `Propor vaga a ${c.perfil.nome}`,
           explica: q
-            ? `A família é avisada de imediato e tem 48 horas para responder. Lugar: ${QUARTO_LABEL[q.tipo].toLowerCase()}${!q.preferido && pedido ? ` (pediu quarto ${pedido}, que não tem livre)` : ''}.`
+            ? `A família é avisada de imediato e tem 48 horas para responder. Lugar livre: ${nomeQuarto(q.tipo)}${!q.preferido && pedido ? ` — pediu ${pedido}, que não tem livre` : ''}.`
             : '',
           confirmar: 'Propor a vaga',
           sugestoes: q
             ? [
-                `Temos um lugar em ${QUARTO_LABEL[q.tipo].toLowerCase()}${preco ? `, a partir de ${euro(preco)} por mês` : ''}.`,
+                `Temos um lugar em ${nomeQuarto(q.tipo)}${preco ? `, a partir de ${euro(preco)} por mês` : ''}.`,
                 'Se quiser, marcamos uma visita antes de decidir. Ligue-nos.',
               ]
             : [],

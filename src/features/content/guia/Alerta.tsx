@@ -35,12 +35,12 @@ export function Alerta() {
         <ol className="mt-4 flex list-decimal flex-col gap-3 pl-6 text-lg leading-relaxed text-ink-soft marker:text-ink-mute">
           <li>Peça o número da licença e o nome da entidade que gere a casa.</li>
           <li>
-            Procure a instituição na Carta Social (<ExternalLink href="https://www.cartasocial.pt">cartasocial.pt</ExternalLink>), o portal público das
+            Procure a instituição na Carta Social (<ExternalLink href="https://www.cartasocial.pt" className="text-terra-700">cartasocial.pt</ExternalLink>), o portal público das
             respostas sociais registadas.
           </li>
           <li>
             Em caso de dúvida, contacte o Instituto da Segurança Social, que licencia e fiscaliza os lares (
-            <ExternalLink href="https://www.seg-social.pt">seg-social.pt</ExternalLink>).
+            <ExternalLink href="https://www.seg-social.pt" className="text-terra-700">seg-social.pt</ExternalLink>).
           </li>
         </ol>
       </div>

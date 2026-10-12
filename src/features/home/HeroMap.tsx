@@ -6,11 +6,11 @@ import { vagasLivres } from '@/lib/forecast'
 import { cn } from '@/lib/cn'
 import { tempoCurto, ultimasVagas } from './homeData'
 
-/** Onde pousa cada etiqueta no ecrã grande: no mar a oeste e em Espanha a leste, longe dos pontos. */
+/** Onde pousa cada etiqueta em ecrãs largos (≥1280px): no mar a oeste e em Espanha a leste, longe dos pontos. */
 const POSICAO = [
-  'lg:absolute lg:top-[13%] lg:right-[70%]',
-  'lg:absolute lg:top-[38%] lg:left-[84%]',
-  'lg:absolute lg:top-[66%] lg:left-[82%]',
+  'xl:absolute xl:top-[13%] xl:right-[70%]',
+  'xl:absolute xl:top-[38%] xl:left-[84%]',
+  'xl:absolute xl:top-[66%] xl:left-[86%]',
 ]
 
 /**
@@ -41,11 +41,11 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
       </div>
 
       {ultimas.length > 0 && (
-        <ul aria-label="Vagas atualizadas há menos tempo" className="mt-8 flex flex-col items-center gap-3 lg:mt-0">
+        <ul aria-label="Vagas atualizadas há menos tempo" className="mt-8 flex flex-col items-center gap-3 xl:mt-0">
           {ultimas.map((l, i) => {
             const n = vagasLivres(l)
             return (
-              <li key={l.id} className={cn(POSICAO[i], i === 2 && 'max-lg:hidden')}>
+              <li key={l.id} className={cn(POSICAO[i], i === 2 && 'max-xl:hidden')}>
                 <Link
                   to={`/lar/${l.id}`}
                   onMouseEnter={() => setDestaque(l.id)}
@@ -69,7 +69,7 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
         </ul>
       )}
 
-      <figcaption className="mt-8 flex justify-center lg:mt-10">
+      <figcaption className="mt-8 flex justify-center xl:mt-10">
         <MapLegend className="justify-center" />
       </figcaption>
     </figure>

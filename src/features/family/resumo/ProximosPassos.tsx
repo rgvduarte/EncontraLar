@@ -68,7 +68,7 @@ export function ProximosPassos({
       titulo: 'Pedir vaga em duas ou mais',
       detalhe: pedidos >= 2 ? `${pedidos} pedidos feitos.` : 'As listas de espera andam a ritmos diferentes.',
       feito: pedidos >= 2,
-      acao: { to: '/familia/guardados', label: 'Ver guardados' },
+      acao: guardados > 0 ? { to: '/familia/guardados', label: 'Ver guardados' } : { to: pesquisa, label: 'Abrir o mapa' },
     },
     {
       id: 'visita',

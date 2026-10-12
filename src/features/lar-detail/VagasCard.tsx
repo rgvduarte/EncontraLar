@@ -9,8 +9,9 @@ import { FavoriteButton } from '@/components/lar/FavoriteButton'
 import { setAlerta, useCurrentUser, useFavorito } from '@/lib/store'
 import { pct, plural } from '@/lib/format'
 import { QUARTO_CURTO } from '@/lib/labels'
-import { esperaEstimada, irParaSecao, precoResumo, precoSocial, telHref, type DadosLar } from './helpers'
+import { esperaEstimada, precoResumo, precoSocial, telHref, type DadosLar } from './helpers'
 import { CandidaturaAtiva } from './CandidaturaAtiva'
+import { useIrParaSecao } from './hooks'
 
 /** Preço em destaque: "desde 1550 €/mês" (privado) ou intervalo conforme rendimentos (IPSS/Misericórdia). */
 function Preco({ lar }: { lar: Lar }) {
@@ -41,10 +42,11 @@ function contexto(lar: Lar, dados: DadosLar): string {
 /** Previsão para quem pede hoje, em duas linhas (estilo ficha técnica). */
 function Previsao({ dados }: { dados: DadosLar }) {
   const { est, livres, unidade } = dados
+  const irParaSecao = useIrParaSecao()
   const linhas = est.imediata
     ? [
-        { t: `${unidade.um === 'lugar' ? 'Lugar' : 'Vaga'} livre para si`, v: 'Sim' },
-        { t: 'Pessoas à sua frente', v: '0' },
+        { t: 'Espera estimada', v: 'Sem espera' },
+        { t: 'Pessoas à sua frente', v: 'Nenhuma' },
       ]
     : [
         { t: `Probabilidade de ${unidade.um} em 3 meses`, v: pct(est.p90) },
@@ -69,7 +71,7 @@ function Previsao({ dados }: { dados: DadosLar }) {
       <button
         type="button"
         onClick={() => irParaSecao('ficha-previsao')}
-        className="mt-1 inline-flex min-h-11 items-center gap-0.5 text-sm text-terra-600 hover:underline"
+        className="mt-1 inline-flex min-h-12 items-center gap-0.5 text-sm text-terra-600 hover:underline"
       >
         Como calculamos
         <ChevronRight aria-hidden className="size-4" />

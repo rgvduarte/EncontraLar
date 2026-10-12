@@ -9,12 +9,7 @@ import type { Local } from '../model'
 import { residenciais } from '../area'
 import { deTerra } from '../language'
 
-const norm = (s: string) =>
-  s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim()
+const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 
 const LIMITE = 8
 
@@ -173,7 +168,7 @@ export function PlaceCombobox({
           role="listbox"
           aria-label="Localidades sugeridas"
           className={cn(
-            'absolute inset-x-0 top-full z-30 mt-2 max-h-96 animate-fade-in overflow-y-auto rounded-2xl bg-white p-1.5 shadow-lift ring-1 ring-black/5',
+            'absolute inset-x-0 top-full z-30 mt-2 max-h-[min(24rem,45dvh)] animate-fade-in overflow-y-auto rounded-2xl bg-white p-1.5 shadow-lift ring-1 ring-black/5',
             !mostrar && 'hidden',
           )}
         >
@@ -188,7 +183,10 @@ export function PlaceCombobox({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => escolher(o)}
                 onMouseMove={() => setAtivo(i)}
-                className={cn('flex min-h-13 cursor-pointer items-center gap-3 rounded-xl px-3.5 py-2 text-ink', i === ativo && 'bg-sand')}
+                className={cn(
+                  'flex min-h-13 cursor-pointer items-center gap-3 rounded-xl px-3.5 py-2 text-ink',
+                  i === ativo && 'bg-sand',
+                )}
               >
                 <span className="flex-1">
                   <span className="block font-medium">{o.label}</span>
@@ -200,7 +198,9 @@ export function PlaceCombobox({
                         : `Distrito ${deTerra(o.distrito)}`}
                   </span>
                 </span>
-                <span className="text-sm whitespace-nowrap text-ink-mute tabular">{plural(n, 'instituição', 'instituições')}</span>
+                <span className="text-sm whitespace-nowrap text-ink-mute tabular">
+                  {plural(n, 'instituição', 'instituições')}
+                </span>
               </li>
             )
           })}

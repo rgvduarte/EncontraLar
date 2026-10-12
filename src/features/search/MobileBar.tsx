@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { forwardRef, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { List, Map as MapIcon, SlidersHorizontal } from 'lucide-react'
 import { Count, pillClasses } from './Chips'
@@ -17,10 +17,23 @@ interface Props {
 export const MobileBar = forwardRef<HTMLDivElement, Props>(function MobileBar({ model, geo, onFiltros }, ref) {
   const { state, entradas, update } = model
   const n = contarTodosFiltros({ ...state, vaga: null })
+
+  // a pílula ativa nunca fica escondida fora da linha deslizante
+  const rowRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const row = rowRef.current
+    const el = row?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (!row || !el) return
+    if (el.offsetLeft + el.offsetWidth > row.scrollLeft + row.clientWidth || el.offsetLeft < row.scrollLeft) {
+      row.scrollTo({ left: el.offsetLeft - 16, behavior: 'smooth' })
+    }
+  }, [state.vaga])
+
   return (
-    <div ref={ref} className="sticky top-16 z-[900] border-b border-black/[0.06] bg-white/90 pt-3 backdrop-blur-xl backdrop-saturate-150">
+    <div ref={ref} className="sticky top-16 z-[900] border-b border-black/[0.06] bg-white/95 pt-2.5 backdrop-blur-xl backdrop-saturate-150">
       <div className="px-4 sm:px-6">
         <PlaceCombobox
+          compact
           local={state.local}
           entradas={entradas}
           geoEstado={geo.estado}
@@ -29,7 +42,7 @@ export const MobileBar = forwardRef<HTMLDivElement, Props>(function MobileBar({ 
           onTexto={(q) => update({ q })}
         />
       </div>
-      <div role="group" aria-label="Filtros" className="flex gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden">
+      <div ref={rowRef} role="group" aria-label="Filtros" className="flex gap-2 overflow-x-auto px-4 py-2.5 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden">
         <button type="button" onClick={onFiltros} aria-haspopup="dialog" className={pillClasses(n > 0)}>
           <SlidersHorizontal aria-hidden className="size-4" />
           Filtros

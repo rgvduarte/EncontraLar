@@ -19,7 +19,7 @@ export function PrototypeBanner() {
         <p>
           <span className="sm:hidden">Protótipo · dados fictícios.</span>
           <span className="hidden sm:inline">Protótipo de demonstração — instituições e dados fictícios.</span>{' '}
-          <Link to="/sobre" className="inline-flex items-center text-terra-600 hover:underline">
+          <Link to="/sobre" className="inline-flex items-center font-medium text-terra-700 hover:underline">
             Saber mais
             <ChevronRight aria-hidden className="size-4" />
           </Link>

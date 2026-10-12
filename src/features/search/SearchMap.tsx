@@ -40,6 +40,10 @@ interface PinProps {
   registar: (id: string, m: L.Marker | null) => void
 }
 
+// margens do auto-pan do popup: deixar livres os controlos sobrepostos (região/legenda em cima, zoom à direita)
+const PAN_TL: [number, number] = [24, 128]
+const PAN_BR: [number, number] = [72, 24]
+
 const PinMarker = memo(function PinMarker({ e, ativo, popup, onHover, onSelect, registar }: PinProps) {
   const id = e.lar.id
   const { lat, lng } = e.lar
@@ -75,7 +79,7 @@ const PinMarker = memo(function PinMarker({ e, ativo, popup, onHover, onSelect, 
       eventHandlers={handlers}
     >
       {popup && (
-        <Popup className="el-popup" minWidth={280} maxWidth={280} autoPanPadding={[24, 24]}>
+        <Popup className="el-popup" minWidth={280} maxWidth={280} autoPanPaddingTopLeft={PAN_TL} autoPanPaddingBottomRight={PAN_BR}>
           <MapPopupContent e={e} />
         </Popup>
       )}

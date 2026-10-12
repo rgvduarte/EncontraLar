@@ -50,14 +50,6 @@ export type SecaoId = (typeof SECOES)[number]['id']
 export const prefereMenosMovimento = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-/** Desloca até uma secção (sem usar '#id', que colide com o HashRouter) e coloca lá o foco. */
-export function irParaSecao(id: string) {
-  const el = document.getElementById(id)
-  if (!el) return
-  el.scrollIntoView({ behavior: prefereMenosMovimento() ? 'auto' : 'smooth', block: 'start' })
-  el.focus({ preventScroll: true })
-}
-
 // ————————————————————————————————————————— frescura das vagas
 
 export type Frescura = 'recente' | 'normal' | 'antiga'

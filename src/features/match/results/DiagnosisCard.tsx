@@ -20,8 +20,11 @@ export function DiagnosisCard({
   const vazio = variante === 'vazio'
   return (
     <section aria-labelledby="diagnostico-t" className={cn('tile text-center', className)}>
-      <p className="eyebrow">{vazio ? 'O que está a limitar' : 'Poucas opções?'}</p>
-      <h2 id="diagnostico-t" className={cn('mx-auto mt-2 max-w-xl font-semibold text-ink', vazio ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl')}>
+      <p className="eyebrow">{vazio ? 'O que está a limitar' : 'Para ter mais opções'}</p>
+      <h2
+        id="diagnostico-t"
+        className={cn('mx-auto mt-2 max-w-xl font-semibold text-ink', vazio ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl')}
+      >
         {d.titulo}
       </h2>
       <p className="mx-auto mt-4 max-w-xl text-lg text-ink-mute">{d.texto}</p>

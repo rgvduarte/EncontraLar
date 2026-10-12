@@ -57,9 +57,11 @@ export function ProximaVisita({ visita, outras = 0, temPedidos }: { visita: Visi
           </span>
         </p>
         <div className="min-w-0">
-          <p className="flex flex-wrap items-center gap-x-2 text-sm text-ink-mute">
-            <span aria-hidden className={cn('size-2 rounded-full', confirmada ? 'bg-leaf-500' : 'bg-sun-500')} />
-            {confirmada ? 'Confirmada pela instituição' : 'A aguardar confirmação'} · {quando(data)}
+          <p className="flex items-start gap-2 text-sm text-ink-mute">
+            <span aria-hidden className={cn('mt-[0.45rem] size-2 shrink-0 rounded-full', confirmada ? 'bg-leaf-500' : 'bg-sun-500')} />
+            <span>
+              {confirmada ? 'Confirmada pela instituição' : 'A aguardar confirmação'} · {quando(data)}
+            </span>
           </p>
           <h3 className="mt-2 text-2xl leading-snug font-semibold">
             <Link to={`/lar/${lar.id}`} className="hover:underline">
