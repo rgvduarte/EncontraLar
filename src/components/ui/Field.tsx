@@ -10,9 +10,9 @@ import { Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 const controlBase =
-  'w-full rounded-2xl border-2 border-line-strong bg-white px-4 text-base text-ink placeholder:text-ink-mute/80 ' +
-  'transition-colors hover:border-pine-400 focus:border-pine-600 focus:outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500 ' +
-  'disabled:cursor-not-allowed disabled:bg-sand aria-[invalid=true]:border-alert-600'
+  'w-full rounded-2xl border border-line-strong bg-white px-4 text-base text-ink placeholder:text-ink-mute ' +
+  'transition-[border-color,box-shadow] hover:border-pine-400 focus:border-terra-500 focus:ring-4 focus:ring-terra-100 focus:outline-none ' +
+  'disabled:cursor-not-allowed disabled:bg-sand aria-[invalid=true]:border-alert-600 aria-[invalid=true]:ring-alert-50'
 
 interface FieldShellProps {
   label: ReactNode
@@ -31,7 +31,7 @@ export function FieldShell({ label, hint, error, optional, className, children }
   const describedBy = [hintId, errId].filter(Boolean).join(' ') || undefined
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      <label htmlFor={id} className="text-base font-bold text-ink">
+      <label htmlFor={id} className="text-base font-medium text-ink">
         {label}
         {optional && <span className="ml-2 text-sm font-normal text-ink-mute">(opcional)</span>}
       </label>
@@ -42,7 +42,7 @@ export function FieldShell({ label, hint, error, optional, className, children }
       )}
       {children({ id, describedBy, invalid: Boolean(error) })}
       {error && (
-        <p id={errId} role="alert" className="text-sm font-bold text-alert-700">
+        <p id={errId} role="alert" className="text-sm font-medium text-alert-700">
           {error}
         </p>
       )}
@@ -158,11 +158,11 @@ export function Checkbox({
   return (
     <label className={cn('group flex min-h-12 cursor-pointer items-start gap-3 rounded-xl py-2', className)}>
       <span className="relative mt-0.5 flex size-7 shrink-0 items-center justify-center">
-        <input type="checkbox" className="peer absolute inset-0 cursor-pointer appearance-none rounded-lg border-2 border-line-strong bg-white transition-colors checked:border-pine-700 checked:bg-pine-700 group-hover:border-pine-500 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500" {...rest} />
+        <input type="checkbox" className="peer absolute inset-0 cursor-pointer appearance-none rounded-[8px] border-[1.5px] border-line-strong bg-white transition-colors checked:border-terra-600 checked:bg-terra-600 group-hover:border-pine-400 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500" {...rest} />
         <Check aria-hidden strokeWidth={3} className="pointer-events-none relative size-4.5 text-white opacity-0 peer-checked:opacity-100" />
       </span>
       <span className="flex flex-col">
-        <span className="text-base leading-snug font-semibold text-ink">{label}</span>
+        <span className="text-base leading-snug font-medium text-ink">{label}</span>
         {description && <span className="text-sm text-ink-soft">{description}</span>}
       </span>
     </label>
@@ -186,26 +186,26 @@ export function ChoiceCard({
   return (
     <label
       className={cn(
-        'group relative flex min-h-16 cursor-pointer items-start gap-4 rounded-2xl border-2 border-line bg-white p-4 transition-all',
-        'hover:border-pine-400 hover:shadow-soft has-[:checked]:border-pine-700 has-[:checked]:bg-pine-50 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
+        'group relative flex min-h-16 cursor-pointer items-start gap-4 rounded-[1.25rem] border border-line-strong bg-white p-5 transition-all duration-200',
+        'hover:border-pine-400 has-[:checked]:border-terra-600 has-[:checked]:bg-terra-50/60 has-[:checked]:ring-1 has-[:checked]:ring-terra-600 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
         className,
       )}
     >
       <input type={type} className="peer sr-only" {...rest} />
       {icon && (
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-sand text-pine-700 group-has-[:checked]:bg-pine-700 group-has-[:checked]:text-white [&_svg]:size-6">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-sand text-ink group-has-[:checked]:bg-terra-600 group-has-[:checked]:text-white [&_svg]:size-5.5">
           {icon}
         </span>
       )}
       <span className="flex flex-1 flex-col gap-0.5 pr-8">
-        <span className="text-base leading-snug font-bold text-ink">{label}</span>
+        <span className="text-base leading-snug font-semibold text-ink">{label}</span>
         {description && <span className="text-sm text-ink-soft">{description}</span>}
       </span>
       <span
         aria-hidden
         className={cn(
-          'absolute top-4 right-4 flex size-6 items-center justify-center border-2 border-line-strong bg-white text-white transition-colors',
-          'peer-checked:border-pine-700 peer-checked:bg-pine-700',
+          'absolute top-5 right-5 flex size-6 items-center justify-center border-[1.5px] border-line-strong bg-white text-white transition-colors',
+          'peer-checked:border-terra-600 peer-checked:bg-terra-600',
           type === 'radio' ? 'rounded-full' : 'rounded-md',
         )}
       >
@@ -235,7 +235,7 @@ export function Switch({
   return (
     <div className={cn('flex min-h-12 items-center justify-between gap-4', className)}>
       <label htmlFor={id} className="flex cursor-pointer flex-col">
-        <span className="text-base font-semibold text-ink">{label}</span>
+        <span className="text-base font-medium text-ink">{label}</span>
         {description && <span className="text-sm text-ink-soft">{description}</span>}
       </label>
       <button
@@ -246,11 +246,11 @@ export function Switch({
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cn(
-          'relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border-2 transition-colors disabled:opacity-50',
-          checked ? 'border-pine-700 bg-pine-700' : 'border-line-strong bg-sand-deep',
+          'relative inline-flex h-[31px] w-[51px] shrink-0 items-center rounded-full p-[2px] transition-colors duration-200 disabled:opacity-50',
+          checked ? 'bg-leaf-500' : 'bg-sand-deep',
         )}
       >
-        <span className={cn('inline-block size-6 rounded-full bg-white shadow-soft transition-transform', checked ? 'translate-x-6' : 'translate-x-0.5')} />
+        <span className={cn('inline-block size-[27px] rounded-full bg-white shadow-[0_3px_8px_rgba(0,0,0,0.15),0_1px_1px_rgba(0,0,0,0.16)] transition-transform duration-200', checked ? 'translate-x-5' : 'translate-x-0')} />
       </button>
     </div>
   )

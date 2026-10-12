@@ -1,97 +1,90 @@
-# EncontraLar — direção de arte, UX e arquitetura
+# EncontraLar — direção de design (v2: minimalista)
 
 > Leitura obrigatória antes de criar ou alterar qualquer página.
+> A v1 ("Casa portuguesa": azulejo, calçada, serifas, painel de estação) foi **rejeitada pelo cliente** por ser
+> "slop". A referência agora é **apple.com** e sites premiados no Awwwards de produto (ex.: Cyera AI Guardian, Pinreply):
+> **limpo, minimalista, muito intuitivo.**
 
 ## 1. Para quem desenhamos
 
-| Quem | Contexto real | O que precisa de sentir/fazer |
+| Quem | Contexto | O que precisa |
 |---|---|---|
-| **Filha/filho (45–65 anos)** — utilizador principal | Muitas vezes com pressa e culpa: a mãe teve uma queda, o pai vai ter **alta hospitalar** na próxima semana. Pesquisa no telemóvel, à noite, cansado(a). | Perceber em segundos **onde há vaga agora**, quanto custa, se o lar trata o problema de saúde concreto (demência, acamado…), e **quanto tempo** vai esperar. Confiança. Calma. |
-| **A própria pessoa idosa (70+)** | Lê com dificuldade, desconfia de tecnologia. | Letra grande, contraste, linguagem simples, nada escondido em ícones sem texto. |
-| **Diretor(a) técnico(a) de um lar** | Gere 40 camas, atende 20 telefonemas por semana a perguntar "há vaga?". Pouco tempo, pouca paciência para software. | Atualizar vagas num toque, ver pedidos já triados com o perfil clínico, preencher a vaga depressa (cada mês vazio custa ~1500–2500 €). |
+| **Filha/filho (45–65 anos)** — principal | Pressa e ansiedade (ex.: **alta hospitalar** na próxima semana), muitas vezes no telemóvel. | Ver em segundos **onde há vaga**, quanto custa, se tratam o problema concreto, **quanto tempo** vai esperar. |
+| **A própria pessoa idosa** | Lê com dificuldade. | Letra grande, contraste, linguagem simples. |
+| **Diretor(a) de um lar** | Pouco tempo, pouca paciência para software. | Atualizar vagas num toque, pedidos já triados, preencher vagas depressa. |
 
-Problema de mercado (da reunião): **assimetria de informação** — listas de espera lentas, opacidade ("boca a boca"), oferta invisível. A plataforma responde com 3 vetores: **geolocalização, perfil clínico, transparência**. O diferenciador técnico é a **previsão de vagas**.
+Vetores do produto: **geolocalização, perfil clínico, transparência** + **previsão de vagas** (diferenciador).
 
-## 2. Conceito visual: "Casa portuguesa"
+## 2. Princípios (estilo Apple)
 
-Calor editorial de revista portuguesa + clareza de serviço público. **Não é um template SaaS.**
+1. **Uma ideia por ecrã/secção.** Título enorme, uma frase de apoio, uma ação. Se uma secção precisa de muitas coisas, divide-se ou corta-se.
+2. **Menos é mais.** Cortar sem dó: secções redundantes, chips decorativos, ícones que não informam, bordas e caixas a mais, texto repetido. Na dúvida, remover.
+3. **Espaço em branco generoso.** Secções com `py-24 sm:py-32 lg:py-40`; títulos com ar à volta; nunca encher o ecrã.
+4. **O produto é a imagem.** Em vez de ilustrações decorativas, mostrar UI real do EncontraLar (mapa, cartão, previsão, painel) composta com componentes verdadeiros e dados reais do store — como a Apple mostra o iPhone.
+5. **Intuitivo antes de bonito.** Etiquetas claras, ações óbvias, caminhos curtos, feedback imediato. Nada escondido atrás de ícones sem texto.
+6. **Movimento subtil e com propósito.** Entradas suaves ao fazer scroll (`<Reveal>`), transições de 200–300ms com `ease-[cubic-bezier(.25,.1,.25,1)]`, hover discreto (escala 1.02–1.04 em imagens). Respeitar `prefers-reduced-motion`.
 
-Elementos de assinatura (usar — já existem em `src/components/brand/`):
+## 3. Sistema visual
 
-- **Mapa de Portugal com vagas em direto** (`PortugalMap`, `MapLegend`) — continente + Açores + Madeira, um ponto por instituição, pulsa onde há vaga. É a "fotografia" principal do produto; substitui imagens de banco.
-- **Quadro de vagas** (`VagasBoard`) — painel escuro tipo partidas da estação, com as vagas atualizadas mais recentes a rodar. Prova viva de que as vagas são reais.
-- **Previsão das vagas como previsão do tempo** (`ForecastStrip`) — sol / sol com nuvens / nuvem + % por mês. Toda a gente sabe ler a previsão do tempo. Usar `variant="mini"` em listas.
-- **Azulejo** (`AzulejoBand`, `azulejoBg()`) — padrão em faixas, molduras, fundos de cabeçalhos — sempre subtil (opacidade 5–15% sobre creme, ou a 10–20% sobre verde-pinho).
-- **Calçada portuguesa** (`CalcadaDivider`, `calcadaStonesBg()`) — onda do Rossio como divisor entre secções (ex.: transição creme → verde-pinho); textura de pedras em fundos escuros.
-- **Selo verificado** (`SeloVerificado`) — carimbo circular; usar no topo da ficha de instituições verificadas e na página "Para instituições".
-- **Ilustrações de fachada** (`LarCover`) — casas portuguesas estilizadas; não usar fotografias de banco.
+**Tipografia** — só **Inter** (variável, com tamanhos óticos), como a SF Pro da Apple.
+- Títulos: `font-semibold`, tracking negativo (já global). Hero: `text-5xl sm:text-6xl lg:text-7xl`; secção: `.headline` (`text-4xl → 6xl`); subtítulos `text-xl/2xl text-ink-mute`.
+- `<em>` dentro de h1/h2/h3 = palavra de ênfase com **gradiente azul→verde** (sem itálico). Usar no máximo 1 vez por título, e não em todos os títulos.
+- Corpo `text-base` (18px) / `text-lg`; secundário `text-ink-mute`. Escala já ampliada para o público: `text-sm`=16px, `text-xs`=14px (usar pouco).
+- Números importantes: `font-semibold tabular`.
 
-Tipografia:
-- Títulos em **Fraunces** (`font-display`), grandes e com caráter; usar `<em>` para 1–2 palavras de ênfase (fica itálico terracota automaticamente): `O lar certo, <em>perto</em> de quem ama.`
-- Números importantes (preços, %, contagens) em Fraunces com `tabular`.
-- Corpo em **Atkinson Hyperlegible** (desenhada para baixa visão). Escala já ampliada: `text-sm` = 16px, `text-base` = 18px. Nunca usar texto < 14px (`text-xs`) exceto metadados mínimos.
+**Cor** — quase monocromático + um acento.
+- Superfícies: branco (`bg-white`/`bg-cream`) e cinza Apple (`bg-sand` = #f5f5f7) alternados; `bg-sand-deep` para trilhos. Blocos de contraste: preto (`bg-pine-950`/`bg-ink`) com texto branco e `on-dark`.
+- Texto: `text-ink` (#1d1d1f), `text-ink-soft`, `text-ink-mute` (#6e6e73).
+- **Nomes legados**: `pine-*` = escala de grafite (pine-700 = #1d1d1f; pine-950 = preto). `terra-*` = **acento azul** (terra-600 = #0071e3) para ligações e destaques pontuais.
+- Estados de vaga (sempre com texto): verde `leaf` (#34c759) = disponível, laranja `sun` (#ff9500) = em breve, cinza `dusk` = lista de espera. Alerta: `alert`.
+- **Proibido**: cores hex fixas da v1 (#1d564e, #2f7f72, #4f9b8c, #d25b3b, #b9472f, #fbf8f3, #efe7da…), gradientes decorativos de fundo, sombras pesadas.
 
-Cor (tokens em `src/index.css`):
-- Fundo `cream`, secções alternadas `sand`, blocos de contraste em `pine-900/950` (com `on-dark` para `em` em terracota claro).
-- `pine` = confiança/ação principal. `terra` = calor, ênfase, CTA secundário, alertas positivos. Usar terracota com parcimónia.
-- Estados de vaga: `leaf` (disponível), `sun` (em breve), `dusk` (lista de espera) — **sempre com texto/ícone, nunca só cor**.
+**Superfícies e forma**
+- Cartões: `rounded-[1.75rem]`, sem sombra ou com `shadow-card` muito leve; preferir `bg-sand` sem borda ("tiles" estilo Apple, classe `.tile`) ou `bg-white ring-1 ring-line`.
+- Botões: pílulas (`rounded-full`). Primário = preto (`Button variant="primary"`), acento = azul (`variant="accent"`), secundário = cinza (`variant="subtle"`). Ligações de texto estilo Apple: azul com chevron — "Saber mais ›".
+- **Grelhas "bento"** (tiles de tamanhos diferentes) para apresentar funcionalidades — cada tile: título curto, 1 frase, um pedaço de UI real.
+- Ícones `lucide-react` finos, pequenos, a acompanhar texto (nunca ícones dentro de círculos coloridos em grelha de 3).
+- Capas de instituição: `LarCover` (gradiente pastel + silhueta) — sem fotografias no protótipo.
 
-Layout: grelhas assimétricas (7/5, 8/4), blocos que se sobrepõem, secções de largura total alternadas com secções contidas, notas laterais "sticky". Alinhar à esquerda por defeito; centrar só em momentos pontuais.
+**Componentes de marca disponíveis** (`src/components/brand/`): `PortugalMap` (mapa em pontos, halftone), `MapLegend`, `VagasBoard` (lista "Atualizadas agora", tema claro/escuro), `ForecastStrip` (previsão mês a mês: % + barra fina; `variant="mini"`), `SeloVerificado` (roseta azul).
+`patterns.tsx` (azulejo/calçada) está **descontinuado** e não renderiza nada — remover as importações.
+`src/components/ui/Reveal.tsx`: envolver blocos para entrada suave ao fazer scroll.
 
-## 3. Regras anti-"AI slop" (obrigatórias)
-
-1. ❌ Nada de grelhas "3 ícones em círculo + título + 2 linhas". Para listar vantagens: lista numerada editorial (números grandes em Fraunces), split com **pré-visualização de UI real** (componentes verdadeiros com dados reais), ou antes/depois.
-2. ❌ Nada de hero genérico (título centrado + 2 botões + blob em gradiente). O hero deve **mostrar o produto a funcionar** (mapa com vagas, quadro de vagas, cartão real).
-3. ❌ Nada de copy genérico ("Descubra", "Solução inovadora", "Experiência perfeita", "Seamless"). Escrever como um bom assistente social falaria: concreto, português de Portugal, com situações reais (alta hospitalar, comparticipação da Segurança Social, ERPI, lista de espera, Alzheimer).
-4. ❌ Nada de números inventados no código — contagens, médias e exemplos **calculados a partir do store** (`useLares()` etc.).
-5. ❌ Nada de testemunhos falsos apresentados como reais (sem nomes completos inventados com fotografia). Se usar citações, identificar como exemplo/fictício.
-6. ❌ Sem emojis na interface. Ícones `lucide-react` com `aria-hidden` + texto visível.
-7. ❌ Nada de cartões todos iguais em grelha infinita sem hierarquia — cada secção tem um ponto focal.
-8. ✅ Cada página tem **uma ação principal óbvia** e um caminho seguinte claro.
-9. ✅ Estados vazios, de erro e de carregamento desenhados (com orientação útil, não só "Sem resultados").
-10. ✅ Micro-interações com propósito (pulso nas vagas, transições curtas), respeitando `prefers-reduced-motion`.
+**Layout**
+- `container-page` (max 80rem) e `container-narrow` (60rem). Hero e títulos de secção podem ser centrados (estilo Apple); conteúdo de leitura alinhado à esquerda.
+- Header: barra translúcida `h-16` (sticky, z-1000) — offsets sticky usam `top-16`.
+- Mobile first: tudo tem de funcionar a 390px; alvos ≥ 48px.
 
 ## 4. Linguagem — português de Portugal
 
-Usar: registo, utilizador, telemóvel, ecrã, contacto, equipa, palavra-passe, iniciar/terminar sessão, guardar, apagar, morada, código postal, autarquia, freguesia, "está a carregar", "candidatar-se", "pedido", "marcar visita", "comparticipação", "mensalidade".
-Evitar (PT-BR): cadastro, usuário, celular, tela, contato, time, senha, "você" excessivo (preferir formas impessoais ou "o(a) senhor(a)" implícito: "Guarde", "Indique"), "ônibus", "registro", "deletar", "salvar".
-Tom: caloroso, sereno, honesto sobre incerteza ("estimativa", "não é garantia"). Tema sensível: **nunca** falar em "óbito/morte" para explicar vagas — dizer "saídas" ou "rotatividade" (a página de metodologia pode explicar com tato).
+Curto, claro, humano. Frases de 1 linha nos títulos. Usar: registo, utilizador, telemóvel, ecrã, contacto, equipa, palavra-passe, iniciar/terminar sessão, guardar, apagar, morada, pedido, marcar visita, comparticipação, mensalidade.
+Evitar PT-BR: cadastro, usuário, celular, tela, contato, time, senha, deletar, salvar, registro.
+Tema sensível: **nunca** "óbito/morte" — dizer "saídas" ou "rotatividade".
+Proibido copy genérico de marketing ("Descubra", "inovador", "experiência perfeita", "revolucionário").
 
 ## 5. Arquitetura de informação
 
 ```
-Público (famílias)                    Instituições                      Contas
-/                 Início              /para-lares   Porquê aderir       /entrar    (contas de demonstração)
-/pesquisa         Mapa de vagas       /registar?tipo=lar                 /registar
-/lar/:id          Ficha da instituição
-/encontrar        Ajuda-me a escolher (questionário → recomendações)
-/guia             Guia e apoios (#tipos #visita #apoios #alerta #faq #linhas)
-/sobre, /privacidade
+Famílias                               Instituições                  Contas
+/              Início                  /para-lares                   /entrar  (inclui contas de demonstração)
+/pesquisa      Mapa de vagas           /registar?tipo=lar            /registar
+/lar/:id       Ficha da instituição
+/encontrar     Ajuda-me a escolher
+/guia          Guia e apoios (#tipos #escolher #visita #apoios #alerta #faq #linhas)
+/sobre (#previsao), /privacidade
 
-Painel da família  /familia (resumo) · /familia/pedidos · /familia/guardados · /familia/perfil · /familia/conta
-Painel do lar      /gestao (resumo) · /gestao/vagas · /gestao/pedidos · /gestao/previsao · /gestao/ficha
+Painel da família  /familia · /familia/pedidos · /familia/guardados · /familia/perfil · /familia/conta
+Painel do lar      /gestao · /gestao/vagas · /gestao/pedidos · /gestao/previsao · /gestao/ficha
 ```
-Os painéis usam `DashboardShell` (barra lateral no desktop, pílulas no telemóvel) com rotas aninhadas (`<Routes>` dentro do componente, porque a rota é `familia/*` / `gestao/*`).
+Painéis usam `DashboardShell` (barra lateral discreta no desktop, pílulas no telemóvel) com `<Routes>` aninhadas.
+HashRouter: âncoras dentro da página fazem-se com `scrollIntoView`, nunca com `href="#id"`.
 
 ### Contrato de URL da pesquisa (`/pesquisa`)
-| Parâmetro | Valor |
-|---|---|
-| `lugar` | label de `LUGARES` (ex.: `Porto`, `Lisboa — Alvalade`) → centro + raio |
-| `lat`, `lng` | coordenadas ("perto de mim") |
-| `raio` | km (5, 10, 15, 25, 50) |
-| `distrito` | nome de `DISTRITOS` |
-| `tipo` | `erpi`, `residencia`, `centro_dia` (vírgulas) |
-| `vaga` | `agora` (só com vaga) · `breve` (com vaga ou prevista em breve) |
-| `max` | mensalidade máxima (€) |
-| `grau` | `autonomo` · `ligeira` · `moderada` · `grave` |
-| `cuidados` | chaves de `Cuidado`, separadas por vírgulas |
-| `ss` | `1` = só com acordo da Segurança Social |
-| `q` | texto livre (nome) |
-| `ordem` | `relevancia` · `distancia` · `preco` · `disponibilidade` · `avaliacao` |
+`lugar` (label de `LUGARES`) · `lat`,`lng` · `raio` (km) · `distrito` · `tipo` (`erpi,residencia,centro_dia`) · `vaga` (`agora`|`breve`) · `max` (€) · `grau` · `cuidados` (lista) · `ss=1` · `q` · `ordem` (`relevancia`|`distancia`|`preco`|`disponibilidade`|`avaliacao`) · `vista=mapa`.
 
 ### Rascunho do questionário
-O questionário `/encontrar` guarda o perfil preenchido em `sessionStorage['encontralar:perfil-rascunho']` (JSON `PerfilInput` de `src/lib/store.ts`). O painel da família oferece-se para o guardar quando existir.
+`/encontrar` guarda o perfil em `sessionStorage['encontralar:perfil-rascunho']` (JSON `PerfilInput`); o painel da família oferece-se para o guardar.
 
-## 6. Acessibilidade (WCAG 2.2 AA mínimo)
+## 6. Acessibilidade (WCAG 2.2 AA)
 
-Um `h1` por página e hierarquia correta; etiquetas em todos os campos (`InputField` etc. já ligam `aria-describedby`); alvos ≥ 48px; foco visível (já global); contraste AA; nada só por cor; `aria-live` para mudanças importantes; o mapa é complementar — a lista é a fonte principal e acessível.
+Um `h1` por página; hierarquia de títulos; etiquetas em todos os campos; foco visível; contraste AA (atenção a texto cinza claro: usar `text-ink-mute` no mínimo); nada só por cor; `aria-live` em resultados que mudam; alvos ≥ 48px; o mapa é complementar à lista.

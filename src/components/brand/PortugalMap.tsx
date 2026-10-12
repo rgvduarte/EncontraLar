@@ -1,20 +1,57 @@
 import { memo, useMemo, useState } from 'react'
 import type { Disponibilidade, Lar } from '@/types'
-import { ES_PATH, INSETS, PT_AZORES_PATH, PT_MADEIRA_PATH, PT_MAINLAND_PATH, PT_VIEWBOX, projectPT } from '@/data/portugal-shape'
+import { INSETS, PT_AZORES_PATH, PT_MADEIRA_PATH, PT_MAINLAND_PATH, PT_VIEWBOX, projectPT } from '@/data/portugal-shape'
 import { disponibilidade } from '@/lib/forecast'
 import { cn } from '@/lib/cn'
 
-const DOT: Record<Disponibilidade, string> = { disponivel: '#2f8c4b', breve: '#dc9415', espera: '#6a6489' }
+const DOT: Record<Disponibilidade, string> = { disponivel: '#34c759', breve: '#ff9500', espera: '#8e8e93' }
+
+// ——— grelha de pontos (halftone) dentro do contorno do continente, calculada uma vez
+function parseRings(path: string): [number, number][][] {
+  return path
+    .split('M')
+    .filter(Boolean)
+    .map((ring) =>
+      ring
+        .replace(/Z/g, '')
+        .split('L')
+        .map((p) => p.trim().split(/\s+/).map(Number) as [number, number]),
+    )
+}
+
+function inside(x: number, y: number, rings: [number, number][][]): boolean {
+  let dentro = false
+  for (const r of rings) {
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const [xi, yi] = r[i]!
+      const [xj, yj] = r[j]!
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) dentro = !dentro
+    }
+  }
+  return dentro
+}
+
+let GRELHA: { x: number; y: number }[] | null = null
+function grelha() {
+  if (GRELHA) return GRELHA
+  const rings = parseRings(PT_MAINLAND_PATH)
+  const pts: { x: number; y: number }[] = []
+  const passo = 6.4
+  for (let y = 4; y < 540; y += passo) {
+    const desloc = (Math.round(y / passo) % 2) * (passo / 2)
+    for (let x = -4 + desloc; x < 300; x += passo) if (inside(x, y, rings)) pts.push({ x, y })
+  }
+  GRELHA = pts
+  return pts
+}
 
 const CIDADES = [
-  { nome: 'Braga', lat: 41.55, lng: -8.42, dx: 8, anchor: 'start' },
-  { nome: 'Porto', lat: 41.15, lng: -8.61, dx: -9, anchor: 'end' },
-  { nome: 'Coimbra', lat: 40.21, lng: -8.43, dx: -9, anchor: 'end' },
-  { nome: 'Lisboa', lat: 38.72, lng: -9.14, dx: -9, anchor: 'end' },
-  { nome: 'Évora', lat: 38.57, lng: -7.91, dx: 8, anchor: 'start' },
-  { nome: 'Faro', lat: 37.02, lng: -7.93, dx: 8, anchor: 'start' },
-  { nome: 'Viseu', lat: 40.66, lng: -7.91, dx: 8, anchor: 'start' },
-  { nome: 'Bragança', lat: 41.81, lng: -6.76, dx: -8, anchor: 'end' },
+  { nome: 'Porto', lat: 41.15, lng: -8.61, dx: -10, anchor: 'end' },
+  { nome: 'Coimbra', lat: 40.21, lng: -8.43, dx: -10, anchor: 'end' },
+  { nome: 'Lisboa', lat: 38.72, lng: -9.14, dx: -10, anchor: 'end' },
+  { nome: 'Évora', lat: 38.57, lng: -7.91, dx: 10, anchor: 'start' },
+  { nome: 'Faro', lat: 37.02, lng: -7.93, dx: 10, anchor: 'start' },
+  { nome: 'Braga', lat: 41.55, lng: -8.42, dx: 10, anchor: 'start' },
 ] as const
 
 export interface PortugalMapProps {
@@ -24,7 +61,6 @@ export interface PortugalMapProps {
   onSelect?: (lar: Lar) => void
   /** mostrar nomes de cidades */
   labels?: boolean
-  /** tema: claro (fundo creme) ou escuro (secções verde-pinho) */
   theme?: 'light' | 'dark'
   className?: string
   /** pulsar as instituições com vaga */
@@ -32,7 +68,7 @@ export interface PortugalMapProps {
   title?: string
 }
 
-/** Mapa estilizado de Portugal (continente + ilhas) com um ponto por instituição, colorido pela disponibilidade. */
+/** Mapa de Portugal em pontos (estilo halftone), com um ponto de cor por instituição. */
 export const PortugalMap = memo(function PortugalMap({
   lares,
   highlightId,
@@ -48,59 +84,34 @@ export const PortugalMap = memo(function PortugalMap({
     () =>
       lares
         .map((l) => ({ lar: l, ...projectPT(l.lat, l.lng), d: disponibilidade(l) }))
-        // as disponíveis por cima
         .sort((a, b) => (a.d === 'disponivel' ? 1 : 0) - (b.d === 'disponivel' ? 1 : 0)),
     [lares],
   )
+  const base = useMemo(grelha, [])
   const dark = theme === 'dark'
-  const land = dark ? '#204e48' : '#ffffff'
-  const landStroke = dark ? '#4f9b8c' : '#80bbac'
-  const spain = dark ? '#173a37' : '#efe7da'
-  const text = dark ? '#d6ebe5' : '#46524f'
+  const dotBase = dark ? '#3a3a3c' : '#d9d9de'
+  const text = dark ? '#a1a1a6' : '#86868b'
   const ativo = hover ?? highlightId ?? null
   const ativoP = ativo ? pontos.find((p) => p.lar.id === ativo) : undefined
 
   return (
-    <svg
-      viewBox={`${PT_VIEWBOX.x} ${PT_VIEWBOX.y} ${PT_VIEWBOX.w} ${PT_VIEWBOX.h}`}
-      className={cn('block h-auto w-full overflow-hidden', className)}
-      role="img"
-      aria-label={title}
-    >
-      <path d={ES_PATH} fill={spain} />
-      <text x="215" y="250" fill={text} opacity="0.55" fontSize="13" letterSpacing="4" fontFamily="'Atkinson Hyperlegible', sans-serif">
-        ESPANHA
-      </text>
-      <path d={PT_MAINLAND_PATH} fill={land} stroke={landStroke} strokeWidth="1.4" strokeLinejoin="round" />
-      {Object.values(INSETS).map((b) => (
-        <g key={b.label}>
-          <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="8" fill="none" stroke={landStroke} strokeDasharray="3 4" opacity="0.8" />
-          <text x={b.x + 8} y={b.y + 16} fill={text} fontSize="11" fontWeight="700" letterSpacing="1.5" fontFamily="'Atkinson Hyperlegible', sans-serif">
-            {b.label.toUpperCase()}
-          </text>
-        </g>
+    <svg viewBox={`${PT_VIEWBOX.x} ${PT_VIEWBOX.y} ${PT_VIEWBOX.w} ${PT_VIEWBOX.h}`} className={cn('block h-auto w-full', className)} role="img" aria-label={title}>
+      {base.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="1.75" fill={dotBase} />
       ))}
-      <path d={PT_AZORES_PATH} fill={land} stroke={landStroke} strokeWidth="1" />
-      <path d={PT_MADEIRA_PATH} fill={land} stroke={landStroke} strokeWidth="1" />
+      <path d={PT_AZORES_PATH} fill={dotBase} />
+      <path d={PT_MADEIRA_PATH} fill={dotBase} />
+      {Object.values(INSETS).map((b) => (
+        <text key={b.label} x={b.x + 6} y={b.y + 12} fill={text} fontSize="11" fontWeight="500" fontFamily="'Inter Variable', sans-serif">
+          {b.label}
+        </text>
+      ))}
 
       {labels &&
         CIDADES.map((c) => {
           const p = projectPT(c.lat, c.lng)
           return (
-            <text
-              key={c.nome}
-              x={p.x + c.dx}
-              y={p.y + 4}
-              textAnchor={c.anchor}
-              fill={text}
-              fontSize="12"
-              fontWeight="700"
-              fontFamily="'Atkinson Hyperlegible', sans-serif"
-              paintOrder="stroke"
-              stroke={dark ? '#0b2321' : '#fbf8f3'}
-              strokeWidth="3"
-              strokeLinejoin="round"
-            >
+            <text key={c.nome} x={p.x + c.dx} y={p.y + 4} textAnchor={c.anchor} fill={text} fontSize="11.5" fontWeight="500" fontFamily="'Inter Variable', sans-serif">
               {c.nome}
             </text>
           )
@@ -128,19 +139,19 @@ export const PortugalMap = memo(function PortugalMap({
               : {})}
           >
             {pulse && d === 'disponivel' && (
-              <circle cx={x} cy={y} r="4" fill={DOT[d]} opacity="0.5">
-                <animate attributeName="r" values="4;12;4" dur="2.6s" begin={`${(x * 7 + y) % 2.6}s`} repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.45;0;0.45" dur="2.6s" begin={`${(x * 7 + y) % 2.6}s`} repeatCount="indefinite" />
+              <circle cx={x} cy={y} r="4" fill={DOT[d]} opacity="0.4">
+                <animate attributeName="r" values="4;11;4" dur="2.8s" begin={`${(x * 7 + y) % 2.8}s`} repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.4;0;0.4" dur="2.8s" begin={`${(x * 7 + y) % 2.8}s`} repeatCount="indefinite" />
               </circle>
             )}
             <circle
               cx={x}
               cy={y}
-              r={isAtivo ? 7 : d === 'disponivel' ? 4.4 : 3.6}
+              r={isAtivo ? 6.5 : d === 'disponivel' ? 4 : 3.2}
               fill={DOT[d]}
-              stroke={dark ? '#0b2321' : '#ffffff'}
-              strokeWidth={isAtivo ? 2.5 : 1.4}
-              style={{ transition: 'r .15s' }}
+              fillOpacity={d === 'espera' && !isAtivo ? 0.75 : 1}
+              stroke={dark ? '#000' : '#fff'}
+              strokeWidth={isAtivo ? 2 : 1.2}
             />
           </Comp>
         )
@@ -149,23 +160,23 @@ export const PortugalMap = memo(function PortugalMap({
       {ativoP && (
         <g pointerEvents="none">
           <rect
-            x={Math.min(PT_VIEWBOX.x + PT_VIEWBOX.w - 182, Math.max(PT_VIEWBOX.x + 4, ativoP.x - 90))}
-            y={ativoP.y - 46}
+            x={Math.min(PT_VIEWBOX.x + PT_VIEWBOX.w - 184, Math.max(PT_VIEWBOX.x + 4, ativoP.x - 90))}
+            y={ativoP.y - 44}
             width="180"
-            height="32"
-            rx="10"
-            fill={dark ? '#fbf8f3' : '#1c2a29'}
+            height="30"
+            rx="15"
+            fill={dark ? '#f5f5f7' : '#1d1d1f'}
           />
           <text
-            x={Math.min(PT_VIEWBOX.x + PT_VIEWBOX.w - 92, Math.max(PT_VIEWBOX.x + 94, ativoP.x))}
-            y={ativoP.y - 26}
+            x={Math.min(PT_VIEWBOX.x + PT_VIEWBOX.w - 94, Math.max(PT_VIEWBOX.x + 94, ativoP.x))}
+            y={ativoP.y - 25}
             textAnchor="middle"
-            fontSize="12"
-            fontWeight="700"
-            fill={dark ? '#1c2a29' : '#fbf8f3'}
-            fontFamily="'Atkinson Hyperlegible', sans-serif"
+            fontSize="11.5"
+            fontWeight="600"
+            fill={dark ? '#1d1d1f' : '#ffffff'}
+            fontFamily="'Inter Variable', sans-serif"
           >
-            {ativoP.lar.nome.length > 26 ? `${ativoP.lar.nome.slice(0, 25)}…` : ativoP.lar.nome}
+            {ativoP.lar.nome.length > 27 ? `${ativoP.lar.nome.slice(0, 26)}…` : ativoP.lar.nome}
           </text>
         </g>
       )}
@@ -176,14 +187,14 @@ export const PortugalMap = memo(function PortugalMap({
 export function MapLegend({ className, theme = 'light' }: { className?: string; theme?: 'light' | 'dark' }) {
   const items: [Disponibilidade, string][] = [
     ['disponivel', 'Vaga disponível'],
-    ['breve', 'Vaga prevista em breve'],
+    ['breve', 'Vaga em breve'],
     ['espera', 'Lista de espera'],
   ]
   return (
-    <ul className={cn('flex flex-wrap gap-x-5 gap-y-2 text-sm', theme === 'dark' ? 'text-pine-100' : 'text-ink-soft', className)}>
+    <ul className={cn('flex flex-wrap gap-x-5 gap-y-2 text-sm', theme === 'dark' ? 'text-pine-300' : 'text-ink-mute', className)}>
       {items.map(([d, l]) => (
         <li key={d} className="inline-flex items-center gap-2">
-          <span aria-hidden className="size-3 rounded-full ring-2 ring-white/70" style={{ background: DOT[d] }} />
+          <span aria-hidden className="size-2.5 rounded-full" style={{ background: DOT[d] }} />
           {l}
         </li>
       ))}

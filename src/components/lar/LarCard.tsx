@@ -1,20 +1,17 @@
 import { memo, useMemo } from 'react'
 import { Link } from 'react-router'
-import { MapPin } from 'lucide-react'
+import { Star } from 'lucide-react'
 import type { Lar } from '@/types'
 import { LarCover } from './LarCover'
 import { AvailabilityBadge, VerifiedBadge } from './badges'
 import { FavoriteButton } from './FavoriteButton'
-import { CUIDADO_ICON } from './icons'
-import { Stars } from '@/components/ui/Stars'
-import { ForecastStrip } from '@/components/brand/ForecastStrip'
 import { disponibilidade, estimarEspera, resumoPrevisao } from '@/lib/forecast'
 import { CUIDADO_LABEL, NATUREZA_LABEL, TIPO_LABEL } from '@/lib/labels'
 import { euro, km } from '@/lib/format'
 import type { MatchResult } from '@/lib/matching'
 import { cn } from '@/lib/cn'
 
-const DESTAQUES = ['demencia', 'enfermagem24h', 'acamados', 'fisioterapia', 'paliativos', 'medico'] as const
+const DESTAQUES = ['demencia', 'enfermagem24h', 'acamados', 'fisioterapia', 'paliativos'] as const
 
 export interface LarCardProps {
   lar: Lar
@@ -25,11 +22,14 @@ export interface LarCardProps {
   selected?: boolean
   onHover?: (id: string | null) => void
   className?: string
-  /** heading level do nome (acessibilidade na página) */
+  /** nível do título (hierarquia de cabeçalhos da página) */
   headingLevel?: 'h2' | 'h3'
 }
 
-/** Cartão de instituição — usado na pesquisa, página inicial, recomendações e favoritos. */
+/**
+ * Cartão de instituição — minimalista: capa, nome, local, disponibilidade, preço.
+ * Usado na pesquisa, página inicial, recomendações e favoritos.
+ */
 export const LarCard = memo(function LarCard({
   lar,
   distanciaKm,
@@ -43,7 +43,7 @@ export const LarCard = memo(function LarCard({
   const est = useMemo(() => match?.espera ?? estimarEspera(lar), [lar, match])
   const disp = disponibilidade(lar, est)
   const previsao = resumoPrevisao(lar, est)
-  const destaques = DESTAQUES.filter((c) => lar.cuidados.includes(c)).slice(0, 3)
+  const destaques = DESTAQUES.filter((c) => lar.cuidados.includes(c)).slice(0, 2)
   const horizontal = layout === 'horizontal'
   const centroDia = lar.tipo === 'centro_dia'
 
@@ -53,15 +53,20 @@ export const LarCard = memo(function LarCard({
       onMouseLeave={onHover ? () => onHover(null) : undefined}
       onFocus={onHover ? () => onHover(lar.id) : undefined}
       className={cn(
-        'group relative flex overflow-hidden rounded-3xl border bg-white transition-all duration-200',
-        'focus-within:shadow-lift hover:-translate-y-0.5 hover:shadow-lift',
-        selected ? 'border-pine-600 shadow-lift ring-2 ring-pine-600' : 'border-line shadow-card',
-        horizontal ? 'flex-col sm:flex-row' : 'flex-col',
+        'group relative flex rounded-[1.75rem] bg-white transition-all duration-300 ease-[cubic-bezier(.25,.1,.25,1)]',
+        horizontal ? 'flex-col gap-4 p-3 sm:flex-row sm:items-stretch' : 'flex-col',
+        horizontal && (selected ? 'bg-sand ring-1 ring-line-strong' : 'hover:bg-sand/70'),
         className,
       )}
     >
-      <div className={cn('relative shrink-0 overflow-hidden bg-sand', horizontal ? 'aspect-[16/10] sm:aspect-auto sm:w-64' : 'aspect-[16/10]')}>
-        <LarCover hue={lar.capa.hue} variante={lar.capa.variante} className="transition-transform duration-500 group-hover:scale-[1.03]" />
+      <div
+        className={cn(
+          'relative shrink-0 overflow-hidden rounded-[1.375rem] bg-sand',
+          horizontal ? 'aspect-[16/10] sm:aspect-auto sm:w-56' : 'aspect-[4/3]',
+          !horizontal && selected && 'ring-2 ring-ink',
+        )}
+      >
+        <LarCover hue={lar.capa.hue} variante={lar.capa.variante} className="transition-transform duration-700 ease-[cubic-bezier(.25,.1,.25,1)] group-hover:scale-[1.04]" />
         <div className="absolute top-3 left-3">
           <AvailabilityBadge lar={lar} estado={disp} overlay />
         </div>
@@ -69,80 +74,52 @@ export const LarCard = memo(function LarCard({
           <FavoriteButton larId={lar.id} larNome={lar.nome} />
         </div>
         {match && (
-          <div className="absolute bottom-3 left-3 rounded-2xl bg-pine-800/92 px-3 py-1.5 text-white shadow-soft backdrop-blur">
-            <span className="text-lg font-bold">{match.score}%</span>
-            <span className="ml-1.5 text-xs font-semibold opacity-90">compatível</span>
+          <div className="absolute bottom-3 left-3 rounded-full bg-ink/85 px-3 py-1 text-sm font-semibold text-white backdrop-blur-md">
+            {match.score}% compatível
           </div>
         )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-2.5 p-5">
-        <p className="flex flex-wrap items-center gap-x-2 text-sm font-semibold text-ink-soft">
-          <span>{TIPO_LABEL[lar.tipo]}</span>
-          <span aria-hidden>·</span>
-          <span>{NATUREZA_LABEL[lar.natureza]}</span>
-        </p>
-        <H className="font-display text-xl leading-snug font-semibold text-ink">
-          <Link
-            to={`/lar/${lar.id}`}
-            className="after:absolute after:inset-0 after:z-0 after:content-[''] focus-visible:outline-none group-focus-within:underline hover:underline"
-          >
-            {lar.nome}
-          </Link>
-        </H>
-        <p className="flex items-center gap-1.5 text-sm text-ink-soft">
-          <MapPin aria-hidden className="size-4 shrink-0 text-pine-600" />
-          <span>
-            {lar.localidade}, {lar.distrito}
-            {distanciaKm != null && <span className="font-semibold text-ink"> · a {km(distanciaKm)}</span>}
-          </span>
-        </p>
-
-        <div className="flex flex-wrap items-center gap-2">
+      <div className={cn('flex flex-1 flex-col', horizontal ? 'gap-1.5 py-1 pr-2' : 'gap-1.5 px-1 pt-4')}>
+        <div className="flex items-start justify-between gap-3">
+          <H className="text-lg leading-snug font-semibold tracking-[-0.015em] text-ink">
+            <Link
+              to={`/lar/${lar.id}`}
+              className="after:absolute after:inset-0 after:z-0 after:rounded-[1.75rem] after:content-[''] focus-visible:outline-none"
+            >
+              {lar.nome}
+            </Link>
+          </H>
           {lar.numAvaliacoes > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-sm">
-              <Stars value={lar.avaliacao} />
-              <span className="font-bold">{lar.avaliacao.toLocaleString('pt-PT', { minimumFractionDigits: 1 })}</span>
+            <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-sm text-ink" aria-label={`Avaliação ${lar.avaliacao.toLocaleString('pt-PT')} em 5, ${lar.numAvaliacoes} avaliações`}>
+              <Star aria-hidden className="size-3.5 fill-ink text-ink" />
+              {lar.avaliacao.toLocaleString('pt-PT', { minimumFractionDigits: 1 })}
               <span className="text-ink-mute">({lar.numAvaliacoes})</span>
             </span>
           )}
-          <VerifiedBadge lar={lar} />
         </div>
 
-        {destaques.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5" aria-label="Cuidados em destaque">
-            {destaques.map((c) => {
-              const Icon = CUIDADO_ICON[c]
-              return (
-                <li key={c} className="inline-flex items-center gap-1.5 rounded-lg bg-sand px-2 py-1 text-xs font-semibold text-ink-soft">
-                  <Icon aria-hidden className="size-3.5 text-pine-700" />
-                  {CUIDADO_LABEL[c]}
-                </li>
-              )
-            })}
-          </ul>
+        <p className="text-sm text-ink-mute">
+          {TIPO_LABEL[lar.tipo]} · {NATUREZA_LABEL[lar.natureza]} · {lar.localidade}
+          {distanciaKm != null && <> · {km(distanciaKm)}</>}
+        </p>
+
+        {(destaques.length > 0 || lar.verificacao.estado === 'verificado') && (
+          <p className="flex flex-wrap items-center gap-x-2 text-sm text-ink-soft">
+            <VerifiedBadge lar={lar} />
+            {destaques.length > 0 && lar.verificacao.estado === 'verificado' && <span aria-hidden className="text-line-strong">|</span>}
+            {destaques.map((c) => CUIDADO_LABEL[c]).join(' · ')}
+          </p>
         )}
 
-        <div className="mt-auto flex flex-wrap items-end justify-between gap-x-4 gap-y-3 border-t border-dashed border-line-strong pt-3.5">
-          <p className="leading-tight">
-            <span className="block text-sm text-ink-soft">{lar.natureza === 'privado' ? 'Mensalidade desde' : 'Mensalidade (conforme rendimentos)'}</span>
-            <span className="font-display text-2xl font-semibold text-ink tabular">
+        <div className="mt-auto flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pt-2">
+          <p className="text-ink">
+            <span className="text-lg font-semibold tabular">
               {lar.natureza === 'privado' ? euro(lar.mensalidadeMin) : `${euro(lar.mensalidadeMin)}–${euro(lar.mensalidadeMax)}`}
             </span>
+            <span className="text-sm text-ink-mute"> /mês{lar.natureza !== 'privado' && ' · conforme rendimentos'}</span>
           </p>
-          {!centroDia && (
-            <div className="flex items-end gap-2.5">
-              <p
-                className={cn(
-                  'max-w-36 text-right text-sm leading-snug font-semibold',
-                  disp === 'disponivel' ? 'text-leaf-700' : disp === 'breve' ? 'text-sun-800' : 'text-dusk-700',
-                )}
-              >
-                {previsao}
-              </p>
-              {disp !== 'disponivel' && <ForecastStrip curva={est.curva} meses={6} variant="mini" />}
-            </div>
-          )}
+          {!centroDia && disp !== 'disponivel' && <p className="text-sm text-ink-mute">{previsao}</p>}
         </div>
       </div>
     </article>

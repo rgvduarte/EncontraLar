@@ -35,9 +35,9 @@ export const toast = {
 
 const ICON = { success: CircleCheck, info: Info, error: TriangleAlert }
 const TONE = {
-  success: 'border-leaf-200 [&_.ico]:text-leaf-600',
-  info: 'border-pine-200 [&_.ico]:text-pine-600',
-  error: 'border-alert-600/40 [&_.ico]:text-alert-600',
+  success: '[&_.ico]:text-leaf-500',
+  info: '[&_.ico]:text-terra-600',
+  error: '[&_.ico]:text-alert-600',
 }
 
 export function Toaster() {
@@ -60,13 +60,13 @@ export function Toaster() {
           <div
             key={t.id}
             className={cn(
-              'pointer-events-auto flex w-full max-w-md animate-fade-up items-start gap-3 rounded-2xl border-2 bg-white p-4 shadow-lift',
+              'pointer-events-auto flex w-full max-w-md animate-fade-up items-start gap-3 rounded-[1.25rem] bg-white/95 p-4 shadow-lift ring-1 ring-black/5 backdrop-blur-xl',
               TONE[t.tone],
             )}
           >
             <Icon aria-hidden className="ico mt-0.5 size-6 shrink-0" />
             <div className="flex-1">
-              <p className="font-bold">{t.title}</p>
+              <p className="font-semibold">{t.title}</p>
               {t.text && <p className="text-sm text-ink-soft">{t.text}</p>}
             </div>
             <button

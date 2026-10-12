@@ -32,8 +32,8 @@ export function FavoriteButton({ larId, larNome, variant = 'overlay', className 
         onClick={onClick}
         aria-pressed={saved}
         className={cn(
-          'inline-flex min-h-12 items-center gap-2 rounded-2xl border-2 px-5 font-bold transition-colors',
-          saved ? 'border-terra-300 bg-terra-50 text-terra-700' : 'border-line-strong bg-white text-ink hover:border-terra-400 hover:text-terra-700',
+          'inline-flex min-h-12 items-center gap-2 rounded-full px-5 font-medium transition-colors',
+          saved ? 'bg-alert-50 text-alert-700' : 'bg-sand text-ink hover:bg-sand-deep',
           className,
         )}
       >
@@ -50,12 +50,12 @@ export function FavoriteButton({ larId, larNome, variant = 'overlay', className 
       aria-pressed={saved}
       aria-label={saved ? `Remover ${larNome} dos favoritos` : `Guardar ${larNome} nos favoritos`}
       className={cn(
-        'relative z-10 flex size-12 items-center justify-center rounded-full bg-white/95 shadow-soft backdrop-blur transition-transform hover:scale-105',
-        saved ? 'text-terra-600' : 'text-ink-soft hover:text-terra-600',
+        'relative z-10 flex size-11 items-center justify-center rounded-full bg-white/85 shadow-soft backdrop-blur-md transition-transform duration-200 hover:scale-105',
+        saved ? 'text-alert-600' : 'text-ink hover:text-alert-600',
         className,
       )}
     >
-      <Heart aria-hidden className="size-6" fill={saved ? 'currentColor' : 'none'} strokeWidth={2.2} />
+      <Heart aria-hidden className="size-5" fill={saved ? 'currentColor' : 'none'} strokeWidth={2} />
     </button>
   )
 }

@@ -10,7 +10,7 @@ export function Stars({ value, size = 'sm', className }: { value: number; size?:
         const fill = Math.max(0, Math.min(1, value - i))
         return (
           <span key={i} className={cn('relative inline-block', px)}>
-            <Star aria-hidden className={cn('absolute inset-0 text-sun-200', px)} fill="currentColor" strokeWidth={0} />
+            <Star aria-hidden className={cn('absolute inset-0 text-sand-deep', px)} fill="currentColor" strokeWidth={0} />
             <span className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
               <Star aria-hidden className={cn('text-sun-500', px)} fill="currentColor" strokeWidth={0} />
             </span>

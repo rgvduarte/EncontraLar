@@ -58,19 +58,19 @@ function NotificationBell() {
         aria-expanded={open}
         aria-haspopup="true"
         aria-label={unread ? `Notificações: ${unread} por ler` : 'Notificações'}
-        className="relative flex size-12 items-center justify-center rounded-full text-ink hover:bg-sand"
+        className="relative flex size-11 items-center justify-center rounded-full text-ink hover:bg-sand"
       >
-        <Bell aria-hidden className="size-6" />
+        <Bell aria-hidden className="size-5.5" />
         {unread > 0 && (
-          <span className="absolute top-1.5 right-1.5 flex min-w-5 items-center justify-center rounded-full bg-terra-600 px-1 text-xs font-bold text-white ring-2 ring-cream">
+          <span className="absolute top-1 right-1 flex min-w-5 items-center justify-center rounded-full bg-alert-600 px-1 text-xs font-semibold text-white ring-2 ring-white">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-[1100] mt-2 w-[min(26rem,calc(100vw-2rem))] animate-fade-up overflow-hidden rounded-3xl border border-line bg-white shadow-lift">
+        <div className="absolute right-0 z-[1100] mt-2 w-[min(26rem,calc(100vw-2rem))] animate-fade-up overflow-hidden rounded-[1.5rem] bg-white shadow-lift ring-1 ring-black/5">
           <div className="flex items-center justify-between border-b border-line px-5 py-3">
-            <p className="text-lg font-bold">Notificações</p>
+            <p className="text-lg font-semibold">Notificações</p>
             {unread > 0 && (
               <button type="button" onClick={() => marcarTodasLidas()} className="link min-h-10 text-sm">
                 Marcar todas como lidas
@@ -92,20 +92,20 @@ function NotificationBell() {
                         setOpen(false)
                         if (n.link) navigate(n.link)
                       }}
-                      className={cn('flex w-full gap-3 px-5 py-4 text-left hover:bg-sand/60', !n.lida && 'bg-pine-50/60')}
+                      className={cn('flex w-full gap-3 px-5 py-4 text-left hover:bg-sand/70', !n.lida && 'bg-terra-50/50')}
                     >
                       <span
                         className={cn(
                           'mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full',
-                          n.tipo === 'vaga' ? 'bg-leaf-100 text-leaf-700' : 'bg-sand text-pine-700',
+                          n.tipo === 'vaga' ? 'bg-leaf-50 text-leaf-600' : 'bg-sand text-ink-soft',
                         )}
                       >
                         <Icon aria-hidden className="size-5" />
                       </span>
                       <span className="flex-1">
                         <span className="flex items-start justify-between gap-2">
-                          <span className="font-bold">{n.titulo}</span>
-                          {!n.lida && <span className="mt-2 size-2.5 shrink-0 rounded-full bg-terra-500" aria-label="Por ler" />}
+                          <span className="font-semibold">{n.titulo}</span>
+                          {!n.lida && <span className="mt-2 size-2.5 shrink-0 rounded-full bg-terra-600" aria-label="Por ler" />}
                         </span>
                         <span className="mt-0.5 block text-sm text-ink-soft">{n.texto}</span>
                         <span className="mt-1 block text-xs text-ink-mute">{tempoRelativo(n.criadaEm)}</span>
@@ -138,26 +138,26 @@ function UserMenu() {
         aria-haspopup="true"
         className="flex min-h-12 items-center gap-2 rounded-full py-1 pr-3 pl-1 hover:bg-sand"
       >
-        <Avatar nome={user.nome} className="size-10" />
-        <span className="hidden max-w-36 truncate font-bold xl:inline">{user.nome.split(' ')[0]}</span>
+        <Avatar nome={user.nome} className="size-8 text-xs" />
+        <span className="hidden max-w-36 truncate text-[0.9375rem] font-medium xl:inline">{user.nome.split(' ')[0]}</span>
         <ChevronDown aria-hidden className="size-5 text-ink-soft" />
         <span className="sr-only">Menu da conta</span>
       </button>
       {open && (
-        <div className="absolute right-0 z-[1100] mt-2 w-72 animate-fade-up overflow-hidden rounded-3xl border border-line bg-white p-2 shadow-lift">
+        <div className="absolute right-0 z-[1100] mt-2 w-72 animate-fade-up overflow-hidden rounded-[1.5rem] bg-white p-2 shadow-lift ring-1 ring-black/5">
           <div className="px-4 py-3">
-            <p className="font-bold">{user.nome}</p>
+            <p className="font-semibold">{user.nome}</p>
             <p className="truncate text-sm text-ink-soft">{user.email}</p>
-            <p className="mt-1 text-xs font-bold tracking-wide text-pine-700 uppercase">
+            <p className="mt-1 text-xs font-medium text-ink-mute">
               {user.role === 'lar' ? 'Conta de instituição' : 'Conta de família'}
             </p>
           </div>
           <Link
             to={painelPath(user.role)}
             onClick={() => setOpen(false)}
-            className="flex min-h-12 items-center gap-3 rounded-2xl px-4 font-semibold hover:bg-sand"
+            className="flex min-h-12 items-center gap-3 rounded-2xl px-4 font-medium hover:bg-sand"
           >
-            <LayoutDashboard aria-hidden className="size-5 text-pine-700" />
+            <LayoutDashboard aria-hidden className="size-5 text-ink-mute" />
             {user.role === 'lar' ? 'Painel da instituição' : 'O meu painel'}
           </Link>
           <button
@@ -167,9 +167,9 @@ function UserMenu() {
               setOpen(false)
               navigate('/')
             }}
-            className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-4 font-semibold hover:bg-sand"
+            className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-4 font-medium hover:bg-sand"
           >
-            <LogOut aria-hidden className="size-5 text-pine-700" />
+            <LogOut aria-hidden className="size-5 text-ink-mute" />
             Terminar sessão
           </button>
         </div>
@@ -187,8 +187,8 @@ export function Header() {
   useEffect(() => setMobileOpen(false), [location.pathname])
 
   return (
-    <header className="sticky top-0 z-[1000] border-b border-line bg-cream/92 backdrop-blur-md">
-      <div className="container-page flex h-18 items-center justify-between gap-4">
+    <header className="sticky top-0 z-[1000] border-b border-black/[0.06] bg-white/80 backdrop-blur-xl backdrop-saturate-150">
+      <div className="container-page flex h-16 items-center justify-between gap-4">
         <Link to="/" className="rounded-xl" aria-label="EncontraLar — página inicial">
           <Logo />
         </Link>
@@ -201,8 +201,8 @@ export function Header() {
                   to={n.to}
                   className={({ isActive }) =>
                     cn(
-                      'flex min-h-12 items-center rounded-full px-3.5 font-semibold whitespace-nowrap transition-colors',
-                      isActive ? 'bg-pine-50 text-pine-800' : 'text-ink-soft hover:bg-sand hover:text-ink',
+                      'flex min-h-11 items-center px-3.5 text-[0.9375rem] whitespace-nowrap transition-colors',
+                      isActive ? 'font-medium text-ink' : 'text-ink-mute hover:text-ink',
                     )
                   }
                 >
@@ -223,34 +223,34 @@ export function Header() {
             </>
           ) : (
             <div className="hidden items-center gap-2 xl:flex">
-              <Link to="/para-lares" className="mr-2 inline-flex min-h-12 items-center gap-2 rounded-full px-3 text-sm font-semibold text-ink-soft hover:text-pine-800">
-                <Building2 aria-hidden className="size-4.5" /> Sou uma instituição
+              <Link to="/para-lares" className="inline-flex min-h-11 items-center gap-1.5 px-3 text-[0.9375rem] text-ink-mute hover:text-ink">
+                <Building2 aria-hidden className="size-4" /> Sou uma instituição
               </Link>
-              <ButtonLink to="/entrar" variant="ghost">
+              <Link to="/entrar" className="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-ink-mute hover:text-ink">
                 Entrar
-              </ButtonLink>
-              <ButtonLink to="/registar" variant="primary">
+              </Link>
+              <ButtonLink to="/registar" variant="primary" size="sm" className="ml-1">
                 Criar conta
               </ButtonLink>
             </div>
           )}
           <button
             type="button"
-            className="flex size-12 items-center justify-center rounded-full text-ink hover:bg-sand xl:hidden"
+            className="flex size-11 items-center justify-center rounded-full text-ink hover:bg-sand xl:hidden"
             aria-expanded={mobileOpen}
             aria-controls="menu-movel"
             onClick={() => setMobileOpen((o) => !o)}
           >
-            {mobileOpen ? <X aria-hidden className="size-7" /> : <Menu aria-hidden className="size-7" />}
+            {mobileOpen ? <X aria-hidden className="size-6" /> : <Menu aria-hidden className="size-6" />}
             <span className="sr-only">{mobileOpen ? 'Fechar menu' : 'Abrir menu'}</span>
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div id="menu-movel" className="animate-fade-in border-t border-line bg-cream xl:hidden">
-          <nav aria-label="Principal (móvel)" className="container-page flex flex-col gap-1 py-4">
-            <Link to="/pesquisa" className={buttonClasses('primary', 'lg', 'mb-2 w-full')}>
+        <div id="menu-movel" className="animate-fade-in border-t border-black/[0.06] bg-white xl:hidden">
+          <nav aria-label="Principal (móvel)" className="container-page flex flex-col gap-1 py-6">
+            <Link to="/pesquisa" className={buttonClasses('primary', 'lg', 'mb-4 w-full')}>
               <Search aria-hidden className="size-5" /> Procurar no mapa de vagas
             </Link>
             {NAV.map((n) => (
@@ -258,7 +258,7 @@ export function Header() {
                 key={n.to}
                 to={n.to}
                 className={({ isActive }) =>
-                  cn('flex min-h-14 items-center rounded-2xl px-4 text-lg font-semibold', isActive ? 'bg-pine-50 text-pine-800' : 'hover:bg-sand')
+                  cn('flex min-h-14 items-center border-b border-line px-1 text-2xl font-semibold tracking-tight', isActive ? 'text-ink' : 'text-ink-soft hover:text-ink')
                 }
               >
                 {n.label}
@@ -267,7 +267,7 @@ export function Header() {
             <NavLink
               to="/para-lares"
               className={({ isActive }) =>
-                cn('flex min-h-14 items-center gap-3 rounded-2xl px-4 text-lg font-semibold', isActive ? 'bg-pine-50 text-pine-800' : 'text-ink-soft hover:bg-sand')
+                cn('flex min-h-14 items-center gap-3 px-1 text-lg font-medium', isActive ? 'text-ink' : 'text-ink-mute hover:text-ink')
               }
             >
               <Building2 aria-hidden className="size-5" /> Sou uma instituição

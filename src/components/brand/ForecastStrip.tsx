@@ -1,17 +1,16 @@
-import { CloudSun, Sun, Cloud } from 'lucide-react'
 import { MESES_CURTOS, MESES_LONGOS, pct } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
-/**
- * "Previsão do tempo" das vagas: probabilidade acumulada de conseguir vaga até ao fim de cada mês.
- * Metáfora familiar para o público (todos leem a previsão do tempo).
- */
-function nivel(p: number) {
-  if (p >= 0.66) return { Icon: Sun, cor: 'text-leaf-700', fundo: 'bg-leaf-500', claro: 'bg-leaf-50', txt: 'Provável' }
-  if (p >= 0.33) return { Icon: CloudSun, cor: 'text-sun-800', fundo: 'bg-sun-400', claro: 'bg-sun-50', txt: 'Possível' }
-  return { Icon: Cloud, cor: 'text-dusk-700', fundo: 'bg-dusk-500', claro: 'bg-dusk-50', txt: 'Pouco provável' }
+function cor(p: number) {
+  if (p >= 0.66) return { barra: 'bg-leaf-500', txt: 'text-leaf-700', rotulo: 'Provável' }
+  if (p >= 0.33) return { barra: 'bg-sun-500', txt: 'text-sun-800', rotulo: 'Possível' }
+  return { barra: 'bg-dusk-500', txt: 'text-ink-mute', rotulo: 'Pouco provável' }
 }
 
+/**
+ * Previsão de vaga mês a mês: probabilidade acumulada de conseguir vaga até ao fim de cada mês.
+ * full = colunas com percentagem grande e barra fina; mini = barras pequenas para listas.
+ */
 export function ForecastStrip({
   curva,
   meses = 6,
@@ -23,7 +22,6 @@ export function ForecastStrip({
   curva: number[]
   meses?: number
   inicio?: Date
-  /** full = cartões com ícone; mini = barras pequenas para cartões de lista */
   variant?: 'full' | 'mini'
   className?: string
 }) {
@@ -35,35 +33,31 @@ export function ForecastStrip({
 
   if (variant === 'mini') {
     return (
-      <div className={cn('flex items-end gap-1', className)} role="img" aria-label={`Probabilidade acumulada de vaga — ${resumo}`}>
-        {dados.map((d, i) => {
-          const n = nivel(d.p)
-          return (
-            <span key={i} className="flex flex-col items-center gap-0.5">
-              <span className={cn('relative block h-6 w-4 overflow-hidden rounded-[5px]', n.claro)}>
-                <span className={cn('absolute inset-x-0 bottom-0 rounded-[5px]', n.fundo)} style={{ height: `${Math.max(8, d.p * 100)}%` }} />
-              </span>
-              <span aria-hidden className="text-[11px] leading-none text-ink-mute">{MESES_CURTOS[d.mes]![0]!.toUpperCase()}</span>
-            </span>
-          )
-        })}
+      <div className={cn('flex items-end gap-[3px]', className)} role="img" aria-label={`Probabilidade acumulada de vaga — ${resumo}`}>
+        {dados.map((d, i) => (
+          <span key={i} className="relative block h-5 w-1.5 overflow-hidden rounded-full bg-sand-deep">
+            <span className={cn('absolute inset-x-0 bottom-0 rounded-full', cor(d.p).barra)} style={{ height: `${Math.max(10, d.p * 100)}%` }} />
+          </span>
+        ))}
       </div>
     )
   }
 
   return (
-    <ol className={cn('grid grid-cols-3 gap-2 sm:grid-cols-6', className)} aria-label="Previsão de vaga por mês (probabilidade acumulada)">
+    <ol className={cn('grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6', className)} aria-label="Probabilidade de conseguir vaga, mês a mês">
       {dados.map((d, i) => {
-        const n = nivel(d.p)
+        const c = cor(d.p)
         return (
-          <li key={i} className={cn('flex flex-col items-center gap-1 rounded-2xl border border-line px-2 py-3 text-center', n.claro)}>
-            <span className="text-sm font-bold text-ink capitalize">
+          <li key={i} className="flex flex-col gap-2">
+            <span className="text-sm text-ink-mute capitalize">
               {MESES_CURTOS[d.mes]}
-              {d.mes === 0 && <span className="font-normal text-ink-mute"> {String(d.ano).slice(2)}</span>}
+              {d.mes === 0 && ` ${String(d.ano).slice(2)}`}
             </span>
-            <n.Icon aria-hidden className={cn('size-8', n.cor)} strokeWidth={1.8} />
-            <span className={cn('font-display text-2xl leading-none font-semibold', n.cor)}>{pct(d.p)}</span>
-            <span className="text-xs text-ink-soft">{n.txt}</span>
+            <span className={cn('text-3xl font-semibold tracking-tight tabular', d.p >= 0.33 ? 'text-ink' : 'text-ink-mute')}>{pct(d.p)}</span>
+            <span className="h-1 overflow-hidden rounded-full bg-sand-deep">
+              <span className={cn('block h-full rounded-full', c.barra)} style={{ width: `${Math.max(3, d.p * 100)}%` }} />
+            </span>
+            <span className={cn('text-xs', c.txt)}>{c.rotulo}</span>
           </li>
         )
       })}

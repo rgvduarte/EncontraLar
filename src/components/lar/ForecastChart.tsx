@@ -66,15 +66,15 @@ export function ForecastChart({
           {/* grelha */}
           {ticks.map((t) => (
             <g key={t}>
-              <line x1={padL} x2={width - padR} y1={y(t)} y2={y(t)} stroke="#e2d8c8" strokeDasharray={t === 0 ? undefined : '3 5'} />
-              <text x={padL - 10} y={y(t)} dy="0.35em" textAnchor="end" fontSize="13" fill="#5f6966">
+              <line x1={padL} x2={width - padR} y1={y(t)} y2={y(t)} stroke="#e5e5ea" strokeDasharray={t === 0 ? undefined : '3 5'} />
+              <text x={padL - 10} y={y(t)} dy="0.35em" textAnchor="end" fontSize="13" fill="#6e6e73">
                 {t}
               </text>
             </g>
           ))}
           {probabilidade &&
             [0, 0.5, 1].map((p) => (
-              <text key={p} x={width - padR + 8} y={yP(p)} dy="0.35em" fontSize="13" fill="#993827">
+              <text key={p} x={width - padR + 8} y={yP(p)} dy="0.35em" fontSize="13" fill="#248a3d">
                 {pct(p)}
               </text>
             ))}
@@ -98,22 +98,22 @@ export function ForecastChart({
                 onBlur={() => setActive(null)}
                 className="cursor-default outline-none"
               >
-                <rect x={cx - step / 2} y={padT} width={step} height={plotH} fill={isActive ? '#eef6f4' : 'transparent'} rx="8" />
+                <rect x={cx - step / 2} y={padT} width={step} height={plotH} fill={isActive ? '#f5f5f7' : 'transparent'} rx="8" />
                 <rect
                   x={cx - barW / 2}
                   y={y(d.esperado)}
                   width={barW}
                   height={Math.max(1, y(0) - y(d.esperado))}
                   rx={Math.min(8, barW / 3)}
-                  fill={isActive ? '#1d564e' : d.mes === 11 || d.mes <= 1 ? '#2f7f72' : '#4f9b8c'}
+                  fill={isActive ? '#0071e3' : d.mes === 11 || d.mes <= 1 ? '#84b9ff' : '#b8d6ff'}
                 />
-                <line x1={cx} x2={cx} y1={y(d.max)} y2={y(d.min)} stroke="#1c2a29" strokeOpacity="0.45" strokeWidth="1.5" />
-                <line x1={cx - 5} x2={cx + 5} y1={y(d.max)} y2={y(d.max)} stroke="#1c2a29" strokeOpacity="0.45" strokeWidth="1.5" />
-                <text x={cx} y={height - padB + 20} textAnchor="middle" fontSize="13" fontWeight={isActive ? 700 : 400} fill="#46524f">
+                <line x1={cx} x2={cx} y1={y(d.max)} y2={y(d.min)} stroke="#1d1d1f" strokeOpacity="0.35" strokeWidth="1.5" />
+                <line x1={cx - 5} x2={cx + 5} y1={y(d.max)} y2={y(d.max)} stroke="#1d1d1f" strokeOpacity="0.35" strokeWidth="1.5" />
+                <text x={cx} y={height - padB + 20} textAnchor="middle" fontSize="13" fontWeight={isActive ? 700 : 400} fill="#424245">
                   {compact && i % 2 === 1 ? '' : MESES_CURTOS[d.mes]}
                 </text>
                 {(d.mes === 0 || i === 0) && (
-                  <text x={cx} y={height - padB + 37} textAnchor="middle" fontSize="12" fill="#5f6966">
+                  <text x={cx} y={height - padB + 37} textAnchor="middle" fontSize="12" fill="#6e6e73">
                     {d.ano}
                   </text>
                 )}
@@ -123,9 +123,9 @@ export function ForecastChart({
 
           {linePath && (
             <g pointerEvents="none">
-              <path d={linePath} fill="none" stroke="#d25b3b" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+              <path d={linePath} fill="none" stroke="#248a3d" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
               {probabilidade!.map((p, i) => (
-                <circle key={i} cx={padL + step * i + step / 2} cy={yP(p)} r={active === i ? 5.5 : 3.5} fill="#fff" stroke="#d25b3b" strokeWidth="2.5" />
+                <circle key={i} cx={padL + step * i + step / 2} cy={yP(p)} r={active === i ? 5.5 : 3.5} fill="#fff" stroke="#248a3d" strokeWidth="2.5" />
               ))}
             </g>
           )}
@@ -134,30 +134,30 @@ export function ForecastChart({
         {act && active != null && (
           <div
             aria-hidden
-            className="pointer-events-none absolute z-10 w-max max-w-56 -translate-x-1/2 rounded-xl border border-line bg-white px-3 py-2 text-sm shadow-lift"
+            className="pointer-events-none absolute z-10 w-max max-w-56 -translate-x-1/2 rounded-xl bg-white/95 px-3 py-2 text-sm shadow-lift ring-1 ring-black/5 backdrop-blur"
             style={{ left: Math.min(width - 90, Math.max(90, padL + step * active + step / 2)), top: 0 }}
           >
-            <p className="font-bold capitalize">
+            <p className="font-semibold capitalize">
               {MESES_LONGOS[act.mes]} {act.ano}
             </p>
             <p>
               ≈ {fmt1(act.esperado)} vagas <span className="text-ink-mute">({act.min}–{act.max})</span>
             </p>
-            {probabilidade && <p className="text-terra-700">Prob. acumulada: {pct(probabilidade[active] ?? 0)}</p>}
+            {probabilidade && <p className="text-leaf-700">Prob. acumulada: {pct(probabilidade[active] ?? 0)}</p>}
           </div>
         )}
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-soft">
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-mute">
         <span className="inline-flex items-center gap-2">
-          <span aria-hidden className="inline-block size-3 rounded bg-pine-500" /> Vagas libertadas (estimativa)
+          <span aria-hidden className="inline-block size-3 rounded bg-terra-200" /> Vagas libertadas (estimativa)
         </span>
         <span className="inline-flex items-center gap-2">
           <span aria-hidden className="inline-block h-3 w-0.5 bg-ink/50" /> Intervalo provável (80%)
         </span>
         {probabilidade && (
           <span className="inline-flex items-center gap-2">
-            <span aria-hidden className="inline-block h-0.5 w-4 rounded bg-terra-500" /> Probabilidade de conseguir vaga
+            <span aria-hidden className="inline-block h-0.5 w-4 rounded bg-leaf-600" /> Probabilidade de conseguir vaga
           </span>
         )}
       </div>

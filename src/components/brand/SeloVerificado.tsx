@@ -1,32 +1,19 @@
-import { useId } from 'react'
 import { cn } from '@/lib/cn'
 
-/** Selo circular de verificação, estilo carimbo. */
-export function SeloVerificado({ ano, size = 112, className, tone = 'pine' }: { ano?: number; size?: number; className?: string; tone?: 'pine' | 'light' }) {
-  const id = useId().replace(/[^a-zA-Z0-9]/g, '')
-  const c = tone === 'pine' ? '#1d564e' : '#ffffff'
-  const txt = `VERIFICADO · ENCONTRALAR · ${ano ?? new Date().getFullYear()} · `
+/** Selo de verificação minimalista (roseta com visto). */
+export function SeloVerificado({ ano, size = 64, className, tone = 'pine' }: { ano?: number; size?: number; className?: string; tone?: 'pine' | 'light' }) {
+  const fill = tone === 'light' ? '#ffffff' : '#0071e3'
+  const check = tone === 'light' ? '#0071e3' : '#ffffff'
+  // roseta de 12 pontas suaves
+  const pts = Array.from({ length: 24 }, (_, i) => {
+    const r = i % 2 ? 44 : 50
+    const a = (Math.PI * 2 * i) / 24 - Math.PI / 2
+    return `${(60 + r * Math.cos(a)).toFixed(1)},${(60 + r * Math.sin(a)).toFixed(1)}`
+  }).join(' ')
   return (
-    <svg
-      viewBox="0 0 120 120"
-      width={size}
-      height={size}
-      role="img"
-      aria-label={`Instituição verificada pelo EncontraLar${ano ? ` em ${ano}` : ''}`}
-      className={cn('shrink-0 -rotate-12', className)}
-    >
-      <defs>
-        <path id={`c${id}`} d="M60 60 m-43 0 a43 43 0 1 1 86 0 a43 43 0 1 1 -86 0" />
-      </defs>
-      <circle cx="60" cy="60" r="57" fill="none" stroke={c} strokeWidth="2.5" />
-      <circle cx="60" cy="60" r="51" fill="none" stroke={c} strokeWidth="1" strokeDasharray="2 3" />
-      <circle cx="60" cy="60" r="32" fill={c} fillOpacity={tone === 'pine' ? 0.08 : 0.15} stroke={c} strokeWidth="1.5" />
-      <text fill={c} fontSize="10" fontWeight="700" fontFamily="'Atkinson Hyperlegible', sans-serif">
-        <textPath href={`#c${id}`} startOffset="0" textLength="266" lengthAdjust="spacing">
-          {txt}
-        </textPath>
-      </text>
-      <path d="M46 61 l9 9 l19 -21" fill="none" stroke={c} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 120 120" width={size} height={size} role="img" aria-label={`Instituição verificada pelo EncontraLar${ano ? ` em ${ano}` : ''}`} className={cn('shrink-0', className)}>
+      <polygon points={pts} fill={fill} strokeLinejoin="round" stroke={fill} strokeWidth="6" />
+      <path d="M41 61 l13 13 l26 -28" fill="none" stroke={check} strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }

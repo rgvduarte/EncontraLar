@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { FlaskConical, X } from 'lucide-react'
+import { ChevronRight, X } from 'lucide-react'
 
 const KEY = 'encontralar:banner-fechado'
 
@@ -14,16 +14,14 @@ export function PrototypeBanner() {
   })
   if (closed) return null
   return (
-    <div className="bg-terra-50 text-terra-900">
-      <div className="container-page flex min-h-11 items-center justify-between gap-3 py-1.5 text-sm">
-        <p className="flex items-center gap-2">
-          <FlaskConical aria-hidden className="size-4 shrink-0" />
-          <span>
-            <strong>Protótipo de demonstração</strong> — instituições e dados fictícios.{' '}
-            <Link to="/sobre" className="font-bold underline underline-offset-2">
-              Saber mais
-            </Link>
-          </span>
+    <div className="bg-sand text-ink-soft">
+      <div className="container-page relative flex min-h-10 items-center justify-center py-1.5 pr-10 text-center text-sm">
+        <p>
+          Protótipo de demonstração — instituições e dados fictícios.{' '}
+          <Link to="/sobre" className="inline-flex items-center text-terra-600 hover:underline">
+            Saber mais
+            <ChevronRight aria-hidden className="size-4" />
+          </Link>
         </p>
         <button
           type="button"
@@ -36,9 +34,9 @@ export function PrototypeBanner() {
             }
           }}
           aria-label="Fechar aviso de protótipo"
-          className="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-terra-100"
+          className="absolute top-1/2 right-2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-ink-mute hover:bg-sand-deep sm:right-4"
         >
-          <X aria-hidden className="size-5" />
+          <X aria-hidden className="size-4" />
         </button>
       </div>
     </div>
