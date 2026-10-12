@@ -94,7 +94,7 @@ export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; ac
 
   return (
     <div className="flex flex-1 flex-col">
-      <section className="container-narrow pt-16 pb-14 text-center sm:pt-24 sm:pb-20">
+      <section className="container-narrow pt-14 pb-14 text-center sm:pt-20 sm:pb-20">
         <div className="animate-fade-up">
           <p className="eyebrow">Sugestões</p>
           <h1
@@ -104,7 +104,7 @@ export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; ac
           >
             {titulo}
           </h1>
-          <ProfileSentence r={r} onAlterar={acoes.irPara} className="mx-auto mt-7 max-w-3xl" />
+          <ProfileSentence r={r} onAlterar={acoes.irPara} className="mx-auto mt-7 max-w-4xl" />
           <p className="mt-3 text-sm text-ink-mute">Toque numa parte sublinhada para a alterar.</p>
         </div>
         <div className="mt-8 flex animate-fade-up flex-wrap items-center justify-center gap-3 [animation-delay:100ms]">

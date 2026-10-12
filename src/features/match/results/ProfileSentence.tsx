@@ -10,7 +10,7 @@ import type { Rascunho } from '../model'
 export function ProfileSentence({ r, onAlterar, className }: { r: Rascunho; onAlterar: (passo: number) => void; className?: string }) {
   const partes = partesResumo(r)
   return (
-    <p className={cn('text-lg leading-relaxed text-ink-mute sm:text-2xl sm:leading-relaxed', className)}>
+    <p className={cn('text-lg leading-relaxed text-ink-mute sm:text-xl sm:leading-relaxed lg:text-2xl lg:leading-relaxed', className)}>
       {partes.map((pt, i) => (
         <Fragment key={pt.passo}>
           <a
