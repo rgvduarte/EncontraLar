@@ -5,9 +5,14 @@ import { ForecastStrip } from '@/components/brand/ForecastStrip'
 import { ForecastChart } from '@/components/lar/ForecastChart'
 import { FATOR_LISTA_EFETIVA } from '@/lib/forecast'
 import { num, pct, plural } from '@/lib/format'
-import { Secao, Subtitulo } from '../Secao'
+import { Bloco, Secao, Subtitulo } from '../Secao'
+import { GraficoAnimado, PalavrasAcesas, TiraAnimada } from '../motion'
 import { esperaEstimada, type DadosLar } from '../helpers'
 
+/**
+ * O "clímax" da ficha: a frase-chave acende-se palavra a palavra, os meses da tira entram um a um com a
+ * barra a encher, e o gráfico de 12 meses desenha-se (barras crescem, linha da probabilidade traça-se).
+ */
 export function PrevisaoSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
   const { est, previsao, unidade } = dados
   const totalSaidas = lar.historicoSaidas.reduce((a, b) => a + b, 0)
@@ -23,34 +28,44 @@ export function PrevisaoSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
       }
       intro={`A probabilidade de lhe ser proposta ${unidade.um === 'lugar' ? 'um lugar' : 'uma vaga'} até ao fim de cada mês, se pedir hoje.`}
     >
-      <p className="max-w-2xl text-2xl leading-snug font-semibold tracking-tight text-ink sm:text-3xl" aria-live="polite">
-        {est.imediata ? (
-          <>Há lugar livre neste momento, sem ninguém à sua frente.</>
-        ) : (
-          <>
-            {pct(est.p90)} em 3{'\u00a0'}meses. {pct(est.p180)} em{'\u00a0'}6.{' '}
-            <span className="text-ink-mute">Espera estimada de {esperaEstimada(est)}.</span>
-          </>
-        )}
-      </p>
+      <PalavrasAcesas
+        aria-live="polite"
+        className="max-w-2xl text-[1.75rem] leading-[1.2] font-semibold tracking-tight text-ink sm:text-4xl sm:leading-[1.15]"
+        partes={
+          est.imediata
+            ? [{ texto: 'Há lugar livre neste momento, sem ninguém à sua frente.' }]
+            : [
+                { texto: `${pct(est.p90)} em 3\u00a0meses. ${pct(est.p180)} em\u00a06.` },
+                { texto: `Espera estimada de ${esperaEstimada(est)}.`, className: 'text-ink-mute' },
+              ]
+        }
+      />
 
-      {!est.imediata && <ForecastStrip curva={est.curva} meses={6} className="mt-12" />}
+      {!est.imediata && (
+        <TiraAnimada className="mt-12">
+          <ForecastStrip curva={est.curva} meses={6} />
+        </TiraAnimada>
+      )}
 
       <div className="mt-16">
-        <Subtitulo>Nos próximos 12 meses</Subtitulo>
-        <p className="mt-2 mb-6 text-ink-mute">
-          {est.imediata
-            ? `${unidade.varios[0]!.toUpperCase()}${unidade.varios.slice(1)} que deverão libertar-se em cada mês, além dos que já estão livres.`
-            : `Barras: ${unidade.varios} que deverão libertar-se em cada mês. Linha: a sua probabilidade acumulada.`}
-        </p>
-        <ForecastChart
-          data={previsao}
-          probabilidade={est.imediata ? undefined : est.curva}
-          caption={`Previsão de ${unidade.varios} em ${lar.nome} nos próximos 12 meses`}
-        />
+        <Bloco>
+          <Subtitulo>Nos próximos 12 meses</Subtitulo>
+          <p className="mt-2 mb-6 text-ink-mute">
+            {est.imediata
+              ? `${unidade.varios[0]!.toUpperCase()}${unidade.varios.slice(1)} que deverão libertar-se em cada mês, além dos que já estão livres.`
+              : `Barras: ${unidade.varios} que deverão libertar-se em cada mês. Linha: a sua probabilidade acumulada.`}
+          </p>
+        </Bloco>
+        <GraficoAnimado>
+          <ForecastChart
+            data={previsao}
+            probabilidade={est.imediata ? undefined : est.curva}
+            caption={`Previsão de ${unidade.varios} em ${lar.nome} nos próximos 12 meses`}
+          />
+        </GraficoAnimado>
       </div>
 
-      <div className="mt-16 max-w-[65ch]">
+      <Bloco className="mt-16 max-w-[65ch]">
         <Subtitulo>Como calculamos</Subtitulo>
         <p className="mt-3 text-lg leading-relaxed text-ink-soft">
           {lar.historicoSaidas.length
@@ -67,7 +82,7 @@ export function PrevisaoSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
           Saber mais sobre a previsão
           <ChevronRight aria-hidden className="size-5" />
         </Link>
-      </div>
+      </Bloco>
     </Secao>
   )
 }

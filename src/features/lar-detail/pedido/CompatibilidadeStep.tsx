@@ -7,6 +7,7 @@ import { Meter } from '@/components/ui/misc'
 import { avaliarLar, scoreLabel, type TipoRazao } from '@/lib/matching'
 import { ESTADO_CANDIDATURA_LABEL, GRAU_LABEL } from '@/lib/labels'
 import { cn } from '@/lib/cn'
+import { Cascata, Contador } from '../motion'
 
 const RAZAO: Record<TipoRazao, { Icon: typeof Check; cor: string; sr: string }> = {
   ok: { Icon: Check, cor: 'text-leaf-600', sr: 'Cumpre:' },
@@ -86,12 +87,17 @@ export function CompatibilidadeStep({
       <section aria-labelledby="compat-titulo" aria-live="polite">
         <p className="text-sm text-ink-mute">Compatibilidade com {primeiroNome}</p>
         <div className="mt-1 flex flex-wrap items-baseline gap-x-4">
-          <p className="text-6xl font-semibold tracking-tight text-ink tabular">{m.score}%</p>
+          {/* o número conta e a barra enche ao abrir o passo (e ao trocar de pessoa) */}
+          <p key={perfil.id} className="text-6xl font-semibold tracking-tight text-ink tabular">
+            <Contador valor={m.score} />%
+          </p>
           <h3 id="compat-titulo" className="text-xl font-semibold tracking-tight">
             {scoreLabel(m.score)}
           </h3>
         </div>
-        <Meter value={m.score / 100} tone={tom} label={`Compatibilidade: ${m.score}%`} className="mt-4" />
+        <div key={perfil.id} className="ficha-medidor mt-4">
+          <Meter value={m.score / 100} tone={tom} label={`Compatibilidade: ${m.score}%`} />
+        </div>
 
         {!m.compativel && (
           <p role="alert" className="mt-5 text-alert-700">
@@ -100,7 +106,7 @@ export function CompatibilidadeStep({
           </p>
         )}
 
-        <ul className="mt-6 border-t border-line">
+        <Cascata key={perfil.id} passo={60} className="mt-6 border-t border-line">
           {m.razoes.map((r) => {
             const { Icon, cor, sr } = RAZAO[r.tipo]
             return (
@@ -113,7 +119,7 @@ export function CompatibilidadeStep({
               </li>
             )
           })}
-        </ul>
+        </Cascata>
         <p className="mt-4 text-sm text-ink-mute">
           Calculada com o perfil: cuidados, orçamento, distância, vagas e preferências.{' '}
           <Link to="/familia/perfil" className="text-terra-600 hover:underline">

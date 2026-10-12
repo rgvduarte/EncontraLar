@@ -1,7 +1,7 @@
 import type { Cuidado } from '@/types'
-import { ChoiceCard } from '@/components/ui/Field'
 import { CUIDADO_LABEL, CUIDADOS_CRITICOS, CUIDADOS_ORDEM } from '@/lib/labels'
 import type { StepProps } from './types'
+import { ChoiceTile } from '../controls/ChoiceTile'
 
 /** Uma linha para os cuidados que não são evidentes pelo nome. */
 const DESCRICAO: Partial<Record<Cuidado, string>> = {
@@ -42,8 +42,8 @@ export function StepSaude({ r, patch, erros, p }: StepProps) {
 
   return (
     <div className="flex flex-col gap-12">
-      <div>
-        <ChoiceCard
+      <div data-campo>
+        <ChoiceTile
           type="checkbox"
           checked={r.semNecessidades}
           onChange={() => patch({ semNecessidades: !r.semNecessidades, necessidades: r.semNecessidades ? r.necessidades : [] })}
@@ -71,7 +71,7 @@ export function StepSaude({ r, patch, erros, p }: StepProps) {
           )}
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {g.itens.map((c) => (
-              <ChoiceCard
+              <ChoiceTile
                 key={c}
                 type="checkbox"
                 checked={r.necessidades.includes(c)}

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { Lar } from '@/types'
 import { previsaoMensal } from '@/lib/forecast'
 import { MESES_LONGOS } from '@/lib/format'
+import { Numero } from '../shared/motion'
 import { MoreLink, dec1 } from '../shared/ui'
 
 /** Próximos 3 meses: lugares que deverão libertar-se, mês a mês. */
@@ -20,7 +21,7 @@ export function MiniForecast({ lar }: { lar: Lar }) {
             <dt className="text-sm text-ink-mute capitalize">{MESES_LONGOS[m.mes]}</dt>
             <dd className="mt-1 text-3xl leading-none font-semibold tracking-tight">
               <span className="sr-only">cerca de </span>
-              {dec1(m.esperado)}
+              <Numero value={m.esperado} format={dec1} duration={1000} />
             </dd>
             <dd className="mt-1.5 text-xs text-ink-mute">
               entre {m.min} e {m.max}

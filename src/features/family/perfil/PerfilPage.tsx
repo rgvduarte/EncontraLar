@@ -44,11 +44,15 @@ export default function PerfilPage() {
       <div className="flex flex-col gap-5">
         {perfis.length > 0 && (
           <nav aria-label="Pessoas de quem cuida">
-            <ul className="flex flex-wrap gap-2">
+            {/* telemóvel: faixa deslizável (sem quebrar linha); desktop: pílulas em linha */}
+            <ul
+              data-lenis-prevent
+              className="-mx-5 flex snap-x gap-2 overflow-x-auto overscroll-x-contain px-5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+            >
               {perfis.map((p) => {
                 const ativo = selecionado?.id === p.id
                 return (
-                  <li key={p.id}>
+                  <li key={p.id} className="shrink-0 snap-start">
                     <button
                       type="button"
                       aria-current={ativo ? 'true' : undefined}
@@ -64,7 +68,7 @@ export default function PerfilPage() {
                   </li>
                 )
               })}
-              <li>
+              <li className="shrink-0 snap-start">
                 <button type="button" aria-current={novo ? 'true' : undefined} onClick={() => !novo && escolher({ tipo: 'novo' })} className={pillCls(novo)}>
                   <span aria-hidden className={cn('flex size-11 items-center justify-center rounded-full', novo ? 'bg-white/15' : 'bg-white')}>
                     <Plus className="size-5" />

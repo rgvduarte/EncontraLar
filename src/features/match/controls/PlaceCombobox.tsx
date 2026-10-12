@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Search, X } from 'lucide-react'
 import type { Lar } from '@/types'
 import { LUGARES, type LugarPesquisa } from '@/data/localidades'
@@ -12,6 +12,22 @@ import { deTerra } from '../language'
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 
 const LIMITE = 8
+/** Altura máxima da lista (px) e mínima quando o espaço aperta (≈ 3 opções). */
+const LISTA_MAX = 384
+const LISTA_MIN = 156
+
+/**
+ * Espaço livre por baixo do campo até ao que tapar o fundo do ecrã: o teclado (visualViewport)
+ * ou a barra Voltar/Continuar fixa no telemóvel.
+ */
+function espacoAbaixo(input: HTMLElement): number {
+  const vv = window.visualViewport
+  const fundoVisivel = (vv?.offsetTop ?? 0) + (vv?.height ?? window.innerHeight)
+  const campo = input.getBoundingClientRect()
+  const barra = document.querySelector('[data-match-barra]')?.getBoundingClientRect()
+  const limite = barra && barra.height > 0 && barra.top > campo.bottom ? Math.min(fundoVisivel, barra.top) : fundoVisivel
+  return Math.floor(limite - campo.bottom - 20)
+}
 
 /** Pesquisa de localidade (combobox ARIA 1.2 com lista): setas, Enter para escolher, Esc para fechar. */
 export function PlaceCombobox({
@@ -72,6 +88,26 @@ export function PlaceCombobox({
   }, [query, peso])
 
   const mostrar = open && opcoes.length > 0
+
+  // a lista cabe sempre acima do teclado e da barra de ação (recalcula quando o teclado abre ou a página mexe)
+  const [maxLista, setMaxLista] = useState(LISTA_MAX)
+  useEffect(() => {
+    if (!mostrar) return
+    const medir = () => {
+      const el = inputRef.current
+      if (el) setMaxLista(Math.max(LISTA_MIN, Math.min(LISTA_MAX, espacoAbaixo(el))))
+    }
+    medir()
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', medir)
+    vv?.addEventListener('scroll', medir)
+    window.addEventListener('scroll', medir, { passive: true })
+    return () => {
+      vv?.removeEventListener('resize', medir)
+      vv?.removeEventListener('scroll', medir)
+      window.removeEventListener('scroll', medir)
+    }
+  }, [mostrar])
   const semResultados = open && query.trim().length > 1 && opcoes.length === 0 && value?.label !== query
 
   const escolher = (l: LugarPesquisa) => {
@@ -108,7 +144,7 @@ export function PlaceCombobox({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div data-campo className="flex flex-col gap-2">
       <label htmlFor={id} className="text-base font-medium text-ink">
         {label}
       </label>
@@ -125,6 +161,8 @@ export function PlaceCombobox({
           type="text"
           role="combobox"
           autoComplete="off"
+          autoCapitalize="words"
+          enterKeyHint="done"
           spellCheck={false}
           aria-autocomplete="list"
           aria-expanded={mostrar}
@@ -167,8 +205,10 @@ export function PlaceCombobox({
           id={listId}
           role="listbox"
           aria-label="Localidades sugeridas"
+          data-lenis-prevent
+          style={{ maxHeight: maxLista }}
           className={cn(
-            'absolute inset-x-0 top-full z-30 mt-2 max-h-[min(24rem,45dvh)] animate-fade-in overflow-y-auto rounded-2xl bg-white p-1.5 shadow-lift ring-1 ring-black/5',
+            'absolute inset-x-0 top-full z-30 mt-2 origin-top animate-pop-in overflow-y-auto overscroll-contain rounded-2xl bg-white p-1.5 shadow-lift ring-1 ring-black/5',
             !mostrar && 'hidden',
           )}
         >
@@ -184,7 +224,7 @@ export function PlaceCombobox({
                 onClick={() => escolher(o)}
                 onMouseMove={() => setAtivo(i)}
                 className={cn(
-                  'flex min-h-13 cursor-pointer items-center gap-3 rounded-xl px-3.5 py-2 text-ink',
+                  'flex min-h-13 cursor-pointer items-center gap-3 rounded-xl px-3.5 py-2 text-ink transition-colors duration-150 active:bg-sand-deep',
                   i === ativo && 'bg-sand',
                 )}
               >

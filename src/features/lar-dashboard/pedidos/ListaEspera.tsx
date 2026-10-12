@@ -1,19 +1,24 @@
-import type { ReactNode } from 'react'
+import { useRef } from 'react'
 import type { Candidatura, Lar } from '@/types'
+import { Reveal } from '@/components/motion'
 import { estimarEspera, vagasLivres } from '@/lib/forecast'
 import { duracaoHumana, tempoRelativo } from '@/lib/format'
 import { QUARTO_CURTO } from '@/lib/labels'
-import { linhasListaEspera, nomeQuarto, quartoParaPropor, verificarCompatibilidade } from '../lib/derive'
+import { linhasListaEspera, nomeQuarto, quartoParaPropor, verificarCompatibilidade, type LinhaLista } from '../lib/derive'
+import { Rolo, useFlip, usePresenca } from '../shared/motion'
 import { perfilLinha, procuraTexto, relacaoTexto } from '../shared/pedidoBits'
 import { MoreLink } from '../shared/ui'
 import { PedidoAcoes } from './PedidoAcoes'
 import { EstadoTag, PropostaLinha } from './partes'
 
-const Posicao = ({ children }: { children: ReactNode }) => (
+/** Número da posição — rola quando a pessoa sobe na lista (alguém acima saiu). */
+const Posicao = ({ n }: { n: number }) => (
   <span aria-hidden className="text-3xl leading-none font-semibold tracking-tight whitespace-nowrap text-ink tabular">
-    {children}
+    <Rolo value={n} />
   </span>
 )
+
+const chaveLinha = (l: LinhaLista) => (l.tipo === 'online' ? l.c.id : `f-${l.de}`)
 
 function LinhaOnline({
   c,
@@ -23,6 +28,8 @@ function LinhaOnline({
   verHref,
   sugerido,
   haSugestao,
+  leaving,
+  indice,
 }: {
   c: Candidatura
   posicao: number
@@ -32,6 +39,8 @@ function LinhaOnline({
   sugerido: boolean
   /** há outra linha sugerida — esta fica com a ação discreta */
   haSugestao: boolean
+  leaving: boolean
+  indice: number
 }) {
   const p = c.perfil
   const inscrito = [...c.historico].reverse().find((h) => h.estado === 'lista_espera')?.data ?? c.atualizadaEm
@@ -41,8 +50,9 @@ function LinhaOnline({
   const outroQuarto = q && !q.preferido && p.quarto !== 'indiferente' ? `Pediu ${nomeQuarto(p.quarto)}; o lugar livre é em ${nomeQuarto(q.tipo)}` : null
   const espera = est.imediata ? 'Há lugar livre para esta posição' : est.diasMediana != null ? `Espera estimada: ${duracaoHumana(est.diasMediana)}` : 'Espera estimada: mais de 2 anos'
   return (
-    <li className="grid grid-cols-[3.5rem_1fr] gap-x-4 py-8 sm:grid-cols-[4.5rem_1fr]">
-      <Posicao>{posicao}</Posicao>
+    <li data-flip={c.id} data-leaving={leaving} inert={leaving} aria-hidden={leaving || undefined} className="bg-white">
+      <Reveal variant="fade" delay={Math.min(indice, 4) * 70} duration={800} className="grid grid-cols-[3.5rem_1fr] gap-x-4 py-8 sm:grid-cols-[4.5rem_1fr]">
+      <Posicao n={posicao} />
       <div className="min-w-0">
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <div className="min-w-0">
@@ -68,20 +78,26 @@ function LinhaOnline({
         </p>
         <PropostaLinha c={c} agora={agora} className="mt-4" />
         <div className="mt-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-          <PedidoAcoes c={c} lar={lar} agora={agora} apenasPrincipal discreto={haSugestao && !sugerido} />
+          <PedidoAcoes c={c} lar={lar} agora={agora} apenasPrincipal discreto={haSugestao && !sugerido} verHref={verHref} className="max-sm:w-full" />
           <MoreLink to={verHref} aria-label={`Ver o pedido de ${p.nome}`}>
             Ver pedido
           </MoreLink>
         </div>
       </div>
+      </Reveal>
     </li>
   )
 }
 
-function LinhaFora({ de, ate }: { de: number; ate: number }) {
+function LinhaFora({ de, ate, leaving }: { de: number; ate: number; leaving: boolean }) {
   const n = ate - de + 1
   return (
-    <li className="grid grid-cols-[3.5rem_1fr] items-baseline gap-x-4 py-6 sm:grid-cols-[4.5rem_1fr]">
+    <li
+      data-flip={`f-${de}`}
+      data-leaving={leaving}
+      aria-hidden={leaving || undefined}
+      className="grid grid-cols-[3.5rem_1fr] items-baseline gap-x-4 bg-white py-6 sm:grid-cols-[4.5rem_1fr]"
+    >
       <span aria-hidden className="text-xl leading-none font-semibold whitespace-nowrap text-ink-mute tabular">
         {n === 1 ? de : `${de}–${ate}`}
       </span>
@@ -93,9 +109,15 @@ function LinhaFora({ de, ate }: { de: number; ate: number }) {
   )
 }
 
-/** A lista de espera pela ordem, com as posições que não passaram pela plataforma. */
+/**
+ * A lista de espera pela ordem, com as posições que não passaram pela plataforma.
+ * Quando alguém sai, a linha desvanece, as de baixo sobem (FLIP) e os números de posição rolam.
+ */
 export function ListaEspera({ lar, cands, agora, verHref }: { lar: Lar; cands: Candidatura[]; agora: number; verHref: (c: Candidatura) => string }) {
   const linhas = linhasListaEspera(lar, cands)
+  const lista = useRef<HTMLOListElement>(null)
+  const presentes = usePresenca(linhas, chaveLinha)
+  useFlip(lista, presentes)
   const online = linhas.filter((l) => l.tipo === 'online').length
   const total = linhas.reduce((s, l) => s + (l.tipo === 'online' ? 1 : l.ate - l.de + 1), 0)
   const livresTipos = lar.quartos.filter((q) => q.livres > 0)
@@ -131,13 +153,24 @@ export function ListaEspera({ lar, cands, agora, verHref }: { lar: Lar; cands: C
           )}
         </p>
       )}
-      {linhas.length > 0 && (
-        <ol className="mt-4 divide-y divide-line border-t border-line">
-          {linhas.map((l) =>
+      {presentes.length > 0 && (
+        <ol ref={lista} className="relative mt-4 divide-y divide-line border-t border-line">
+          {presentes.map(({ key, item: l, leaving }, i) =>
             l.tipo === 'online' ? (
-              <LinhaOnline key={l.c.id} c={l.c} posicao={l.posicao} lar={lar} agora={agora} verHref={verHref(l.c)} sugerido={l.c.id === sugeridoId} haSugestao={sugeridoId != null} />
+              <LinhaOnline
+                key={key}
+                c={l.c}
+                posicao={l.posicao}
+                lar={lar}
+                agora={agora}
+                verHref={verHref(l.c)}
+                sugerido={l.c.id === sugeridoId}
+                haSugestao={sugeridoId != null}
+                leaving={leaving}
+                indice={i}
+              />
             ) : (
-              <LinhaFora key={`f-${l.de}`} de={l.de} ate={l.ate} />
+              <LinhaFora key={key} de={l.de} ate={l.ate} leaving={leaving} />
             ),
           )}
         </ol>

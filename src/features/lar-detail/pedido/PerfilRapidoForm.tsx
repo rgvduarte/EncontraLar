@@ -91,8 +91,8 @@ export function PerfilRapidoForm({ lar, formId, onGuardado }: { lar: Lar; formId
   return (
     <form id={formId} onSubmit={submeter} noValidate className="flex flex-col gap-7">
       <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
-        <InputField label="Nome" autoComplete="off" value={nome} onChange={(e) => setNome(e.target.value)} error={erros.nome} />
-        <InputField label="Idade" type="number" inputMode="numeric" min={50} max={115} value={idade} onChange={(e) => setIdade(e.target.value)} error={erros.idade} />
+        <InputField label="Nome" autoComplete="off" autoCapitalize="words" enterKeyHint="next" value={nome} onChange={(e) => setNome(e.target.value)} error={erros.nome} />
+        <InputField label="Idade" type="number" inputMode="numeric" enterKeyHint="next" min={50} max={115} value={idade} onChange={(e) => setIdade(e.target.value)} error={erros.idade} />
       </div>
       <SelectField label="Quem é para si?" value={relacao} onChange={(e) => setRelacao(e.target.value)}>
         {RELACOES.map((r) => (
@@ -144,6 +144,7 @@ export function PerfilRapidoForm({ lar, formId, onGuardado }: { lar: Lar; formId
           label="Orçamento mensal máximo (€)"
           type="number"
           inputMode="numeric"
+          enterKeyHint="done"
           min={200}
           step={50}
           value={orcamento}
@@ -159,7 +160,7 @@ export function PerfilRapidoForm({ lar, formId, onGuardado }: { lar: Lar; formId
         </SelectField>
       </div>
 
-      <details className="group border-t border-line pt-2">
+      <details className="ficha-desdobrar group border-t border-line pt-2">
         <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between text-terra-600 [&::-webkit-details-marker]:hidden">
           Mais preferências (opcional)
           <ChevronDown aria-hidden className="size-5 transition-transform duration-200 group-open:rotate-180" />

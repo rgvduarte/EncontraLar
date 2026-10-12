@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Printer } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Checkbox } from '@/components/ui/Field'
-import { Meter } from '@/components/ui/misc'
+import { cn } from '@/lib/cn'
 import { GuideSection } from './Section'
 
 const VISITA_STORAGE_KEY = 'encontralar:guia-visita'
@@ -94,6 +94,39 @@ const PRINT_CSS = `
   @page { margin: 14mm; }
 }`
 
+/**
+ * O visto entra com uma pequena mola (escala) e a caixa "carrega" ao tocar — tudo em transform/opacity.
+ * (Estilos aplicados por fora ao Checkbox partilhado, sem o alterar.)
+ */
+const CHECK_ANIMADO = cn(
+  '[&_svg]:scale-50 [&_svg]:transition-[opacity,scale] [&_svg]:duration-300 [&_svg]:ease-[cubic-bezier(.34,1.56,.64,1)]',
+  '[&_input:checked~svg]:scale-100',
+  '[&_input]:transition-[background-color,border-color,scale] [&_input]:duration-200 active:[&_input]:scale-90',
+)
+
+/** Barra de progresso da lista: enche com transform (scaleX), fica verde quando a lista está completa. */
+function Progresso({ value, completo }: { value: number; completo: boolean }) {
+  const pct = Math.round(Math.max(0, Math.min(1, value)) * 100)
+  return (
+    <div
+      role="meter"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={pct}
+      aria-label="Progresso da lista da visita"
+      className="h-2 w-full overflow-hidden rounded-full bg-sand-deep"
+    >
+      <div
+        className={cn(
+          'h-full origin-left rounded-full transition-[transform,background-color] duration-700 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
+          completo ? 'bg-leaf-500' : 'bg-ink',
+        )}
+        style={{ transform: `scaleX(${pct / 100})` }}
+      />
+    </div>
+  )
+}
+
 export function Visita() {
   const [feitos, setFeitos] = useState<string[]>(ler)
   const set = useMemo(() => new Set(feitos), [feitos])
@@ -145,11 +178,18 @@ export function Visita() {
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between print:hidden">
           <div className="flex min-w-0 flex-1 flex-col gap-2.5 sm:max-w-xs">
             <p aria-live="polite" className="text-base text-ink-mute">
-              <span className="text-2xl font-semibold text-ink tabular">{n}</span> de {TOTAL} verificados
+              <span className="relative inline-block min-w-[1.5ch] text-2xl font-semibold text-ink tabular">
+                {/* o número "salta" quando muda */}
+                <span key={n} className="inline-block animate-pop-in">
+                  {n}
+                </span>
+              </span>{' '}
+              de {TOTAL} verificados
+              {n === TOTAL && <span className="ml-2 inline-block animate-pop-in font-medium text-leaf-700">· lista completa</span>}
             </p>
-            <Meter value={n / TOTAL} tone={n === TOTAL ? 'leaf' : 'pine'} label="Progresso da lista da visita" />
+            <Progresso value={n / TOTAL} completo={n === TOTAL} />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
             <Button variant="primary" onClick={imprimir} icon={<Printer aria-hidden />}>
               Imprimir
             </Button>
@@ -169,7 +209,7 @@ export function Visita() {
                   label={it.t}
                   checked={set.has(it.id)}
                   onChange={() => alternar(it.id)}
-                  className="[&_span.text-base]:font-normal print:min-h-0 print:py-1"
+                  className={cn('[&_span.text-base]:font-normal print:min-h-0 print:py-1', CHECK_ANIMADO)}
                 />
               ))}
             </fieldset>

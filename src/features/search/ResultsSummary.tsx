@@ -4,6 +4,7 @@ import { CUIDADO_LABEL, GRAU_LABEL, NATUREZA_LABEL } from '@/lib/labels'
 import { euro, num } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { DispDot, QuietSelect } from './Chips'
+import { useNumeroAnimado, usePresenca } from './motion'
 import type { SearchModel } from './useSearch'
 import {
   centroDe,
@@ -67,6 +68,14 @@ interface Props {
   desktop: boolean
 }
 
+const chavePilula = (p: Pilula) => p.id
+
+/** Número que desliza entre valores quando os filtros mudam (visual; o leitor de ecrã lê o valor final). */
+function Contagem({ n }: { n: number }) {
+  const v = useNumeroAnimado(n)
+  return <span className="font-medium text-ink tabular">{num(v)}</span>
+}
+
 /** Cabeçalho calmo da lista: título, "N instituições · M com vaga agora", ordenação e filtros removíveis. */
 export function ResultsSummary({ model, desktop }: Props) {
   const { state, resultados, comVaga, update } = model
@@ -74,25 +83,34 @@ export function ResultsSummary({ model, desktop }: Props) {
   const centro = centroDe(state.local)
   const visiveis: Grupo[] = desktop ? ['mais'] : ['tipo', 'max', 'mais']
   const pilulas = pilulasAtivas(state).filter((p) => visiveis.includes(p.grupo))
+  const presentes = usePresenca(pilulas, chavePilula)
   const total = contarTodosFiltros(state) + (state.q ? 1 : 0)
+  const titulo = tituloPesquisa(state)
+  const resumo = `${num(n)} ${n === 1 ? 'instituição' : 'instituições'}${n > 0 ? `, ${num(comVaga)} com vaga agora` : ''}`
 
   return (
     <header className="px-5 pt-6 sm:px-6 lg:px-8 lg:pt-8">
-      <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">{tituloPesquisa(state)}</h1>
+      {/* o título muda com a zona/tipo: troca suave (chave = texto) */}
+      <h1 key={titulo} className="el-swap text-[1.75rem] leading-tight font-semibold tracking-tight text-ink sm:text-2xl">
+        {titulo}
+      </h1>
       <div className="mt-1 flex flex-wrap items-center justify-between gap-x-4">
-        <p aria-live="polite" aria-atomic="true" className="text-base text-ink-mute">
-          <span className="font-medium text-ink tabular">{num(n)}</span> {n === 1 ? 'instituição' : 'instituições'}
+        <p aria-hidden className="text-base text-ink-mute">
+          <Contagem n={n} /> {n === 1 ? 'instituição' : 'instituições'}
           {n > 0 && (
             <>
-              <span aria-hidden> · </span>
+              <span> · </span>
               <span className="inline-flex items-baseline gap-1.5">
                 <DispDot disp="disponivel" className="size-2.5 self-center" />
                 <span>
-                  <span className="font-medium text-ink tabular">{num(comVaga)}</span> com vaga agora
+                  <Contagem n={comVaga} /> com vaga agora
                 </span>
               </span>
             </>
           )}
+        </p>
+        <p className="sr-only" aria-live="polite" aria-atomic="true">
+          {resumo}
         </p>
         {n > 1 && (
           <QuietSelect
@@ -110,18 +128,30 @@ export function ResultsSummary({ model, desktop }: Props) {
         )}
       </div>
 
-      {(pilulas.length > 0 || (total >= 2 && n > 0)) && (
-        <div className="mt-1 flex flex-wrap items-center gap-x-2">
+      {(presentes.length > 0 || (total >= 2 && n > 0)) && (
+        // telemóvel: uma só linha deslizante (com encaixe) de ponta a ponta; desktop: quebra de linha
+        <div
+          data-lenis-prevent
+          className={cn(
+            'mt-1 flex items-center gap-x-2',
+            desktop
+              ? 'flex-wrap'
+              : '-mx-5 snap-x snap-mandatory scroll-px-5 overflow-x-auto overscroll-x-contain px-5 [mask-image:linear-gradient(to_right,transparent,#000_1.25rem,#000_calc(100%-2rem),transparent)] [scrollbar-width:none] sm:-mx-6 sm:scroll-px-6 sm:px-6 [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 [&>*]:snap-start',
+          )}
+        >
           {pilulas.length > 0 && <span className="sr-only">Filtros ativos:</span>}
-          {pilulas.map((p) => (
+          {presentes.map(({ key, item: p, saindo }) => (
             <button
-              key={p.id}
+              key={key}
               type="button"
               onClick={() => update(p.patch)}
               aria-label={`Retirar filtro: ${p.texto}`}
-              className="group inline-flex min-h-12 items-center rounded-full"
+              aria-hidden={saindo || undefined}
+              tabIndex={saindo ? -1 : undefined}
+              data-saindo={saindo || undefined}
+              className="el-pill group inline-flex min-h-12 items-center rounded-full"
             >
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-sand py-1.5 pr-2.5 pl-3.5 text-sm text-ink transition-colors duration-200 group-hover:bg-sand-deep">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-sand py-1.5 pr-2.5 pl-3.5 text-sm text-ink transition-[background-color,scale] duration-200 group-hover:bg-sand-deep group-active:scale-[0.95]">
                 <span className="max-w-[16rem] truncate">{p.texto}</span>
                 <X aria-hidden className="size-4 text-ink-mute" />
               </span>
@@ -131,7 +161,7 @@ export function ResultsSummary({ model, desktop }: Props) {
             <button
               type="button"
               onClick={() => update({ ...FILTROS_VAZIOS })}
-              className={cn('inline-flex min-h-12 items-center px-2 text-sm font-medium text-terra-600 hover:underline', pilulas.length === 0 && '-ml-2')}
+              className={cn('el-pill inline-flex min-h-12 items-center px-2 text-sm font-medium whitespace-nowrap text-terra-600 hover:underline', presentes.length === 0 && '-ml-2')}
             >
               Limpar filtros
             </button>

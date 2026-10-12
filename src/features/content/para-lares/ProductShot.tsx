@@ -11,6 +11,8 @@ import { euro, plural, tempoRelativo } from '@/lib/format'
 import { QUARTO_CURTO, QUARTO_LABEL } from '@/lib/labels'
 import { LogoMark } from '@/components/layout/Logo'
 import { ForecastChart } from '@/components/lar/ForecastChart'
+import { useMediaQuery } from '@/lib/hooks'
+import { ScrollZoom } from '@/components/motion'
 import { cn } from '@/lib/cn'
 import { familiasAAvisar, type Ensaio } from './ensaio'
 
@@ -69,11 +71,15 @@ function Nota({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
 
 export function ProductShot({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
   const previsao = useMemo(() => previsaoMensal(base, 6), [base])
+  // desktop: a notificação flutua dentro da moldura (e cresce com ela); telemóvel: logo por baixo
+  const desktop = useMediaQuery('(min-width: 1024px)')
+  const nota = <Nota base={base} ensaio={ensaio} />
 
   return (
     <figure className="relative">
       <figcaption className="mb-4 text-center text-sm text-ink-mute">Experimente: é o painel verdadeiro, em modo de ensaio. Nada é gravado.</figcaption>
-      <div className="rounded-[2rem] bg-sand p-2 sm:p-5 lg:p-8 lg:pb-28">
+      {/* o "zoom de produto": a moldura cresce e perde arredondamento ao entrar no ecrã */}
+      <ScrollZoom from={0.86} radiusFrom={64} radiusTo={32} className="relative bg-sand p-2 sm:p-5 lg:p-8 lg:pb-28">
         <div className="overflow-hidden rounded-[1.5rem] bg-white shadow-card">
           <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4 sm:px-7">
             <div className="flex min-w-0 items-center gap-3">
@@ -116,10 +122,9 @@ export function ProductShot({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
             </div>
           </div>
         </div>
-      </div>
-      <div className="relative z-10 mx-auto -mt-5 w-[min(24rem,calc(100%-1.5rem))] lg:absolute lg:bottom-7 lg:left-1/2 lg:mt-0 lg:-translate-x-1/2">
-        <Nota base={base} ensaio={ensaio} />
-      </div>
+        {desktop && <div className="absolute bottom-7 left-1/2 z-10 w-[24rem] -translate-x-1/2">{nota}</div>}
+      </ScrollZoom>
+      {!desktop && <div className="relative z-10 mx-auto -mt-5 w-[min(24rem,calc(100%-1.5rem))]">{nota}</div>}
     </figure>
   )
 }

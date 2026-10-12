@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { ChevronRight } from 'lucide-react'
 import type { Lar, User } from '@/types'
-import { Button } from '@/components/ui/Button'
+import { Button, TextLink } from '@/components/ui/Button'
 import { Switch } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/misc'
 import { toast } from '@/components/ui/Toast'
-import { Reveal } from '@/components/ui/Reveal'
+import { Reveal, useLenis } from '@/components/motion'
 import { PESOS, recomendar, type MatchResult } from '@/lib/matching'
 import { vagasLivres } from '@/lib/forecast'
 import { plural } from '@/lib/format'
@@ -20,7 +20,9 @@ import { RankedItem } from './RankedItem'
 import { DiagnosisCard } from './DiagnosisCard'
 import { SavePanel } from './SavePanel'
 import { ResultsStats } from './ResultsStats'
+import { SaveBar } from './SaveBar'
 import { urlPesquisa } from './searchLink'
+import { scrollPara } from '../motion'
 
 const PAGINA = 8
 
@@ -70,10 +72,14 @@ export function ResultsView({
   const [limite, setLimite] = useState(PAGINA)
   const [confirmar, setConfirmar] = useState(false)
   const h1 = useRef<HTMLHeadingElement>(null)
+  const resumoRef = useRef<HTMLDivElement>(null)
+  const lenis = useLenis()
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'auto' })
+    // chega das perguntas: começa no topo sem animação (o título entra com a sua própria coreografia)
+    scrollPara(lenis, 0, { instant: true })
     h1.current?.focus({ preventScroll: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao chegar
   }, [])
 
   // sem sessão: o rascunho fica disponível para o painel depois do registo (contrato em docs/DESIGN.md)
@@ -91,6 +97,7 @@ export function ResultsView({
   if (!perfil) return null
 
   const n = boas.length
+  const guardado = (id: string) => acoes.patch({ id })
   const aplicar = (a: Ajuste) => {
     if (a.passo != null) return acoes.irPara(a.passo)
     if (a.patch) {
@@ -119,30 +126,34 @@ export function ResultsView({
 
   return (
     <div className="flex flex-1 flex-col">
-      <section className="container-narrow pt-14 pb-14 text-center sm:pt-20 sm:pb-20">
-        <div className="animate-fade-up">
-          <p className="eyebrow">Sugestões</p>
-          <h1
-            ref={h1}
-            tabIndex={-1}
-            className="mx-auto mt-3 max-w-3xl font-display text-[2.5rem] leading-[1.06] font-semibold text-ink outline-none sm:text-5xl lg:text-6xl"
-          >
-            {titulo}
-          </h1>
-          <ProfileSentence r={r} onAlterar={acoes.irPara} className="mx-auto mt-7 max-w-4xl" />
-          <p className="mt-3 text-sm text-ink-mute">Toque numa parte sublinhada para a alterar.</p>
-        </div>
-        <div className="mt-8 flex animate-fade-up flex-wrap items-center justify-center gap-3 [animation-delay:100ms]">
-          <Button variant="subtle" onClick={() => acoes.irPara(0)}>
-            Rever respostas
-          </Button>
-          <Button variant="ghost" onClick={() => setConfirmar(true)}>
-            Recomeçar
-          </Button>
-        </div>
-      </section>
+      <div ref={resumoRef}>
+        <section className="container-narrow pt-12 pb-12 text-center sm:pt-20 sm:pb-20">
+          <Reveal variant="blur" duration={1100}>
+            <p className="eyebrow">Sugestões</p>
+            <h1
+              ref={h1}
+              tabIndex={-1}
+              className="mx-auto mt-3 max-w-3xl font-display text-[2.5rem] leading-[1.06] font-semibold text-ink outline-none sm:text-5xl lg:text-6xl"
+            >
+              {titulo}
+            </h1>
+          </Reveal>
+          <Reveal delay={160} duration={900}>
+            <ProfileSentence r={r} onAlterar={acoes.irPara} className="mx-auto mt-7 max-w-4xl" />
+            <p className="mt-3 text-sm text-ink-mute">Toque numa parte sublinhada para a alterar.</p>
+          </Reveal>
+          <Reveal delay={280} duration={900} className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Button variant="subtle" onClick={() => acoes.irPara(0)}>
+              Rever respostas
+            </Button>
+            <Button variant="ghost" onClick={() => setConfirmar(true)}>
+              Recomeçar
+            </Button>
+          </Reveal>
+        </section>
 
-      {n > 0 && <ResultsStats n={n} comVaga={comVaga} melhor={boas[0]?.score ?? null} />}
+        {n > 0 && <ResultsStats n={n} comVaga={comVaga} melhor={boas[0]?.score ?? null} />}
+      </div>
       <p className="sr-only" aria-live="polite">
         {n
           ? `${plural(n, 'sugestão compatível', 'sugestões compatíveis')}, ${comVaga} com vaga agora.`
@@ -154,7 +165,7 @@ export function ResultsView({
         className={n > 0 ? 'container-narrow py-16 sm:py-24' : 'container-narrow pb-16 sm:pb-24'}
       >
         {n === 0 && (
-          <div className="mb-16">
+          <Reveal variant="scale" delay={200} className="mb-16">
             {diag ? (
               <DiagnosisCard d={diag} variante="vazio" onAjuste={aplicar} />
             ) : (
@@ -164,21 +175,24 @@ export function ResultsView({
                 action={<Button onClick={() => acoes.irPara(3)}>Rever a zona</Button>}
               />
             )}
-          </div>
+          </Reveal>
         )}
 
-        {diag && diagAntes && <DiagnosisCard d={diag} variante="poucas" onAjuste={aplicar} className="mb-16" />}
+        {diag && diagAntes && (
+          <Reveal variant="scale" className="mb-16">
+            <DiagnosisCard d={diag} variante="poucas" onAjuste={aplicar} />
+          </Reveal>
+        )}
 
         {n > 0 && (
-          <div>
+          <Reveal>
             <h2 id="lista-t" className="text-3xl font-semibold text-ink sm:text-4xl">
               Por ordem de compatibilidade
             </h2>
-            <Link to={urlPesquisa(r)} className="link mt-1 inline-flex min-h-12 items-center gap-0.5 text-base">
+            <TextLink to={urlPesquisa(r)} className="mt-1 min-h-12 text-base">
               Ver no mapa de vagas
-              <ChevronRight aria-hidden className="size-4" />
-            </Link>
-          </div>
+            </TextLink>
+          </Reveal>
         )}
         {n === 0 && (
           <h2 id="lista-t" className="sr-only">
@@ -195,13 +209,17 @@ export function ResultsView({
         )}
         {n > limite && (
           <div className="mt-6 text-center">
-            <Button variant="subtle" size="lg" onClick={() => setLimite((l) => l + PAGINA)}>
+            <Button variant="subtle" size="lg" onClick={() => setLimite((l) => l + PAGINA)} className="w-full sm:w-auto">
               Mostrar mais {Math.min(PAGINA, n - limite)}
             </Button>
           </div>
         )}
 
-        {diag && n > 0 && !diagAntes && <DiagnosisCard d={diag} variante="poucas" onAjuste={aplicar} className="mt-12" />}
+        {diag && n > 0 && !diagAntes && (
+          <Reveal variant="scale" className="mt-12">
+            <DiagnosisCard d={diag} variante="poucas" onAjuste={aplicar} />
+          </Reveal>
+        )}
 
         {outras.length > 0 && (
           <Switch
@@ -214,7 +232,10 @@ export function ResultsView({
         )}
 
         {verOutras && outras.length > 0 && (
-          <section aria-labelledby="outras-t" className="mt-16 animate-fade-in">
+          <section
+            aria-labelledby="outras-t"
+            className="mt-16 transition-[opacity,translate] duration-700 ease-[cubic-bezier(.16,1,.3,1)] starting:translate-y-4 starting:opacity-0"
+          >
             <h2 id="outras-t" className="text-2xl font-semibold text-ink sm:text-3xl">
               Pouco compatíveis
             </h2>
@@ -229,8 +250,8 @@ export function ResultsView({
       </section>
 
       <div className="container-narrow pb-16 sm:pb-24">
-        <Reveal>
-          <SavePanel key={JSON.stringify({ ...r, id: undefined })} r={r} user={user} onGuardado={(id) => acoes.patch({ id })} />
+        <Reveal variant="scale" duration={1100}>
+          <SavePanel key={JSON.stringify({ ...r, id: undefined })} r={r} user={user} onGuardado={guardado} />
         </Reveal>
         <p className="mx-auto mt-10 max-w-2xl text-center text-sm text-ink-mute">
           Ordenamos por cuidados de saúde ({PESOS.cuidados} pontos), orçamento ({PESOS.orcamento}), distância ({PESOS.distancia}),
@@ -242,6 +263,8 @@ export function ResultsView({
           </Link>
         </p>
       </div>
+
+      <SaveBar r={r} user={user} n={n} onGuardado={guardado} depoisDe={resumoRef} />
 
       <Modal
         open={confirmar}

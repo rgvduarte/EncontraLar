@@ -3,9 +3,13 @@ import type { Lar } from '@/types'
 import type { MatchResult } from '@/lib/matching'
 import { LarCard } from '@/components/lar/LarCard'
 import { cn } from '@/lib/cn'
+import { useEntrada } from '../motion'
 import { WhyPanel } from './WhyPanel'
 
-/** Uma sugestão: o cartão do lar (com a compatibilidade) e a gaveta "Porque sugerimos". */
+/**
+ * Uma sugestão: o cartão do lar (com a compatibilidade) e a gaveta "Porque sugerimos".
+ * Entra ao aparecer no ecrã; as que aparecem juntas (primeira página, "Mostrar mais") entram em cascata.
+ */
 export const RankedItem = memo(function RankedItem({
   lar,
   m,
@@ -19,8 +23,14 @@ export const RankedItem = memo(function RankedItem({
   /** pouco compatível */
   apagado?: boolean
 }) {
+  const entrada = useEntrada<HTMLLIElement>()
   return (
-    <li id={`sugestao-${lar.id}`} className="scroll-mt-24 py-6 first:pt-2 sm:py-8 sm:first:pt-4">
+    <li
+      ref={entrada.ref}
+      id={`sugestao-${lar.id}`}
+      style={entrada.style}
+      className={cn('scroll-mt-24 py-6 first:pt-2 sm:py-8 sm:first:pt-4', entrada.className)}
+    >
       {melhor && <p className="mb-2 px-3 text-sm font-semibold text-terra-600 sm:px-0">Melhor compatibilidade</p>}
       <LarCard
         lar={lar}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { PerfilIdoso, TipoQuarto, Urgencia } from '@/types'
 import { deletePerfil, savePerfil, useLares, type PerfilInput } from '@/lib/store'
 import { Button } from '@/components/ui/Button'
@@ -25,6 +25,7 @@ import { euro } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { pesquisaUrl } from '../shared/data'
 import { ConfirmModal, MoreLink } from '../shared/ui'
+import { Tween, useChangeAnimation } from '../shared/motion'
 import { FormSection, Pill, PillGroup } from './controls'
 import { mesmoPerfil, ORCAMENTO_MAX, ORCAMENTO_MIN, perfilParaInput, perfilVazio, RAIOS_KM, validarPerfil, type ErrosPerfil } from './perfilModel'
 
@@ -64,6 +65,20 @@ export function PerfilForm({
   const [apagar, setApagar] = useState(false)
   const dirty = !mesmoPerfil(form, inicial)
   const contagem = useContagem(form)
+  // a barra de gravação fica fixa (por cima da barra de abas) quando há algo por guardar — e sobe ao aparecer
+  const fixa = dirty || !perfil
+  const barra = useRef<HTMLDivElement>(null)
+  useChangeAnimation(
+    barra,
+    fixa,
+    fixa
+      ? [
+          { opacity: 0, transform: 'translateY(calc(100% + 1.5rem))' },
+          { opacity: 1, transform: 'none' },
+        ]
+      : [{ opacity: 0 }, { opacity: 1 }],
+    { duration: 550 },
+  )
 
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange])
   useEffect(() => {
@@ -279,26 +294,29 @@ export function PerfilForm({
 
       {/* barra de gravação: feedback imediato + ação (fixa ao fundo só quando há algo por guardar) */}
       <div
+        ref={barra}
         className={cn(
-          dirty || !perfil ? 'sticky' : 'relative',
-          'bottom-[var(--tabbar-h,0px)] z-10 -mx-5 mt-10 border-t border-line bg-white/90 px-5 py-3 backdrop-blur-xl',
-          'sm:mx-0 sm:rounded-full sm:border-t-0 sm:py-3 sm:pr-3 sm:pl-7 sm:shadow-card sm:ring-1 sm:ring-line',
+          fixa ? 'sticky shadow-lift' : 'relative',
+          'bottom-[calc(var(--tabbar-h)+0.75rem)] z-20 mt-10 rounded-[1.5rem] bg-white/90 p-3 ring-1 ring-black/[0.06] backdrop-blur-xl backdrop-saturate-150',
+          'sm:rounded-full sm:py-3 sm:pr-3 sm:pl-7',
+          fixa && 'sm:shadow-card',
         )}
       >
-        <div className="flex items-center justify-between gap-4">
-          <p className="min-w-0 text-sm leading-snug text-ink-mute" aria-live="polite">
-            <span className="font-semibold text-ink tabular">{contagem.compativeis}</span> compatíveis ·{' '}
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <p className="min-w-0 px-2 text-sm leading-snug text-ink-mute sm:px-0" aria-live="polite">
+            <Tween value={contagem.compativeis} className="font-semibold text-ink" /> compatíveis ·{' '}
             <span className="whitespace-nowrap">
-              <span className="font-semibold text-ink tabular">{contagem.comVaga}</span> com vaga
+              <Tween value={contagem.comVaga} className="font-semibold text-ink" /> com vaga
             </span>
             <span className="ml-3 hidden sm:inline">
               <MoreLink to={pesquisaUrl(contagem.f)}>Ver no mapa</MoreLink>
             </span>
           </p>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2 sm:flex sm:shrink-0 sm:items-center sm:gap-1">
             {dirty && perfil && (
               <Button
                 variant="ghost"
+                className="max-sm:bg-sand max-sm:text-ink"
                 onClick={() => {
                   setForm(inicial)
                   setErros({})
@@ -307,8 +325,8 @@ export function PerfilForm({
                 Repor
               </Button>
             )}
-            <Button type="submit" disabled={!dirty && Boolean(perfil)}>
-              {perfil ? (dirty ? 'Guardar' : 'Guardado') : 'Criar perfil'}
+            <Button type="submit" disabled={!dirty && Boolean(perfil)} className={cn(!(dirty && perfil) && 'col-span-2')}>
+              {perfil ? (dirty ? 'Guardar alterações' : 'Guardado') : 'Criar perfil'}
             </Button>
           </div>
         </div>

@@ -37,17 +37,19 @@ function Linha({ k, children }: { k: string; children: ReactNode }) {
 }
 
 /** Perfil completo do pedido, com o histórico — abre a partir de ?pedido=<id>. */
-export function PedidoDetailModal({ c, lar, agora, onClose }: { c: Candidatura; lar: Lar; agora: number; onClose: () => void }) {
+export function PedidoDetailModal({ c, lar, agora, open = true, onClose }: { c: Candidatura; lar: Lar; agora: number; open?: boolean; onClose: () => void }) {
   const p = c.perfil
   const ativo = !['aceite', 'recusada', 'cancelada'].includes(c.estado)
   return (
     <Modal
-      open
+      open={open}
       onClose={onClose}
       size="lg"
       title={`${p.nome}, ${p.idade} anos`}
       description={`${relacaoTexto(c)} · recebido a ${dataLonga(c.criadaEm)}`}
-      footer={acoesDoPedido(c, lar, agora).length > 0 || c.estado === 'aceite' ? <PedidoAcoes c={c} lar={lar} agora={agora} className="w-full" /> : undefined}
+      footer={
+        acoesDoPedido(c, lar, agora).length > 0 || c.estado === 'aceite' ? <PedidoAcoes c={c} lar={lar} agora={agora} variante="folha" className="w-full" /> : undefined
+      }
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center gap-3">

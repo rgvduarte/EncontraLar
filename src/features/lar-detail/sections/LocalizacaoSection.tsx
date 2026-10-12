@@ -2,7 +2,9 @@ import { Component, lazy, Suspense, type ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import type { Lar } from '@/types'
 import { Spinner } from '@/components/ui/misc'
+import { Reveal } from '@/components/motion'
 import { Secao } from '../Secao'
+import { Cascata } from '../motion'
 import { telHref } from '../helpers'
 
 const LocationMap = lazy(() => import('./LocationMap'))
@@ -26,6 +28,7 @@ export function LocalizacaoSection({ lar }: { lar: Lar }) {
 
   return (
     <Secao id="ficha-localizacao" rotulo="Localização" titulo="Onde fica">
+      <Reveal variant="scale" duration={1100}>
       <div className="relative h-72 overflow-hidden rounded-[1.75rem] bg-sand sm:h-96 [&_.leaflet-bar]:overflow-hidden [&_.leaflet-bar]:rounded-xl! [&_.leaflet-bar]:border-0! [&_.leaflet-control-attribution]:mr-5! [&_.leaflet-control-attribution]:mb-2! [&_.leaflet-control-attribution]:rounded-full [&_.leaflet-control-attribution]:px-2! [&_.leaflet-control-zoom]:mt-4! [&_.leaflet-control-zoom]:ml-4!">
         <MapaSeguro fallback={<p className="flex h-full items-center justify-center p-6 text-center text-ink-mute">Não foi possível carregar o mapa.</p>}>
           <Suspense
@@ -39,8 +42,9 @@ export function LocalizacaoSection({ lar }: { lar: Lar }) {
           </Suspense>
         </MapaSeguro>
       </div>
+      </Reveal>
 
-      <div className="mt-10 grid gap-10 sm:grid-cols-2">
+      <Cascata as="div" passo={120} className="mt-10 grid gap-10 sm:grid-cols-2">
         <address className="not-italic">
           <p className="text-sm text-ink-mute">Morada</p>
           <p className="mt-1 text-xl font-semibold tracking-tight text-ink">{lar.morada || lar.localidade}</p>
@@ -85,7 +89,7 @@ export function LocalizacaoSection({ lar }: { lar: Lar }) {
             </ul>
           </div>
         )}
-      </div>
+      </Cascata>
     </Secao>
   )
 }

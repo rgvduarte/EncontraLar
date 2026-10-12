@@ -1,4 +1,5 @@
 import type { Candidatura, Lar } from '@/types'
+import { Reveal } from '@/components/motion'
 import { tempoRelativo } from '@/lib/format'
 import { GRAU_LABEL } from '@/lib/labels'
 import { excerto, necessidadesTexto, procuraTexto, relacaoTexto } from '../shared/pedidoBits'
@@ -8,14 +9,31 @@ import { CompatLines, ContactoLinks, EstadoTag, PropostaLinha, VisitaLinha } fro
 
 const FECHADOS: Candidatura['estado'][] = ['aceite', 'recusada', 'cancelada']
 
-/** Um pedido numa linha limpa: quem é, de que precisa, se cabe nesta casa e o que fazer a seguir. */
-export function PedidoRow({ c, lar, agora, verHref }: { c: Candidatura; lar: Lar; agora: number; verHref: string }) {
+/**
+ * Um pedido numa linha limpa: quem é, de que precisa, se cabe nesta casa e o que fazer a seguir.
+ * Entra com um fade ao aparecer; quando muda de estado (e sai deste separador) desvanece e as
+ * linhas de baixo sobem (FLIP na lista).
+ */
+export function PedidoRow({
+  c,
+  lar,
+  agora,
+  verHref,
+  leaving = false,
+}: {
+  c: Candidatura
+  lar: Lar
+  agora: number
+  verHref: string
+  leaving?: boolean
+}) {
   const p = c.perfil
   const ativo = !FECHADOS.includes(c.estado)
   const nec = necessidadesTexto(c)
   return (
-    <li className="py-10 first:pt-6">
-      <article aria-labelledby={`pedido-${c.id}`}>
+    <li data-flip={c.id} data-leaving={leaving} inert={leaving} aria-hidden={leaving || undefined} className="bg-white py-10 first:pt-6">
+      <Reveal variant="fade" duration={800}>
+        <article aria-labelledby={`pedido-${c.id}`}>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <p className="text-sm text-ink-mute">
             {ativo && p.urgencia === 'imediata' && <span className="font-medium text-alert-700">Urgente — alta hospitalar · </span>}
@@ -38,13 +56,14 @@ export function PedidoRow({ c, lar, agora, verHref }: { c: Candidatura; lar: Lar
         <PropostaLinha c={c} agora={agora} className="mt-6" />
 
         <ContactoLinks c={c} className="mt-4" />
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-          <PedidoAcoes c={c} lar={lar} agora={agora} />
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-3 max-sm:mt-6">
+          <PedidoAcoes c={c} lar={lar} agora={agora} verHref={verHref} className="max-sm:w-full" />
           <MoreLink to={verHref} aria-label={`Perfil completo e histórico de ${p.nome}`}>
             Perfil completo
           </MoreLink>
         </div>
-      </article>
+        </article>
+      </Reveal>
     </li>
   )
 }

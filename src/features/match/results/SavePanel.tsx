@@ -1,37 +1,11 @@
 import { useRef, useState } from 'react'
-import { Link } from 'react-router'
 import { ChevronRight } from 'lucide-react'
 import type { User } from '@/types'
-import { Button, ButtonLink } from '@/components/ui/Button'
+import { Button, ButtonLink, TextLink } from '@/components/ui/Button'
 import { InputField } from '@/components/ui/Field'
-import { toast } from '@/components/ui/Toast'
-import { savePerfil, usePerfis } from '@/lib/store'
 import { cn } from '@/lib/cn'
-import type { PerfilIdoso } from '@/types'
-import type { PerfilInput } from '@/lib/store'
-import { paraPerfilInput, type Rascunho } from '../model'
-import { pessoa } from '../language'
-import { escreverSessao, KEY_PERFIL_RASCUNHO } from '../useMatchSession'
-
-const CAMPOS = [
-  'nome',
-  'idade',
-  'relacao',
-  'genero',
-  'grau',
-  'necessidades',
-  'preferencias',
-  'quarto',
-  'local',
-  'raioKm',
-  'orcamentoMax',
-  'urgencia',
-  'precisaAcordoSS',
-] as const satisfies readonly (keyof PerfilInput & keyof PerfilIdoso)[]
-
-const iguais = (a: PerfilInput, b: PerfilIdoso) =>
-  CAMPOS.every((k) => JSON.stringify(a[k] ?? null) === JSON.stringify(b[k] ?? null))
-const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] ?? nome
+import type { Rascunho } from '../model'
+import { primeiroNome, useGuardarPerfil } from './useGuardarPerfil'
 
 /**
  * Guardar o perfil (família com sessão) ou convidar a criar conta para receber alertas de vaga.
@@ -48,18 +22,18 @@ export function SavePanel({
   onGuardado: (id: string) => void
   className?: string
 }) {
-  const p = pessoa(r)
-  const perfis = usePerfis()
+  const {
+    p,
+    precisaNome,
+    existente,
+    nomePorOmissao,
+    semAlteracoes,
+    guardar: guardarPerfil,
+  } = useGuardarPerfil(r, user, onGuardado)
   const nomeRef = useRef<HTMLInputElement>(null)
   const [nome, setNome] = useState(r.nome)
   const [erro, setErro] = useState<string>()
   const [guardado, setGuardado] = useState<{ nome: string; alterado: boolean } | null>(null)
-  const precisaNome = !r.nome.trim() && !p.proprio
-  const nomeFinal = p.proprio && !r.nome.trim() && user ? user.nome : nome
-  const existente = r.id ? perfis.find((x) => x.id === r.id) : undefined
-  const input = paraPerfilInput(r, nomeFinal)
-  // perfil guardado e nada mudou: não há nada para guardar
-  const semAlteracoes = Boolean(existente && input && iguais(input, existente))
 
   if (user?.role === 'lar') {
     return (
@@ -92,16 +66,17 @@ export function SavePanel({
           Com uma conta gratuita, estas respostas passam para o seu painel e avisamos quando houver lugar.
         </p>
         <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <ButtonLink to="/registar" variant="accent" size="lg" className="max-w-full whitespace-normal! text-center">
+          <ButtonLink
+            to="/registar"
+            variant="accent"
+            size="lg"
+            className="w-full max-w-sm text-center whitespace-normal sm:w-auto sm:max-w-full"
+          >
             Criar conta para receber alertas
           </ButtonLink>
-          <Link
-            to={`/entrar?voltar=${encodeURIComponent('/familia')}`}
-            className="inline-flex min-h-12 items-center gap-0.5 rounded-full px-3 text-lg font-medium text-terra-300 hover:underline"
-          >
+          <TextLink to={`/entrar?voltar=${encodeURIComponent('/familia')}`} tone="light" className="min-h-12 px-3 text-lg">
             Já tenho conta
-            <ChevronRight aria-hidden className="size-5" />
-          </Link>
+          </TextLink>
         </div>
       </section>
     )
@@ -113,16 +88,8 @@ export function SavePanel({
       nomeRef.current?.focus()
       return
     }
-    if (!input) return
-    const perfil = savePerfil(input)
-    if (!perfil) {
-      toast.error('Não foi possível guardar', 'Inicie sessão novamente e tente outra vez.')
-      return
-    }
-    escreverSessao(KEY_PERFIL_RASCUNHO, null)
-    setGuardado({ nome: perfil.nome, alterado: Boolean(r.id) })
-    onGuardado(perfil.id)
-    toast.success(r.id ? 'Alterações guardadas' : `Perfil de ${perfil.nome} guardado`, 'Avisamos quando abrir vaga.')
+    const perfil = guardarPerfil(precisaNome ? nome : nomePorOmissao)
+    if (perfil) setGuardado({ nome: perfil.nome, alterado: Boolean(r.id) })
   }
 
   if (guardado || (semAlteracoes && existente)) {
@@ -139,7 +106,7 @@ export function SavePanel({
         <p className="mx-auto mt-4 max-w-lg text-lg text-ink-mute">
           Avisamos quando abrir vaga. Os pedidos aos lares usam este perfil, sem repetir nada.
         </p>
-        <ButtonLink to="/familia" size="lg" className="mt-8" iconRight={<ChevronRight aria-hidden />}>
+        <ButtonLink to="/familia" size="lg" className="mt-8 w-full max-w-sm sm:w-auto" iconRight={<ChevronRight aria-hidden />}>
           Ir para o meu painel
         </ButtonLink>
       </section>
@@ -166,9 +133,17 @@ export function SavePanel({
             }}
             error={erro}
             autoComplete="off"
+            autoCapitalize="words"
+            enterKeyHint="done"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                guardar()
+              }
+            }}
           />
         )}
-        <Button size="lg" onClick={guardar} className="self-center px-10">
+        <Button size="lg" onClick={guardar} className="w-full px-10 sm:w-auto sm:self-center">
           {r.id ? 'Guardar alterações' : 'Guardar perfil'}
         </Button>
       </div>

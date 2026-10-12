@@ -1,9 +1,11 @@
+import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router'
 import type { Candidatura, Lar } from '@/types'
 import { ButtonLink } from '@/components/ui/Button'
-import { cn } from '@/lib/cn'
 import { FILTROS, filtroDoEstado, type FiltroPedidos } from '../lib/derive'
 import { useAgora } from '../lib/hooks'
+import { useFlip, usePresenca, useTroca } from '../shared/motion'
+import { Segmented } from '../shared/Segmented'
 import { ListaEspera } from './ListaEspera'
 import { PedidoDetailModal } from './PedidoDetailModal'
 import { PedidoRow } from './PedidoRow'
@@ -19,7 +21,25 @@ const RESUMO_FILTRO: Record<FiltroPedidos, (n: number) => string> = {
   concluidos: (n) => (n === 1 ? '1 pedido concluído.' : `${n} pedidos concluídos.`),
 }
 
-/** /gestao/pedidos — pedidos por estado (controlo segmentado), ações num toque e a lista de espera completa. */
+/** Os pedidos de um separador. Remonta ao mudar de separador; dentro dele, as linhas que mudam de estado saem a desvanecer. */
+function ListaPedidos({ lista, lar, agora, verHref }: { lista: Candidatura[]; lar: Lar; agora: number; verHref: (c: Candidatura) => string }) {
+  const ref = useRef<HTMLUListElement>(null)
+  const presentes = usePresenca(lista, (c) => c.id)
+  useFlip(ref, presentes)
+  if (!presentes.length) return null
+  return (
+    <ul ref={ref} className="relative divide-y divide-line">
+      {presentes.map(({ key, item, leaving }) => (
+        <PedidoRow key={key} c={item} lar={lar} agora={agora} verHref={verHref(item)} leaving={leaving} />
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * /gestao/pedidos — pedidos por estado (controlo segmentado com indicador deslizante), ações num toque
+ * e a lista de espera completa. Ao mudar de separador, o conteúdo desliza do lado do separador escolhido.
+ */
 export default function PedidosPage({ lar, cands }: { lar: Lar; cands: Candidatura[] }) {
   const [params, setParams] = useSearchParams()
   const agora = useAgora()
@@ -27,9 +47,29 @@ export default function PedidosPage({ lar, cands }: { lar: Lar; cands: Candidatu
 
   const pedidoId = params.get('pedido')
   const aberto = pedidoId ? cands.find((c) => c.id === pedidoId) : undefined
+  // o último pedido aberto fica montado enquanto a folha desce (animação de fecho)
+  const ultimoAberto = useRef<Candidatura | undefined>(undefined)
+  if (aberto) ultimoAberto.current = aberto
+  const detalhe = aberto ?? ultimoAberto.current
   const fp = params.get('filtro')
   const filtro: FiltroPedidos = ehFiltro(fp) ? fp : aberto ? filtroDoEstado(aberto.estado) : (ORDEM_DEFAULT.find((f) => contagem[f] > 0) ?? 'novos')
   const def = FILTROS.find((f) => f.id === filtro)!
+
+  // direção da transição: para a direita quando se escolhe um separador mais à frente
+  const indice = FILTROS.findIndex((f) => f.id === filtro)
+  const anterior = useRef(indice)
+  const dir = indice >= anterior.current ? 1 : -1
+  useEffect(() => {
+    anterior.current = indice
+  }, [indice])
+  const palco = useTroca<HTMLDivElement>(
+    filtro,
+    [
+      { opacity: 0, transform: `translateX(${dir * 28}px)` },
+      { opacity: 1, transform: 'none' },
+    ],
+    480,
+  )
 
   const lista = cands
     .filter((c) => def.estados.includes(c.estado))
@@ -59,9 +99,11 @@ export default function PedidosPage({ lar, cands }: { lar: Lar; cands: Candidatu
         <p className="max-w-xl text-ink-mute">
           Chegam quando as famílias encontram a sua ficha. Fichas completas e com vagas confirmadas há pouco aparecem primeiro nas pesquisas.
         </p>
-        <div className="mt-3 flex flex-wrap gap-3">
-          <ButtonLink to="/gestao/ficha">Completar a ficha</ButtonLink>
-          <ButtonLink to="/gestao/vagas" variant="secondary">
+        <div className="mt-3 flex w-full flex-wrap gap-3 max-sm:flex-col">
+          <ButtonLink to="/gestao/ficha" className="max-sm:w-full">
+            Completar a ficha
+          </ButtonLink>
+          <ButtonLink to="/gestao/vagas" variant="secondary" className="max-sm:w-full">
             Confirmar vagas
           </ButtonLink>
         </div>
@@ -71,51 +113,30 @@ export default function PedidosPage({ lar, cands }: { lar: Lar; cands: Candidatu
 
   return (
     <div className="flex flex-col gap-4">
-      <div role="group" aria-label="Mostrar pedidos por estado" data-lenis-prevent className="-mx-5 overflow-x-auto px-5 [scrollbar-width:none] sm:mx-0 sm:px-0">
-        <div className="inline-flex gap-1 rounded-full bg-sand p-1">
-          {FILTROS.map((f) => {
-            const ativo = f.id === filtro
-            const n = contagem[f.id]
-            return (
-              <button
-                key={f.id}
-                type="button"
-                aria-pressed={ativo}
-                onClick={() => mudarFiltro(f.id)}
-                className={cn(
-                  'inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full px-5 text-[0.9375rem] whitespace-nowrap transition-[background-color,color,box-shadow] duration-200',
-                  ativo ? 'bg-white font-semibold text-ink shadow-soft' : 'text-ink-mute hover:text-ink',
-                )}
-              >
-                {f.label}
-                <span className={cn('tabular', f.id === 'novos' && n > 0 ? 'font-semibold text-terra-600' : 'text-ink-mute')}>{n}</span>
-              </button>
-            )
-          })}
-        </div>
+      <Segmented
+        label="Mostrar pedidos por estado"
+        valor={filtro}
+        onChange={mudarFiltro}
+        itens={FILTROS.map((f) => ({ id: f.id, label: f.label, n: contagem[f.id], destaque: f.id === 'novos' }))}
+      />
+
+      <div ref={palco} className="flex flex-col gap-4">
+        {filtro !== 'lista' && (
+          <p role="status" aria-live="polite" className="mt-2 text-ink-mute">
+            {lista.length ? RESUMO_FILTRO[filtro](lista.length) : def.vazio}
+          </p>
+        )}
+
+        {filtro === 'lista' ? (
+          <div className="mt-2">
+            <ListaEspera lar={lar} cands={cands} agora={agora} verHref={verHref} />
+          </div>
+        ) : (
+          <ListaPedidos key={filtro} lista={lista} lar={lar} agora={agora} verHref={verHref} />
+        )}
       </div>
 
-      {filtro !== 'lista' && (
-        <p role="status" aria-live="polite" className="mt-2 text-ink-mute">
-          {lista.length ? RESUMO_FILTRO[filtro](lista.length) : def.vazio}
-        </p>
-      )}
-
-      {filtro === 'lista' ? (
-        <div className="mt-2">
-          <ListaEspera lar={lar} cands={cands} agora={agora} verHref={verHref} />
-        </div>
-      ) : (
-        lista.length > 0 && (
-          <ul className="divide-y divide-line">
-            {lista.map((c) => (
-              <PedidoRow key={c.id} c={c} lar={lar} agora={agora} verHref={verHref(c)} />
-            ))}
-          </ul>
-        )
-      )}
-
-      {aberto && <PedidoDetailModal key={aberto.id} c={aberto} lar={lar} agora={agora} onClose={fecharDetalhe} />}
+      {detalhe && <PedidoDetailModal key={detalhe.id} open={Boolean(aberto)} c={detalhe} lar={lar} agora={agora} onClose={fecharDetalhe} />}
     </div>
   )
 }

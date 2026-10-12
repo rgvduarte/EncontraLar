@@ -6,11 +6,13 @@ import { recomendar } from '@/lib/matching'
 import { useLares } from '@/lib/store'
 import { pesquisaUrl } from '../shared/data'
 import { MoreLink, SectionHeader } from '../shared/ui'
+import { useStagger } from '../shared/motion'
 import { comArtigo, deNome } from '../shared/text'
 
 /** As três instituições mais compatíveis com o perfil principal (sem as que já têm pedido). */
 export function Sugestoes({ perfil, excluir }: { perfil: PerfilIdoso | undefined; excluir: Set<string> }) {
   const lares = useLares()
+  const [ul, item] = useStagger<HTMLUListElement>('right', 90)
   const top = useMemo(() => {
     if (!perfil) return []
     const porId = new Map(lares.map((l) => [l.id, l]))
@@ -56,9 +58,13 @@ export function Sugestoes({ perfil, excluir }: { perfil: PerfilIdoso | undefined
           </MoreLink>
         </div>
       ) : (
-        <ul className="-mx-5 mt-8 flex snap-x snap-mandatory scroll-px-5 gap-5 overflow-x-auto px-5 pb-2 [scrollbar-width:none] sm:-mx-8 sm:scroll-px-8 sm:px-8 lg:mx-0 lg:px-0 xl:grid xl:grid-cols-3 xl:overflow-visible xl:pb-0">
-          {top.map(({ m, lar }) => (
-            <li key={lar.id} className="w-[82%] max-w-[21rem] shrink-0 snap-start xl:w-auto xl:max-w-none">
+        <ul
+          ref={ul}
+          data-lenis-prevent
+          className="-mx-5 mt-8 flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto overscroll-x-contain px-5 pb-2 [scrollbar-width:none] sm:-mx-8 sm:gap-5 sm:scroll-px-8 sm:px-8 lg:mx-0 lg:px-0 xl:grid xl:grid-cols-3 xl:overflow-visible xl:pb-0"
+        >
+          {top.map(({ m, lar }, i) => (
+            <li key={lar.id} {...item(i, 'w-[82%] max-w-[21rem] shrink-0 snap-start xl:w-auto xl:max-w-none')}>
               <LarCard lar={lar} match={m} distanciaKm={m.distanciaKm} className="h-full" />
             </li>
           ))}

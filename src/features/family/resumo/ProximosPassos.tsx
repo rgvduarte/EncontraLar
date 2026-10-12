@@ -4,6 +4,7 @@ import type { PerfilIdoso } from '@/types'
 import { cn } from '@/lib/cn'
 import type { VisitaMarcada } from '../shared/data'
 import { MoreLink, SectionHeader } from '../shared/ui'
+import { useStagger, useViewAnimations } from '../shared/motion'
 import { nomeCurto } from '../shared/text'
 
 const GUIA_KEY = 'encontralar:guia-visita-lido'
@@ -86,21 +87,33 @@ export function ProximosPassos({
     },
   ]
   const feitos = passos.filter((p) => p.feito).length
+  const [ol, item] = useStagger<HTMLOListElement>('up', 70)
+  // a barra de progresso enche ao aparecer
+  const barra = useViewAnimations<HTMLDivElement>((root) => {
+    const fill = root.firstElementChild
+    return fill ? [{ el: fill, keyframes: [{ transform: 'scaleX(0)' }], options: { duration: 1200, delay: 150 } }] : []
+  })
 
   return (
     <section aria-labelledby="proximos-passos">
       <SectionHeader id="proximos-passos" title="Próximos passos" sub={`${feitos} de ${passos.length} feitos`} />
-      <ol className="mt-6 divide-y divide-line border-y border-line">
-        {passos.map((p) => (
-          <li key={p.id} className="flex gap-4 py-5">
+      <div ref={barra} aria-hidden className="mt-4 h-1 overflow-hidden rounded-full bg-sand-deep">
+        <div
+          className="h-full origin-left rounded-full bg-ink transition-transform duration-700 ease-[cubic-bezier(.16,1,.3,1)]"
+          style={{ transform: `scaleX(${feitos / passos.length})` }}
+        />
+      </div>
+      <ol ref={ol} className="mt-6 divide-y divide-line border-y border-line">
+        {passos.map((p, i) => (
+          <li key={p.id} {...item(i, 'flex gap-4 py-5')}>
             <span
               aria-hidden
               className={cn(
-                'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full',
+                'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full transition-colors duration-300',
                 p.feito ? 'bg-ink text-white' : 'ring-[1.5px] ring-line-strong ring-inset',
               )}
             >
-              {p.feito && <Check strokeWidth={3} className="size-3.5" />}
+              {p.feito && <Check strokeWidth={3} className="size-3.5 motion-safe:animate-[pop-in_.35s_cubic-bezier(.16,1,.3,1)_both]" />}
             </span>
             <div className="min-w-0 flex-1">
               <p className={cn('font-medium', p.feito ? 'text-ink-mute' : 'text-ink')}>

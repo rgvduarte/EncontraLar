@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { FileText, Heart, LayoutGrid, Settings, UserRound } from 'lucide-react'
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell'
 import { useCurrentUser } from '@/lib/store'
+import { prefersReducedMotion } from '@/lib/motion'
 import { usePedidos, usePerfisOrdenados } from './shared/data'
 import { DraftBanner } from './shared/DraftBanner'
 import { FamilyIdentity, SidebarHelp } from './shared/Identity'
@@ -57,24 +58,50 @@ export default function FamilyDashboard() {
     else subtitle = 'Comece por descrever a pessoa de quem cuida.'
   }
 
+  // telemóvel: a pílula da secção ativa fica sempre à vista na faixa deslizável
+  useEffect(() => {
+    const ul = document.querySelector<HTMLElement>('nav.sticky[aria-label="Secções do painel"] ul')
+    const ativo = ul?.querySelector<HTMLElement>('a[aria-current="page"]')
+    if (!ul || !ativo || ul.scrollWidth <= ul.clientWidth) return
+    const a = ativo.getBoundingClientRect()
+    const u = ul.getBoundingClientRect()
+    ul.scrollBy({ left: a.left + a.width / 2 - (u.left + u.width / 2), behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  }, [seccao])
+
+  // a moldura (barra lateral, pílulas) fica; o título e o conteúdo da secção mudam com uma transição curta
+  const chave = seccao || 'resumo'
+  const entra = 'block motion-safe:animate-[fade-up_.6s_cubic-bezier(.16,1,.3,1)_both]'
+
   return (
     <DashboardShell
       eyebrow="Painel da família"
-      title={title}
-      subtitle={subtitle}
+      title={
+        <span key={chave} className={entra}>
+          {title}
+        </span>
+      }
+      subtitle={
+        subtitle && (
+          <span key={chave} className={entra} style={{ animationDelay: '60ms' }}>
+            {subtitle}
+          </span>
+        )
+      }
       nav={nav}
       identity={<FamilyIdentity user={user} perfil={principal} />}
       aside={<SidebarHelp />}
     >
       <DraftBanner />
-      <Routes>
-        <Route index element={<ResumoPage />} />
-        <Route path="pedidos" element={<PedidosPage />} />
-        <Route path="guardados" element={<GuardadosPage />} />
-        <Route path="perfil" element={<PerfilPage />} />
-        <Route path="conta" element={<ContaPage />} />
-        <Route path="*" element={<Navigate to="/familia" replace />} />
-      </Routes>
+      <div key={chave} className="motion-safe:animate-[fade-in_.4s_ease-out_both]">
+        <Routes>
+          <Route index element={<ResumoPage />} />
+          <Route path="pedidos" element={<PedidosPage />} />
+          <Route path="guardados" element={<GuardadosPage />} />
+          <Route path="perfil" element={<PerfilPage />} />
+          <Route path="conta" element={<ContaPage />} />
+          <Route path="*" element={<Navigate to="/familia" replace />} />
+        </Routes>
+      </div>
     </DashboardShell>
   )
 }

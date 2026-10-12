@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Lar, User } from '@/types'
 import { extenso, saudacao, type Assuntos } from '../lib/derive'
+import { Troca } from '../shared/motion'
 
 export type Seccao = 'resumo' | 'vagas' | 'pedidos' | 'previsao' | 'ficha'
 
@@ -17,8 +18,25 @@ interface Cabecalho {
   doc: string
 }
 
-/** Título (h1) e frase de apoio de cada secção — curtos, uma ideia cada. */
+/**
+ * Título (h1) e frase de apoio de cada secção — curtos, uma ideia cada.
+ * No telemóvel o cabeçalho fica compacto (nome da casa + título): a frase de apoio só aparece no Resumo,
+ * onde diz o que está à espera. Ao mudar de separador, o título e a frase entram com um leve desfoque.
+ */
 export function cabecalho(seccao: Seccao, lar: Lar, user: User | null, a: Assuntos, passosEmFalta: number, agora: Date): Cabecalho {
+  const c = textos(seccao, lar, user, a, passosEmFalta, agora)
+  return {
+    ...c,
+    title: <Troca k={seccao}>{c.title}</Troca>,
+    subtitle: (
+      <Troca k={seccao} className={seccao === 'resumo' ? undefined : 'max-sm:hidden'}>
+        {c.subtitle}
+      </Troca>
+    ),
+  }
+}
+
+function textos(seccao: Seccao, lar: Lar, user: User | null, a: Assuntos, passosEmFalta: number, agora: Date): Cabecalho {
   // no telemóvel não há barra lateral: o nome da casa aparece por cima do título
   const eyebrow = <span className="lg:hidden">{lar.nome}</span>
   switch (seccao) {

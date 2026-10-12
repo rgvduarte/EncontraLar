@@ -2,9 +2,9 @@ import type { ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
-/** Pílula estilo Apple: cinza claro quando livre, preta quando escolhida. Alvo ≥ 48px. */
+/** Pílula estilo Apple: cinza claro quando livre, preta quando escolhida. Alvo ≥ 48px; encolhe ao tocar. */
 const chipBase =
-  'inline-flex min-h-12 items-center gap-2 rounded-full px-5 text-base font-medium transition-colors duration-200 ease-[cubic-bezier(.25,.1,.25,1)] [&_svg]:size-[1.05em] [&_svg]:shrink-0'
+  'inline-flex min-h-12 items-center gap-2 rounded-full px-5 text-base font-medium select-none transition-[background-color,color,scale] duration-200 ease-[cubic-bezier(.25,.1,.25,1)] [&_svg]:size-[1.05em] [&_svg]:shrink-0'
 const OFF = 'bg-sand text-ink hover:bg-sand-deep'
 const ON = 'bg-ink text-white'
 
@@ -55,7 +55,7 @@ export function RadioChips<T extends string>({
             <span
               className={cn(
                 chipBase,
-                'pointer-events-none',
+                'pointer-events-none peer-active:scale-[0.96] motion-reduce:peer-active:scale-100',
                 value === o.value ? ON : 'bg-sand text-ink peer-hover:bg-sand-deep',
                 'peer-focus-visible:outline-3 peer-focus-visible:outline-offset-3 peer-focus-visible:outline-terra-500',
               )}
@@ -96,11 +96,18 @@ export function ToggleChip({
       onClick={onToggle}
       className={cn(
         chipBase,
+        'active:scale-[0.96] motion-reduce:active:scale-100 disabled:active:scale-100',
         pressed ? ON : cn(OFF, 'disabled:bg-sand/60 disabled:text-ink-mute disabled:hover:bg-sand/60'),
         className,
       )}
     >
-      {pressed && <Check aria-hidden strokeWidth={2.5} />}
+      {pressed && (
+        <Check
+          aria-hidden
+          strokeWidth={2.5}
+          className="transition-[opacity,scale] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] starting:scale-50 starting:opacity-0"
+        />
+      )}
       {children}
     </button>
   )

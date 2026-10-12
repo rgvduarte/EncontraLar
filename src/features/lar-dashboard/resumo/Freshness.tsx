@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, CircleCheck, TriangleAlert } from 'lucide-react'
+import { Check, TriangleAlert } from 'lucide-react'
 import type { Lar } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
@@ -8,6 +8,7 @@ import { tempoRelativo } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { diasDesde, frescura } from '../lib/derive'
 import { useAgora } from '../lib/hooks'
+import { VistoAnimado } from '../shared/motion'
 import { MoreLink } from '../shared/ui'
 
 /** "Vagas atualizadas há X" + um toque para confirmar que nada mudou. */
@@ -33,7 +34,7 @@ export function Freshness({ lar }: { lar: Lar }) {
     <section
       aria-labelledby="frescura-titulo"
       className={cn(
-        'flex flex-col gap-6 rounded-[1.75rem] p-7 transition-colors duration-300 sm:p-9 md:flex-row md:items-center md:justify-between',
+        'flex flex-col gap-6 rounded-[1.75rem] p-6 transition-colors duration-500 sm:p-9 md:flex-row md:items-center md:justify-between',
         velha && !confirmado ? 'bg-sun-50' : 'bg-sand',
       )}
     >
@@ -48,17 +49,19 @@ export function Freshness({ lar }: { lar: Lar }) {
             : 'Se nada mudou, confirme. As famílias confiam mais em informação recente.'}
         </p>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2 max-sm:flex-col max-sm:items-stretch max-sm:text-center">
         {confirmado ? (
-          <p role="status" className="inline-flex min-h-14 animate-fade-in items-center gap-2 text-lg font-medium text-leaf-700">
-            <CircleCheck aria-hidden className="size-6" strokeWidth={1.75} /> Confirmado
+          <p role="status" className="inline-flex min-h-14 animate-fade-in items-center gap-2.5 text-lg font-medium text-leaf-700 max-sm:w-full max-sm:justify-center">
+            <VistoAnimado className="size-7" /> Confirmado
           </p>
         ) : (
           <Button size="lg" icon={<Check aria-hidden strokeWidth={2.5} />} onClick={confirmar} className="max-sm:w-full">
             Está tudo certo
           </Button>
         )}
-        <MoreLink to="/gestao/vagas">Alterar vagas</MoreLink>
+        <MoreLink to="/gestao/vagas" className="max-sm:justify-center">
+          Alterar vagas
+        </MoreLink>
       </div>
     </section>
   )

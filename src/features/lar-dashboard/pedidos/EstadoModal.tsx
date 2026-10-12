@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { Candidatura } from '@/types'
 import { Button } from '@/components/ui/Button'
@@ -10,9 +10,15 @@ import type { Acao } from './acoes'
 
 const MAX_NOTA = 400
 
-/** Confirmação de uma mudança de estado, com nota opcional para a família. */
-export function EstadoModal({ c, acao, onClose }: { c: Candidatura; acao: Acao; onClose: () => void }) {
+/**
+ * Confirmação de uma mudança de estado, com nota opcional para a família.
+ * Fica montado enquanto fecha (open=false), para a folha descer com animação em vez de desaparecer.
+ */
+export function EstadoModal({ c, acao, open, onClose }: { c: Candidatura; acao: Acao; open: boolean; onClose: () => void }) {
   const [nota, setNota] = useState('')
+  useEffect(() => {
+    if (open) setNota('')
+  }, [open, acao.id])
 
   const confirmar = () => {
     atualizarCandidatura(c.id, acao.para, nota.trim() || undefined)
@@ -24,16 +30,16 @@ export function EstadoModal({ c, acao, onClose }: { c: Candidatura; acao: Acao; 
 
   return (
     <Modal
-      open
+      open={open}
       onClose={onClose}
       title={acao.titulo}
       description={`Pedido de ${c.contacto.nome}`}
       footer={
         <>
-          <Button variant="subtle" onClick={onClose}>
+          <Button variant="subtle" onClick={onClose} className="max-sm:min-h-13">
             Cancelar
           </Button>
-          <Button variant={acao.confirmVariant} onClick={confirmar}>
+          <Button variant={acao.confirmVariant} onClick={confirmar} className="max-sm:min-h-13">
             {acao.confirmar}
           </Button>
         </>

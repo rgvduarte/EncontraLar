@@ -1,10 +1,10 @@
 import type { Comodidade, Urgencia } from '@/types'
-import { ChoiceCard } from '@/components/ui/Field'
 import { COMODIDADE_LABEL, COMODIDADES_ORDEM, URGENCIA_LABEL } from '@/lib/labels'
 import { ToggleChip } from '../controls/Chips'
 import { MAX_PREFERENCIAS } from '../model'
 import { flex } from '../language'
 import type { StepProps } from './types'
+import { ChoiceTile } from '../controls/ChoiceTile'
 
 const URGENCIAS: { v: Urgencia; desc: string }[] = [
   { v: 'imediata', desc: 'Alta hospitalar marcada, uma queda recente, ou já não é seguro ficar em casa.' },
@@ -28,7 +28,7 @@ export function StepQuando({ r, patch, erros, p }: StepProps) {
         <legend className="sr-only">Para quando precisa de vaga</legend>
         <div className="flex flex-col gap-3">
           {URGENCIAS.map(({ v, desc }, i) => (
-            <ChoiceCard
+            <ChoiceTile
               key={v}
               name="urgencia"
               value={v}

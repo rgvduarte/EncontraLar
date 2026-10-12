@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn'
 import { PlaceCombobox } from '../controls/PlaceCombobox'
 import { RangeSlider } from '../controls/RangeSlider'
 import { comDistancia, residenciais } from '../area'
+import { AnimatedNumber } from '../motion'
 import { LABEL_GPS } from '../language'
 import { RAIO_MAX, RAIO_MIN } from '../model'
 import type { StepProps } from './types'
@@ -129,14 +130,20 @@ export function StepLocal({ r, patch, erros, lares }: StepProps) {
           ) : noRaio.length ? (
             <>
               <p className="text-ink">
-                <span className="block text-5xl font-semibold tracking-tight tabular sm:text-6xl">{noRaio.length}</span>
+                <AnimatedNumber value={noRaio.length} className="block text-5xl font-semibold tracking-tight sm:text-6xl" />
                 <span className="mt-1 block text-lg">
                   {noRaio.length === 1 ? 'instituição neste raio' : 'instituições neste raio'}
                 </span>
               </p>
               <p className="mt-2 inline-flex items-center gap-2 text-base text-ink-mute">
                 <span aria-hidden className={cn('size-2 rounded-full', comVaga ? 'bg-leaf-500' : 'bg-dusk-500')} />
-                {comVaga === 0 ? 'Nenhuma com vaga hoje' : comVaga === 1 ? '1 com vaga agora' : `${comVaga} com vaga agora`}
+                {comVaga === 0 ? (
+                  'Nenhuma com vaga hoje'
+                ) : (
+                  <span>
+                    <AnimatedNumber value={comVaga} /> com vaga agora
+                  </span>
+                )}
               </p>
             </>
           ) : maisProxima ? (

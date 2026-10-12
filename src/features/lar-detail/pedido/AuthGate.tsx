@@ -31,7 +31,7 @@ export function AuthGate({ lar }: { lar: Lar }) {
       </ul>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <p className="text-sm text-ink-mute">Só quer experimentar o protótipo?</p>
-        <Button variant="ghost" size="sm" onClick={experimentar} className="-mx-4">
+        <Button variant="ghost" onClick={experimentar} className="-mx-4">
           Usar a conta de demonstração
         </Button>
       </div>

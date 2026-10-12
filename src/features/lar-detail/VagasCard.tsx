@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
 import type { Candidatura, Lar } from '@/types'
@@ -9,6 +10,7 @@ import { FavoriteButton } from '@/components/lar/FavoriteButton'
 import { setAlerta, useCurrentUser, useFavorito } from '@/lib/store'
 import { pct, plural } from '@/lib/format'
 import { QUARTO_CURTO } from '@/lib/labels'
+import { cn } from '@/lib/cn'
 import { esperaEstimada, precoResumo, precoSocial, telHref, type DadosLar } from './helpers'
 import { CandidaturaAtiva } from './CandidaturaAtiva'
 import { useIrParaSecao } from './hooks'
@@ -104,6 +106,12 @@ export function VagasCard({
   const location = useLocation()
   const gestor = user?.role === 'lar'
   const minhaFicha = gestor && user.larId === lar.id
+  const alerta = Boolean(fav?.alerta)
+  // estados com animação de troca: só anima quando mudam (não à entrada da página)
+  const estado = ativa ? `ativa-${ativa.id}` : minhaFicha ? 'gestor' : 'livre'
+  const estadoAlerta = user ? (alerta ? 'on' : 'off') : 'anon'
+  const [estado0] = useState(estado)
+  const [estadoAlerta0] = useState(estadoAlerta)
   const ctaLabel = dados.livres > 0 ? (dados.centroDia ? 'Pedir lugar' : 'Pedir vaga') : 'Entrar na lista de espera'
 
   const alternarAlerta = (v: boolean) => {
@@ -129,7 +137,8 @@ export function VagasCard({
         <span className="text-sm text-ink-mute">{contexto(lar, dados)}</span>
       </div>
 
-      <div className="mt-6 border-t border-line pt-5">
+      {/* a troca de estado (pedir → pedido enviado) entra com desfoque suave em vez de saltar */}
+      <div key={estado} className={cn('mt-6 border-t border-line pt-5', estado !== estado0 && 'ficha-troca')}>
         {ativa ? (
           <div ref={ctaRef}>
             <CandidaturaAtiva lar={lar} c={ativa} onVisita={() => onVisitaExistente(ativa)} />
@@ -160,13 +169,19 @@ export function VagasCard({
       {!gestor && (
         <div className="mt-6 border-t border-line pt-3">
           <Switch
-            checked={Boolean(fav?.alerta)}
+            checked={alerta}
             onChange={alternarAlerta}
             label="Avisar-me de vagas"
-            description={user ? undefined : 'Precisa de conta gratuita'}
+            description={
+              <span key={estadoAlerta} className={cn('block', estadoAlerta !== estadoAlerta0 && 'ficha-troca')}>
+                {!user ? 'Precisa de conta gratuita' : alerta ? 'Ativo: avisamos assim que abrir vaga' : 'Por email e no seu painel'}
+              </span>
+            }
           />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <FavoriteButton larId={lar.id} larNome={lar.nome} variant="inline" />
+            <span className="ficha-fav">
+              <FavoriteButton larId={lar.id} larNome={lar.nome} variant="inline" />
+            </span>
             {lar.telefone && (
               <a href={telHref(lar.telefone)} className="inline-flex min-h-12 items-center text-sm text-terra-600 hover:underline">
                 Ligar <span className="ml-1 tabular">{lar.telefone}</span>

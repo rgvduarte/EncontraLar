@@ -5,7 +5,9 @@ import { Reveal } from '@/components/motion'
 import { FATOR_LISTA_EFETIVA, previsaoMensal } from '@/lib/forecast'
 import { MESES_LONGOS } from '@/lib/format'
 import { insightsPrevisao, type NumerosResumo } from '../lib/derive'
+import { Numero } from '../shared/motion'
 import { MoreLink, SectionTitle, Stat, dec1 } from '../shared/ui'
+import { Crescer } from './Crescer'
 import { EstadiaForm } from './EstadiaForm'
 import { SaidasChart } from './SaidasChart'
 
@@ -23,7 +25,10 @@ function conselho(contactar: number, listaTotal: number): string {
   return `Contacte já ${quem} para confirmar o interesse.`
 }
 
-/** /gestao/previsao — o que deve libertar-se, com base no histórico, e o que fazer já. */
+/**
+ * /gestao/previsao — o que deve libertar-se, com base no histórico, e o que fazer já.
+ * Os dois números contam, o conselho surge do desfoque e os gráficos "crescem" quando entram no ecrã.
+ */
 export default function PrevisaoPage({ lar, n }: { lar: Lar; n: NumerosResumo }) {
   const meses = useMemo(() => previsaoMensal(lar, 12), [lar])
   const ins = useMemo(() => insightsPrevisao(lar, n.listaTotal), [lar, n.listaTotal])
@@ -33,7 +38,7 @@ export default function PrevisaoPage({ lar, n }: { lar: Lar; n: NumerosResumo })
   const fim6 = meses[5]
 
   return (
-    <div className="flex flex-col gap-20">
+    <div className="flex flex-col gap-16 sm:gap-20">
       <section aria-labelledby="prev-resumo">
         <h2 id="prev-resumo" className="sr-only">
           Em resumo
@@ -42,18 +47,18 @@ export default function PrevisaoPage({ lar, n }: { lar: Lar; n: NumerosResumo })
           <Stat
             hero
             label={`Até ao fim de ${fim3 ? MESES_LONGOS[fim3.mes] : 'três meses'}`}
-            value={dec1(ins.e3)}
+            value={<Numero value={ins.e3} format={dec1} />}
             note={`lugares · entre ${ins.min3} e ${ins.max3}`}
           />
           <Stat
             delay={80}
             label={`Até ao fim de ${fim6 ? MESES_LONGOS[fim6.mes] : 'seis meses'}`}
-            value={dec1(ins.e6)}
+            value={<Numero value={ins.e6} format={dec1} duration={1400} />}
             note={`lugares · entre ${ins.min6} e ${ins.max6}`}
           />
         </dl>
-        <Reveal delay={160}>
-          <p className="mt-12 max-w-2xl text-2xl leading-snug font-semibold tracking-[-0.02em] text-ink">{conselho(ins.contactar, n.listaTotal)}</p>
+        <Reveal variant="blur" delay={200}>
+          <p className="mt-10 max-w-2xl text-2xl leading-snug font-semibold tracking-[-0.02em] text-ink sm:mt-12">{conselho(ins.contactar, n.listaTotal)}</p>
           {n.listaTotal > 0 && (
             <p className="mt-2 max-w-2xl text-ink-mute">
               Em média, só {Math.round(FATOR_LISTA_EFETIVA * 10)} em cada 10 pessoas inscritas ainda aceitam a vaga quando são contactadas.
@@ -71,9 +76,9 @@ export default function PrevisaoPage({ lar, n }: { lar: Lar; n: NumerosResumo })
         <section aria-labelledby="prev-meses">
           <SectionTitle id="prev-meses" title="Mês a mês" text="Lugares que deverão libertar-se nos próximos 12 meses, com o intervalo provável." />
           {/* overflow-x-clip: a tabela acessível do gráfico (sr-only) não pode alargar a página no telemóvel */}
-          <div className="mt-8 overflow-x-clip">
+          <Crescer className="mt-8 overflow-x-clip">
             <ForecastChart data={meses} caption="Lugares que deverão libertar-se por mês, nos próximos 12 meses" />
-          </div>
+          </Crescer>
         </section>
       </Reveal>
 

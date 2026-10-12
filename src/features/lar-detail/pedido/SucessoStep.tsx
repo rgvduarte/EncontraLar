@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { Check } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
 import { diaPorExtenso, telHref } from '../helpers'
+import { Cascata } from '../motion'
 
 /** Confirmação depois de enviar: o que acontece a seguir. */
 export function SucessoStep({ lar, c }: { lar: Lar; c: Candidatura }) {
@@ -23,8 +23,11 @@ export function SucessoStep({ lar, c }: { lar: Lar; c: Candidatura }) {
 
   return (
     <div>
-      <span aria-hidden className="flex size-14 animate-fade-up items-center justify-center rounded-full bg-leaf-500 text-white">
-        <Check className="size-7" strokeWidth={2.5} />
+      {/* círculo que salta e visto que se desenha */}
+      <span aria-hidden className="ficha-sucesso-circulo flex size-14 items-center justify-center rounded-full bg-leaf-500 text-white">
+        <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+          <path className="ficha-sucesso-visto" pathLength={1} d="M20 6 9 17l-5-5" />
+        </svg>
       </span>
       <h3 ref={titulo} tabIndex={-1} className="mt-5 text-2xl font-semibold tracking-tight outline-none">
         Enviado a {lar.nome}
@@ -32,7 +35,7 @@ export function SucessoStep({ lar, c }: { lar: Lar; c: Candidatura }) {
       <p className="mt-1 text-ink-mute">Guardámos uma cópia em “Os meus pedidos”.</p>
 
       <p className="mt-8 text-sm text-ink-mute">O que acontece agora</p>
-      <ol className="mt-2 border-t border-line">
+      <Cascata as="ol" passo={110} className="mt-2 border-t border-line">
         {passos.map((p, i) => (
           <li key={p.t} className="flex gap-4 border-b border-line py-4">
             <span aria-hidden className="w-5 shrink-0 text-lg font-semibold text-ink-mute tabular">
@@ -44,7 +47,7 @@ export function SucessoStep({ lar, c }: { lar: Lar; c: Candidatura }) {
             </span>
           </li>
         ))}
-      </ol>
+      </Cascata>
       {lar.telefone && (
         <p className="mt-5 text-ink-mute">
           Situação urgente, como uma alta hospitalar? Ligue:{' '}

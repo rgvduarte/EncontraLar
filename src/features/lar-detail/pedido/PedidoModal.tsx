@@ -15,8 +15,14 @@ import { SucessoStep } from './SucessoStep'
 type Passo = 'perfil' | 'compat' | 'mensagem' | 'sucesso'
 const ETAPAS: Exclude<Passo, 'sucesso'>[] = ['perfil', 'compat', 'mensagem']
 const ATIVOS: Candidatura['estado'][] = ['enviada', 'em_analise', 'lista_espera', 'vaga_proposta', 'aceite']
+/** Botões do rodapé maiores na folha inferior do telemóvel (alvo confortável para o polegar). */
+const GRANDE = 'max-sm:min-h-14 max-sm:text-lg'
 
-/** Progresso discreto: três traços finos + "Passo 2 de 3". */
+/** Ordem das vistas, para saber para que lado desliza a transição. */
+type Vista = Passo | 'entrar' | 'so-familias'
+const ORDEM: Record<Vista, number> = { entrar: -1, 'so-familias': -1, perfil: 0, compat: 1, mensagem: 2, sucesso: 3 }
+
+/** Progresso discreto: três traços finos que enchem (só transform) + "Passo 2 de 3". */
 function Etapas({ atual }: { atual: Passo }) {
   const idx = ETAPAS.indexOf(atual as (typeof ETAPAS)[number])
   if (idx < 0) return null
@@ -24,7 +30,14 @@ function Etapas({ atual }: { atual: Passo }) {
     <div className="mb-7">
       <div aria-hidden className="flex gap-1.5">
         {ETAPAS.map((e, i) => (
-          <span key={e} className={cn('h-1 flex-1 rounded-full transition-colors duration-300', i <= idx ? 'bg-ink' : 'bg-sand-deep')} />
+          <span key={e} className="h-1 flex-1 overflow-hidden rounded-full bg-sand-deep">
+            <span
+              className={cn(
+                'block h-full origin-left rounded-full bg-ink transition-transform duration-500 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
+                i <= idx ? 'scale-x-100' : 'scale-x-0',
+              )}
+            />
+          </span>
         ))}
       </div>
       <p className="mt-2 text-sm text-ink-mute">
@@ -62,6 +75,15 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
   const passo: Passo = escolhido ?? (perfis.length ? 'compat' : 'perfil')
   const corpo = useRef<HTMLDivElement>(null)
 
+  // transição entre passos: desliza para a esquerda ao avançar e para a direita ao voltar
+  const vista: Vista = !user ? 'entrar' : user.role === 'lar' ? 'so-familias' : passo === 'perfil' || !perfil ? 'perfil' : passo
+  const [vistaAnterior, setVistaAnterior] = useState(vista)
+  const [direcao, setDirecao] = useState<'frente' | 'tras' | null>(null)
+  if (vistaAnterior !== vista) {
+    setVistaAnterior(vista)
+    setDirecao(ORDEM[vista] >= ORDEM[vistaAnterior] ? 'frente' : 'tras')
+  }
+
   // ao mudar de passo, volta ao topo do conteúdo do modal
   useEffect(() => {
     corpo.current?.closest('.overflow-y-auto')?.scrollTo({ top: 0 })
@@ -93,17 +115,17 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
     conteudo = <AuthGate lar={lar} />
     rodape = (
       <>
-        <ButtonLink to={`/registar?voltar=${voltar}`} variant="subtle">
+        <ButtonLink className={GRANDE} to={`/registar?voltar=${voltar}`} variant="subtle">
           Criar conta
         </ButtonLink>
-        <ButtonLink to={`/entrar?voltar=${voltar}`}>Entrar</ButtonLink>
+        <ButtonLink className={GRANDE} to={`/entrar?voltar=${voltar}`}>Entrar</ButtonLink>
       </>
     )
   } else if (user.role === 'lar') {
     titulo = 'Só para famílias'
     conteudo = <SoFamilias />
     rodape = (
-      <Button variant="subtle" onClick={onClose}>
+      <Button className={GRANDE} variant="subtle" onClick={onClose}>
         Fechar
       </Button>
     )
@@ -111,26 +133,23 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
     titulo = 'Para quem é?'
     descricao = 'Um perfil rápido. Fica guardado para outros pedidos.'
     conteudo = (
-      <>
-        <Etapas atual="perfil" />
-        <PerfilRapidoForm
-          lar={lar}
-          formId={formPerfil}
-          onGuardado={(p) => {
-            setPerfilId(p.id)
-            setPasso('compat')
-          }}
-        />
-      </>
+      <PerfilRapidoForm
+        lar={lar}
+        formId={formPerfil}
+        onGuardado={(p) => {
+          setPerfilId(p.id)
+          setPasso('compat')
+        }}
+      />
     )
     rodape = (
       <>
         {perfis.length > 0 && (
-          <Button variant="subtle" onClick={() => setPasso('compat')}>
+          <Button className={GRANDE} variant="subtle" onClick={() => setPasso('compat')}>
             Voltar
           </Button>
         )}
-        <Button type="submit" form={formPerfil}>
+        <Button className={GRANDE} type="submit" form={formPerfil}>
           Guardar e continuar
         </Button>
       </>
@@ -140,31 +159,23 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
     titulo = comVisita ? 'Marcar visita' : 'Pedir vaga'
     descricao = `Veja se ${lar.nome} responde ao que ${primeiro} precisa.`
     conteudo = (
-      <>
-        <Etapas atual="compat" />
-        <CompatibilidadeStep lar={lar} perfis={perfis} perfil={perfil} onEscolher={setPerfilId} ativas={ativas} onNovoPerfil={() => setPasso('perfil')} />
-      </>
+      <CompatibilidadeStep lar={lar} perfis={perfis} perfil={perfil} onEscolher={setPerfilId} ativas={ativas} onNovoPerfil={() => setPasso('perfil')} />
     )
     rodape = ja ? (
-      <ButtonLink to="/familia/pedidos">Ver o pedido</ButtonLink>
+      <ButtonLink className={GRANDE} to="/familia/pedidos">Ver o pedido</ButtonLink>
     ) : (
-      <Button onClick={() => setPasso('mensagem')}>Continuar</Button>
+      <Button className={GRANDE} onClick={() => setPasso('mensagem')}>Continuar</Button>
     )
   } else if (passo === 'mensagem') {
     titulo = comVisita ? 'Mensagem e visita' : 'Mensagem'
     descricao = `Pedido para ${perfil.nome}.`
-    conteudo = (
-      <>
-        <Etapas atual="mensagem" />
-        <MensagemStep lar={lar} perfil={perfil} user={user} formId={formPedido} comVisitaInicial={comVisita} onEnviar={enviar} />
-      </>
-    )
+    conteudo = <MensagemStep lar={lar} perfil={perfil} user={user} formId={formPedido} comVisitaInicial={comVisita} onEnviar={enviar} />
     rodape = (
       <>
-        <Button variant="subtle" onClick={() => setPasso('compat')}>
+        <Button className={GRANDE} variant="subtle" onClick={() => setPasso('compat')}>
           Voltar
         </Button>
-        <Button type="submit" form={formPedido}>
+        <Button className={GRANDE} type="submit" form={formPedido}>
           Enviar pedido
         </Button>
       </>
@@ -174,17 +185,37 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
     conteudo = enviada ? <SucessoStep lar={lar} c={enviada} /> : null
     rodape = (
       <>
-        <Button variant="subtle" onClick={onClose}>
+        <Button className={GRANDE} variant="subtle" onClick={onClose}>
           Fechar
         </Button>
-        <ButtonLink to="/familia/pedidos">Ver os meus pedidos</ButtonLink>
+        <ButtonLink className={GRANDE} to="/familia/pedidos">Ver os meus pedidos</ButtonLink>
       </>
     )
   }
 
+  const animar = direcao !== null
   return (
-    <Modal open={open} onClose={onClose} title={titulo} description={descricao} footer={rodape} size="lg">
-      <div ref={corpo}>{conteudo}</div>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={
+        <span key={vista} className={cn('block', animar && 'ficha-troca')}>
+          {titulo}
+        </span>
+      }
+      description={descricao}
+      footer={rodape}
+      size="lg"
+    >
+      <div ref={corpo}>
+        {(vista === 'perfil' || vista === 'compat' || vista === 'mensagem') && <Etapas atual={vista} />}
+        {/* a margem negativa deixa ver os anéis de foco; o recorte horizontal evita barra de scroll durante o deslize */}
+        <div className="-mx-2 overflow-x-clip px-2">
+          <div key={vista} data-dir={direcao ?? undefined} className={cn(animar && 'ficha-passo')}>
+            {conteudo}
+          </div>
+        </div>
+      </div>
     </Modal>
   )
 }

@@ -11,17 +11,23 @@ import { CUIDADO_LABEL, GRAU_LABEL, QUARTO_CURTO, URGENCIA_LABEL } from '@/lib/l
 import { LarCard } from '@/components/lar/LarCard'
 import { Reveal } from '@/components/ui/Reveal'
 import { cn } from '@/lib/cn'
-import { SectionTitle } from '../shared/ui'
+import { SectionTitle, SWIPE_ITEM, SwipeRow } from '../shared/ui'
 import { nomeCurto, type Ensaio } from './ensaio'
 import { Stepper } from './ProductShot'
 
+/**
+ * Um tile do bento. Entra a subir; a peça de interface "monta-se" logo a seguir (escala suave).
+ * No telemóvel é um cartão de uma faixa deslizável.
+ */
 function Tile({ title, text, plano, children, className, delay = 0 }: { title: string; text: string; plano?: string; children: ReactNode; className?: string; delay?: number }) {
   return (
-    <Reveal delay={delay} className={cn('flex flex-col rounded-[1.75rem] bg-sand p-7 sm:p-10', className)}>
+    <Reveal as="li" delay={delay} className={cn(SWIPE_ITEM, 'flex w-[88%] flex-col rounded-[1.75rem] bg-sand p-5 sm:p-10 md:w-auto', className)}>
       <h3 className="text-2xl font-semibold text-ink sm:text-3xl">{title}</h3>
       <p className="mt-3 max-w-[40ch] text-lg text-ink-mute">{text}</p>
       {plano && <p className="mt-2 text-sm text-ink-mute">{plano}</p>}
-      <div className="mt-8 flex flex-1 flex-col justify-end">{children}</div>
+      <Reveal variant="scale" delay={delay + 220} duration={1100} className="mt-8 flex flex-1 flex-col justify-end">
+        {children}
+      </Reveal>
     </Reveal>
   )
 }
@@ -174,15 +180,15 @@ const fmt1 = (v: number) => v.toLocaleString('pt-PT', { minimumFractionDigits: 1
 
 export function Bento({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
   return (
-    <section aria-labelledby="pl-funcoes" className="container-page py-24 sm:py-32 lg:py-40">
-      <Reveal>
+    <section aria-labelledby="pl-funcoes" className="container-page py-20 sm:py-32 lg:py-40">
+      <Reveal variant="blur">
         <SectionTitle id="pl-funcoes" title="Feito para quem não tem tempo." subtitle="Quatro coisas. Bem feitas." />
       </Reveal>
-      <div className="mt-14 grid grid-cols-1 gap-4 sm:mt-20 lg:grid-cols-12">
+      <SwipeRow as="ul" label="Funcionalidades" className="mt-12 sm:mt-20 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-12">
         <Tile title="Vagas num toque." text="Mais uma, menos uma. O cartão que as famílias veem muda no mesmo instante." className="lg:col-span-7">
           <VistaFamilia ensaio={ensaio} />
         </Tile>
-        <Tile title="Pedidos com perfil clínico." text="Grau de dependência, cuidados e urgência, já comparados com a sua casa." className="lg:col-span-5" delay={80}>
+        <Tile title="Pedidos com perfil clínico." text="Grau de dependência, cuidados e urgência, já comparados com a sua casa." className="lg:col-span-5" delay={100}>
           <Pedido lar={base} />
         </Tile>
         <Tile title="Lista de espera digital." text="Propõe a vaga e a família tem 48 horas para responder." plano="Plano Profissional" className="lg:col-span-5">
@@ -193,11 +199,11 @@ export function Bento({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
           text="Saiba quantos lugares deverão libertar-se e prepare as entradas com tempo."
           plano="Plano Profissional"
           className="lg:col-span-7"
-          delay={80}
+          delay={100}
         >
           <Ocupacao lar={base} />
         </Tile>
-      </div>
+      </SwipeRow>
     </section>
   )
 }

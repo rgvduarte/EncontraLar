@@ -9,6 +9,7 @@ import type { Entrada } from './filtering'
 import { MapController, REGIOES_MAPA } from './MapController'
 import { MapPeekCard, MapPopupContent } from './MapCards'
 import { clusterIcon, descricaoMarcador, pinIcon, type ClusterLike } from './mapIcons'
+import { useSaida } from './motion'
 import { centroDe, type Bounds, type Local } from './searchState'
 
 const TILES = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
@@ -49,9 +50,30 @@ const PinMarker = memo(function PinMarker({ e, ativo, popup, onHover, onSelect, 
   const { lat, lng } = e.lar
   // posição estável: um array novo a cada render faz o agrupamento retirar e repor o marcador (e fecha o popup)
   const position = useMemo<[number, number]>(() => [lat, lng], [lat, lng])
-  const icon = useMemo(() => pinIcon(e.lar, e.disp, ativo), [e.lar, e.disp, ativo])
+  const icon = useMemo(() => pinIcon(e.lar, e.disp), [e.lar, e.disp])
+
+  // realce por classe no elemento existente → a pílula transita para preto (sem trocar o ícone)
+  const markerRef = useRef<L.Marker | null>(null)
+  const ativoRef = useRef(ativo)
+  ativoRef.current = ativo
+  const pintar = useCallback(() => {
+    markerRef.current?.getElement()?.querySelector('.el-pin')?.classList.toggle('is-active', ativoRef.current)
+  }, [])
+  useEffect(() => {
+    pintar()
+  }, [ativo, icon, pintar])
+  const ref = useCallback(
+    (m: L.Marker | null) => {
+      markerRef.current = m
+      registar(id, m)
+    },
+    [id, registar],
+  )
+
   const handlers = useMemo<L.LeafletEventHandlerFnMap>(
     () => ({
+      // o agrupamento recria o elemento quando o marcador volta a aparecer: repor o realce
+      add: pintar,
       click: () => onSelect(id),
       mouseover: () => onHover(id),
       mouseout: () => onHover(null),
@@ -64,11 +86,11 @@ const PinMarker = memo(function PinMarker({ e, ativo, popup, onHover, onSelect, 
       },
       popupclose: () => onSelect(null),
     }),
-    [id, onHover, onSelect],
+    [id, onHover, onSelect, pintar],
   )
   return (
     <Marker
-      ref={(m) => registar(id, m)}
+      ref={ref}
       position={position}
       icon={icon}
       title={descricaoMarcador(e.lar, e.disp)}
@@ -152,6 +174,10 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
     return c
   }, [resultados])
 
+  // entradas/saídas animadas: "Pesquisar nesta zona" e a folha do marcador (telemóvel)
+  const zonaBtn = useSaida(mexeu && !selecionado ? true : null, 200)
+  const folha = useSaida(selecionado, 260)
+
   const pesquisarZona = () => {
     if (!map) return
     const b = map.getBounds()
@@ -231,7 +257,7 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
               key={a.id}
               type="button"
               onClick={() => map?.flyToBounds(REGIOES_MAPA[a.id], { duration: 0.8, padding: [24, 24] })}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-ink transition-colors hover:bg-sand sm:px-3.5"
+              className="inline-flex min-h-12 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-ink transition-[background-color,scale] duration-200 hover:bg-sand active:scale-[0.96] sm:px-3.5 lg:min-h-11"
             >
               {a.label}
               <span className="text-ink-mute tabular">{porRegiao[a.id]}</span>
@@ -248,12 +274,14 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
         </ul>
       </div>
 
-      {mexeu && !selecionado && (
+      {zonaBtn.item && (
         <div className={cn('pointer-events-none absolute inset-x-0 z-[1000] flex justify-center px-4', mobile ? 'bottom-20' : 'bottom-8')}>
           <button
             type="button"
             onClick={pesquisarZona}
-            className="pointer-events-auto inline-flex min-h-12 animate-pop-in items-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-white shadow-lift transition-colors hover:bg-pine-600"
+            data-saindo={zonaBtn.saindo || undefined}
+            tabIndex={zonaBtn.saindo ? -1 : undefined}
+            className="el-rise pointer-events-auto inline-flex min-h-12 items-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-white shadow-lift transition-[background-color,scale] duration-200 hover:bg-pine-600 active:scale-[0.97]"
           >
             <RotateCw aria-hidden className="size-4" />
             Pesquisar nesta zona
@@ -267,9 +295,9 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
         </div>
       )}
 
-      {selecionado && (
+      {folha.item && (
         <div className="pointer-events-none absolute inset-x-3 bottom-20 z-[1001]">
-          <MapPeekCard e={selecionado} onClose={() => onSelect(null)} />
+          <MapPeekCard e={folha.item} saindo={folha.saindo} onClose={() => onSelect(null)} />
         </div>
       )}
     </div>

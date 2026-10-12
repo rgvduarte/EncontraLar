@@ -1,8 +1,9 @@
 import { Link } from 'react-router'
 import type { Candidatura, Lar } from '@/types'
 import { LarCover } from '@/components/lar/LarCover'
-import { ForecastStrip } from '@/components/brand/ForecastStrip'
 import type { PedidoComLar } from '../shared/data'
+import { AnimatedForecast } from '../shared/Forecast'
+import { useStagger } from '../shared/motion'
 import { estimativaPessoal, horaDe } from '../shared/estado'
 import { EstadoTag, MoreLink, SectionHeader } from '../shared/ui'
 import { nomeCurto, ordinal } from '../shared/text'
@@ -36,7 +37,7 @@ function Situacao({ c, lar }: { c: Candidatura; lar: Lar }) {
         <span className="block text-sm text-ink-mute">{pessoal ? 'Estimativa' : 'Se entrar na lista hoje'}</span>
         <span className="font-semibold">{texto}</span>
       </p>
-      {!est.imediata && <ForecastStrip curva={est.curva} meses={6} variant="mini" />}
+      {!est.imediata && <AnimatedForecast curva={est.curva} meses={6} variant="mini" />}
     </div>
   )
 }
@@ -44,6 +45,7 @@ function Situacao({ c, lar }: { c: Candidatura; lar: Lar }) {
 /** "Os seus pedidos": linhas compactas — instituição, estado, lugar e estimativa pessoal. */
 export function PedidosResumo({ ativos, terminados, pesquisa }: { ativos: PedidoComLar[]; terminados: number; pesquisa: string }) {
   const visiveis = ativos.slice(0, 5)
+  const [lista, item] = useStagger<HTMLUListElement>('up', 80)
   return (
     <section aria-labelledby="resumo-pedidos">
       <SectionHeader
@@ -62,9 +64,12 @@ export function PedidosResumo({ ativos, terminados, pesquisa }: { ativos: Pedido
           </MoreLink>
         </div>
       ) : (
-        <ul className="mt-6 divide-y divide-line border-y border-line">
-          {visiveis.map(({ c, lar }) => (
-            <li key={c.id} className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-3 py-5 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto] sm:gap-x-6">
+        <ul ref={lista} className="mt-6 divide-y divide-line border-y border-line">
+          {visiveis.map(({ c, lar }, i) => (
+            <li
+              key={c.id}
+              {...item(i, 'grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-3 py-5 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto] sm:gap-x-6')}
+            >
               <div aria-hidden className="size-14 overflow-hidden rounded-xl">
                 <LarCover hue={lar.capa.hue} variante={lar.capa.variante} />
               </div>

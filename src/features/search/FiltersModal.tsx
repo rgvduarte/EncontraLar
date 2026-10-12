@@ -7,6 +7,7 @@ import { CUIDADO_LABEL, CUIDADOS_ORDEM, GRAU_DESCRICAO, GRAU_LABEL, GRAUS_ORDEM,
 import { cn } from '@/lib/cn'
 import { BudgetSlider } from './BudgetControl'
 import { TogglePill } from './Chips'
+import { useNumeroAnimado } from './motion'
 import { centroDe, FILTROS_VAZIOS, filtrosDe, NATUREZAS, opcoesRaio, TIPOS, type Filtros, type SearchState } from './searchState'
 
 export type ModoFiltros = 'mais' | 'todos'
@@ -25,9 +26,10 @@ interface Props {
   onApply: (r: Rascunho) => void
 }
 
+/** Secção da folha; as primeiras assentam em cascata quando a folha abre (--i = ordem). */
 function Secao({ titulo, ajuda, children }: { titulo: string; ajuda?: ReactNode; children: ReactNode }) {
   return (
-    <fieldset>
+    <fieldset className="el-secao">
       <legend className="text-lg font-semibold tracking-tight text-ink">{titulo}</legend>
       {ajuda && <p className="mt-0.5 text-sm text-ink-mute">{ajuda}</p>}
       <div className="mt-4">{children}</div>
@@ -78,6 +80,8 @@ export function FiltersModal({ open, onClose, modo, state, contar, precos, onApp
 
   const set = (patch: Partial<Rascunho>) => setR((x) => ({ ...x, ...patch }))
   const n = contar(r)
+  // o número do botão desliza à medida que se escolhem filtros (o leitor de ecrã ouve o valor final)
+  const nVisivel = useNumeroAnimado(n, 380)
   const todos = modo === 'todos'
   const centro = centroDe(state.local)
 
@@ -104,12 +108,17 @@ export function FiltersModal({ open, onClose, modo, state, contar, precos, onApp
               onClose()
             }}
           >
-            <span aria-live="polite">{n === 0 ? 'Nenhum resultado' : n === 1 ? 'Ver 1 resultado' : `Ver ${n} resultados`}</span>
+            <span aria-hidden className="tabular">
+              {n === 0 ? 'Nenhum resultado' : n === 1 ? 'Ver 1 resultado' : `Ver ${nVisivel} resultados`}
+            </span>
+            <span className="sr-only" aria-live="polite">
+              {n === 0 ? 'Nenhum resultado' : n === 1 ? 'Ver 1 resultado' : `Ver ${n} resultados`}
+            </span>
           </Button>
         </div>
       }
     >
-      <div className="flex flex-col gap-10 pb-2">
+      <div className="flex flex-col gap-10 pb-2 [&>*:nth-child(2)]:[--i:1] [&>*:nth-child(3)]:[--i:2] [&>*:nth-child(4)]:[--i:3] [&>*:nth-child(n+5)]:[--i:4]">
         {todos && (
           <Secao titulo="Disponibilidade" ajuda="Vagas indicadas pelas instituições; «em breve» é uma previsão.">
             <RadioPills

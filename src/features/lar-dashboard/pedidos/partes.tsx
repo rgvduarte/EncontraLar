@@ -6,6 +6,7 @@ import { toast } from '@/components/ui/Toast'
 import { confirmarVisita } from '@/lib/store'
 import { cn } from '@/lib/cn'
 import { prazo, textoVisita, verificarCompatibilidade } from '../lib/derive'
+import { Barra, Troca } from '../shared/motion'
 import { telHref } from '../shared/pedidoBits'
 import { capitalizar } from '../shared/ui'
 
@@ -19,13 +20,16 @@ const ESTADO: Record<Candidatura['estado'], { tone: BadgeTone; texto: string }> 
   cancelada: { tone: 'neutral', texto: 'Cancelado pela família' },
 }
 
+/** Etiqueta do estado — quando o estado muda, a nova etiqueta entra com um leve desfoque. */
 export function EstadoTag({ c }: { c: Candidatura }) {
   const e = ESTADO[c.estado]
   return (
-    <Badge tone={e.tone}>
-      {e.texto}
-      {(c.estado === 'lista_espera' || c.estado === 'vaga_proposta') && c.posicao != null && <span className="font-normal">· n.º {c.posicao}</span>}
-    </Badge>
+    <Troca k={c.estado}>
+      <Badge tone={e.tone}>
+        {e.texto}
+        {(c.estado === 'lista_espera' || c.estado === 'vaga_proposta') && c.posicao != null && <span className="font-normal">· n.º {c.posicao}</span>}
+      </Badge>
+    </Troca>
   )
 }
 
@@ -92,6 +96,7 @@ export function VisitaLinha({ c, className }: { c: Candidatura; className?: stri
           <span className="font-semibold">Pediu uma visita:</span> <span className="text-ink-soft">{quando}.</span>
         </p>
         <Button
+          className="max-sm:min-h-13 max-sm:w-full"
           onClick={() => {
             confirmarVisita(c.id)
             toast.success('Visita confirmada', `${c.contacto.nome} recebeu a confirmação para ${quando}.`)
@@ -103,7 +108,7 @@ export function VisitaLinha({ c, className }: { c: Candidatura; className?: stri
     )
   }
   return (
-    <p className={cn('flex items-start gap-2', className)}>
+    <p className={cn('flex animate-fade-in items-start gap-2', className)}>
       <Check aria-hidden className="mt-1 size-4 shrink-0 text-leaf-600" strokeWidth={2.5} />
       <span>
         <span className="font-semibold">Visita {v.estado === 'realizada' ? 'realizada' : 'confirmada'}:</span> <span className="text-ink-soft">{quando}.</span>
@@ -132,11 +137,7 @@ export function PropostaLinha({ c, agora, className }: { c: Candidatura; agora: 
           </>
         )}
       </p>
-      {p && !p.expirado && (
-        <span aria-hidden className="mt-2 block h-1 max-w-56 overflow-hidden rounded-full bg-sand-deep">
-          <span className={cn('block h-full rounded-full', restante < 0.25 ? 'bg-alert-600' : 'bg-sun-500')} style={{ width: `${restante * 100}%` }} />
-        </span>
-      )}
+      {p && !p.expirado && <Barra value={restante} className="mt-2 max-w-56" fillClassName={restante < 0.25 ? 'bg-alert-600' : 'bg-sun-500'} />}
     </div>
   )
 }

@@ -8,14 +8,6 @@ import { ESTADO_CANDIDATURA_LABEL } from '@/lib/labels'
 import { cn } from '@/lib/cn'
 import { ESTADO_DOT } from './estado'
 
-/** Pílulas para blocos pretos (on-dark): branca = ação principal, translúcida = secundária. */
-const PILL_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-full font-medium whitespace-nowrap select-none transition-[background-color,transform] duration-200 ease-[cubic-bezier(.25,.1,.25,1)] active:scale-[0.98] [&_svg]:size-[1.1em] [&_svg]:shrink-0'
-export const pillWhite = (size: 'md' | 'lg' = 'lg') =>
-  cn(PILL_BASE, 'bg-white text-ink hover:bg-white/85', size === 'lg' ? 'min-h-14 px-8 text-lg' : 'min-h-12 px-6 text-base')
-export const pillGlass = (size: 'md' | 'lg' = 'lg') =>
-  cn(PILL_BASE, 'bg-white/12 text-white hover:bg-white/20', size === 'lg' ? 'min-h-14 px-8 text-lg' : 'min-h-12 px-6 text-base')
-
 /** Ligação de texto estilo Apple: azul com chevron — "Ver todos ›". */
 export function MoreLink({ to, children, className, onClick }: { to: string; children: ReactNode; className?: string; onClick?: () => void }) {
   return (

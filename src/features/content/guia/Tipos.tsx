@@ -1,8 +1,10 @@
 /**
  * #tipos — as respostas para pessoas idosas em Portugal, comparadas numa tabela limpa.
  */
+import { Reveal } from '@/components/motion'
+import { cn } from '@/lib/cn'
 import { MoreLink } from '../shared/ui'
-import { GuideSection } from './Section'
+import { GuideSection, REVEAL_PRINT } from './Section'
 
 interface Resposta {
   nome: string
@@ -100,33 +102,33 @@ export function Tipos() {
         </tbody>
       </table>
 
-      {/* telemóvel: lista */}
-      <ul className="flex flex-col md:hidden">
-        {RESPOSTAS.map((r) => (
-          <li key={r.nome} className="border-t border-line py-6">
-            <p className="text-xl">
-              <span className="font-semibold text-ink">{r.nome}</span>
-              {r.sigla && <span className="text-base text-ink-mute"> · {r.sigla}</span>}
+      {/* telemóvel: a tabela passa a cartões empilhados (um por resposta) */}
+      <ul className="flex flex-col gap-3 md:hidden">
+        {RESPOSTAS.map((r, i) => (
+          <Reveal as="li" key={r.nome} variant="fade" delay={i * 60} className={cn('rounded-[1.5rem] bg-sand p-5', REVEAL_PRINT)}>
+            <p className="flex items-baseline justify-between gap-3">
+              <span className="text-xl font-semibold text-ink">{r.nome}</span>
+              {r.sigla && <span className="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-sm font-medium text-ink-soft">{r.sigla}</span>}
             </p>
-            <dl className="mt-3 flex flex-col gap-3 text-base">
-              <div>
+            <dl className="mt-3 flex flex-col divide-y divide-line-strong/60 text-base">
+              <div className="py-2.5">
                 <dt className="text-sm text-ink-mute">Para quem</dt>
-                <dd className="text-ink-soft">{r.paraQuem}</dd>
+                <dd className="text-ink">{r.paraQuem}</dd>
               </div>
-              <div>
+              <div className="py-2.5">
                 <dt className="text-sm text-ink-mute">Custo</dt>
                 <dd className="text-ink-soft">{r.custo}</dd>
               </div>
-              <div>
+              <div className="pt-2.5">
                 <dt className="text-sm text-ink-mute">Como se pede</dt>
-                <dd className={r.referenciacao ? 'font-medium text-ink' : 'text-ink-soft'}>{r.acesso}</dd>
+                <dd className={r.referenciacao ? 'font-semibold text-ink' : 'text-ink-soft'}>{r.acesso}</dd>
               </div>
             </dl>
-          </li>
+          </Reveal>
         ))}
       </ul>
 
-      <div className="mt-8 rounded-[1.75rem] bg-sand p-7 sm:p-8">
+      <div className="mt-8 rounded-[1.75rem] bg-sand p-6 ring-1 ring-line-strong/60 ring-inset sm:p-8 md:ring-0">
         <p className="text-lg font-semibold text-ink">Alta hospitalar à vista?</p>
         <p className="mt-2 text-lg leading-relaxed text-ink-soft">
           Peça à equipa do hospital, antes da alta, que avalie a referenciação para cuidados continuados. Em paralelo, procure lar com vaga: uma

@@ -73,6 +73,7 @@ export function ProximaVisita({ visita, outras = 0, temPedidos }: { visita: Visi
           <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2">
             <Button
               icon={<CalendarPlus aria-hidden />}
+              className="w-full sm:w-auto"
               onClick={() => {
                 if (descarregarVisita(c, lar)) toast.success('Visita no calendário', 'Abra o ficheiro descarregado para a juntar ao seu calendário.')
               }}

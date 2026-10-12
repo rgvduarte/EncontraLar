@@ -60,16 +60,27 @@ export function AddRoomType({ lar }: { lar: Lar }) {
         description="Começa com 0 lugares livres. Depois, mude o número no contador."
       >
         <form onSubmit={adicionar} noValidate className="flex flex-col gap-4">
-          <InputField label="Lugares no total" inputMode="numeric" value={v.total} onChange={(e) => setV({ ...v, total: e.target.value })} error={erros.total} autoFocus />
+          <InputField
+            label="Lugares no total"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            autoComplete="off"
+            value={v.total}
+            onChange={(e) => setV({ ...v, total: e.target.value })}
+            error={erros.total}
+            autoFocus
+          />
           <div className="grid gap-4 sm:grid-cols-2">
-            <InputField label="Mensalidade desde" inputMode="numeric" leading="€" value={v.precoMin} onChange={(e) => setV({ ...v, precoMin: e.target.value })} error={erros.precoMin} />
-            <InputField label="Mensalidade até" inputMode="numeric" leading="€" value={v.precoMax} onChange={(e) => setV({ ...v, precoMax: e.target.value })} error={erros.precoMax} />
+            <InputField label="Mensalidade desde" inputMode="numeric" pattern="[0-9]*" autoComplete="off" leading="€" value={v.precoMin} onChange={(e) => setV({ ...v, precoMin: e.target.value })} error={erros.precoMin} />
+            <InputField label="Mensalidade até" inputMode="numeric" pattern="[0-9]*" autoComplete="off" leading="€" value={v.precoMax} onChange={(e) => setV({ ...v, precoMax: e.target.value })} error={erros.precoMax} />
           </div>
-          <div className="mt-2 flex flex-wrap justify-end gap-3">
-            <Button variant="subtle" onClick={() => setTipo(null)}>
+          <div className="mt-2 flex flex-wrap justify-end gap-3 max-sm:flex-col-reverse">
+            <Button variant="subtle" onClick={() => setTipo(null)} className="max-sm:w-full">
               Cancelar
             </Button>
-            <Button type="submit">Adicionar</Button>
+            <Button type="submit" className="max-sm:w-full">
+              Adicionar
+            </Button>
           </div>
         </form>
       </Modal>

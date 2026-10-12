@@ -4,6 +4,7 @@ import { marcarNotificacaoLida, marcarTodasLidas } from '@/lib/store'
 import { tempoRelativo } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { SectionHeader } from '../shared/ui'
+import { useStagger } from '../shared/motion'
 
 const ACAO: Record<Notificacao['tipo'], string> = {
   vaga: 'Ver instituição',
@@ -17,6 +18,7 @@ export function Novidades({ notifs, limite = 4 }: { notifs: Notificacao[]; limit
   const { pathname } = useLocation()
   const porLer = notifs.filter((n) => !n.lida).length
   const lista = notifs.slice(0, limite)
+  const [ul, item] = useStagger<HTMLUListElement>('up', 80)
 
   return (
     <section aria-labelledby="novidades">
@@ -35,16 +37,23 @@ export function Novidades({ notifs, limite = 4 }: { notifs: Notificacao[]; limit
       {lista.length === 0 ? (
         <p className="mt-6 text-ink-mute">Quando uma instituição responder ou abrir vaga numa guardada, aparece aqui.</p>
       ) : (
-        <ul className="mt-6 divide-y divide-line border-y border-line" aria-live="polite">
-          {lista.map((n) => {
+        <ul ref={ul} className="mt-6 divide-y divide-line border-y border-line" aria-live="polite">
+          {lista.map((n, i) => {
             const destino = n.link === '/familia' && n.candidaturaId ? `/familia/pedidos#pedido-${n.candidaturaId}` : n.link
             const link = destino && destino !== pathname ? destino : undefined
             return (
-              <li key={n.id} className="grid grid-cols-[0.75rem_minmax(0,1fr)] gap-x-3 py-5">
-                <span aria-hidden className={cn('mt-2.5 size-2 rounded-full', n.lida ? 'bg-transparent' : 'bg-terra-600')} />
+              <li key={n.id} {...item(i, 'grid grid-cols-[0.75rem_minmax(0,1fr)] gap-x-3 py-5')}>
+                {/* o ponto "por ler" encolhe e desaparece ao marcar como lida */}
+                <span
+                  aria-hidden
+                  className={cn(
+                    'mt-2.5 size-2 rounded-full bg-terra-600 transition-[transform,opacity] duration-300 ease-[cubic-bezier(.16,1,.3,1)]',
+                    n.lida && 'scale-0 opacity-0',
+                  )}
+                />
                 <div>
                   <p className="flex items-baseline justify-between gap-4">
-                    <span className={n.lida ? 'font-medium text-ink-soft' : 'font-semibold'}>
+                    <span className={cn('transition-colors duration-300', n.lida ? 'font-medium text-ink-soft' : 'font-semibold')}>
                       {!n.lida && <span className="sr-only">Por ler: </span>}
                       {n.titulo}
                     </span>

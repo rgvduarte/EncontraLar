@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { enterCls, useSeen } from '../shared/motion'
 
 /** Opção em pílula (rádio ou caixa): cinza → preta quando escolhida, com visto (nunca só cor). Alvo ≥ 48px. */
 export function Pill({
@@ -22,14 +23,14 @@ export function Pill({
     <label
       className={cn(
         'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-5 font-medium select-none',
-        'transition-[background-color,color] duration-200 ease-[cubic-bezier(.25,.1,.25,1)]',
+        'transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(.25,.1,.25,1)] active:scale-[0.97]',
         'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
         checked ? 'bg-ink text-white' : 'bg-sand text-ink hover:bg-sand-deep',
         className,
       )}
     >
       <input type={type} name={name} checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only" />
-      {checked && <Check aria-hidden strokeWidth={2.5} className="-ml-1 size-4 shrink-0" />}
+      {checked && <Check aria-hidden strokeWidth={2.5} className="-ml-1 size-4 shrink-0 motion-safe:animate-[pop-in_.3s_cubic-bezier(.16,1,.3,1)_both]" />}
       {children}
     </label>
   )
@@ -51,8 +52,10 @@ export function PillGroup({ label, hint, radio, children }: { label: ReactNode; 
 
 /** Secção do formulário: título curto, frase de apoio opcional, campos. */
 export function FormSection({ title, hint, children }: { title: ReactNode; hint?: ReactNode; children: ReactNode }) {
+  // cada secção entra quando aparece (o formulário lê-se como passos, não como um bloco único)
+  const [ref, on] = useSeen<HTMLFieldSetElement>()
   return (
-    <fieldset className="border-t border-line pt-10 first-of-type:border-t-0 first-of-type:pt-0">
+    <fieldset ref={ref} className={cn(enterCls(on, 'up'), 'border-t border-line pt-10 first-of-type:border-t-0 first-of-type:pt-0')}>
       <legend className="float-left w-full">
         <span className="block text-2xl font-semibold text-ink">{title}</span>
         {hint && <span className="mt-1 block text-ink-mute">{hint}</span>}

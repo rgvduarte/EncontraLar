@@ -1,21 +1,27 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { ChevronRight } from 'lucide-react'
 import { LarCard } from '@/components/lar/LarCard'
 import { Button } from '@/components/ui/Button'
 import { num } from '@/lib/format'
 import { dividir, type Entrada } from './filtering'
+import { podeAnimar, useRevelarItens } from './motion'
 import type { Ordem } from './searchState'
 
 export const PAGINA = 20
 
 export const cardDomId = (id: string) => `resultado-${id}`
 
-/** No telemóvel a capa fica mais baixa (2:1) para caberem mais resultados por ecrã. */
-const CARTAO = 'max-sm:[&>div:first-child]:aspect-[2/1]'
+/**
+ * No telemóvel a capa fica mais baixa (2:1) para caberem mais resultados por ecrã.
+ * Ao tocar no cartão (a ligação cobre-o todo) ele "afunda" ligeiramente — resposta tátil de app nativa.
+ */
+const CARTAO = 'max-sm:[&>div:first-child]:aspect-[2/1] has-[a:active]:scale-[0.985] has-[a:active]:duration-100'
 
 interface Props {
   resultados: Entrada[]
+  /** muda com os filtros/ordenação: a lista volta a entrar em cascata */
+  geracao: string
   ordem: Ordem
   visiveis: number
   onMais: () => void
@@ -26,15 +32,20 @@ interface Props {
 }
 
 /** Lista de cartões horizontais, paginada de 20 em 20; separa "Com vaga agora" do resto quando ajuda. */
-export const ResultsList = memo(function ResultsList({ resultados, ordem, visiveis, onMais, destaqueId, onHover, mostrarDistancia }: Props) {
+export const ResultsList = memo(function ResultsList({ resultados, geracao, ordem, visiveis, onMais, destaqueId, onHover, mostrarDistancia }: Props) {
   const parte = useMemo(() => resultados.slice(0, visiveis), [resultados, visiveis])
   const grupos = useMemo(() => dividir(parte, resultados, ordem), [parte, resultados, ordem])
   const faltam = resultados.length - parte.length
 
+  // cartões revelados ao entrar no ecrã, em cascata (ao abrir, ao mudar filtros, ao fazer scroll, "Mostrar mais")
+  const [animar] = useState(podeAnimar)
+  const raiz = useRef<HTMLDivElement>(null)
+  useRevelarItens(raiz, [geracao, parte.length])
+
   const lista = (itens: Entrada[], h: 'h2' | 'h3') => (
     <ol className="flex flex-col gap-2">
       {itens.map((e) => (
-        <li key={e.lar.id} id={cardDomId(e.lar.id)} className="scroll-mt-[calc(4rem+var(--barra,0px)+1.5rem)]">
+        <li key={e.lar.id} id={cardDomId(e.lar.id)} data-item className="scroll-mt-[calc(4rem+var(--barra,0px)+1.5rem)]">
           <LarCard
             lar={e.lar}
             layout="horizontal"
@@ -50,11 +61,11 @@ export const ResultsList = memo(function ResultsList({ resultados, ordem, visive
   )
 
   return (
-    <div className="px-2 pt-4 sm:px-3 lg:px-5">
+    <div key={geracao} ref={raiz} data-revelar={animar ? '' : undefined} className="px-2 pt-4 sm:px-3 lg:px-5">
       {grupos
         ? grupos.map((g, i) => (
             <section key={g.id} aria-labelledby={`grupo-${g.id}`} className={i > 0 ? 'mt-12' : undefined}>
-              <h2 id={`grupo-${g.id}`} className="mb-2 px-3 text-lg font-semibold tracking-tight text-ink">
+              <h2 id={`grupo-${g.id}`} data-item className="mb-2 px-3 text-lg font-semibold tracking-tight text-ink">
                 {g.titulo}
                 <span className="ml-2 font-normal text-ink-mute tabular">
                   {num(g.total)}
@@ -67,11 +78,12 @@ export const ResultsList = memo(function ResultsList({ resultados, ordem, visive
         : lista(parte, 'h2')}
 
       {faltam > 0 && (
-        <div className="mt-10 flex flex-col items-center gap-3 text-center">
+        <div className="mt-10 flex flex-col items-center gap-3 px-3 text-center">
           <p className="text-sm text-ink-mute tabular">
             {num(parte.length)} de {num(resultados.length)}
           </p>
-          <Button variant="subtle" onClick={onMais}>
+          {/* telemóvel: largura total, ao alcance do polegar */}
+          <Button variant="subtle" onClick={onMais} className="max-sm:w-full">
             Mostrar mais
           </Button>
         </div>

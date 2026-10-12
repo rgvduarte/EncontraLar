@@ -10,6 +10,7 @@ import { assuntosPendentes, numerosResumo, passosArranque } from './lib/derive'
 import { useAgora } from './lib/hooks'
 import { cabecalho, seccaoDoCaminho } from './shell/cabecalhos'
 import { PublicStatus, SidebarIdentity } from './shell/Identity'
+import { useTroca } from './shared/motion'
 import ResumoPage from './resumo/ResumoPage'
 import VagasPage from './vagas/VagasPage'
 import PedidosPage from './pedidos/PedidosPage'
@@ -32,6 +33,8 @@ export default function LarDashboard() {
   const emFalta = lar ? passosArranque(lar, user).filter((p) => !p.feito).length : 0
   const cab = lar && assuntos ? cabecalho(seccao, lar, user, assuntos, emFalta, new Date(agora)) : null
   useDocumentTitle(cab?.doc ?? 'Painel da instituição')
+  // ao trocar de separador (barra lateral ou barra de abas), a nova secção entra a subir com um leve desfoque
+  const palco = useTroca<HTMLDivElement>(seccao, undefined, 560)
 
   if (!lar || !n || !cab) {
     return (
@@ -63,14 +66,16 @@ export default function LarDashboard() {
       nav={nav}
       aside={<PublicStatus lar={lar} />}
     >
-      <Routes>
-        <Route index element={<ResumoPage lar={lar} cands={cands} user={user} n={n} />} />
-        <Route path="vagas" element={<VagasPage lar={lar} />} />
-        <Route path="pedidos" element={<PedidosPage lar={lar} cands={cands} />} />
-        <Route path="previsao" element={<PrevisaoPage lar={lar} n={n} />} />
-        <Route path="ficha" element={<FichaPage lar={lar} />} />
-        <Route path="*" element={<Navigate to="/gestao" replace />} />
-      </Routes>
+      <div ref={palco}>
+        <Routes>
+          <Route index element={<ResumoPage lar={lar} cands={cands} user={user} n={n} />} />
+          <Route path="vagas" element={<VagasPage lar={lar} />} />
+          <Route path="pedidos" element={<PedidosPage lar={lar} cands={cands} />} />
+          <Route path="previsao" element={<PrevisaoPage lar={lar} n={n} />} />
+          <Route path="ficha" element={<FichaPage lar={lar} />} />
+          <Route path="*" element={<Navigate to="/gestao" replace />} />
+        </Routes>
+      </div>
     </DashboardShell>
   )
 }

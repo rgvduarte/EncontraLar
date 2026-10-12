@@ -42,7 +42,14 @@ export const MobileBar = forwardRef<HTMLDivElement, Props>(function MobileBar({ 
           onTexto={(q) => update({ q })}
         />
       </div>
-      <div ref={rowRef} role="group" aria-label="Filtros" className="flex gap-2 overflow-x-auto px-4 py-2.5 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden">
+      {/* linha deslizante com encaixe (snap) e esbatimento nas pontas: percebe-se que há mais à direita */}
+      <div
+        ref={rowRef}
+        role="group"
+        aria-label="Filtros"
+        data-lenis-prevent
+        className="flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto overscroll-x-contain px-4 py-2.5 [mask-image:linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-2rem),transparent)] [scrollbar-width:none] sm:scroll-px-6 sm:px-6 [&::-webkit-scrollbar]:hidden [&>*]:snap-start"
+      >
         <button type="button" onClick={onFiltros} aria-haspopup="dialog" className={pillClasses(n > 0)}>
           <SlidersHorizontal aria-hidden className="size-4" />
           Filtros
@@ -56,8 +63,9 @@ export const MobileBar = forwardRef<HTMLDivElement, Props>(function MobileBar({ 
 })
 
 /**
- * Pílula preta flutuante: "Mapa" / "Lista".
+ * Pílula preta flutuante: "Mapa" / "Lista", acima da barra de abas (--tabbar-h), ao alcance do polegar.
  * Num portal para o <body>: um antepassado animado (transição de página) não pode servir de referência ao position: fixed.
+ * Sobe do fundo ao abrir a página; na troca de vista a pílula "transforma-se" (view-transition-name próprio).
  */
 export function ViewToggle({ vista, onChange }: { vista: 'lista' | 'mapa'; onChange: (v: 'lista' | 'mapa') => void }) {
   const paraMapa = vista === 'lista'
@@ -66,7 +74,8 @@ export function ViewToggle({ vista, onChange }: { vista: 'lista' | 'mapa'; onCha
       <button
         type="button"
         onClick={() => onChange(paraMapa ? 'mapa' : 'lista')}
-        className="pointer-events-auto inline-flex min-h-13 items-center gap-2 rounded-full bg-ink px-6 text-base font-medium text-white shadow-lift transition-transform duration-200 active:scale-[0.97]"
+        style={{ viewTransitionName: 'el-vista-toggle', ['--d' as string]: '350ms' }}
+        className="el-rise pointer-events-auto inline-flex min-h-13 items-center gap-2 rounded-full bg-ink px-6 text-base font-medium text-white shadow-lift transition-[scale,background-color] duration-200 hover:bg-pine-600 active:scale-[0.96]"
       >
         {paraMapa ? <MapIcon aria-hidden className="size-5" strokeWidth={1.75} /> : <List aria-hidden className="size-5" strokeWidth={1.75} />}
         {paraMapa ? 'Mapa' : 'Lista'}

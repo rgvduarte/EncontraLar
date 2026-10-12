@@ -284,3 +284,298 @@
   outline: 3px solid var(--color-terra-500);
   outline-offset: 2px;
 }
+
+/* ════════════════════════════════════════════════════════════════
+ * Movimento (funcional, subtil): curvas e durações do DESIGN.md §7
+ * ════════════════════════════════════════════════════════════════ */
+
+@keyframes el-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+@keyframes el-in-soft {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(4px);
+  }
+}
+@keyframes el-pill-in {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+@keyframes el-pill-out {
+  to {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+@keyframes el-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+}
+@keyframes el-pop-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+@keyframes el-badge-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+}
+@keyframes el-bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes el-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+}
+@keyframes el-rise-out {
+  to {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+}
+
+/* — cartões da lista: revelados ao entrar no ecrã, em cascata por lote (useRevelarItens) */
+[data-revelar] [data-item] {
+  opacity: 0;
+  transform: translateY(18px);
+}
+[data-revelar] [data-item].is-in {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0ms),
+    transform 0.65s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0ms);
+}
+
+/* — entradas pontuais */
+.el-in-up {
+  animation: el-in-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: var(--d, 0ms);
+}
+/* título/valores que mudam com os filtros: troca suave */
+.el-swap {
+  animation: el-in-soft 0.42s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* — pílulas de filtros ativos: entram e saem */
+.el-pill {
+  animation: el-pill-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.el-pill[data-saindo] {
+  pointer-events: none;
+  animation: el-pill-out 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* — contador dentro das pílulas ("Filtros 3") */
+.el-badge {
+  animation: el-badge-pop 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* — painéis suspensos (Tipo, Orçamento, sugestões da pesquisa) */
+.el-pop {
+  transform-origin: var(--origem, 0 0);
+  animation: el-pop-in 0.26s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.el-pop[data-saindo] {
+  pointer-events: none;
+  animation: el-pop-out 0.16s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* — histograma do orçamento: as barras "crescem" ao abrir */
+.el-bar {
+  transform-origin: 50% 100%;
+  animation: el-bar-grow 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: var(--d, 0ms);
+}
+
+/* — botões que sobem do fundo ("Pesquisar nesta zona", "Mapa/Lista") */
+.el-rise {
+  animation: el-rise-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: var(--d, 0ms);
+}
+.el-rise[data-saindo] {
+  pointer-events: none;
+  animation: el-rise-out 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* — secções da folha de filtros: assentam em cascata quando a folha abre */
+.el-secao {
+  animation: el-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(120ms + var(--i, 0) * 50ms);
+}
+
+/* ———————————————————————————————— mapa: marcadores, agrupamentos e popup */
+
+@keyframes el-pin-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+}
+@keyframes el-cluster-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes el-arc-draw {
+  from {
+    stroke-dashoffset: var(--arco, 0);
+  }
+}
+@keyframes el-popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+.el-pin {
+  animation: el-pin-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.el-cluster {
+  animation: el-cluster-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.el-cluster__arc {
+  animation: el-arc-draw 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
+}
+.el-popup .leaflet-popup-content-wrapper,
+.el-popup .leaflet-popup-tip-container {
+  transform-origin: 50% 100%;
+  animation: el-popup-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* ———————————————————————————————— telemóvel: cartão do marcador (folha) */
+
+@keyframes el-sheet-in {
+  from {
+    opacity: 0.6;
+    transform: translateY(calc(100% + 6rem));
+  }
+}
+@keyframes el-sheet-out {
+  from {
+    transform: translateY(var(--dy, 0px));
+  }
+  to {
+    opacity: 0.4;
+    transform: translateY(calc(100% + 6rem));
+  }
+}
+.el-sheet {
+  touch-action: none;
+  animation: el-sheet-in 0.48s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+}
+.el-sheet[data-saindo] {
+  pointer-events: none;
+  animation: el-sheet-out 0.26s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+/* trocar de marcador com a folha aberta: só o conteúdo muda */
+.el-sheet-conteudo {
+  animation: el-in-soft 0.36s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* ———————————————————————————————— telemóvel: lista ⇄ mapa */
+
+/* sem View Transitions: a vista nova entra (fade + escala/subida curta) */
+@keyframes el-vista-mapa {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+.el-vista-mapa {
+  animation: el-vista-mapa 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+.el-vista-lista {
+  animation: el-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* com View Transitions: cross-fade da página + o mapa "assenta" (só escala/opacidade — nunca sai da sua área) */
+@keyframes el-vt-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes el-vt-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes el-vt-mapa-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+html[data-el-vista]::view-transition-old(root) {
+  animation: el-vt-out 0.22s cubic-bezier(0.4, 0, 1, 1) both;
+}
+html[data-el-vista]::view-transition-new(root) {
+  animation: el-vt-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+html[data-el-vista='mapa']::view-transition-new(el-mapa) {
+  animation: el-vista-mapa 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+html[data-el-vista='lista']::view-transition-old(el-mapa) {
+  animation: el-vt-mapa-out 0.26s cubic-bezier(0.4, 0, 1, 1) both;
+}
+html[data-el-vista]::view-transition-group(el-vista-toggle) {
+  animation-duration: 0.4s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ———————————————————————————————— telemóvel: alvos de toque ≥ 48px no mapa */
+
+@media (max-width: 1023.98px) {
+  .el-map .leaflet-bar a {
+    width: 48px !important;
+    height: 48px !important;
+    line-height: 48px !important;
+  }
+}
+
+/* ———————————————————————————————— movimento reduzido: estado final, sem atrasos */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-revelar] [data-item] {
+    opacity: 1;
+    transform: none;
+  }
+  .el-in-up,
+  .el-swap,
+  .el-pill,
+  .el-badge,
+  .el-pop,
+  .el-bar,
+  .el-rise,
+  .el-secao,
+  .el-pin,
+  .el-cluster,
+  .el-cluster__arc,
+  .el-popup .leaflet-popup-content-wrapper,
+  .el-popup .leaflet-popup-tip-container,
+  .el-sheet,
+  .el-sheet-conteudo,
+  .el-vista-mapa,
+  .el-vista-lista {
+    animation: none !important;
+  }
+}

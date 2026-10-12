@@ -52,6 +52,22 @@ export function useInView(ref: RefObject<Element | null>, rootMargin = '0px'): b
 }
 
 /**
+ * true quando o elemento está visível ou já ficou para trás (acima do ecrã) — ex.: "já chegámos ao fim da ficha",
+ * que continua verdadeiro enquanto se lê o rodapé.
+ */
+export function useJaPassou(ref: RefObject<Element | null>, rootMargin = '0px'): boolean {
+  const [passou, setPassou] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([e]) => setPassou(Boolean(e && (e.isIntersecting || e.boundingClientRect.top < 0))), { rootMargin })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [ref, rootMargin])
+  return passou
+}
+
+/**
  * `top` para um elemento sticky que pode ser mais alto do que o ecrã: se couber, fica a `base` px do topo;
  * se não couber, cola pelo fundo (top negativo), para que nunca fique uma parte inalcançável.
  */

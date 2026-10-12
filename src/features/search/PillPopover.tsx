@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react'
 import { useDismiss } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
 import { pillClasses } from './Chips'
+import { useSaida } from './motion'
 
 interface Props {
   /** texto da pílula */
@@ -16,7 +17,10 @@ interface Props {
   panelClassName?: string
 }
 
-/** Pílula que abre um pequeno painel por baixo (Tipo, Orçamento). Esc ou clique fora fecham. */
+/**
+ * Pílula que abre um pequeno painel por baixo (Tipo, Orçamento). Esc ou clique fora fecham.
+ * O painel cresce a partir da pílula (origem no canto mais próximo) e encolhe ao fechar.
+ */
 export function PillPopover({ label, panelLabel, active, children, onClose, panelClassName }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -45,6 +49,9 @@ export function PillPopover({ label, panelLabel, active, children, onClose, pane
     if (open) panelRef.current?.querySelector<HTMLElement>('input, button')?.focus()
   }, [open])
 
+  // mantém o painel montado durante a animação de saída
+  const painel = useSaida(open ? true : null, 160)
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -58,14 +65,17 @@ export function PillPopover({ label, panelLabel, active, children, onClose, pane
         {label}
         <ChevronDown aria-hidden className={cn('size-4 transition-transform duration-200', open && 'rotate-180')} />
       </button>
-      {open && (
+      {painel.item && (
         <div
           ref={panelRef}
           id={panelId}
           role="dialog"
           aria-label={panelLabel}
+          data-saindo={painel.saindo || undefined}
+          inert={painel.saindo || undefined}
+          style={{ ['--origem' as string]: direita ? '100% 0' : '0 0' }}
           className={cn(
-            'absolute top-full z-50 mt-2 w-[22rem] animate-pop-in rounded-[1.5rem] bg-white p-6 shadow-lift ring-1 ring-black/5',
+            'el-pop absolute top-full z-50 mt-2 w-[22rem] rounded-[1.5rem] bg-white p-6 shadow-lift ring-1 ring-black/5',
             direita ? 'right-0' : 'left-0',
             panelClassName,
           )}

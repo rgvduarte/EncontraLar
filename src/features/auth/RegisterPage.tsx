@@ -1,8 +1,8 @@
-import { Link, useSearchParams } from 'react-router'
-import { ChevronRight } from 'lucide-react'
+import { useSearchParams } from 'react-router'
 import type { Role } from '@/types'
 import { useDocumentTitle } from '@/lib/hooks'
 import { useCurrentUser } from '@/lib/store'
+import { TextLink } from '@/components/ui/Button'
 import { painelPath } from '@/components/layout/Header'
 import { AccountSwitch } from './register/AccountSwitch'
 import { FamilyForm } from './register/FamilyForm'
@@ -10,6 +10,8 @@ import { InstitutionForm } from './register/InstitutionForm'
 import { AuthShell } from './shared/AuthShell'
 import { PrototypeNote } from './shared/PrototypeNote'
 import { SignedInNotice } from './shared/SignedInNotice'
+import { SlideSwitch } from './shared/SlideSwitch'
+import { Appear, cascade } from './shared/Appear'
 import { isInternalPath } from './shared/redirect'
 
 const DESCRICAO: Record<Role, string> = {
@@ -40,26 +42,32 @@ export default function RegisterPage() {
 
   return (
     <AuthShell title="Criar conta">
-      <AccountSwitch value={tipo} onChange={escolher} />
-      <p aria-live="polite" className="mt-4 mb-10 text-center text-ink-mute">
-        {DESCRICAO[tipo]}
-      </p>
+      <Appear delay={cascade(0)}>
+        <AccountSwitch value={tipo} onChange={escolher} />
+      </Appear>
+      <Appear delay={cascade(1)} variant="fade">
+        <p aria-live="polite" className="mt-4 mb-8 text-center text-ink-mute sm:mb-10">
+          <span key={tipo} className="inline-block animate-[pop-in_.4s_cubic-bezier(.16,1,.3,1)_both] motion-reduce:animate-none">
+            {DESCRICAO[tipo]}
+          </span>
+        </p>
+      </Appear>
 
       {/* os dois formulários ficam montados: mudar de separador não apaga o que já escreveu */}
-      <div hidden={tipo !== 'familia'}>
-        <FamilyForm voltar={voltar} />
-      </div>
-      <div hidden={tipo !== 'lar'}>
-        <InstitutionForm />
-      </div>
+      <SlideSwitch
+        active={tipo}
+        panels={[
+          { key: 'familia', content: <FamilyForm voltar={voltar} /> },
+          { key: 'lar', content: <InstitutionForm /> },
+        ]}
+      />
 
-      <p className="mt-8 text-center text-sm text-ink-mute">
+      <Appear variant="fade" className="mt-8 text-center text-sm text-ink-mute">
         Já tem conta?{' '}
-        <Link to={entrar} className="link inline-flex min-h-12 items-center">
+        <TextLink to={entrar} className="min-h-12 align-middle">
           Entrar
-          <ChevronRight aria-hidden className="size-4" />
-        </Link>
-      </p>
+        </TextLink>
+      </Appear>
       <PrototypeNote className="mt-6" />
     </AuthShell>
   )

@@ -184,6 +184,9 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
           aria-autocomplete="list"
           aria-activedescendant={ativoId}
           autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="words"
+          inputMode="search"
           spellCheck={false}
           enterKeyHint="search"
           placeholder={geoAtivo ? 'A localizar…' : 'Localidade, distrito ou código postal'}
@@ -207,7 +210,10 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
             type="button"
             onClick={limpar}
             aria-label={editando && texto ? 'Apagar o texto escrito' : 'Retirar a localidade e procurar em todo o país'}
-            className="flex size-11 shrink-0 items-center justify-center rounded-full text-ink-mute transition-colors hover:bg-white hover:text-ink"
+            className={cn(
+              'flex shrink-0 items-center justify-center rounded-full text-ink-mute transition-colors hover:bg-white hover:text-ink',
+              compact ? 'size-12' : 'size-11',
+            )}
           >
             <X aria-hidden className="size-4.5" />
           </button>
@@ -220,7 +226,8 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
         role="listbox"
         aria-label="Sugestões de localidade"
         hidden={!open}
-        className="absolute top-full left-0 z-50 mt-2 max-h-[min(65vh,32rem)] w-full min-w-[min(28rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain rounded-[1.5rem] bg-white p-2 shadow-lift ring-1 ring-black/5"
+        data-lenis-prevent
+        className="el-pop absolute top-full left-0 z-50 mt-2 max-h-[min(65dvh,32rem)] w-full min-w-[min(28rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain rounded-[1.5rem] bg-white p-2 shadow-lift ring-1 ring-black/5"
       >
         {open && planas.length === 0 && (
           <p className="px-3 py-4 text-sm text-ink-mute">

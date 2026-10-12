@@ -3,11 +3,11 @@ import { ChevronDown } from 'lucide-react'
 import type { Disponibilidade } from '@/types'
 import { cn } from '@/lib/cn'
 
-/** Pílula de filtro: cinza discreta; preta quando ativa ('aberta' = painel aberto). Alvo de 48px. */
+/** Pílula de filtro: cinza discreta; preta quando ativa ('aberta' = painel aberto). Alvo de 48px; "afunda" ao toque. */
 export function pillClasses(active: boolean | 'aberta', extra?: string) {
   return cn(
     'inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full text-sm font-medium whitespace-nowrap select-none',
-    'transition-colors duration-200 ease-[cubic-bezier(.25,.1,.25,1)]',
+    'transition-[background-color,color,scale] duration-200 ease-[cubic-bezier(.25,.1,.25,1)] active:scale-[0.96]',
     active === true ? 'bg-ink text-white hover:bg-pine-600' : active === 'aberta' ? 'bg-sand-deep text-ink' : 'bg-sand text-ink hover:bg-sand-deep',
     extra ?? 'px-4.5',
   )
@@ -43,13 +43,14 @@ export function DispDot({ disp, className }: { disp: Disponibilidade; className?
   )
 }
 
-/** Contador pequeno dentro de uma pílula ("Mais filtros 3"). */
+/** Contador pequeno dentro de uma pílula ("Mais filtros 3"); dá um pequeno salto quando muda. */
 export function Count({ n, onDark }: { n: number; onDark?: boolean }) {
   if (n <= 0) return null
   return (
     <span
+      key={n}
       className={cn(
-        'inline-flex min-w-5.5 items-center justify-center rounded-full px-1.5 text-xs leading-5.5 font-semibold tabular',
+        'el-badge inline-flex min-w-5.5 items-center justify-center rounded-full px-1.5 text-xs leading-5.5 font-semibold tabular',
         onDark ? 'bg-white text-ink' : 'bg-ink text-white',
       )}
     >

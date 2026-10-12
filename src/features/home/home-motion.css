@@ -1,0 +1,109 @@
+/*
+ * Coreografia da página inicial — keyframes locais.
+ * Só transform / opacity / filter (compositor). Com prefers-reduced-motion nada anima e tudo aparece no estado final.
+ *
+ * Uso: class="hm-in" + style="--hm-a: hm-rise; --hm-t: 900ms; --hm-d: 240ms"
+ */
+@keyframes hm-blur-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.34em, 0);
+    filter: blur(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+@keyframes hm-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes hm-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* o mapa "assenta": entra ligeiramente maior e desfocado */
+@keyframes hm-settle {
+  from {
+    opacity: 0;
+    transform: scale(1.035);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+/* pontos do mapa (aplicado por latitude, de norte para sul) */
+@keyframes hm-dot {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes hm-dot-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* etiquetas de vaga: "pop" com uma pequena mola */
+@keyframes hm-pop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.86);
+  }
+  60% {
+    opacity: 1;
+    transform: translate3d(0, -3px, 0) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hm-in {
+  animation-name: var(--hm-a, hm-blur-up);
+  animation-duration: var(--hm-t, 1000ms);
+  animation-delay: var(--hm-d, 0ms);
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+/* à espera do momento de entrar (ex.: mapa ainda fora do ecrã) */
+.hm-wait {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-in,
+  .hm-map svg * {
+    animation: none !important;
+  }
+  .hm-wait {
+    opacity: 1;
+  }
+}

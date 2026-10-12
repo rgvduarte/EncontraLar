@@ -52,12 +52,13 @@ export function BudgetSlider({ value, onChange, precos, className }: SliderProps
       </div>
 
       <div>
+        {/* histograma: as barras crescem em cascata quando o painel/folha abre */}
         <div aria-hidden className="flex h-12 items-end gap-[2px]">
           {bins.map((b, i) => (
             <span
               key={i}
-              className={cn('flex-1 rounded-t-[2px] transition-colors duration-200', i * BIN < v ? 'bg-ink' : 'bg-sand-deep')}
-              style={{ height: `${b ? Math.max(6, (b / maxBin) * 100) : 0}%` }}
+              className={cn('el-bar flex-1 rounded-t-[2px] transition-colors duration-200', i * BIN < v ? 'bg-ink' : 'bg-sand-deep')}
+              style={{ height: `${b ? Math.max(6, (b / maxBin) * 100) : 0}%`, ['--d' as string]: `${80 + i * 14}ms` }}
             />
           ))}
         </div>

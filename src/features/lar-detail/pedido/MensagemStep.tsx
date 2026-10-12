@@ -77,7 +77,7 @@ export function MensagemStep({
           description="Conhecer a casa antes de decidir é o passo mais importante."
         />
         {comVisita && (
-          <div className="mt-5">
+          <div className="ficha-troca mt-5">
             <VisitFields value={visita} onChange={setVisita} erro={erroVisita} />
           </div>
         )}

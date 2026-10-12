@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Check, Minus, Star } from 'lucide-react'
 import type { Candidatura, Lar, PerfilIdoso } from '@/types'
+import { LarCover } from '@/components/lar/LarCover'
 import { precoReferencia } from '@/lib/matching'
 import { estimarEspera, vagasLivres } from '@/lib/forecast'
 import { distanceKm } from '@/lib/geo'
@@ -9,6 +10,7 @@ import { CUIDADO_LABEL, CUIDADOS_ORDEM, QUARTO_CURTO } from '@/lib/labels'
 import { euro, km, pct } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { isAtiva } from '../shared/estado'
+import { useMountAnimation } from '../shared/motion'
 import { ordinal } from '../shared/text'
 
 interface Linha {
@@ -39,8 +41,40 @@ const Num = ({ v, sub }: { v: ReactNode; sub?: ReactNode }) => (
   </span>
 )
 
+/** Conteúdo de uma coluna que desliza da direita quando a instituição é acrescentada à comparação. */
+function ColunaEntra({ delay = 0, children, className }: { delay?: number; children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  // 20px cabe no espaçamento da célula: a tabela não ganha scroll horizontal durante a entrada
+  useMountAnimation(ref, [{ opacity: 0, transform: 'translateX(20px)' }, { opacity: 1, transform: 'none' }], { duration: 650, delay })
+  return (
+    <div ref={ref} className={className}>
+      {children}
+    </div>
+  )
+}
+
+/** Cartão (telemóvel) que entra a deslizar quando a instituição é acrescentada. */
+function CartaoEntra({ delay, children }: { delay: number; children: ReactNode }) {
+  const ref = useRef<HTMLLIElement>(null)
+  useMountAnimation(
+    ref,
+    [
+      { opacity: 0, transform: 'translateX(48px) scale(0.96)' },
+      { opacity: 1, transform: 'none' },
+    ],
+    { duration: 700, delay },
+  )
+  return (
+    <li ref={ref} className="w-[86%] max-w-[22rem] shrink-0 snap-center">
+      {children}
+    </li>
+  )
+}
+
 /** Tabela lado a lado (2–3 instituições). O valor mais favorável de cada linha leva a indicação "Melhor". */
 export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil: PerfilIdoso | undefined; pedidos: Candidatura[] }) {
+  const [atual, setAtual] = useState(0)
+  const faixa = useRef<HTMLUListElement>(null)
   const dados = lares.map((lar) => {
     const pedido = pedidos.find((c) => c.larId === lar.id && isAtiva(c) && c.posicao != null)
     return {
@@ -173,49 +207,89 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
     const alvo = l.melhor === 'max' ? Math.max(...v) : Math.min(...v)
     return new Set(l.valores.flatMap((x, i) => (x === alvo ? [i] : [])))
   }
+  const best = linhas.map(melhores)
+  /** critérios em que cada instituição é a melhor (resumo no topo de cada cartão) */
+  const ganha = dados.map((_, i) => linhas.filter((_l, j) => best[j]!.has(i)).map((l) => l.label.toLowerCase()))
 
-  const n = dados.length
-  const cols = n === 3 ? 'grid-cols-3' : 'grid-cols-2'
+  const onScroll = () => {
+    const el = faixa.current
+    const first = el?.firstElementChild as HTMLElement | null
+    if (!el || !first) return
+    const passo = first.offsetWidth + 12
+    setAtual(Math.max(0, Math.min(dados.length - 1, Math.round(el.scrollLeft / passo))))
+  }
 
   return (
     <>
-      {/* telemóvel: critério a critério, valores lado a lado */}
+      {/* telemóvel: um cartão por instituição, a deslizar com o dedo */}
       <div className="sm:hidden">
-        <ul className={cn('grid gap-3 pb-4', cols)} aria-label="Instituições em comparação">
-          {dados.map(({ lar }) => (
-            <li key={lar.id}>
-              <Link to={`/lar/${lar.id}`} className="block text-base leading-snug font-semibold hover:underline">
-                {lar.nome}
-              </Link>
-            </li>
+        <ul
+          ref={faixa}
+          onScroll={onScroll}
+          aria-label="Instituições em comparação"
+          data-lenis-prevent
+          className="-mx-5 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto overscroll-x-contain px-5 pb-2 [scrollbar-width:none]"
+        >
+          {dados.map(({ lar }, i) => (
+            <CartaoEntra key={lar.id} delay={i * 90}>
+              <article aria-labelledby={`cmp-${lar.id}`} className="flex h-full flex-col rounded-[1.75rem] bg-sand p-5">
+                <header className="flex items-center gap-3">
+                  <div aria-hidden className="size-12 shrink-0 overflow-hidden rounded-xl">
+                    <LarCover hue={lar.capa.hue} variante={lar.capa.variante} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 id={`cmp-${lar.id}`} className="text-lg leading-snug font-semibold">
+                      <Link to={`/lar/${lar.id}`} className="hover:underline">
+                        {lar.nome}
+                      </Link>
+                    </h3>
+                    <p className="text-sm text-ink-mute">{lar.localidade}</p>
+                  </div>
+                </header>
+                <p className="mt-4 text-sm text-ink-soft">
+                  {ganha[i]!.length ? (
+                    <>
+                      <span className="font-semibold text-terra-700">Melhor em</span> {ganha[i]!.join(', ')}.
+                    </>
+                  ) : (
+                    'Não é a melhor em nenhum critério.'
+                  )}
+                </p>
+                <dl className="mt-2 divide-y divide-line">
+                  {linhas.map((l, j) => (
+                    <div key={l.id} className="py-4">
+                      <dt className="flex items-baseline justify-between gap-3 text-sm">
+                        <span className="font-medium">
+                          {l.label}
+                          {l.hint && <span className="font-normal text-ink-mute"> · {l.hint}</span>}
+                        </span>
+                        {best[j]!.has(i) && <span className="shrink-0 text-xs font-semibold text-terra-700">Melhor</span>}
+                      </dt>
+                      <dd className="mt-2">{l.cells[i]}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </article>
+            </CartaoEntra>
           ))}
         </ul>
-        {linhas.map((l) => {
-          const best = melhores(l)
-          return (
-            <section key={l.id} aria-label={l.label} className="border-t border-line py-5">
-              <p className="text-sm font-medium">
-                {l.label}
-                {l.hint && <span className="font-normal text-ink-mute"> · {l.hint}</span>}
-              </p>
-              <dl className={cn('mt-3 grid gap-3', cols)}>
-                {l.cells.map((cell, i) => (
-                  <div key={i} className="min-w-0">
-                    <dt className="truncate text-xs text-ink-mute">{dados[i]!.lar.nome}</dt>
-                    <dd className="mt-1 text-[0.9375rem] [&_.text-2xl]:text-xl">
-                      {cell}
-                      {best.has(i) && <span className="mt-1.5 block text-xs font-semibold text-terra-700">Melhor</span>}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          )
-        })}
+        {dados.length > 1 && (
+          <p className="mt-3 flex items-center justify-center gap-3 text-sm text-ink-mute">
+            <span aria-hidden className="flex gap-1.5">
+              {dados.map(({ lar }, i) => (
+                <span
+                  key={lar.id}
+                  className={cn('size-2 rounded-full transition-[background-color,transform] duration-300', i === atual ? 'scale-110 bg-ink' : 'bg-line-strong')}
+                />
+              ))}
+            </span>
+            Deslize para comparar
+          </p>
+        )}
       </div>
 
-      {/* ecrãs largos: tabela */}
-      <div className="hidden overflow-x-auto [scrollbar-width:thin] sm:block">
+      {/* ecrãs largos: tabela; as colunas novas entram a deslizar */}
+      <div className="hidden overflow-x-auto [scrollbar-width:thin] sm:block" data-lenis-prevent>
         <table className="w-full min-w-[36rem] border-collapse text-left">
           <caption className="sr-only">
             Comparação de {lares.length} instituições guardadas. “Melhor” assinala o valor mais favorável de cada linha.
@@ -223,34 +297,35 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
           <thead>
             <tr>
               <td className="w-44" />
-              {dados.map(({ lar }) => (
+              {dados.map(({ lar }, i) => (
                 <th key={lar.id} scope="col" className="px-6 pb-5 align-bottom font-normal">
-                  <Link to={`/lar/${lar.id}`} className="block text-lg leading-snug font-semibold hover:underline">
-                    {lar.nome}
-                  </Link>
-                  <span className="mt-0.5 block text-sm text-ink-mute">{lar.localidade}</span>
+                  <ColunaEntra delay={i * 100}>
+                    <Link to={`/lar/${lar.id}`} className="block text-lg leading-snug font-semibold hover:underline">
+                      {lar.nome}
+                    </Link>
+                    <span className="mt-0.5 block text-sm text-ink-mute">{lar.localidade}</span>
+                  </ColunaEntra>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {linhas.map((l) => {
-              const best = melhores(l)
-              return (
-                <tr key={l.id} className="border-t border-line">
-                  <th scope="row" className="py-5 pr-4 align-top font-normal">
-                    <span className="block text-sm font-medium text-ink">{l.label}</span>
-                    {l.hint && <span className="mt-0.5 block text-xs text-ink-mute">{l.hint}</span>}
-                  </th>
-                  {l.cells.map((cell, i) => (
-                    <td key={i} className="px-6 py-5 align-top">
-                      {cell}
-                      {best.has(i) && <span className="mt-2 block text-xs font-semibold text-terra-700">Melhor</span>}
-                    </td>
-                  ))}
-                </tr>
-              )
-            })}
+            {linhas.map((l, j) => (
+              <tr key={l.id} className="border-t border-line">
+                <th scope="row" className="py-5 pr-4 align-top font-normal">
+                  <span className="block text-sm font-medium text-ink">{l.label}</span>
+                  {l.hint && <span className="mt-0.5 block text-xs text-ink-mute">{l.hint}</span>}
+                </th>
+                {dados.map(({ lar }, i) => (
+                  <td key={lar.id} className="px-6 py-5 align-top">
+                    <ColunaEntra delay={i * 100 + (j + 1) * 30}>
+                      {l.cells[i]}
+                      {best[j]!.has(i) && <span className="mt-2 block text-xs font-semibold text-terra-700">Melhor</span>}
+                    </ColunaEntra>
+                  </td>
+                ))}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

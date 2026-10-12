@@ -1,14 +1,15 @@
-import { Link, useNavigate, useSearchParams } from 'react-router'
-import { ChevronRight } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router'
 import type { User } from '@/types'
 import { useDocumentTitle } from '@/lib/hooks'
 import { useCurrentUser, useLares } from '@/lib/store'
 import { toast } from '@/components/ui/Toast'
+import { TextLink } from '@/components/ui/Button'
 import { LoginForm } from './login/LoginForm'
 import { DemoAccess } from './login/DemoAccess'
 import { AuthShell } from './shared/AuthShell'
 import { SignedInNotice } from './shared/SignedInNotice'
 import { PrototypeNote } from './shared/PrototypeNote'
+import { Appear, cascade } from './shared/Appear'
 import { primeiroNome } from './shared/EmailExisteErro'
 import { descreverDestino, destinoAposEntrar, isInternalPath } from './shared/redirect'
 
@@ -34,27 +35,28 @@ export default function LoginPage() {
     <AuthShell title="Entrar no EncontraLar" subtitle={destino ? `Inicie sessão para abrir ${destino}.` : undefined}>
       <LoginForm defaultEmail={params.get('email') ?? ''} onSuccess={concluir} />
 
-      <div className="mt-6 flex flex-col items-center gap-1 text-center">
+      <Appear delay={cascade(3)} variant="fade" className="mt-5 flex flex-col items-center gap-2 text-center">
         <button
           type="button"
           onClick={() =>
             toast.info('Recuperar a palavra-passe', 'Neste protótipo não enviamos emails. Crie uma conta nova ou experimente uma conta de demonstração.')
           }
-          className="link min-h-12 text-sm"
+          className="link min-h-12 px-3 text-sm"
         >
           Esqueci-me da palavra-passe
         </button>
         <p className="text-sm text-ink-mute">
           Não tem conta?{' '}
-          <Link to={registar} className="link inline-flex min-h-12 items-center">
+          <TextLink to={registar} className="min-h-12 align-middle">
             Criar conta
-            <ChevronRight aria-hidden className="size-4" />
-          </Link>
+          </TextLink>
         </p>
-      </div>
+      </Appear>
 
-      <DemoAccess onSuccess={concluir} />
-      <PrototypeNote className="mt-10" />
+      <DemoAccess onSuccess={concluir} delay={cascade(4)} />
+      <Appear delay={cascade(6)} variant="fade">
+        <PrototypeNote className="mt-10" />
+      </Appear>
     </AuthShell>
   )
 }

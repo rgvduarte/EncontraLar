@@ -1,13 +1,15 @@
 import { useEffect, useId, useMemo } from 'react'
 import { Minus, Plus } from 'lucide-react'
-import { ChoiceCard, Switch } from '@/components/ui/Field'
+import { Switch } from '@/components/ui/Field'
 import { useDebounced } from '@/lib/hooks'
 import { euro, km } from '@/lib/format'
 import { RangeSlider } from '../controls/RangeSlider'
 import { contextoPrecos } from '../area'
+import { AnimatedNumber } from '../motion'
 import { deLocal } from '../language'
 import { arredondar, limitar, ORCAMENTO_MAX, ORCAMENTO_MIN, ORCAMENTO_PASSO, type Quarto } from '../model'
 import type { StepProps } from './types'
+import { ChoiceTile } from '../controls/ChoiceTile'
 
 const QUARTOS: { v: Quarto; label: string; desc: string }[] = [
   { v: 'individual', label: 'Individual', desc: 'Mais privacidade.' },
@@ -20,7 +22,7 @@ const QUARTOS: { v: Quarto; label: string; desc: string }[] = [
 const intervalo = (a: number, b: number) => `${euro(a).replace(/\s?€/, '')}–${euro(b)}`
 
 const passoBtn =
-  'flex size-12 shrink-0 items-center justify-center rounded-full bg-sand text-ink transition-colors duration-200 hover:bg-sand-deep disabled:opacity-40 disabled:hover:bg-sand'
+  'flex size-12 shrink-0 items-center justify-center rounded-full bg-sand text-ink select-none transition-[background-color,scale,opacity] duration-200 hover:bg-sand-deep active:scale-90 disabled:opacity-40 disabled:hover:bg-sand disabled:active:scale-100 motion-reduce:active:scale-100 pointer-coarse:size-14'
 
 export function StepOrcamento({ r, patch, lares, p }: StepProps) {
   const id = useId()
@@ -95,7 +97,7 @@ export function StepOrcamento({ r, patch, lares, p }: StepProps) {
           <div id={`${id}-ctx`} className="mt-10">
             <p className="text-center text-lg text-ink-mute">
               <span className="font-semibold text-ink tabular">
-                {dentro} de {ctx.n}
+                <AnimatedNumber value={dentro} /> de <AnimatedNumber value={ctx.n} />
               </span>{' '}
               instituições {zona} cabem neste valor.
             </p>
@@ -103,7 +105,7 @@ export function StepOrcamento({ r, patch, lares, p }: StepProps) {
               <div className="flex flex-col-reverse gap-1 px-2">
                 <dt className="text-sm text-ink-mute">Mediana nos privados</dt>
                 <dd className="text-xl font-semibold whitespace-nowrap text-ink tabular sm:text-3xl">
-                  {ctx.medianaPrivados != null ? euro(ctx.medianaPrivados) : '—'}
+                  {ctx.medianaPrivados != null ? <AnimatedNumber value={ctx.medianaPrivados} format={euro} /> : '—'}
                 </dd>
               </div>
               <div className="flex flex-col-reverse gap-1 px-2">
@@ -143,7 +145,7 @@ export function StepOrcamento({ r, patch, lares, p }: StepProps) {
         <legend className="text-base font-medium text-ink">Que tipo de quarto?</legend>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {QUARTOS.map((q) => (
-            <ChoiceCard
+            <ChoiceTile
               key={q.v}
               name="quarto"
               value={q.v}

@@ -4,7 +4,7 @@ import { useDocumentTitle } from '@/lib/hooks'
 import { loginDemo } from '@/lib/store'
 import { DEMO_LAR_EMAIL, DEMO_PASSWORD } from '@/data/seed'
 import { ButtonLink } from '@/components/ui/Button'
-import { Reveal } from '@/components/ui/Reveal'
+import { Reveal, ScrollZoom } from '@/components/motion'
 import { toast } from '@/components/ui/Toast'
 import { EmptyState } from '@/components/ui/misc'
 import { useExampleLar } from './shared/useExampleLar'
@@ -13,6 +13,7 @@ import { MoreLink, PageHero, SectionTitle } from './shared/ui'
 import { useEnsaio } from './para-lares/ensaio'
 import { ProductShot } from './para-lares/ProductShot'
 import { Bento } from './para-lares/Bento'
+import { Ciclo } from './para-lares/Ciclo'
 import { Verificacao } from './para-lares/Verificacao'
 import { Planos } from './para-lares/Planos'
 import { LARES_FAQ } from './para-lares/faq'
@@ -36,62 +37,76 @@ function Conteudo({ lar }: { lar: Lar }) {
 
   return (
     <>
+      {/* 1 · gancho */}
       <PageHero
         eyebrow="Para instituições"
-        title={
-          <>
-            Menos telefonemas.
-            <br />
-            <em>Mais vagas preenchidas.</em>
-          </>
-        }
+        title={[
+          'Menos telefonemas.',
+          <em key="em">Mais vagas preenchidas.</em>,
+        ]}
         subtitle="Atualize as vagas num toque e receba pedidos com o perfil clínico já preenchido."
         className="max-w-[72rem]"
         titleWidth="max-w-none"
       >
-        <div className="flex flex-col items-center justify-center gap-x-8 gap-y-3 sm:flex-row">
-          <ButtonLink to="/registar?tipo=lar" size="lg">
+        <div className="mx-auto flex max-w-sm flex-col items-stretch justify-center gap-x-8 gap-y-2 sm:max-w-none sm:flex-row sm:items-center">
+          <ButtonLink to="/registar?tipo=lar" size="lg" className="w-full sm:w-auto">
             Registar instituição
           </ButtonLink>
-          <MoreLink onClick={abrirDemo} className="text-lg">
+          <MoreLink onClick={abrirDemo} className="justify-center text-lg">
             Ver painel de demonstração
           </MoreLink>
         </div>
       </PageHero>
 
-      <Reveal className="container-page pb-8">
+      {/* 2 · contexto: o produto entra com "zoom" */}
+      <div className="container-page pb-20 sm:pb-28 lg:pb-36">
         <ProductShot base={lar} ensaio={ensaio} />
-      </Reveal>
+      </div>
 
+      {/* 3 · percurso: cena presa em três tempos (fundo preto) */}
+      <section aria-labelledby="pl-ciclo">
+        <Ciclo lar={lar} />
+      </section>
+
+      {/* 4 · clímax: as funcionalidades, a verificação e os planos */}
       <Bento base={lar} ensaio={ensaio} />
       <Verificacao />
       <Planos lar={lar} />
 
-      <section aria-labelledby="pl-faq" className="container-narrow pb-24 sm:pb-32 lg:pb-40">
-        <Reveal>
+      <section aria-labelledby="pl-faq" className="container-narrow pb-20 sm:pb-32 lg:pb-40">
+        <Reveal variant="blur">
           <SectionTitle id="pl-faq" title="Perguntas frequentes." size="md" align="left" />
+        </Reveal>
+        <Reveal variant="fade" delay={120}>
           <FaqList items={LARES_FAQ} className="mt-10" />
         </Reveal>
       </section>
 
-      <section aria-labelledby="pl-fecho" className="on-dark bg-pine-950 text-white">
-        <Reveal className="container-narrow flex flex-col items-center py-24 text-center sm:py-32 lg:py-40">
-          <h2 id="pl-fecho" className="headline max-w-[18ch] text-white">
-            A próxima família já está a <em>procurar</em>.
-          </h2>
-          <p className="mt-5 max-w-[40ch] text-xl text-pine-300 sm:text-2xl">Registe a instituição em poucos minutos.</p>
-          <div className="mt-10 flex flex-col items-center gap-x-8 gap-y-3 sm:flex-row">
-            <ButtonLink to="/registar?tipo=lar" variant="accent" size="lg">
-              Registar instituição
-            </ButtonLink>
-            <MoreLink onClick={abrirDemo} tone="dark" className="text-lg">
-              Ver painel de demonstração
-            </MoreLink>
+      {/* 5 · desfecho: o bloco preto cresce até ocupar a largura toda */}
+      <section aria-labelledby="pl-fecho">
+        <ScrollZoom from={0.9} radiusFrom={48} radiusTo={0} className="on-dark bg-pine-950 text-white">
+          <div className="container-narrow flex flex-col items-center py-20 text-center sm:py-32 lg:py-40">
+            <Reveal variant="blur">
+              <h2 id="pl-fecho" className="headline max-w-[18ch] text-white">
+                A próxima família já está a <em>procurar</em>.
+              </h2>
+            </Reveal>
+            <Reveal variant="blur" delay={120}>
+              <p className="mt-5 max-w-[40ch] text-xl text-pine-300 sm:text-2xl">Registe a instituição em poucos minutos.</p>
+            </Reveal>
+            <Reveal delay={240} className="mt-10 flex w-full max-w-sm flex-col items-stretch gap-x-8 gap-y-2 sm:w-auto sm:max-w-none sm:flex-row sm:items-center">
+              <ButtonLink to="/registar?tipo=lar" variant="inverse" size="lg" className="w-full sm:w-auto">
+                Registar instituição
+              </ButtonLink>
+              <MoreLink onClick={abrirDemo} tone="dark" className="justify-center text-lg">
+                Ver painel de demonstração
+              </MoreLink>
+            </Reveal>
+            <p className="mt-8 text-sm text-pine-400">
+              Conta de demonstração: {DEMO_LAR_EMAIL} · palavra-passe {DEMO_PASSWORD}
+            </p>
           </div>
-          <p className="mt-8 text-sm text-pine-400">
-            Conta de demonstração: {DEMO_LAR_EMAIL} · palavra-passe {DEMO_PASSWORD}
-          </p>
-        </Reveal>
+        </ScrollZoom>
       </section>
     </>
   )

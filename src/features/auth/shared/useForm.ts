@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { createElement, useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
+import { useLenis } from '@/components/motion'
 
 export type FormValues = Record<string, string | boolean>
 export type Rules<V extends FormValues> = { [K in keyof V]?: (value: V[K], all: V) => string | undefined }
@@ -7,11 +8,37 @@ type Key<V> = keyof V & string
 const reduzMovimento = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
+ * Mensagem de erro que entra com um deslize/fade subtil (sem "abanar"); a `key` faz com que
+ * uma mensagem nova (ex.: "falta o email" → "email incompleto") volte a entrar.
+ */
+export function errorNode(msg: ReactNode, key: string): ReactNode {
+  return createElement(
+    'span',
+    { key, className: 'block animate-[pop-in_.34s_cubic-bezier(.16,1,.3,1)_both] motion-reduce:animate-none' },
+    msg,
+  )
+}
+
+/**
  * Estado de formulário com validação acessível.
  * Padrão "avisar tarde, aliviar cedo": um erro só aparece ao sair do campo (se foi alterado) ou ao submeter;
  * depois de aparecer, desaparece assim que o valor fica correto.
  */
-export function useForm<V extends FormValues>({ initial, rules, order }: { initial: V; rules: Rules<V>; order: Key<V>[] }) {
+export function useForm<V extends FormValues>({
+  initial,
+  rules,
+  order,
+  reveal,
+}: {
+  initial: V
+  rules: Rules<V>
+  order: Key<V>[]
+  /**
+   * Antes de levar o foco a um campo: torna-o visível (ex.: abre o passo onde está) e
+   * devolve quantos ms esperar pela animação (0 se já estava visível).
+   */
+  reveal?: (k: Key<V>) => number
+}) {
   const [values, setValues] = useState<V>(initial)
   const [armed, setArmed] = useState<Partial<Record<Key<V>, boolean>>>({})
   const [external, setExternal] = useState<Partial<Record<Key<V>, string>>>({})
@@ -19,6 +46,13 @@ export function useForm<V extends FormValues>({ initial, rules, order }: { initi
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
   const refs = useRef(new Map<Key<V>, HTMLElement | null>())
+  const lenis = useLenis()
+  const lenisRef = useRef(lenis)
+  const revealRef = useRef(reveal)
+  useEffect(() => {
+    lenisRef.current = lenis
+    revealRef.current = reveal
+  })
 
   const computeErrors = useCallback(
     (vals: V, ext: Partial<Record<Key<V>, string>>) => {
@@ -34,6 +68,11 @@ export function useForm<V extends FormValues>({ initial, rules, order }: { initi
 
   const errors = computeErrors(values, external)
   const errorOf = (k: Key<V>) => (armed[k] ? errors[k] : undefined)
+  /** Erro já pronto a mostrar (animado), para passar a `error` dos campos. */
+  const errorView = (k: Key<V>) => {
+    const msg = errorOf(k)
+    return msg ? errorNode(msg, msg) : undefined
+  }
 
   const setValue = <K extends Key<V>>(k: K, v: V[K]) => {
     // se o campo ainda não mostra erro, só volta a avisar quando sair dele
@@ -51,11 +90,33 @@ export function useForm<V extends FormValues>({ initial, rules, order }: { initi
   }
 
   const focusField = useCallback((k: Key<V>) => {
-    const el = refs.current.get(k)
-    if (!el) return
-    el.scrollIntoView({ block: 'center', behavior: reduzMovimento() ? 'auto' : 'smooth' })
-    el.focus({ preventScroll: true })
+    const ir = () => {
+      const el = refs.current.get(k)
+      if (!el) return
+      const l = lenisRef.current
+      if (l && !reduzMovimento()) {
+        // centrado no ecrã, com o cabeçalho fixo em conta
+        const h = el.getBoundingClientRect().height
+        l.scrollTo(el, { offset: -Math.max(112, (window.innerHeight - h) / 2.6), duration: 0.9 })
+      } else el.scrollIntoView({ block: 'center', behavior: reduzMovimento() ? 'auto' : 'smooth' })
+      el.focus({ preventScroll: true })
+    }
+    const espera = revealRef.current?.(k) ?? 0
+    if (espera > 0) window.setTimeout(ir, espera)
+    else ir()
   }, [])
+
+  /**
+   * Valida só estes campos (ex.: um passo): mostra os erros deles e devolve o primeiro a corrigir,
+   * ou null se estão todos certos.
+   */
+  const validate = (keys: Key<V>[]): Key<V> | null => {
+    setArmed((a) => ({ ...a, ...Object.fromEntries(keys.map((k) => [k, true])) }))
+    return keys.find((k) => errors[k]) ?? null
+  }
+
+  /** true se estes campos já estão todos certos (sem mostrar erros). */
+  const isValid = (keys: Key<V>[]) => keys.every((k) => !errors[k])
 
   /** Props para InputField / SelectField / TextareaField / PasswordField. */
   const field = (k: Key<V>) => ({
@@ -63,7 +124,7 @@ export function useForm<V extends FormValues>({ initial, rules, order }: { initi
     value: String(values[k] ?? ''),
     onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setValue(k, e.target.value as V[typeof k]),
     onBlur: () => blur(k),
-    error: errorOf(k),
+    error: errorView(k),
     ref: refFor(k),
   })
 
@@ -118,6 +179,9 @@ export function useForm<V extends FormValues>({ initial, rules, order }: { initi
     field,
     checkbox,
     errorOf,
+    errorView,
+    validate,
+    isValid,
     visibleErrors,
     attempts,
     submitting,

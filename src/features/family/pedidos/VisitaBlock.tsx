@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { CalendarPlus } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
 import { Button } from '@/components/ui/Button'
@@ -7,6 +7,7 @@ import { toast } from '@/components/ui/Toast'
 import { pedirVisita } from '@/lib/store'
 import { cn } from '@/lib/cn'
 import { descarregarVisita } from '../shared/ics'
+import { useChangeAnimation } from '../shared/motion'
 import { amanhaISO, dataLocal, isoDia, quando, visitaPorExtenso } from '../shared/text'
 
 /** Horários habituais de visita (a instituição confirma ou propõe outro). */
@@ -47,13 +48,15 @@ function VisitaForm({ c, lar, inicial, onDone }: { c: Candidatura; lar: Lar; ini
           </option>
         ))}
       </SelectField>
-      <div className="flex flex-wrap items-end gap-4">
-        <SelectField label="Hora" value={hora} onChange={(e) => setHora(e.target.value)} wrapperClassName="w-32">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+        <SelectField label="Hora" value={hora} onChange={(e) => setHora(e.target.value)} wrapperClassName="sm:w-32">
           {HORAS.map((h) => (
             <option key={h}>{h}</option>
           ))}
         </SelectField>
-        <Button type="submit">Pedir visita</Button>
+        <Button type="submit" className="w-full sm:w-auto">
+          Pedir visita
+        </Button>
       </div>
     </form>
   )
@@ -62,6 +65,18 @@ function VisitaForm({ c, lar, inicial, onDone }: { c: Candidatura; lar: Lar; ini
 /** Visita de um pedido: marcada (com calendário), pedida, realizada — ou o formulário para a pedir. */
 export function VisitaBlock({ c, lar }: { c: Candidatura; lar: Lar }) {
   const [editar, setEditar] = useState(false)
+  const v = c.visita
+  const ref = useRef<HTMLDivElement>(null)
+  // formulário ↔ visita marcada: a troca entra com uma transição curta
+  useChangeAnimation(ref, `${v?.estado ?? 'nenhuma'}-${v?.data ?? ''}-${v?.hora ?? ''}-${editar}`)
+  return (
+    <div ref={ref}>
+      <VisitaConteudo c={c} lar={lar} editar={editar} setEditar={setEditar} />
+    </div>
+  )
+}
+
+function VisitaConteudo({ c, lar, editar, setEditar }: { c: Candidatura; lar: Lar; editar: boolean; setEditar: (v: boolean) => void }) {
   const v = c.visita
 
   if (v && v.estado === 'realizada') {

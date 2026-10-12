@@ -2,9 +2,11 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useLocation } from 'react-router'
 import { ButtonLink } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/misc'
-import { useDocumentTitle } from '@/lib/hooks'
+import { useDocumentTitle, useMediaQuery } from '@/lib/hooks'
+import { useLenis } from '@/components/motion'
 import { cn } from '@/lib/cn'
 import { usePedidos, usePerfisOrdenados, pesquisaUrl } from '../shared/data'
+import { ENTRA_DIREITA, ENTRA_ESQUERDA, Tween, useChangeAnimation } from '../shared/motion'
 import { PedidoCard } from './PedidoCard'
 
 type Aba = 'ativos' | 'terminados'
@@ -21,13 +23,31 @@ export default function PedidosPage() {
   const alvo = hash.startsWith('#pedido-') ? hash.slice(8) : null
   const [aba, setAba] = useState<Aba>(() => (alvo && terminados.some((p) => p.c.id === alvo) ? 'terminados' : 'ativos'))
   const tabs = useRef<Record<Aba, HTMLButtonElement | null>>({ ativos: null, terminados: null })
+  // depois de trocar de separador, os cartões entram com o painel (sem segunda animação própria)
+  const trocou = useRef(false)
+  const mudar = (k: Aba) => {
+    if (k !== aba) trocou.current = true
+    setAba(k)
+  }
 
+  const lenis = useLenis()
+  const desktop = useMediaQuery('(min-width: 1024px)')
   // ir ao pedido indicado no endereço (ex.: vindo de uma notificação), depois do scroll-to-top do Layout
   useEffect(() => {
     if (!alvo) return
-    const t = window.setTimeout(() => document.getElementById(`pedido-${alvo}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150)
+    const t = window.setTimeout(() => {
+      const el = document.getElementById(`pedido-${alvo}`)
+      if (!el) return
+      // cabeçalho (64px) + pílulas do painel no telemóvel
+      if (lenis) lenis.scrollTo(el, { offset: desktop ? -96 : -152 })
+      else el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 150)
     return () => window.clearTimeout(t)
-  }, [alvo])
+  }, [alvo, lenis, desktop])
+
+  // trocar de separador: o painel entra pelo lado do separador escolhido
+  const painel = useRef<HTMLDivElement>(null)
+  useChangeAnimation(painel, aba, aba === 'terminados' ? ENTRA_DIREITA : ENTRA_ESQUERDA, { duration: 450 })
 
   const lista = aba === 'ativos' ? ativos : terminados
   const contagem: Record<Aba, number> = { ativos: ativos.length, terminados: terminados.length }
@@ -37,7 +57,7 @@ export default function PedidosPage() {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return
     e.preventDefault()
     const next: Aba = e.key === 'Home' ? 'ativos' : e.key === 'End' ? 'terminados' : aba === 'ativos' ? 'terminados' : 'ativos'
-    setAba(next)
+    mudar(next)
     tabs.current[next]?.focus()
   }
 
@@ -54,7 +74,18 @@ export default function PedidosPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div role="tablist" aria-label="Pedidos" className="inline-flex rounded-full bg-sand p-1" onKeyDown={onKey}>
+        {/* controlo segmentado (iOS): a pastilha branca desliza para o separador ativo */}
+        <div
+          role="tablist"
+          aria-label="Pedidos"
+          className="relative grid w-full grid-cols-2 rounded-full bg-sand p-1 sm:inline-grid sm:w-auto"
+          onKeyDown={onKey}
+        >
+          <span
+            aria-hidden
+            className="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-white shadow-soft transition-transform duration-300 ease-[cubic-bezier(.16,1,.3,1)]"
+            style={{ transform: aba === 'terminados' ? 'translateX(100%)' : 'none' }}
+          />
           {ABAS.map(({ k, label }) => (
             <button
               key={k}
@@ -67,14 +98,13 @@ export default function PedidosPage() {
               aria-selected={aba === k}
               aria-controls="pedidos-painel"
               tabIndex={aba === k ? 0 : -1}
-              onClick={() => setAba(k)}
+              onClick={() => mudar(k)}
               className={cn(
-                'inline-flex min-h-12 items-center gap-2 rounded-full px-6 font-medium transition-[background-color,color,box-shadow] duration-200',
-                aba === k ? 'bg-white text-ink shadow-soft' : 'text-ink-mute hover:text-ink',
+                'relative inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 font-medium transition-colors duration-200',
+                aba === k ? 'text-ink' : 'text-ink-mute hover:text-ink',
               )}
             >
-              {label}{' '}
-              <span className="text-ink-mute tabular">{contagem[k]}</span>
+              {label} <Tween value={contagem[k]} className="text-ink-mute" />
             </button>
           ))}
         </div>
@@ -85,7 +115,7 @@ export default function PedidosPage() {
         </p>
       </div>
 
-      <div id="pedidos-painel" role="tabpanel" aria-labelledby={`aba-${aba}`} className="mt-10 flex flex-col gap-12 sm:mt-8 sm:gap-8">
+      <div ref={painel} id="pedidos-painel" role="tabpanel" aria-labelledby={`aba-${aba}`} className="mt-10 flex flex-col gap-12 sm:mt-8 sm:gap-8">
         {lista.length === 0 ? (
           aba === 'ativos' ? (
             <EmptyState
@@ -97,7 +127,9 @@ export default function PedidosPage() {
             <EmptyState title="Nenhum pedido terminado" text="Os pedidos cancelados ou sem vaga ficam aqui, para referência." />
           )
         ) : (
-          lista.map(({ c, lar }) => <PedidoCard key={c.id} c={c} lar={lar} />)
+          lista.map(({ c, lar }, i) => (
+            <PedidoCard key={c.id} c={c} lar={lar} index={i} animateIn={!trocou.current} thumbBar={aba === 'ativos' && i === lista.findIndex((p) => p.c.estado === 'vaga_proposta')} />
+          ))
         )}
       </div>
     </div>

@@ -13,6 +13,7 @@ import { scoreLabel, type TipoRazao } from '@/lib/matching'
 import { euro, num } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useMediaQuery } from '@/lib/hooks'
+import { useInView } from '@/lib/motion'
 import type { ExemploMatch, PrevisaoDestaque } from './homeData'
 
 const cartao = 'rounded-[1.375rem] bg-white p-5 sm:p-7'
@@ -28,12 +29,25 @@ function NomeLar({ lar, className }: { lar: Lar; className?: string }) {
 
 // ————————————————————————————————————————— previsão
 
-export function PrevisaoCard({ previsao, agora }: { previsao: PrevisaoDestaque; agora: number }) {
+/**
+ * Ao entrar no ecrã (com `animar`), cada mês aparece por ordem e a sua barra enche-se da esquerda para a direita
+ * (scaleX — só transform). O ForecastStrip é partilhado: a animação é aplicada aqui, por seletores.
+ */
+const ENCHER = cn(
+  '[&_li]:transition-[opacity,translate] [&_li]:duration-700 [&_li]:ease-[cubic-bezier(.16,1,.3,1)]',
+  '[&_.h-1>span]:origin-left [&_.h-1>span]:transition-transform [&_.h-1>span]:duration-[1400ms] [&_.h-1>span]:ease-[cubic-bezier(.16,1,.3,1)]',
+  '[&_li:nth-child(2)]:delay-[90ms] [&_li:nth-child(3)]:delay-[180ms] [&_li:nth-child(4)]:delay-[270ms] [&_li:nth-child(5)]:delay-[360ms] [&_li:nth-child(6)]:delay-[450ms]',
+  '[&_li:nth-child(2)_.h-1>span]:delay-[90ms] [&_li:nth-child(3)_.h-1>span]:delay-[180ms] [&_li:nth-child(4)_.h-1>span]:delay-[270ms] [&_li:nth-child(5)_.h-1>span]:delay-[360ms] [&_li:nth-child(6)_.h-1>span]:delay-[450ms]',
+)
+const VAZIO = '[&_li]:translate-y-3 [&_li]:opacity-0 [&_.h-1>span]:scale-x-0'
+
+export function PrevisaoCard({ previsao, agora, animar }: { previsao: PrevisaoDestaque; agora: number; animar?: boolean }) {
   const { lar, est } = previsao
   // no telemóvel, três meses cabem numa linha; seis ficariam apertados
   const largo = useMediaQuery('(min-width: 640px)')
+  const [ref, visto] = useInView<HTMLDivElement>({ threshold: 0.4 })
   return (
-    <div className={cartao}>
+    <div ref={ref} className={cartao}>
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
         <NomeLar lar={lar} className="leading-snug" />
         <p className="flex shrink-0 items-start gap-2 text-sm text-sun-800">
@@ -41,7 +55,12 @@ export function PrevisaoCard({ previsao, agora }: { previsao: PrevisaoDestaque; 
           {resumoPrevisao(lar, est)}
         </p>
       </div>
-      <ForecastStrip curva={est.curva} meses={largo ? 6 : 3} inicio={new Date(agora)} className="mt-6" />
+      <ForecastStrip
+        curva={est.curva}
+        meses={largo ? 6 : 3}
+        inicio={new Date(agora)}
+        className={cn('mt-6', animar && ENCHER, animar && !visto && VAZIO)}
+      />
     </div>
   )
 }

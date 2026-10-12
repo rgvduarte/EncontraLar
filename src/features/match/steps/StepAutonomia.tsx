@@ -1,6 +1,6 @@
-import { ChoiceCard } from '@/components/ui/Field'
 import { GRAU_DESCRICAO, GRAU_LABEL, GRAUS_ORDEM } from '@/lib/labels'
 import type { StepProps } from './types'
+import { ChoiceTile } from '../controls/ChoiceTile'
 
 export function StepAutonomia({ r, patch, erros }: StepProps) {
   return (
@@ -8,7 +8,7 @@ export function StepAutonomia({ r, patch, erros }: StepProps) {
       <legend className="sr-only">Grau de autonomia</legend>
       <div className="flex flex-col gap-3">
         {GRAUS_ORDEM.map((g, i) => (
-          <ChoiceCard
+          <ChoiceTile
             key={g}
             name="grau"
             value={g}

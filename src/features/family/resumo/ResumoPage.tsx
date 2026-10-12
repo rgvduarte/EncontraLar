@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router'
-import { Reveal } from '@/components/ui/Reveal'
 import { useCurrentUser, useFavoritos, useNotificacoes } from '@/lib/store'
 import { useDocumentTitle } from '@/lib/hooks'
 import { usePedidos, usePerfisOrdenados, pesquisaUrl, visitasFuturas } from '../shared/data'
 import { VagaProposta } from '../shared/VagaProposta'
+import { Enter } from '../shared/motion'
 import { primeiroNome } from '../shared/text'
 import { PedidosResumo } from './PedidosResumo'
 import { ProximaVisita } from './ProximaVisita'
@@ -45,44 +45,45 @@ export default function ResumoPage() {
 
       {propostas.length > 0 && (
         <div className="flex flex-col gap-6">
+          {/* o momento-chave entra com escala (estilo Apple) */}
           {propostas.map((p, i) => (
-            <div key={p.c.id} id={i === 0 ? 'vaga-proposta' : undefined} className="scroll-mt-40">
-              <VagaProposta c={p.c} lar={p.lar} />
-            </div>
+            <Enter key={p.c.id} id={i === 0 ? 'vaga-proposta' : undefined} variant="scale" duration={900} delay={i * 90} className="scroll-mt-40">
+              <VagaProposta c={p.c} lar={p.lar} thumbBar={i === 0} />
+            </Enter>
           ))}
         </div>
       )}
 
       {/* sem perfil, o primeiro passo é descrevê-lo: vem antes de tudo */}
       {!principal && !bemvindo && (
-        <Reveal>
+        <Enter>
           <Sugestoes perfil={principal} excluir={excluir} />
-        </Reveal>
+        </Enter>
       )}
 
-      <Reveal>
+      <Enter>
         <PedidosResumo ativos={ativos} terminados={terminados.length} pesquisa={pesquisa} />
-      </Reveal>
+      </Enter>
 
       {(visitas.length > 0 || ativos.length > 0) && (
-        <Reveal>
+        <Enter>
           <ProximaVisita visita={visitas[0]} outras={visitas.length - 1} temPedidos={ativos.length > 0} />
-        </Reveal>
+        </Enter>
       )}
 
       {principal && (
-        <Reveal>
+        <Enter>
           <Sugestoes perfil={principal} excluir={excluir} />
-        </Reveal>
+        </Enter>
       )}
 
       <div className="grid gap-16 xl:grid-cols-2 xl:gap-12">
-        <Reveal>
+        <Enter>
           <Novidades notifs={notifs} />
-        </Reveal>
-        <Reveal delay={120}>
+        </Enter>
+        <Enter delay={120}>
           <ProximosPassos perfil={principal} guardados={favoritos.length} pedidos={todos.length} visita={visitas[0]} pesquisa={pesquisa} />
-        </Reveal>
+        </Enter>
       </div>
     </div>
   )

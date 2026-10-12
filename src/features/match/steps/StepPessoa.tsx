@@ -23,43 +23,53 @@ export function StepPessoa({ r, patch, erros, p }: StepProps) {
       />
 
       <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_11rem] sm:items-start">
-        <InputField
-          label={p.proprio ? 'O seu nome' : 'Nome'}
-          optional
-          autoComplete="off"
-          value={r.nome}
-          maxLength={60}
-          onChange={(e) => patch({ nome: e.target.value })}
-          placeholder={p.proprio ? 'Ex.: António' : 'Ex.: Maria do Carmo'}
-        />
-        <FieldShell label="Idade" error={erros.idade}>
-          {({ id, describedBy, invalid }) => (
-            <div className="relative">
-              <input
-                id={id}
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                autoComplete="off"
-                maxLength={3}
-                value={r.idade}
-                onChange={(e) => patch({ idade: e.target.value.replace(/\D/g, '').slice(0, 3) })}
-                aria-describedby={describedBy}
-                aria-invalid={invalid || undefined}
-                aria-required="true"
-                placeholder="84"
-                className={cn(
-                  'min-h-13 w-full rounded-2xl border bg-white py-3 pr-16 pl-4 text-base text-ink tabular placeholder:text-ink-mute',
-                  'transition-[border-color,box-shadow] duration-200 hover:border-pine-400 focus:border-terra-500 focus:ring-4 focus:ring-terra-100 focus:outline-none',
-                  invalid ? 'border-alert-600' : 'border-line-strong',
-                )}
-              />
-              <span aria-hidden className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-base text-ink-mute">
-                anos
-              </span>
-            </div>
-          )}
-        </FieldShell>
+        <div data-campo>
+          <InputField
+            label={p.proprio ? 'O seu nome' : 'Nome'}
+            optional
+            autoComplete={p.proprio ? 'given-name' : 'off'}
+            autoCapitalize="words"
+            enterKeyHint="next"
+            value={r.nome}
+            maxLength={60}
+            onChange={(e) => patch({ nome: e.target.value })}
+            placeholder={p.proprio ? 'Ex.: António' : 'Ex.: Maria do Carmo'}
+          />
+        </div>
+        <div data-campo>
+          <FieldShell label="Idade" error={erros.idade}>
+            {({ id, describedBy, invalid }) => (
+              <div className="relative">
+                <input
+                  id={id}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  maxLength={3}
+                  enterKeyHint="next"
+                  value={r.idade}
+                  onChange={(e) => patch({ idade: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                  aria-describedby={describedBy}
+                  aria-invalid={invalid || undefined}
+                  aria-required="true"
+                  placeholder="84"
+                  className={cn(
+                    'min-h-13 w-full rounded-2xl border bg-white py-3 pr-16 pl-4 text-base text-ink tabular placeholder:text-ink-mute',
+                    'transition-[border-color,box-shadow] duration-200 hover:border-pine-400 focus:border-terra-500 focus:ring-4 focus:ring-terra-100 focus:outline-none',
+                    invalid ? 'border-alert-600' : 'border-line-strong',
+                  )}
+                />
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-base text-ink-mute"
+                >
+                  anos
+                </span>
+              </div>
+            )}
+          </FieldShell>
+        </div>
       </div>
 
       {idade != null && idade >= IDADE_MIN && idade < 65 && (

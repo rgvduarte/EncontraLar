@@ -8,7 +8,7 @@ import { QUARTO_LABEL } from '@/lib/labels'
 import { ButtonLink } from '@/components/ui/Button'
 import { Reveal } from '@/components/ui/Reveal'
 import { cn } from '@/lib/cn'
-import { SectionTitle } from '../shared/ui'
+import { SectionTitle, SWIPE_ITEM, SwipeRow } from '../shared/ui'
 
 const PRECO_PROFISSIONAL = 39
 
@@ -51,7 +51,7 @@ function Contas({ lar }: { lar: Lar }) {
   const meses = Math.floor(semana / PRECO_PROFISSIONAL)
   if (meses < 2) return null
   return (
-    <p className="mx-auto mt-16 max-w-[52ch] text-center text-lg text-ink-mute">
+    <p className="mx-auto mt-12 max-w-[52ch] text-center text-lg text-ink-mute sm:mt-16">
       Na {lar.nome}, uma semana com um {QUARTO_LABEL[q.tipo].replace(' (partilhado)', '').toLowerCase()} vazio são cerca de{' '}
       <span className="font-semibold text-ink tabular">{euro(semana)}</span>. Mais do que {meses} meses do plano Profissional.
     </p>
@@ -60,8 +60,8 @@ function Contas({ lar }: { lar: Lar }) {
 
 export function Planos({ lar }: { lar: Lar }) {
   return (
-    <section aria-labelledby="pl-planos" className="container-page py-24 sm:py-32 lg:py-40">
-      <Reveal>
+    <section aria-labelledby="pl-planos" className="container-page py-20 sm:py-32 lg:py-40">
+      <Reveal variant="blur">
         <SectionTitle
           id="pl-planos"
           title={
@@ -74,15 +74,16 @@ export function Planos({ lar }: { lar: Lar }) {
         <p className="mt-5 text-center text-sm text-ink-mute">Preços indicativos (protótipo), por instituição.</p>
       </Reveal>
 
-      <ul className="mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-4 sm:mt-20 md:grid-cols-3">
+      {/* telemóvel: faixa deslizável (o plano seguinte espreita); desktop: três colunas que entram em cascata */}
+      <SwipeRow as="ul" label="Planos" className="mt-12 max-w-5xl sm:mt-20 md:mx-auto md:grid md:grid-cols-3 md:gap-4">
         {PLANOS.map((p, i) => {
           const destaque = p.id === 'profissional'
           return (
             <Reveal
               as="li"
               key={p.id}
-              delay={i * 90}
-              className={cn('flex flex-col rounded-[1.75rem] p-7 sm:p-8', destaque ? 'bg-sand' : 'bg-white ring-1 ring-line')}
+              delay={i * 120}
+              className={cn(SWIPE_ITEM, 'flex flex-col rounded-[1.75rem] p-6 sm:p-8', destaque ? 'bg-sand' : 'bg-white ring-1 ring-line ring-inset')}
             >
               <p className="flex items-center justify-between gap-3">
                 <span className="text-xl font-semibold text-ink">{p.nome}</span>
@@ -111,9 +112,11 @@ export function Planos({ lar }: { lar: Lar }) {
             </Reveal>
           )
         })}
-      </ul>
+      </SwipeRow>
 
-      <Contas lar={lar} />
+      <Reveal variant="fade" delay={150}>
+        <Contas lar={lar} />
+      </Reveal>
     </section>
   )
 }

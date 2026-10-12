@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { flushSync } from 'react-dom'
+import { Reveal } from '@/components/motion/Reveal'
 import { useLenis } from '@/components/motion/SmoothScroll'
+import { prefersReducedMotion } from '@/lib/motion'
 import { useDocumentTitle, useMediaQuery } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
 import { EmptyResults } from './EmptyResults'
@@ -10,7 +13,7 @@ import { MobileBar, ViewToggle } from './MobileBar'
 import { cardDomId, NotaFinal, PAGINA, ResultsList } from './ResultsList'
 import { ResultsSummary, tituloPesquisa } from './ResultsSummary'
 import { SearchMap } from './SearchMap'
-import { centroDe, toSearchParams, type Bounds } from './searchState'
+import { centroDe, toSearchParams, type Bounds, type Vista } from './searchState'
 import { useGeolocation } from './useGeolocation'
 import { useSearch } from './useSearch'
 import './search.css'
@@ -18,7 +21,12 @@ import './search.css'
 /**
  * /pesquisa — mapa de vagas.
  * Desktop: barra fixa (pesquisa + filtros) · lista à esquerda · mapa fixo à direita, sincronizados.
- * Telemóvel: lista por defeito; mapa em ecrã inteiro com a pílula "Mapa" (?vista=mapa); filtros em ecrã inteiro.
+ * Telemóvel: lista por defeito; mapa entre a barra e a barra de abas com a pílula "Mapa" (?vista=mapa);
+ * filtros numa folha inferior.
+ *
+ * Movimento (funcional, subtil): a lista entra em cascata ao abrir e sempre que os filtros/ordem mudam
+ * (e volta ao topo); contagens deslizam; lista ⇄ mapa faz cross-fade (View Transitions, com recurso a
+ * uma entrada CSS); marcadores entram em "salpico"; a folha do marcador sobe do fundo e fecha a deslizar.
  */
 export default function SearchPage() {
   const model = useSearch()
@@ -41,6 +49,18 @@ export default function SearchPage() {
     setVisiveis(PAGINA)
     setSelectedId(null)
   }, [fitKey])
+
+  // "geração" da lista (filtros + ordem): a lista nova entra em cascata a partir do topo
+  const geracao = `${fitKey}|${state.ordem}`
+  const geracaoVista = useRef(geracao)
+  useEffect(() => {
+    if (geracaoVista.current === geracao) return
+    geracaoVista.current = geracao
+    // estava a meio da lista antiga → voltar ao início dos resultados novos
+    if (window.scrollY < 4) return
+    if (lenis) lenis.scrollTo(0, { immediate: true, force: true })
+    else window.scrollTo({ top: 0 })
+  }, [geracao, lenis])
 
   const resultadosRef = useRef(resultados)
   resultadosRef.current = resultados
@@ -96,14 +116,47 @@ export default function SearchPage() {
   }, [desktop])
 
   const onZona = useCallback((b: Bounds) => update({ local: { tipo: 'zona', bounds: b } }), [update])
-  const vistaMapa = !desktop && state.vista === 'mapa'
+
+  // ——— lista ⇄ mapa (telemóvel). Estado local espelhado no URL: a navegação do router corre numa
+  // transição React (assíncrona) e a View Transition precisa de aplicar a troca de forma síncrona.
+  const [vista, setVista] = useState<Vista>(state.vista)
+  useEffect(() => setVista(state.vista), [state.vista])
+  const [entrada, setEntrada] = useState<Vista | null>(null)
+  const trocarVista = (v: Vista) => {
+    const aplicar = () => {
+      flushSync(() => setVista(v))
+      if (lenis) lenis.scrollTo(0, { immediate: true, force: true })
+      else window.scrollTo({ top: 0 })
+      update({ vista: v })
+    }
+    if (prefersReducedMotion()) {
+      setEntrada(null)
+      aplicar()
+      return
+    }
+    if (typeof document.startViewTransition === 'function') {
+      const html = document.documentElement
+      html.dataset.elVista = v
+      setEntrada(null)
+      const t = document.startViewTransition(aplicar)
+      t.finished.finally(() => {
+        if (html.dataset.elVista === v) delete html.dataset.elVista
+      })
+      return
+    }
+    // sem View Transitions: a vista nova entra com uma animação curta
+    setEntrada(v)
+    aplicar()
+  }
+
+  const vistaMapa = !desktop && vista === 'mapa'
   const destaqueLista = selectedId ?? mapHoverId
   const destaqueMapa = listHoverId ?? mapHoverId
 
   const lista = (
     <>
       {state.lugarDesconhecido && (
-        <p role="status" className="mx-5 mt-6 rounded-[1.25rem] bg-sand px-5 py-4 text-sm text-ink-soft sm:mx-6 lg:mx-8">
+        <p role="status" className="el-in-up mx-5 mt-6 rounded-[1.25rem] bg-sand px-5 py-4 text-sm text-ink-soft sm:mx-6 lg:mx-8">
           Não encontrámos «{state.lugarDesconhecido}». A mostrar todo o país — escreva o concelho ou o código postal na pesquisa.
         </p>
       )}
@@ -111,6 +164,7 @@ export default function SearchPage() {
       {resultados.length > 0 ? (
         <ResultsList
           resultados={resultados}
+          geracao={geracao}
           ordem={state.ordem}
           visiveis={visiveis}
           onMais={() => setVisiveis((v) => v + PAGINA)}
@@ -119,9 +173,11 @@ export default function SearchPage() {
           mostrarDistancia={Boolean(centroDe(state.local))}
         />
       ) : (
-        <EmptyResults model={model} />
+        <EmptyResults key={geracao} model={model} />
       )}
-      <NotaFinal />
+      <Reveal variant="fade" duration={700}>
+        <NotaFinal />
+      </Reveal>
     </>
   )
 
@@ -178,21 +234,15 @@ export default function SearchPage() {
           <p className="sr-only" aria-live="polite">
             {resultados.length} instituições, {comVaga} com vaga agora
           </p>
-          <div className="relative min-h-[22rem] flex-1">{mapa('absolute inset-0')}</div>
+          {/* o mapa ocupa exatamente o espaço entre a barra de pesquisa e a barra de abas */}
+          <div className={cn('relative min-h-[22rem] flex-1', entrada === 'mapa' && 'el-vista-mapa')} style={{ viewTransitionName: 'el-mapa' }}>
+            {mapa('absolute inset-0')}
+          </div>
         </>
       ) : (
-        lista
+        <div className={cn('flex flex-col', entrada === 'lista' && 'el-vista-lista')}>{lista}</div>
       )}
-      {!modalAberto && (
-        <ViewToggle
-          vista={vistaMapa ? 'mapa' : 'lista'}
-          onChange={(vista) => {
-            update({ vista })
-            if (lenis) lenis.scrollTo(0, { immediate: true, force: true })
-            else window.scrollTo({ top: 0 })
-          }}
-        />
-      )}
+      {!modalAberto && <ViewToggle vista={vistaMapa ? 'mapa' : 'lista'} onChange={trocarVista} />}
       <FiltersModal
         open={modalAberto}
         onClose={() => setModal(null)}

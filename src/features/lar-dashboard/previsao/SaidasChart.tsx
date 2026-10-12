@@ -1,14 +1,17 @@
 import { useId, useState } from 'react'
 import { MESES_CURTOS, MESES_LONGOS } from '@/lib/format'
+import { useInView } from '@/lib/motion'
 import { cn } from '@/lib/cn'
 
 /**
  * Saídas registadas nos últimos 12 meses — colunas finas, uma série (sem legenda),
  * valor ao passar o rato/foco e tabela equivalente para leitores de ecrã.
  * O último valor corresponde ao mês corrente (é aí que o registo de uma vaga libertada soma).
+ * As colunas crescem do eixo, da esquerda para a direita, quando o gráfico entra no ecrã.
  */
 export function SaidasChart({ valores, agora = new Date() }: { valores: number[]; agora?: Date }) {
   const [ativo, setAtivo] = useState<number | null>(null)
+  const [ref, visivel] = useInView<HTMLElement>({ threshold: 0.3 })
   const tabelaId = useId()
   const dados = valores.slice(-12).map((v, i, arr) => {
     const d = new Date(agora.getFullYear(), agora.getMonth() - (arr.length - 1 - i), 1)
@@ -20,7 +23,7 @@ export function SaidasChart({ valores, agora = new Date() }: { valores: number[]
   const ticks = Array.from({ length: topo / passo + 1 }, (_, i) => i * passo)
 
   return (
-    <figure>
+    <figure ref={ref}>
       <figcaption className="sr-only">Saídas de residentes por mês, nos últimos 12 meses</figcaption>
       <div className="relative grid grid-cols-[1.75rem_1fr] gap-x-2">
         {/* eixo e grelha */}
@@ -49,10 +52,14 @@ export function SaidasChart({ valores, agora = new Date() }: { valores: number[]
               >
                 <span
                   className={cn(
-                    'block w-full max-w-6 rounded-t-[4px] transition-colors duration-200',
+                    'block w-full max-w-6 origin-bottom rounded-t-[4px] motion-reduce:transition-none',
                     ativo === i ? 'bg-ink' : i === dados.length - 1 ? 'bg-pine-500' : 'bg-pine-300',
                   )}
-                  style={{ height: d.v > 0 ? `${(d.v / topo) * 100}%` : '2px' }}
+                  style={{
+                    height: d.v > 0 ? `${(d.v / topo) * 100}%` : '2px',
+                    transform: `scaleY(${visivel ? 1 : 0})`,
+                    transition: `transform 900ms cubic-bezier(.16,1,.3,1) ${80 + i * 50}ms, background-color 200ms`,
+                  }}
                 />
                 {ativo === i && (
                   <span aria-hidden className="pointer-events-none absolute -top-9 z-10 rounded-lg bg-white px-2.5 py-1 text-sm whitespace-nowrap shadow-lift ring-1 ring-black/5">

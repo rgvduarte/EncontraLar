@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { forwardRef, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { FieldShell } from '@/components/ui/Field'
 import { LUGARES, type LugarPesquisa } from '@/data/localidades'
 import { cn } from '@/lib/cn'
@@ -52,7 +52,7 @@ export const LugarCombobox = forwardRef<
   {
     label: string
     hint?: string
-    error?: string
+    error?: ReactNode
     value: string
     name?: string
     onChange: (v: string) => void
@@ -110,6 +110,10 @@ export const LugarCombobox = forwardRef<
             type="text"
             role="combobox"
             autoComplete="off"
+            autoCapitalize="words"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="next"
             aria-autocomplete="list"
             aria-expanded={mostrar}
             aria-controls={listId}
@@ -137,7 +141,8 @@ export const LugarCombobox = forwardRef<
             role="listbox"
             aria-label={`Sugestões para ${label.toLowerCase()}`}
             hidden={!mostrar}
-            className="absolute inset-x-0 top-full z-30 mt-2 max-h-80 overflow-auto rounded-2xl bg-white p-1.5 shadow-lift ring-1 ring-line"
+            data-lenis-prevent
+            className="absolute inset-x-0 top-full z-30 mt-2 max-h-[min(20rem,45dvh)] origin-top animate-pop-in overflow-auto overscroll-contain rounded-2xl bg-white p-1.5 shadow-lift ring-1 ring-line motion-reduce:animate-none"
           >
             {opcoes.map((l, i) => (
               <li

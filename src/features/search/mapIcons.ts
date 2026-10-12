@@ -23,13 +23,25 @@ export function descricaoMarcador(lar: Lar, disp: Disponibilidade): string {
 
 const cache = new Map<string, L.DivIcon>()
 
-export function pinIcon(lar: Lar, disp: Disponibilidade, ativo: boolean): L.DivIcon {
+/** Atraso de entrada estável por instituição (0–180 ms): os marcadores "salpicam" o mapa em vez de aparecerem todos de uma vez. */
+function atraso(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
+  return Math.abs(h) % 7 * 30
+}
+
+/**
+ * Pílula do marcador. O realce (lista ↔ mapa, seleção) NÃO faz parte do ícone: é a classe `is-active`
+ * aplicada ao elemento existente (ver PinMarker) — assim a pílula transita suavemente para preto
+ * em vez de ser substituída (e a animação de entrada não se repete ao passar o rato).
+ */
+export function pinIcon(lar: Lar, disp: Disponibilidade): L.DivIcon {
   const rotulo = rotuloMarcador(lar)
-  const key = `${lar.id}|${rotulo}|${disp}|${ativo ? 1 : 0}`
+  const key = `${lar.id}|${rotulo}|${disp}`
   const hit = cache.get(key)
   if (hit) return hit
   const html =
-    `<span class="el-pin el-pin--${disp}${ativo ? ' is-active' : ''}">` +
+    `<span class="el-pin el-pin--${disp}" style="animation-delay:${atraso(lar.id)}ms">` +
     `<span class="el-pin__dot" aria-hidden="true"></span>` +
     `<span aria-hidden="true">${esc(rotulo)}</span>` +
     `<span class="el-sr">${esc(descricaoMarcador(lar, disp))}</span>` +
@@ -60,7 +72,7 @@ export function clusterIcon(cluster: ClusterLike): L.DivIcon {
     `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
     `<circle class="el-cluster__track" cx="${c}" cy="${c}" r="${r}" />` +
     (arco > 0
-      ? `<circle class="el-cluster__arc" cx="${c}" cy="${c}" r="${r}" stroke-dasharray="${arco.toFixed(2)} ${perimetro.toFixed(2)}" transform="rotate(-90 ${c} ${c})" />`
+      ? `<circle class="el-cluster__arc" style="--arco:${arco.toFixed(2)}" cx="${c}" cy="${c}" r="${r}" stroke-dasharray="${arco.toFixed(2)} ${perimetro.toFixed(2)}" transform="rotate(-90 ${c} ${c})" />`
       : '') +
     `</svg>` +
     `<span class="el-cluster__n" aria-hidden="true">${n}</span>` +

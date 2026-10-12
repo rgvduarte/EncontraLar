@@ -28,12 +28,12 @@ export function EmptyResults({ model }: { model: SearchModel }) {
         <>
           <p className="mt-8 text-sm text-ink-mute">Experimente</p>
           <ul className="mt-2 flex flex-col gap-2">
-            {alivios.map((a) => (
-              <li key={a.id}>
+            {alivios.map((a, i) => (
+              <li key={a.id} className="el-in-up" style={{ ['--d' as string]: `${120 + i * 70}ms` }}>
                 <button
                   type="button"
                   onClick={() => update(a.patch)}
-                  className="group flex min-h-16 w-full items-center gap-4 rounded-[1.25rem] bg-sand px-5 py-3 text-left transition-colors duration-200 hover:bg-sand-deep"
+                  className="group flex min-h-16 w-full items-center gap-4 rounded-[1.25rem] bg-sand px-5 py-3 text-left transition-[background-color,scale] duration-200 hover:bg-sand-deep active:scale-[0.985]"
                 >
                   <span className="flex-1 font-medium text-ink">{a.acao}</span>
                   <span className="shrink-0 text-sm text-ink-mute tabular">

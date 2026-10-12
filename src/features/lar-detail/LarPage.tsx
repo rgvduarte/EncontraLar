@@ -4,7 +4,7 @@ import type { Candidatura, Lar } from '@/types'
 import { useCurrentUser, useLar, useMinhasCandidaturas } from '@/lib/store'
 import { useDocumentTitle } from '@/lib/hooks'
 import { dividirNome, useDadosLar } from './helpers'
-import { useInView, useStickyTop } from './hooks'
+import { useInView, useJaPassou, useStickyTop } from './hooks'
 import { LarNotFound } from './LarNotFound'
 import { Breadcrumbs, LarCapa, LarHero } from './LarHero'
 import { VagasCard } from './VagasCard'
@@ -20,6 +20,8 @@ import { AvaliacoesSection } from './sections/AvaliacoesSection'
 import { LocalizacaoSection } from './sections/LocalizacaoSection'
 import { PedidoModal } from './pedido/PedidoModal'
 import { VisitaModal } from './pedido/VisitaModal'
+import { Reveal } from '@/components/motion'
+import './ficha.css'
 
 const ATIVOS: Candidatura['estado'][] = ['enviada', 'em_analise', 'lista_espera', 'vaga_proposta', 'aceite']
 
@@ -50,7 +52,8 @@ function Ficha({ lar }: { lar: Lar }) {
   const ctaRef = useRef<HTMLDivElement>(null)
   const fimRef = useRef<HTMLDivElement>(null)
   const ctaVisivel = useInView(ctaRef)
-  const fimVisivel = useInView(fimRef)
+  // a barra some antes de o último conteúdo entrar no ecrã (margem ≥ espaço inferior da página) e não volta no rodapé
+  const fimVisivel = useJaPassou(fimRef, '0px 0px 128px 0px')
   const cartaoRef = useRef<HTMLDivElement>(null)
   const topoCartao = useStickyTop(cartaoRef)
 
@@ -58,31 +61,34 @@ function Ficha({ lar }: { lar: Lar }) {
     <div className="relative isolate overflow-clip">
       <SectionNav nome={dividirNome(lar.nome).nucleo} />
 
-      <div className="container-page pt-4 pb-24 sm:pt-6 sm:pb-32 lg:pb-40">
+      {/* no telemóvel/tablet o fundo reserva espaço para a barra de ação fixa */}
+      <div className="container-page pt-2 pb-28 sm:pt-6 sm:pb-32 lg:pb-40">
         <Breadcrumbs lar={lar} />
-        <div className="mt-6 grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_25rem] xl:gap-x-20">
+        <div className="mt-3 grid sm:mt-6 gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_25rem] xl:gap-x-20">
           <div className="min-w-0 lg:col-start-1 lg:row-start-1">
             <LarHero lar={lar} />
-            <div className="mt-10">
+            <div className="mt-7 sm:mt-10">
               <LarCapa lar={lar} />
             </div>
           </div>
 
           <aside aria-label="Preço, vagas e pedido" className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
             <div ref={cartaoRef} className="lg:sticky" style={{ top: topoCartao }}>
-              <VagasCard
-                lar={lar}
-                dados={dados}
-                ativa={ativa}
-                ctaRef={ctaRef}
-                onPedir={() => abrirPedido(false)}
-                onVisita={() => abrirPedido(true)}
-                onVisitaExistente={setVisitaDe}
-              />
+              <Reveal variant="up" delay={320} duration={1100}>
+                <VagasCard
+                  lar={lar}
+                  dados={dados}
+                  ativa={ativa}
+                  ctaRef={ctaRef}
+                  onPedir={() => abrirPedido(false)}
+                  onVisita={() => abrirPedido(true)}
+                  onVisitaExistente={setVisitaDe}
+                />
+              </Reveal>
             </div>
           </aside>
 
-          <div className="flex min-w-0 flex-col gap-24 pt-14 sm:gap-32 sm:pt-20 lg:col-start-1 lg:row-start-2">
+          <div className="flex min-w-0 flex-col gap-28 pt-10 sm:gap-36 sm:pt-20 lg:col-start-1 lg:row-start-2">
             <SobreSection lar={lar} dados={dados} />
             <CuidadosSection lar={lar} />
             <PrecosSection lar={lar} dados={dados} />
@@ -104,6 +110,7 @@ function Ficha({ lar }: { lar: Lar }) {
         minhaFicha={minhaFicha}
         visivel={!ctaVisivel && !fimVisivel}
         onPedir={() => abrirPedido(false)}
+        onVisita={() => abrirPedido(true)}
       />
 
       <PedidoModal
