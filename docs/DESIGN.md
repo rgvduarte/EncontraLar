@@ -88,3 +88,44 @@ HashRouter: âncoras dentro da página fazem-se com `scrollIntoView`, nunca com 
 ## 6. Acessibilidade (WCAG 2.2 AA)
 
 Um `h1` por página; hierarquia de títulos; etiquetas em todos os campos; foco visível; contraste AA (atenção a texto cinza claro: usar `text-ink-mute` no mínimo); nada só por cor; `aria-live` em resultados que mudam; alvos ≥ 48px; o mapa é complementar à lista.
+
+## 7. Movimento e scroll (estilo Apple)
+
+Objetivo: a página deve parecer uma sequência de **cenas**, não um PDF contínuo. Narrativa em 5 tempos nas páginas de
+marketing: **gancho → contexto → percurso → clímax → desfecho**.
+
+Primitivas em `src/components/motion/` (importar de `@/components/motion`):
+- `Reveal` (variants `up` | `fade` | `scale` | `blur` | `left` | `right`) e `Stagger` (filhos escalonados) — entradas ao entrar no ecrã.
+- `StickyScene` + `useSceneProgress()` — secção "presa" (ex.: `length="300vh"`) cujo conteúdo se transforma com o progresso 0→1
+  (cross-fade entre passos, escala de um mockup, troca de texto). O contentor fixo também expõe `--p` em CSS.
+- `ScrollZoom` — o "zoom de produto": o bloco cresce de 0.88→1 e perde arredondamento ao entrar.
+- `TextReveal` — frase grande que se "acende" palavra a palavra com o scroll (usar 1× por página, em afirmações-chave).
+- `Parallax` — profundidade subtil (desligada automaticamente < 768px).
+- `HorizontalScroll` — galeria horizontal guiada pelo scroll no desktop; faixa deslizável nativa no telemóvel.
+- `CountUp` — números que contam ao aparecer.
+- `ScrollProgressBar` — progresso de leitura em páginas longas (guia).
+- `SmoothScroll`/`useLenis` — scroll suave global (Lenis) já ativo no Layout; para scroll programático usar `useLenis()?.scrollTo(el, { offset: -80 })`
+  com fallback `el.scrollIntoView({ behavior: 'smooth' })`. Contentores com scroll próprio: `data-lenis-prevent`.
+- Hooks em `src/lib/motion.ts`: `useScrollProgress`, `useScrollVar`, `useInView`, `range`, `mix`, `easeOut`.
+
+Regras: animar só `transform`/`opacity`/`filter`; durações 200–900ms com `cubic-bezier(.16,1,.3,1)`; **nunca sequestrar o scroll**
+(sem snap forçado, sem bloquear); no máximo 1–2 cenas sticky por página; conteúdo crítico nunca escondido atrás de animação;
+com `prefers-reduced-motion` tudo aparece no estado final (as primitivas já tratam disto). Transições entre páginas e menus
+suspensos já são globais (Layout/Header).
+
+## 8. Telemóvel primeiro (ergonomia)
+
+- **Barra de abas inferior** global (`MobileTabBar`, < 1024px) — Início, Mapa, Escolher, Guardados, Painel/Entrar (instituição: Resumo,
+  Vagas, Pedidos, Previsão, Ficha). Está escondida em `/lar/:id`, `/encontrar`, `/entrar`, `/registar` (fluxos com barra de ação própria).
+- A altura reservada está em `var(--tabbar-h)` (0 no desktop). Elementos fixos no fundo usam
+  `bottom-[calc(var(--tabbar-h)+1rem)]` (ex.: botão Mapa/Lista) ou `bottom-0` + `pb-[calc(1rem+env(safe-area-inset-bottom))]`
+  nas páginas sem barra de abas (barras "Pedir vaga", "Continuar").
+- **Ações principais ao alcance do polegar**: CTA fixa no fundo em fluxos (ficha, questionário, formulários longos); botões
+  `w-full` no telemóvel; alvos ≥ 48px; espaçamento entre alvos ≥ 8px.
+- **Modais = folhas inferiores** no telemóvel (o `Modal` já o faz) — conteúdo curto, ações no fundo.
+- Tipografia: h1 no telemóvel entre 2.25rem e 3rem (usar `text-[2.5rem] sm:text-6xl lg:text-7xl`), nunca cortar palavras;
+  texto corrido em `text-lg` com a largura total e `px-5`.
+- Listas horizontais deslizáveis (`snap-x`) em vez de grelhas apertadas; nada de tabelas largas sem alternativa (usar cartões
+  empilhados ou `overflow-x-auto` com `data-lenis-prevent`).
+- Inputs com `type`/`inputMode`/`autoComplete` corretos (email, tel, numeric) para o teclado certo.
+- Testar sempre a 390×844 (`--mobile`) e confirmar que nada fica por baixo da barra de abas.

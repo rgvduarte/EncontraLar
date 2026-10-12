@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { NavLink } from 'react-router'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { useCurrentUser } from '@/lib/store'
 
 export interface DashboardNavItem {
   /** caminho absoluto, ex.: "/familia/pedidos" */
@@ -37,6 +38,9 @@ export function DashboardShell({
   aside?: ReactNode
   children: ReactNode
 }) {
+  // no telemóvel, a conta de instituição já navega pelo painel na barra inferior
+  const user = useCurrentUser()
+  const pilulasMoveis = user?.role !== 'lar'
   return (
     <div className="flex flex-1 flex-col bg-white">
       <div className="border-b border-line">
@@ -48,8 +52,8 @@ export function DashboardShell({
       </div>
 
       {/* navegação móvel */}
-      <nav aria-label="Secções do painel" className="sticky top-16 z-[900] border-b border-line bg-white/85 backdrop-blur-xl lg:hidden">
-        <ul className="container-page flex gap-2 overflow-x-auto py-3 [scrollbar-width:none]">
+      <nav aria-label="Secções do painel" className={cn('sticky top-16 z-[900] border-b border-line bg-white/85 backdrop-blur-xl lg:hidden', !pilulasMoveis && 'hidden')}>
+        <ul className="container-page flex snap-x gap-2 overflow-x-auto py-3 [scrollbar-width:none]" data-lenis-prevent>
           {nav.map((n) => (
             <li key={n.to} className="shrink-0">
               <NavLink

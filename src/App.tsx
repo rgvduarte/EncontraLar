@@ -2,6 +2,7 @@ import { lazy } from 'react'
 import { createHashRouter, RouterProvider } from 'react-router'
 import { Layout } from '@/components/layout/Layout'
 import { RequireAuth } from '@/components/layout/RequireAuth'
+import { RouteError } from '@/components/layout/RouteError'
 
 const HomePage = lazy(() => import('@/features/home/HomePage'))
 const SearchPage = lazy(() => import('@/features/search/SearchPage'))
@@ -21,34 +22,41 @@ const NotFoundPage = lazy(() => import('@/features/content/NotFoundPage'))
 const router = createHashRouter([
   {
     element: <Layout />,
+    errorElement: <RouteError />,
     children: [
-      { index: true, element: <HomePage /> },
-      { path: 'pesquisa', element: <SearchPage /> },
-      { path: 'lar/:id', element: <LarPage /> },
-      { path: 'encontrar', element: <MatchPage /> },
-      { path: 'entrar', element: <LoginPage /> },
-      { path: 'registar', element: <RegisterPage /> },
       {
-        path: 'familia/*',
-        element: (
-          <RequireAuth role="familia">
-            <FamilyDashboard />
-          </RequireAuth>
-        ),
+        // rota sem caminho: os erros de uma página aparecem dentro do Layout (o cabeçalho mantém-se)
+        errorElement: <RouteError />,
+        children: [
+          { index: true, element: <HomePage /> },
+          { path: 'pesquisa', element: <SearchPage /> },
+          { path: 'lar/:id', element: <LarPage /> },
+          { path: 'encontrar', element: <MatchPage /> },
+          { path: 'entrar', element: <LoginPage /> },
+          { path: 'registar', element: <RegisterPage /> },
+          {
+            path: 'familia/*',
+            element: (
+              <RequireAuth role="familia">
+                <FamilyDashboard />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: 'gestao/*',
+            element: (
+              <RequireAuth role="lar">
+                <LarDashboard />
+              </RequireAuth>
+            ),
+          },
+          { path: 'para-lares', element: <ForLaresPage /> },
+          { path: 'guia', element: <GuidePage /> },
+          { path: 'sobre', element: <AboutPage /> },
+          { path: 'privacidade', element: <PrivacyPage /> },
+          { path: '*', element: <NotFoundPage /> },
+        ],
       },
-      {
-        path: 'gestao/*',
-        element: (
-          <RequireAuth role="lar">
-            <LarDashboard />
-          </RequireAuth>
-        ),
-      },
-      { path: 'para-lares', element: <ForLaresPage /> },
-      { path: 'guia', element: <GuidePage /> },
-      { path: 'sobre', element: <AboutPage /> },
-      { path: 'privacidade', element: <PrivacyPage /> },
-      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ])

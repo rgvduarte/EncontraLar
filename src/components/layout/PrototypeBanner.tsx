@@ -15,9 +15,10 @@ export function PrototypeBanner() {
   if (closed) return null
   return (
     <div className="bg-sand text-ink-soft">
-      <div className="container-page relative flex min-h-10 items-center justify-center py-1.5 pr-10 text-center text-sm">
+      <div className="container-page relative flex min-h-9 items-center justify-center py-1 pr-10 text-center text-xs sm:min-h-10 sm:text-sm">
         <p>
-          Protótipo de demonstração — instituições e dados fictícios.{' '}
+          <span className="sm:hidden">Protótipo · dados fictícios.</span>
+          <span className="hidden sm:inline">Protótipo de demonstração — instituições e dados fictícios.</span>{' '}
           <Link to="/sobre" className="inline-flex items-center text-terra-600 hover:underline">
             Saber mais
             <ChevronRight aria-hidden className="size-4" />

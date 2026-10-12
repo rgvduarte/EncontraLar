@@ -96,6 +96,9 @@
   --animate-fade-up: fade-up 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   --animate-fade-in: fade-in 0.4s ease-out both;
   --animate-pulse-ring: pulse-ring 2.4s ease-out infinite;
+  --animate-page-in: page-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-sheet-up: sheet-up 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+  --animate-pop-in: pop-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 
   @keyframes fade-up {
     from { opacity: 0; transform: translateY(16px); }
@@ -105,11 +108,29 @@
     from { opacity: 0; }
     to { opacity: 1; }
   }
+  @keyframes page-in {
+    from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
+    to { opacity: 1; transform: none; filter: none; }
+  }
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to { transform: none; }
+  }
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+  }
   @keyframes pulse-ring {
     0% { box-shadow: 0 0 0 0 rgb(52 199 89 / 0.45); }
     70% { box-shadow: 0 0 0 9px rgb(52 199 89 / 0); }
     100% { box-shadow: 0 0 0 0 rgb(52 199 89 / 0); }
   }
+}
+
+/* altura da barra de navegação inferior (telemóvel) — usar em offsets: bottom-[var(--tabbar-h)] */
+:root { --tabbar-h: 0px; }
+@media (max-width: 1023.98px) {
+  html[data-tabbar='on'] { --tabbar-h: calc(4.25rem + env(safe-area-inset-bottom)); }
 }
 
 @layer base {
@@ -172,8 +193,10 @@
   .tabular { font-variant-numeric: tabular-nums; }
   /* título de secção gigante, centrado, estilo Apple */
   .headline {
-    @apply font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl lg:text-6xl;
+    @apply font-display text-[2.375rem] leading-[1.08] font-semibold tracking-tight text-ink sm:text-5xl lg:text-6xl;
   }
+  /* espaço inferior para conteúdos fixos no fundo (barra de abas + safe area) */
+  .pb-safe-tabbar { padding-bottom: calc(var(--tabbar-h) + 1rem); }
   /* superfície cinza clara para "tiles" */
   .tile {
     @apply rounded-[1.75rem] bg-sand p-7 sm:p-10;
