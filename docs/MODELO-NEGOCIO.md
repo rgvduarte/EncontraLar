@@ -123,4 +123,7 @@ Hooks: `useCasos()`, `useCaso(id)`, `useCandidaturasDoCaso(casoId)`, `useProcura
 | `/gestao/entradas` | lar | `src/features/lar-dashboard` |
 | `/como-ordenamos` | público | `src/features/content` |
 
-Conta de demonstração: `social@exemplo.pt` / `demo1234`. É a Marta Correia, assistente social do Hospital de Vale Formoso (fictício), com 2 casos: um com alta prevista daqui a 4 dias e pedido enviado ao lar de demonstração, outro já colocado.
+Conta de demonstração: `social@exemplo.pt` / `demo1234`. É a Marta Correia, assistente social do Hospital de Vale Formoso (fictício), com 3 casos:
+- um com alta prevista daqui a 4 dias, enviado a três instituições: aguarda aceitação no lar de demonstração, está em análise noutra e foi recusado na terceira;
+- um já colocado numa IPSS, com entrada confirmada e isenta de taxa;
+- um novo, ainda por enviar.
