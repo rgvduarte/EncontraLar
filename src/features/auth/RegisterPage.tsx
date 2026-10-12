@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import type { Role } from '@/types'
 import { useDocumentTitle } from '@/lib/hooks'
@@ -21,14 +22,24 @@ const DESCRICAO: Record<Role, string> = {
 
 export default function RegisterPage() {
   const [params, setParams] = useSearchParams()
-  const tipo: Role = params.get('tipo') === 'lar' ? 'lar' : 'familia'
+  const tipoUrl: Role = params.get('tipo') === 'lar' ? 'lar' : 'familia'
+  // estado imediato (a pílula e os formulários mudam no mesmo frame do toque); o URL acompanha a seguir
+  const [tipo, setTipo] = useState<Role>(tipoUrl)
+  const [tipoUrlAnterior, setTipoUrlAnterior] = useState(tipoUrl)
+  if (tipoUrlAnterior !== tipoUrl) {
+    setTipoUrlAnterior(tipoUrl)
+    setTipo(tipoUrl)
+  }
   useDocumentTitle(tipo === 'lar' ? 'Registar instituição' : 'Criar conta')
   const user = useCurrentUser()
   const voltar = params.get('voltar')
+  // a conta fica com sessão iniciada antes do visto verde no botão: manter o formulário até mudar de página
+  const [aCriar, setACriar] = useState(false)
 
-  if (user) return <SignedInNotice user={user} destino={painelPath(user.role)} contexto="registar" />
+  if (user && !aCriar) return <SignedInNotice user={user} destino={painelPath(user.role)} contexto="registar" />
 
-  const escolher = (r: Role) =>
+  const escolher = (r: Role) => {
+    setTipo(r)
     setParams(
       (p) => {
         const next = new URLSearchParams(p)
@@ -37,6 +48,7 @@ export default function RegisterPage() {
       },
       { replace: true, preventScrollReset: true },
     )
+  }
 
   const entrar = isInternalPath(voltar) ? `/entrar?voltar=${encodeURIComponent(voltar)}` : '/entrar'
 
@@ -57,14 +69,14 @@ export default function RegisterPage() {
       <SlideSwitch
         active={tipo}
         panels={[
-          { key: 'familia', content: <FamilyForm voltar={voltar} /> },
-          { key: 'lar', content: <InstitutionForm /> },
+          { key: 'familia', content: <FamilyForm voltar={voltar} onPending={setACriar} /> },
+          { key: 'lar', content: <InstitutionForm onPending={setACriar} /> },
         ]}
       />
 
-      <Appear variant="fade" className="mt-8 text-center text-sm text-ink-mute">
-        Já tem conta?{' '}
-        <TextLink to={entrar} className="min-h-12 align-middle">
+      <Appear variant="fade" className="mt-8 flex flex-wrap items-center justify-center gap-x-1.5 text-sm text-ink-mute">
+        Já tem conta?
+        <TextLink to={entrar} className="min-h-12">
           Entrar
         </TextLink>
       </Appear>

@@ -18,7 +18,20 @@ const Posicao = ({ n }: { n: number }) => (
   </span>
 )
 
-const chaveLinha = (l: LinhaLista) => (l.tipo === 'online' ? l.c.id : `f-${l.de}`)
+/**
+ * Chave estável de cada linha: as inscrições por telefone ficam "presas" à pessoa da plataforma que vem antes
+ * delas, para que a renumeração (alguém acima saiu) não as faça sair e voltar a entrar.
+ */
+function comChaves(linhas: LinhaLista[]): { l: LinhaLista; chave: string }[] {
+  let antes = 'inicio'
+  return linhas.map((l) => {
+    if (l.tipo === 'online') {
+      antes = l.c.id
+      return { l, chave: l.c.id }
+    }
+    return { l, chave: `fora-${antes}` }
+  })
+}
 
 function LinhaOnline({
   c,
@@ -89,11 +102,11 @@ function LinhaOnline({
   )
 }
 
-function LinhaFora({ de, ate, leaving }: { de: number; ate: number; leaving: boolean }) {
+function LinhaFora({ de, ate, leaving, chave }: { de: number; ate: number; leaving: boolean; chave: string }) {
   const n = ate - de + 1
   return (
     <li
-      data-flip={`f-${de}`}
+      data-flip={chave}
       data-leaving={leaving}
       aria-hidden={leaving || undefined}
       className="grid grid-cols-[3.5rem_1fr] items-baseline gap-x-4 bg-white py-6 sm:grid-cols-[4.5rem_1fr]"
@@ -116,7 +129,7 @@ function LinhaFora({ de, ate, leaving }: { de: number; ate: number; leaving: boo
 export function ListaEspera({ lar, cands, agora, verHref }: { lar: Lar; cands: Candidatura[]; agora: number; verHref: (c: Candidatura) => string }) {
   const linhas = linhasListaEspera(lar, cands)
   const lista = useRef<HTMLOListElement>(null)
-  const presentes = usePresenca(linhas, chaveLinha)
+  const presentes = usePresenca(comChaves(linhas), (x) => x.chave)
   useFlip(lista, presentes)
   const online = linhas.filter((l) => l.tipo === 'online').length
   const total = linhas.reduce((s, l) => s + (l.tipo === 'online' ? 1 : l.ate - l.de + 1), 0)
@@ -154,8 +167,8 @@ export function ListaEspera({ lar, cands, agora, verHref }: { lar: Lar; cands: C
         </p>
       )}
       {presentes.length > 0 && (
-        <ol ref={lista} className="relative mt-4 divide-y divide-line border-t border-line">
-          {presentes.map(({ key, item: l, leaving }, i) =>
+        <ol ref={lista} className="relative mt-4 divide-y divide-line border-t border-line [overflow-anchor:none]">
+          {presentes.map(({ key, item: { l }, leaving }, i) =>
             l.tipo === 'online' ? (
               <LinhaOnline
                 key={key}
@@ -170,7 +183,7 @@ export function ListaEspera({ lar, cands, agora, verHref }: { lar: Lar; cands: C
                 indice={i}
               />
             ) : (
-              <LinhaFora key={key} de={l.de} ate={l.ate} leaving={leaving} />
+              <LinhaFora key={key} chave={key} de={l.de} ate={l.ate} leaving={leaving} />
             ),
           )}
         </ol>

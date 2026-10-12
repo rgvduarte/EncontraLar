@@ -12,7 +12,7 @@ import { QUARTO_LABEL } from '@/lib/labels'
 import { DEMO_FAMILIA_ID } from '@/data/seed'
 import { MapLegend, PortugalMap } from '@/components/brand/PortugalMap'
 import { VerifiedBadge } from '@/components/lar/badges'
-import { Reveal } from '@/components/ui/Reveal'
+import { CountUp, Reveal, ScrollZoom } from '@/components/motion'
 import { cn } from '@/lib/cn'
 import { SectionTitle } from '../shared/ui'
 
@@ -33,7 +33,7 @@ function Tile({
   centro?: boolean
 }) {
   return (
-    <Reveal delay={delay} className={cn('flex flex-col rounded-[1.75rem] bg-sand p-7 sm:p-10', className)}>
+    <Reveal delay={delay} className={cn('flex flex-col rounded-[1.75rem] bg-sand p-6 sm:p-10', className)}>
       <h3 className="text-2xl font-semibold text-ink sm:text-3xl">{title}</h3>
       <p className="mt-3 max-w-[40ch] text-lg text-ink-mute">{text}</p>
       <div className={cn('mt-8 flex flex-1 flex-col', centro ? 'justify-center' : 'justify-end')}>{children}</div>
@@ -46,11 +46,13 @@ function Mapa() {
   const comVaga = useMemo(() => lares.filter((l) => vagasLivres(l) > 0).length, [lares])
   return (
     <div className="flex flex-col gap-5">
-      <PortugalMap lares={lares} className="mx-auto max-w-[19rem] sm:max-w-[26rem] lg:max-w-[32rem]" title={`Mapa de Portugal com ${num(lares.length)} instituições de demonstração`} />
+      <ScrollZoom from={0.8} radiusFrom={0} radiusTo={0} className="overflow-visible">
+        <PortugalMap lares={lares} className="mx-auto max-w-[19rem] sm:max-w-[26rem] lg:max-w-[32rem]" title={`Mapa de Portugal com ${num(lares.length)} instituições de demonstração`} />
+      </ScrollZoom>
       <div className="flex flex-col items-center gap-3">
         <p className="text-center text-base text-ink">
-          <span className="font-semibold tabular">{num(lares.length)}</span> instituições ·{' '}
-          <span className="font-semibold text-leaf-700 tabular">{num(comVaga)}</span> com vaga hoje
+          <CountUp value={lares.length} className="font-semibold tabular" /> instituições ·{' '}
+          <CountUp value={comVaga} className="font-semibold text-leaf-700 tabular" /> com vaga hoje
         </p>
         <MapLegend className="justify-center" />
       </div>
@@ -70,10 +72,12 @@ function Compatibilidade({ lar }: { lar: Lar }) {
   const r = useMemo(() => (perfil ? avaliarLar(lar, perfil) : null), [lar, perfil])
   if (!perfil || !r) return null
   return (
-    <div className="rounded-[1.25rem] bg-white p-5 shadow-soft sm:p-6">
+    <ScrollZoom from={0.86} radiusFrom={40} radiusTo={20} className="bg-white p-5 shadow-soft sm:p-6">
       <div className="flex items-baseline justify-between gap-3">
         <p className="min-w-0 font-semibold text-ink">{lar.nome}</p>
-        <p className="shrink-0 text-sm font-semibold text-ink tabular">{r.score}%</p>
+        <p className="shrink-0 text-sm font-semibold text-ink tabular">
+          <CountUp value={r.score} />%
+        </p>
       </div>
       <p className="text-sm text-ink-mute">compatível com o perfil de uma pessoa com {perfil.idade} anos</p>
       <ul className="mt-4 flex flex-col border-t border-line">
@@ -88,13 +92,13 @@ function Compatibilidade({ lar }: { lar: Lar }) {
           )
         })}
       </ul>
-    </div>
+    </ScrollZoom>
   )
 }
 
 function Transparencia({ lar }: { lar: Lar }) {
   return (
-    <div className="rounded-[1.25rem] bg-white p-5 shadow-soft sm:p-6">
+    <ScrollZoom from={0.86} radiusFrom={40} radiusTo={20} className="bg-white p-5 shadow-soft sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="min-w-0 font-semibold text-ink">{lar.nome}</p>
         <VerifiedBadge lar={lar} />
@@ -115,24 +119,24 @@ function Transparencia({ lar }: { lar: Lar }) {
           <dd className="text-ink tabular">n.º {lar.verificacao.licenca}</dd>
         </div>
       </dl>
-    </div>
+    </ScrollZoom>
   )
 }
 
 export function Vetores({ lar }: { lar: Lar }) {
   return (
-    <section aria-labelledby="sobre-resposta" className="container-page py-24 sm:py-32 lg:py-40">
-      <Reveal>
+    <section aria-labelledby="sobre-resposta" className="container-page py-20 sm:py-32 lg:py-40">
+      <Reveal variant="blur">
         <SectionTitle id="sobre-resposta" title="A resposta, em três ideias." subtitle="O que muda quando a informação está num só sítio." />
       </Reveal>
       <div className="mt-14 grid grid-cols-1 gap-4 sm:mt-20 lg:grid-cols-2">
         <Tile title="Geolocalização." text="Vagas perto de quem vai visitar, num mapa que as próprias instituições atualizam." className="lg:row-span-2" centro>
           <Mapa />
         </Tile>
-        <Tile title="Perfil clínico." text="Dizemos que casas tratam o que a pessoa precisa, e porquê." delay={80}>
+        <Tile title="Perfil clínico." text="Dizemos que casas tratam o que a pessoa precisa, e porquê." delay={100}>
           <Compatibilidade lar={lar} />
         </Tile>
-        <Tile title="Transparência." text="Preço por quarto, data da última atualização e licença, sempre à vista." delay={80}>
+        <Tile title="Transparência." text="Preço por quarto, data da última atualização e licença, sempre à vista." delay={100}>
           <Transparencia lar={lar} />
         </Tile>
       </div>

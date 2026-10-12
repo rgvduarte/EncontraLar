@@ -75,8 +75,9 @@ export function MobileActionBar({
       aria-hidden={!visivel}
       inert={!visivel}
     >
-      <div className="container-page pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-        <div className="flex items-center justify-between gap-3 leading-tight">
+      {/* telemóvel: duas linhas (preço / ações largas); tablet: uma linha com as ações à direita */}
+      <div className="container-page pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:flex sm:items-center sm:gap-8">
+        <div className="flex items-center justify-between gap-3 leading-tight sm:min-w-0 sm:flex-1 sm:flex-col sm:items-start sm:gap-1">
           <p className="min-w-0 truncate text-ink">
             {preco ? (
               <>
@@ -94,7 +95,7 @@ export function MobileActionBar({
           </p>
         </div>
 
-        <div key={chave} className={cn('mt-2.5 flex gap-2', chave !== chave0 && 'ficha-troca')}>
+        <div key={chave} className={cn('mt-2.5 flex gap-2 sm:mt-0 sm:w-[28rem] sm:shrink-0', chave !== chave0 && 'ficha-troca')}>
           {ativa ? (
             <ButtonLink to="/familia/pedidos" className={botao}>
               Acompanhar o pedido

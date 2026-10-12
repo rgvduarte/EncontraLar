@@ -47,7 +47,7 @@ export default function PerfilPage() {
             {/* telemóvel: faixa deslizável (sem quebrar linha); desktop: pílulas em linha */}
             <ul
               data-lenis-prevent
-              className="-mx-5 flex snap-x gap-2 overflow-x-auto overscroll-x-contain px-5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+              className="-mx-5 flex snap-x gap-2 overflow-x-auto overscroll-x-contain overscroll-y-auto! px-5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
             >
               {perfis.map((p) => {
                 const ativo = selecionado?.id === p.id

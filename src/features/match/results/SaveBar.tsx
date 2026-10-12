@@ -54,14 +54,15 @@ export function SaveBar({
   const disponivel = !(user && semAlteracoes)
   const visivel = disponivel && noSitio
 
+  // curto: tem de caber ao lado do botão a 390px
   const titulo = user
     ? p.proprio
       ? 'O seu perfil'
       : p.primeiroNome
         ? `Perfil de ${p.primeiroNome}`
         : `Perfil ${p.de}`
-    : 'Saiba quando abrir vaga'
-  const sub = user ? (r.id ? 'Tem alterações por guardar' : 'Receba alertas de vaga') : 'Com uma conta gratuita'
+    : 'Alertas de vaga'
+  const sub = user ? (r.id ? 'Alterações por guardar' : 'Para receber alertas') : 'Conta gratuita'
 
   const aoGuardar = () => {
     if (!precisaNome) {
@@ -79,6 +80,8 @@ export function SaveBar({
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[900] flex justify-center lg:bottom-6 lg:px-6">
       <div
         inert={!visivel}
+        // enquanto visível, conta como "fundo" para o scroll programático (painéis que abrem, campos focados)
+        data-match-barra={visivel ? '' : undefined}
         className={cn(
           'flex w-full items-center gap-3 border-t border-black/[0.06] bg-white/85 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-xl backdrop-saturate-150',
           'lg:w-auto lg:min-w-[32rem] lg:gap-6 lg:rounded-full lg:border-0 lg:py-2.5 lg:pr-2.5 lg:pl-7 lg:shadow-lift lg:ring-1 lg:ring-black/[0.06]',
@@ -89,7 +92,8 @@ export function SaveBar({
         <div className="min-w-0 flex-1">
           <p className="truncate text-base leading-tight font-semibold text-ink">{titulo}</p>
           <p className="truncate text-sm leading-snug text-ink-mute">
-            {n > 0 ? `${plural(n, 'sugestão', 'sugestões')} · ${sub.toLowerCase()}` : sub}
+            {sub}
+            {n > 0 && <span className="max-sm:hidden"> · {plural(n, 'sugestão compatível', 'sugestões compatíveis')}</span>}
           </p>
         </div>
         {user ? (
@@ -101,7 +105,7 @@ export function SaveBar({
             to="/registar"
             variant="accent"
             size="lg"
-            icon={<BellRing aria-hidden />}
+            icon={<BellRing aria-hidden className="max-sm:hidden" />}
             className="shrink-0 px-6 max-lg:min-h-13 lg:px-7"
           >
             Criar conta

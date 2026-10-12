@@ -64,7 +64,7 @@ export default function LocationMap({ lat, lng, nome }: { lat: number; lng: numb
           aria-hidden={!bloqueado}
           tabIndex={bloqueado ? 0 : -1}
           className={cn(
-            'absolute inset-0 z-[1001] flex items-center justify-center bg-white/0 transition-opacity duration-300',
+            'absolute inset-0 z-[1001] flex items-end justify-center pb-11 transition-opacity duration-300',
             bloqueado ? 'opacity-100' : 'pointer-events-none opacity-0',
           )}
         >

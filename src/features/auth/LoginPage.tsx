@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import type { User } from '@/types'
 import { useDocumentTitle } from '@/lib/hooks'
@@ -20,8 +21,10 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const voltar = params.get('voltar')
+  // a sessão é iniciada antes do visto verde no botão: não trocar a página pelo aviso "Sessão iniciada"
+  const [aEntrar, setAEntrar] = useState(false)
 
-  if (user) return <SignedInNotice user={user} destino={destinoAposEntrar(voltar, user.role)} contexto="entrar" />
+  if (user && !aEntrar) return <SignedInNotice user={user} destino={destinoAposEntrar(voltar, user.role)} contexto="entrar" />
 
   const destino = descreverDestino(voltar, lares)
   const registar = isInternalPath(voltar) ? `/registar?voltar=${encodeURIComponent(voltar)}` : '/registar'
@@ -33,7 +36,7 @@ export default function LoginPage() {
 
   return (
     <AuthShell title="Entrar no EncontraLar" subtitle={destino ? `Inicie sessão para abrir ${destino}.` : undefined}>
-      <LoginForm defaultEmail={params.get('email') ?? ''} onSuccess={concluir} />
+      <LoginForm defaultEmail={params.get('email') ?? ''} onPending={setAEntrar} onSuccess={concluir} />
 
       <Appear delay={cascade(3)} variant="fade" className="mt-5 flex flex-col items-center gap-2 text-center">
         <button
@@ -45,15 +48,15 @@ export default function LoginPage() {
         >
           Esqueci-me da palavra-passe
         </button>
-        <p className="text-sm text-ink-mute">
-          Não tem conta?{' '}
-          <TextLink to={registar} className="min-h-12 align-middle">
+        <p className="flex flex-wrap items-center justify-center gap-x-1.5 text-sm text-ink-mute">
+          Não tem conta?
+          <TextLink to={registar} className="min-h-12">
             Criar conta
           </TextLink>
         </p>
       </Appear>
 
-      <DemoAccess onSuccess={concluir} delay={cascade(4)} />
+      <DemoAccess onSuccess={concluir} onPending={setAEntrar} delay={cascade(4)} />
       <Appear delay={cascade(6)} variant="fade">
         <PrototypeNote className="mt-10" />
       </Appear>

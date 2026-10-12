@@ -10,7 +10,11 @@ export interface SlidePanel {
 
 const EASE_OUT = 'cubic-bezier(.16,1,.3,1)'
 const EASE_IOS = 'cubic-bezier(.32,.72,0,1)'
-const DURACAO = 520
+const DURACAO = 540
+/** atraso da entrada: o painel que sai quase desaparece antes de o novo chegar (sem sobreposição confusa) */
+const ATRASO = 130
+/** Duração total de uma troca (para quem precisa de esperar por ela antes de levar o foco). */
+export const SLIDE_MS = ATRASO + DURACAO
 
 /**
  * Troca entre painéis (separadores, passos) como numa app iOS: o painel que sai desvanece e desliza
@@ -68,27 +72,27 @@ export function SlideSwitch({ active, panels, className }: { active: string; pan
       setLeaving(null)
       return
     }
-    gateFor(active).until = performance.now() + DURACAO + 300
+    gateFor(active).until = performance.now() + SLIDE_MS + 200
     running.current.forEach((a) => a.cancel())
 
     const h0 = lastHeight.current || out.getBoundingClientRect().height
     const h1 = inc.getBoundingClientRect().height
-    const d = leaving.dir * 44
+    const d = leaving.dir * 40
     const anims = [
-      b.animate([{ height: `${h0}px` }, { height: `${h1}px` }], { duration: DURACAO, easing: EASE_IOS }),
+      b.animate([{ height: `${h0}px` }, { height: `${h1}px` }], { duration: SLIDE_MS - 60, easing: EASE_IOS }),
       out.animate(
         [
           { opacity: 1, transform: 'none' },
-          { opacity: 0, transform: `translate3d(${-d}px,0,0)` },
+          { opacity: 0, transform: `translate3d(${-d * 0.6}px,0,0)` },
         ],
-        { duration: 280, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' },
+        { duration: 200, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' },
       ),
       inc.animate(
         [
           { opacity: 0, transform: `translate3d(${d}px,0,0)` },
           { opacity: 1, transform: 'none' },
         ],
-        { duration: DURACAO, delay: 90, easing: EASE_OUT, fill: 'backwards' },
+        { duration: DURACAO, delay: ATRASO, easing: EASE_OUT, fill: 'backwards' },
       ),
     ]
     running.current = anims
@@ -101,7 +105,7 @@ export function SlideSwitch({ active, panels, className }: { active: string; pan
   }, [leaving, active])
 
   return (
-    <div ref={box} className={cn('relative', leaving && 'overflow-clip', className)}>
+    <div ref={box} className={cn('relative', leaving && 'overflow-y-clip', className)}>
       {panels.map((p) => {
         const isActive = p.key === active
         const isLeaving = leaving?.key === p.key && !isActive

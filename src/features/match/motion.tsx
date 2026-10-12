@@ -67,16 +67,25 @@ export function scrollPara(lenis: Lenis | null, y: number, { instant = false } =
 }
 
 /**
+ * Limite inferior do que se vê (coordenadas do ecrã): o teclado (visualViewport) ou a barra de ação presa ao fundo,
+ * o que estiver mais acima. Usa a posição final da barra (fundo visível − altura), mesmo a meio da sua animação.
+ */
+export function fundoUtil(): number {
+  const vv = window.visualViewport
+  const fundoVisivel = (vv?.offsetTop ?? 0) + (vv?.height ?? window.innerHeight)
+  const barra = document.querySelector('[data-match-barra]')?.getBoundingClientRect()
+  if (!barra || barra.height === 0) return fundoVisivel
+  return Math.min(fundoVisivel, barra.top, fundoVisivel - barra.height)
+}
+
+/**
  * Garante que `el` fica visível entre o cabeçalho e a barra de ação (ou o teclado).
  * `alinharTopo`: coloca-o logo abaixo do cabeçalho (ex.: combobox, para a lista ter espaço por baixo).
  */
 export function mostrarCampo(lenis: Lenis | null, el: Element, { alinharTopo = false, margem = 16 } = {}) {
-  const vv = window.visualViewport
-  const vTop = vv?.offsetTop ?? 0
-  const vBottom = vTop + (vv?.height ?? window.innerHeight)
-  const barra = document.querySelector('[data-match-barra]')?.getBoundingClientRect()
+  const vTop = window.visualViewport?.offsetTop ?? 0
   const minY = Math.max(vTop, TOPO) + margem
-  const maxY = Math.min(vBottom, barra && barra.height ? barra.top : vBottom) - margem
+  const maxY = fundoUtil() - margem
   const r = el.getBoundingClientRect()
   let delta = 0
   if (alinharTopo) delta = Math.abs(r.top - minY) > 8 ? r.top - minY : 0

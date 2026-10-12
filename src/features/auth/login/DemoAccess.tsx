@@ -104,7 +104,15 @@ function Divisoria() {
 }
 
 /** "ou experimente sem conta": duas contas fictícias, um toque e está dentro. */
-export function DemoAccess({ onSuccess, delay = 0 }: { onSuccess: (user: User) => void; delay?: number }) {
+export function DemoAccess({
+  onSuccess,
+  onPending,
+  delay = 0,
+}: {
+  onSuccess: (user: User) => void
+  onPending?: (pending: boolean) => void
+  delay?: number
+}) {
   const [loading, setLoading] = useState<Role | null>(null)
   const [done, setDone] = useState(false)
 
@@ -112,6 +120,7 @@ export function DemoAccess({ onSuccess, delay = 0 }: { onSuccess: (user: User) =
     if (loading) return
     setLoading(role)
     await pausa(300)
+    onPending?.(true)
     const r = loginDemo(role)
     if (r.ok) {
       setDone(true)
@@ -119,6 +128,7 @@ export function DemoAccess({ onSuccess, delay = 0 }: { onSuccess: (user: User) =
       onSuccess(r.user)
       return
     }
+    onPending?.(false)
     setLoading(null)
     toast.error(
       'Não foi possível entrar na conta de demonstração',

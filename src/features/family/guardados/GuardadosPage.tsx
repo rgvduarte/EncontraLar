@@ -130,7 +130,7 @@ export default function GuardadosPage() {
           <ul
             aria-label="Escolher instituições para comparar"
             data-lenis-prevent
-            className="-mx-5 mt-5 flex snap-x gap-2 overflow-x-auto overscroll-x-contain px-5 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+            className="-mx-5 mt-5 flex snap-x gap-2 overflow-x-auto overscroll-x-contain overscroll-y-auto! px-5 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
           >
             {itens.map(({ lar }) => {
               const escolhido = sel.includes(lar.id)

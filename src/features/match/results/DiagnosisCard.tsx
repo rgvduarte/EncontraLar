@@ -35,7 +35,7 @@ export function DiagnosisCard({
               key={a.label}
               variant={i === 0 ? 'primary' : 'secondary'}
               onClick={() => onAjuste(a)}
-              className="max-w-full text-center whitespace-normal!"
+              className="w-full max-w-sm text-center whitespace-normal sm:w-auto sm:max-w-full"
             >
               {a.label}
             </Button>

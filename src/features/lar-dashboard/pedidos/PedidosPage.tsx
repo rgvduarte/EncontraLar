@@ -28,7 +28,7 @@ function ListaPedidos({ lista, lar, agora, verHref }: { lista: Candidatura[]; la
   useFlip(ref, presentes)
   if (!presentes.length) return null
   return (
-    <ul ref={ref} className="relative divide-y divide-line">
+    <ul ref={ref} className="relative divide-y divide-line [overflow-anchor:none]">
       {presentes.map(({ key, item, leaving }) => (
         <PedidoRow key={key} c={item} lar={lar} agora={agora} verHref={verHref(item)} leaving={leaving} />
       ))}

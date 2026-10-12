@@ -4,20 +4,14 @@ import { useDocumentTitle } from '@/lib/hooks'
 import { loginDemo } from '@/lib/store'
 import { DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_PASSWORD } from '@/data/seed'
 import { Button } from '@/components/ui/Button'
-import { Reveal } from '@/components/ui/Reveal'
+import { Reveal } from '@/components/motion'
 import { toast } from '@/components/ui/Toast'
 import { useAnchorNavigation } from './shared/anchors'
 import { useExampleLar } from './shared/useExampleLar'
 import { PageHero, SectionTitle } from './shared/ui'
 import { Vetores } from './sobre/Vetores'
 import { Previsao } from './sobre/Previsao'
-
-const PROBLEMAS = [
-  { t: 'Informação desigual.', d: 'As instituições sabem o que oferecem. As famílias decidem com pressa e quase às cegas.' },
-  { t: 'Listas de espera lentas.', d: 'Inscrições em papel, telefonemas sem resposta, e ninguém sabe quanto tempo falta.' },
-  { t: 'Tudo de boca em boca.', d: 'Preços, cuidados e vagas passam de conhecido em conhecido, quando passam.' },
-  { t: 'Oferta invisível.', d: 'Boas casas com quartos livres que ninguém encontra a tempo.' },
-] as const
+import { Problema } from './sobre/Problema'
 
 const ROADMAP = [
   { t: 'Instituições reais, com dados confirmados por cada uma', estado: 'Próximo passo' },
@@ -52,6 +46,7 @@ export default function AboutPage() {
 
   return (
     <>
+      {/* 1 · gancho */}
       <PageHero
         eyebrow="Sobre o EncontraLar"
         title={
@@ -63,22 +58,10 @@ export default function AboutPage() {
         titleWidth="max-w-[15ch]"
       />
 
-      <section aria-labelledby="sobre-problema" className="bg-sand">
-        <div className="container-page py-24 sm:py-32 lg:py-40">
-          <Reveal>
-            <SectionTitle id="sobre-problema" title="Hoje, procurar um lar é assim." />
-          </Reveal>
-          <ul className="mx-auto mt-14 grid max-w-5xl grid-cols-1 gap-x-16 gap-y-12 sm:mt-20 md:grid-cols-2">
-            {PROBLEMAS.map((p, i) => (
-              <Reveal as="li" key={p.t} delay={i * 80}>
-                <h3 className="text-2xl font-semibold text-ink sm:text-3xl">{p.t}</h3>
-                <p className="mt-3 max-w-[40ch] text-lg text-ink-mute sm:text-xl">{p.d}</p>
-              </Reveal>
-            ))}
-          </ul>
-        </div>
-      </section>
+      {/* 2 · contexto: o problema, no escuro (afirmação que se acende + galeria horizontal) */}
+      <Problema />
 
+      {/* 3–4 · a resposta, de volta à luz: três ideias com a interface real, e a previsão */}
       {lar && <Vetores lar={lar} />}
       {lar && (
         <div className="border-t border-line">
@@ -86,24 +69,30 @@ export default function AboutPage() {
         </div>
       )}
 
+      {/* 5 · desfecho: o que vem a seguir e o convite a experimentar */}
       <section aria-labelledby="sobre-roadmap" className="bg-sand">
-        <div className="container-narrow py-24 sm:py-32">
-          <Reveal>
+        <div className="container-narrow py-20 sm:py-32">
+          <Reveal variant="blur">
             <SectionTitle id="sobre-roadmap" title="O que vem a seguir." size="md" align="left" />
-            <ul className="mt-10 flex flex-col border-b border-line-strong/70">
-              {ROADMAP.map((r) => (
-                <li key={r.t} className="flex flex-col gap-1 border-t border-line-strong/70 py-5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-10">
-                  <span className="text-lg text-ink">{r.t}</span>
-                  <span className="shrink-0 text-sm text-ink-mute">{r.estado}</span>
-                </li>
-              ))}
-            </ul>
           </Reveal>
+          <ul className="mt-10 flex flex-col border-b border-line-strong/70">
+            {ROADMAP.map((r, i) => (
+              <Reveal
+                as="li"
+                key={r.t}
+                delay={i * 90}
+                className="flex flex-col gap-1 border-t border-line-strong/70 py-5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-10"
+              >
+                <span className="text-lg text-ink">{r.t}</span>
+                <span className="shrink-0 text-sm text-ink-mute">{r.estado}</span>
+              </Reveal>
+            ))}
+          </ul>
         </div>
       </section>
 
-      <section aria-labelledby="sobre-prototipo" className="container-narrow py-24 sm:py-32">
-        <Reveal>
+      <section aria-labelledby="sobre-prototipo" className="container-narrow py-20 sm:py-32">
+        <Reveal variant="blur">
           <SectionTitle
             id="sobre-prototipo"
             title="Este é um protótipo."
@@ -120,7 +109,7 @@ export default function AboutPage() {
                     {c.email} · palavra-passe {DEMO_PASSWORD}
                   </span>
                 </p>
-                <Button variant="subtle" onClick={() => entrar(c)} className="self-start sm:self-auto">
+                <Button variant="subtle" size="lg" onClick={() => entrar(c)} className="w-full sm:w-auto">
                   Entrar como {c.nome.toLowerCase()}
                 </Button>
               </li>

@@ -203,7 +203,7 @@ function PassoEmpilhado({ i, h }: { i: number; h: Historia }) {
       </Reveal>
       <div ref={ref} className="flex justify-center">
         <Reveal variant="scale" duration={1100}>
-          <Telefone className="h-[34rem] sm:h-[36rem]">
+          <Telefone className="h-[35rem] sm:h-[38rem]">
             <Ecra h={h} ativo={visto} />
           </Telefone>
         </Reveal>

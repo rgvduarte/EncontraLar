@@ -4,7 +4,7 @@ import { useDocumentTitle } from '@/lib/hooks'
 import { logout, resetDemo } from '@/lib/store'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { Reveal } from '@/components/ui/Reveal'
+import { Reveal } from '@/components/motion'
 import { toast } from '@/components/ui/Toast'
 import { ExternalLink, PageHero } from './shared/ui'
 
@@ -16,7 +16,7 @@ const RESUMO = [
 
 function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <Reveal as="section" className="border-t border-line py-10">
+    <Reveal as="section" variant="fade" duration={800} className="border-t border-line py-8 sm:py-10 print:!opacity-100">
       <h2 className="text-2xl font-semibold text-ink sm:text-3xl">{titulo}</h2>
       <div className="mt-4 flex flex-col gap-4 text-lg leading-relaxed text-ink-soft [&_strong]:font-semibold [&_strong]:text-ink">{children}</div>
     </Reveal>
@@ -60,7 +60,7 @@ export default function PrivacyPage() {
         </ul>
       </PageHero>
 
-      <div className="container-narrow pb-24 sm:pb-32">
+      <div className="container-narrow pb-20 sm:pb-32">
         <div className="mx-auto max-w-[44rem]">
           <Bloco titulo="Que dados tratamos">
             <p>
@@ -112,7 +112,7 @@ export default function PrivacyPage() {
             <p className="text-base text-ink-mute">Na versão final, indicaremos aqui o responsável pelo tratamento e o contacto do encarregado de proteção de dados.</p>
           </Bloco>
 
-          <Reveal className="mt-6 rounded-[1.75rem] bg-sand p-7 sm:p-10">
+          <Reveal variant="scale" className="mt-6 rounded-[1.75rem] bg-sand p-6 sm:p-10">
             <h2 className="text-2xl font-semibold text-ink sm:text-3xl">
               Neste protótipo
             </h2>
@@ -120,7 +120,7 @@ export default function PrivacyPage() {
               Nada é enviado para um servidor. Contas, perfis, pedidos e a lista da visita ficam guardados só neste navegador (no armazenamento local).
               Pode apagá-los aqui.
             </p>
-            <Button variant="primary" className="mt-6" onClick={() => setConfirmar(true)}>
+            <Button variant="primary" className="mt-6 w-full py-3 whitespace-normal text-balance sm:w-auto" onClick={() => setConfirmar(true)}>
               Apagar os dados deste navegador
             </Button>
           </Reveal>

@@ -48,7 +48,7 @@ export function StartScreen({
           </h1>
         </Reveal>
         <Reveal delay={140} duration={900}>
-          <p className="mx-auto mt-6 max-w-2xl text-xl text-ink-mute sm:text-2xl">
+          <p className="mx-auto mt-6 max-w-2xl text-xl text-balance text-ink-mute sm:max-w-[50rem] sm:text-2xl">
             Seis perguntas, cerca de três minutos. Sem criar conta.
           </p>
         </Reveal>

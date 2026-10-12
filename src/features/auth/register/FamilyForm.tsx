@@ -53,7 +53,7 @@ const PAUSA_SUCESSO = 420
  * Registo da família. Destino: com respostas do questionário por guardar → /familia?importar=1;
  * vindo de uma página pública (ex.: a ficha de um lar) → volta lá; senão → /familia?bemvindo=1.
  */
-export function FamilyForm({ voltar }: { voltar: string | null }) {
+export function FamilyForm({ voltar, onPending }: { voltar: string | null; onPending?: (pending: boolean) => void }) {
   const navigate = useNavigate()
   const form = useForm<FamilyValues>({ initial: INITIAL, rules: RULES, order: ORDER })
   const [erroGeral, setErroGeral] = useState<string | null>(null)
@@ -64,6 +64,7 @@ export function FamilyForm({ voltar }: { voltar: string | null }) {
   const submit = form.handleSubmit(async (v) => {
     setErroGeral(null)
     await pausa(500)
+    onPending?.(true)
     const r = register({
       role: 'familia',
       nome: v.nome,
@@ -72,12 +73,14 @@ export function FamilyForm({ voltar }: { voltar: string | null }) {
       telefone: v.telefone.trim() ? formatarTelefone(v.telefone) : undefined,
     })
     if (!r.ok) {
+      onPending?.(false)
       if (/email/i.test(r.error)) {
         form.setFieldError('email', r.error)
         requestAnimationFrame(() => form.focusField('email'))
       } else setErroGeral(r.error)
       return
     }
+    form.freeze()
     setCriada(true)
     await pausa(prefersReducedMotion() ? 0 : PAUSA_SUCESSO)
     toast.success(`Conta criada. Bem-vindo(a), ${primeiroNome(r.user.nome)}.`)

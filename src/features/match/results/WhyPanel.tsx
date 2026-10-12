@@ -1,9 +1,10 @@
-import { useEffect, useId, useState, type CSSProperties } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
 import { ChevronDown, CircleCheck, CircleMinus, CircleX, type LucideIcon } from 'lucide-react'
-import { CountUp } from '@/components/motion'
+import { CountUp, useLenis } from '@/components/motion'
 import { PESOS, scoreLabel, type MatchResult, type TipoRazao } from '@/lib/matching'
 import { prefersReducedMotion } from '@/lib/motion'
 import { cn } from '@/lib/cn'
+import { fundoUtil, scrollPara } from '../motion'
 
 const PARCELA_LABEL: Record<keyof typeof PESOS, string> = {
   cuidados: 'Cuidados de saúde',
@@ -61,6 +62,25 @@ export function WhyPanel({ m, nome }: { m: MatchResult; nome: string }) {
   // continua montado durante a animação de fecho
   const [montado, setMontado] = useState(false)
   const id = useId()
+  const lenis = useLenis()
+  const botaoRef = useRef<HTMLButtonElement>(null)
+  const painelRef = useRef<HTMLDivElement>(null)
+
+  // ao abrir, se o painel for ficar escondido por baixo (ou atrás da barra fixa), a página acompanha-o
+  // — sem nunca tirar o botão do ecrã
+  useEffect(() => {
+    if (!aberto) return
+    const t = window.setTimeout(() => {
+      const painel = painelRef.current
+      const botao = botaoRef.current
+      if (!painel || !botao) return
+      const fimPainel = botao.getBoundingClientRect().bottom + 8 + painel.offsetHeight
+      const topoBotao = botao.getBoundingClientRect().top
+      const delta = Math.min(fimPainel - (fundoUtil() - 16), topoBotao - 96)
+      if (delta > 0) scrollPara(lenis, window.scrollY + delta)
+    }, 60)
+    return () => window.clearTimeout(t)
+  }, [aberto, lenis])
 
   useEffect(() => {
     if (aberto || !montado) return
@@ -84,6 +104,7 @@ export function WhyPanel({ m, nome }: { m: MatchResult; nome: string }) {
       <div className="flex flex-wrap items-center gap-x-4">
         <button
           type="button"
+          ref={botaoRef}
           aria-expanded={aberto}
           aria-controls={id}
           onClick={alternar}

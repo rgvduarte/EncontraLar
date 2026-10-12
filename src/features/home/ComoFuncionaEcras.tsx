@@ -6,14 +6,14 @@
  * Cada ecrã recebe `ativo`: ao ficar ativo, as peças entram por ordem (só opacity/transform).
  */
 import { memo, type CSSProperties, type ReactNode } from 'react'
-import { BellRing, Check, Search } from 'lucide-react'
+import { BellRing, Check, CircleUserRound, Compass, Heart, House, Map as MapIcon, Search } from 'lucide-react'
 import type { Lar } from '@/types'
 import { PT_VIEWBOX, projectPT } from '@/data/portugal-shape'
 import { PortugalMap } from '@/components/brand/PortugalMap'
 import { ForecastStrip } from '@/components/brand/ForecastStrip'
 import { LarCard } from '@/components/lar/LarCard'
 import { LarCover } from '@/components/lar/LarCover'
-import { AvailabilityBadge, VerifiedBadge } from '@/components/lar/badges'
+import { VerifiedBadge } from '@/components/lar/badges'
 import { LogoMark } from '@/components/layout/Logo'
 import { resumoPrevisao, type EstimativaEspera } from '@/lib/forecast'
 import { NATUREZA_LABEL, QUARTO_CURTO, TIPO_LABEL } from '@/lib/labels'
@@ -61,15 +61,19 @@ export function Telefone({ className, children }: { className?: string; children
 
 // ————————————————————————————————————————— 1 · mapa
 
+/** Onde fica o ponto da instituição no mapa do ecrã 1 (em % da caixa do mapa). */
+const ALVO = { x: 42, y: 40 }
+
 export const EcraMapa = memo(function EcraMapa({ h, ativo }: { h: Historia; ativo: boolean }) {
   const { lar, lares } = h
   const p = projectPT(lar.lat, lar.lng)
   const ox = ((p.x - PT_VIEWBOX.x) / PT_VIEWBOX.w) * 100
   const oy = ((p.y - PT_VIEWBOX.y) / PT_VIEWBOX.h) * 100
-  // leva o ponto da instituição ao centro e aproxima (zoom) quando o passo fica ativo
+  // leva o ponto da instituição para cima da folha (um pouco à esquerda do centro: a costa fica a oeste e
+  // assim vê-se mais terra) e aproxima (zoom) quando o passo fica ativo
   const zoom: CSSProperties = {
     transformOrigin: `${ox}% ${oy}%`,
-    transform: `translate(${50 - ox}%, ${50 - oy}%) scale(${ativo ? 2.7 : 1.9})`,
+    transform: `translate(${ALVO.x - ox}%, ${ALVO.y - oy}%) scale(${ativo ? 2.6 : 1.8})`,
     transitionDuration: '1600ms',
   }
   return (
@@ -79,7 +83,7 @@ export const EcraMapa = memo(function EcraMapa({ h, ativo }: { h: Historia; ativ
           <PortugalMap lares={lares} labels={false} pulse={false} title="" />
         </div>
         {/* a instituição escolhida */}
-        <span className="absolute top-1/2 left-1/2 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center">
+        <span style={{ left: `${ALVO.x}%`, top: `${ALVO.y}%` }} className="absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center">
           <span className="absolute inset-0 animate-ping rounded-full bg-sun-500/30 motion-reduce:hidden" />
           <span className="relative size-3.5 rounded-full bg-sun-500 ring-[3px] ring-white" />
         </span>
@@ -97,7 +101,8 @@ export const EcraMapa = memo(function EcraMapa({ h, ativo }: { h: Historia; ativ
       <Peca ativo={ativo} atraso={420} de={120} className="absolute inset-x-0 bottom-0 z-10">
         <div className="rounded-t-[1.75rem] bg-white px-3 pt-2 pb-4 shadow-[0_-10px_30px_rgb(0_0_0/0.08)]">
           <span aria-hidden className="mx-auto mb-2 block h-1 w-9 rounded-full bg-line-strong" />
-          <LarCard lar={lar} className="[&>div:first-child]:aspect-[16/10] [&_h3]:text-base" />
+          {/* versão compacta do cartão real: capa mais baixa e sem a linha de cuidados (cabe num ecrã pequeno) */}
+          <LarCard lar={lar} className="[&>div:first-child]:aspect-[16/7] [&>div:last-child>p:nth-of-type(2)]:hidden [&_h3]:text-base" />
         </div>
       </Peca>
     </div>
@@ -110,7 +115,7 @@ export const EcraFicha = memo(function EcraFicha({ h, ativo }: { h: Historia; at
   const { lar, est, agora } = h
   return (
     <div className="absolute inset-0 overflow-hidden bg-white">
-      <Peca ativo={ativo} de={-10} className="h-[8.5rem]">
+      <Peca ativo={ativo} de={-10} className="h-[6.5rem]">
         <LarCover hue={lar.capa.hue} variante={lar.capa.variante} />
       </Peca>
       <div className="px-5 pt-4">
@@ -125,7 +130,7 @@ export const EcraFicha = memo(function EcraFicha({ h, ativo }: { h: Historia; at
         <Peca ativo={ativo} atraso={200} className="mt-4">
           <p className="text-xs font-semibold text-ink">Mensalidade</p>
           <dl className="mt-1 divide-y divide-line text-sm">
-            {lar.quartos.slice(0, 3).map((q) => (
+            {lar.quartos.slice(0, 2).map((q) => (
               <div key={q.tipo} className="flex items-baseline justify-between gap-3 py-1.5">
                 <dt className="text-ink-soft">{QUARTO_CURTO[q.tipo]}</dt>
                 <dd className="font-semibold text-ink tabular">
@@ -137,29 +142,47 @@ export const EcraFicha = memo(function EcraFicha({ h, ativo }: { h: Historia; at
         </Peca>
 
         <Peca ativo={ativo} atraso={320} className="mt-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-ink">Previsão de vaga</p>
-            <AvailabilityBadge lar={lar} />
-          </div>
+          <p className="text-xs font-semibold text-ink">Previsão de vaga</p>
+          {/* no ecrã do telemóvel: só % e barra (sem o rótulo por baixo) */}
           <ForecastStrip
             curva={est.curva}
             meses={3}
             inicio={new Date(agora)}
-            className="mt-3 grid-cols-3 gap-x-3 sm:grid-cols-3 [&_.text-3xl]:text-[1.375rem] [&_.text-xs]:text-[0.75rem]"
+            className="mt-3 grid-cols-3 gap-x-3 sm:grid-cols-3 [&_.text-3xl]:text-[1.375rem] [&_li>span:last-child]:hidden"
           />
         </Peca>
       </div>
+
+      {/* barra de ação da ficha, como no telemóvel: o preço e "Pedir vaga" (leva ao passo seguinte) */}
+      <Peca ativo={ativo} atraso={480} de={56} className="absolute inset-x-0 bottom-0">
+        <div className="flex items-center justify-between gap-3 border-t border-black/[0.06] bg-white/90 px-4 pt-2.5 pb-4 backdrop-blur-xl">
+          <p className="leading-tight text-ink">
+            <span className="text-xs text-ink-mute">desde </span>
+            <span className="font-semibold tabular">{euro(lar.mensalidadeMin)}</span>
+            <span className="text-xs text-ink-mute">/mês</span>
+          </p>
+          <span className="rounded-full bg-ink px-4 py-2.5 text-sm font-medium whitespace-nowrap text-white">Pedir vaga</span>
+        </div>
+      </Peca>
     </div>
   )
 })
 
 // ————————————————————————————————————————— 3 · pedir vaga e alertas
 
+const ABAS = [
+  [House, 'Início'],
+  [MapIcon, 'Mapa'],
+  [Compass, 'Escolher'],
+  [Heart, 'Guardados'],
+  [CircleUserRound, 'Painel'],
+] as const
+
 export const EcraAlerta = memo(function EcraAlerta({ h, ativo }: { h: Historia; ativo: boolean }) {
   const { lar, est } = h
   const quarto = lar.quartos[0] ? QUARTO_CURTO[lar.quartos[0].tipo].toLowerCase() : null
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-sand px-5 text-center">
+    <div className="absolute inset-0 flex flex-col items-center bg-sand px-5 pt-[9.75rem] text-center">
       <Peca ativo={ativo} atraso={60} className="flex flex-col items-center">
         <span className="flex size-14 items-center justify-center rounded-full bg-leaf-500 text-white">
           <Check aria-hidden className="size-7" strokeWidth={2.75} />
@@ -183,6 +206,16 @@ export const EcraAlerta = memo(function EcraAlerta({ h, ativo }: { h: Historia; 
           <p className="py-3 text-ink-mute">{resumoPrevisao(lar, est)}</p>
         </div>
       </Peca>
+
+      {/* barra de abas da app (como no telemóvel), com o Painel — onde ficam os pedidos — ativo */}
+      <div className="absolute inset-x-0 bottom-0 grid grid-cols-5 border-t border-black/[0.08] bg-white/90 pt-2 pb-3.5">
+        {ABAS.map(([Icon, rotulo], i) => (
+          <span key={rotulo} className={cn('flex flex-col items-center gap-1 text-[0.625rem] leading-none font-medium', i === 4 ? 'text-ink' : 'text-ink-mute')}>
+            <Icon aria-hidden className="size-[1.15rem]" strokeWidth={i === 4 ? 2.2 : 1.8} />
+            {rotulo}
+          </span>
+        ))}
+      </div>
 
       {/* a notificação desce do topo, como no telemóvel */}
       <div

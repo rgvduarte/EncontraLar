@@ -38,7 +38,11 @@ export const RankedItem = memo(function RankedItem({
         distanciaKm={m.distanciaKm}
         layout="horizontal"
         headingLevel="h3"
-        className={cn('sm:-mx-3', apagado && 'opacity-75 transition-opacity duration-300 hover:opacity-100')}
+        // telemóvel: capa mais baixa (2:1 em vez de 16:10) — cabe mais de uma sugestão por ecrã
+        className={cn(
+          'max-sm:[&>div:first-child]:aspect-[2/1] sm:-mx-3',
+          apagado && 'opacity-75 transition-opacity duration-300 hover:opacity-100',
+        )}
       />
       <WhyPanel m={m} nome={lar.nome} />
     </li>

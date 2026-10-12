@@ -38,8 +38,11 @@ export function useScrollSpy(ids: readonly string[], offset = 180): string {
   return ativo
 }
 
-/** true enquanto o elemento estiver (parcialmente) visível no ecrã. */
-export function useInView(ref: RefObject<Element | null>, rootMargin = '0px'): boolean {
+/**
+ * true enquanto o elemento estiver (parcialmente) visível no ecrã.
+ * `chave` volta a observar quando o elemento do ref é substituído (ex.: o cartão troca de estado).
+ */
+export function useInView(ref: RefObject<Element | null>, rootMargin = '0px', chave?: string): boolean {
   const [visivel, setVisivel] = useState(false)
   useEffect(() => {
     const el = ref.current
@@ -47,7 +50,7 @@ export function useInView(ref: RefObject<Element | null>, rootMargin = '0px'): b
     const io = new IntersectionObserver(([e]) => setVisivel(Boolean(e?.isIntersecting)), { rootMargin })
     io.observe(el)
     return () => io.disconnect()
-  }, [ref, rootMargin])
+  }, [ref, rootMargin, chave])
   return visivel
 }
 

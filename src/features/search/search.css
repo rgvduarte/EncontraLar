@@ -579,3 +579,11 @@ html[data-el-vista]::view-transition-group(el-vista-toggle) {
     animation: none !important;
   }
 }
+
+/* impressão: cartões ainda por revelar aparecem */
+@media print {
+  [data-revelar] [data-item] {
+    opacity: 1;
+    transform: none;
+  }
+}

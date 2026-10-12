@@ -43,6 +43,9 @@ export function EstadiaForm({ lar }: { lar: Lar }) {
         <InputField
           label="Meses"
           inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="off"
+          enterKeyHint="done"
           value={texto}
           onChange={(e) => {
             setValor(e.target.value)
@@ -51,7 +54,7 @@ export function EstadiaForm({ lar }: { lar: Lar }) {
           error={erro ?? undefined}
           wrapperClassName="w-40"
         />
-        <Button type="submit" disabled={!mudou} className="min-h-13">
+        <Button type="submit" disabled={!mudou} className="min-h-13 max-sm:flex-1">
           Guardar
         </Button>
       </form>

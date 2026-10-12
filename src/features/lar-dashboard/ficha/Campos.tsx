@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Plus, X } from 'lucide-react'
+import { Reveal } from '@/components/motion'
 import { Button } from '@/components/ui/Button'
 import { Checkbox, InputField, Switch, TextareaField } from '@/components/ui/Field'
 import { COMODIDADE_LABEL, COMODIDADES_ORDEM, CUIDADO_LABEL, CUIDADOS_ORDEM, GRAU_LABEL, GRAUS_ORDEM } from '@/lib/labels'
@@ -12,17 +13,25 @@ type Form = {
   alternar: <K extends 'graus' | 'cuidados' | 'comodidades'>(k: K, item: Rascunho[K][number], on: boolean) => void
 }
 
-/** Um bloco do formulário: título, uma frase e os campos. */
+/** Um bloco do formulário: título, uma frase e os campos. Entra com uma subida curta ao aparecer. */
 export function Bloco({ id, titulo, texto, children }: { id: string; titulo: string; texto?: string; children: ReactNode }) {
   return (
-    <section aria-labelledby={id} className="border-t border-line pt-10">
-      <h2 id={id} className="text-xl font-semibold sm:text-2xl">
-        {titulo}
-      </h2>
-      {texto && <p className="mt-1 text-ink-mute">{texto}</p>}
-      <div className="mt-6 flex flex-col gap-5">{children}</div>
-    </section>
+    <Reveal duration={800}>
+      <section aria-labelledby={id} className="border-t border-line pt-10">
+        <h2 id={id} className="text-xl font-semibold sm:text-2xl">
+          {titulo}
+        </h2>
+        {texto && <p className="mt-1 text-ink-mute">{texto}</p>}
+        <div className="mt-6 flex flex-col gap-5">{children}</div>
+      </section>
+    </Reveal>
   )
+}
+
+/** "4000123" → "4000-123" enquanto se escreve (teclado numérico no telemóvel, sem precisar do hífen). */
+const formatarCP = (v: string) => {
+  const d = v.replace(/\D/g, '').slice(0, 7)
+  return d.length > 4 ? `${d.slice(0, 4)}-${d.slice(4)}` : d
 }
 
 function Grelha({ legenda, erro, children }: { legenda: string; erro?: string; children: ReactNode }) {
@@ -69,13 +78,44 @@ export function Contactos({ r, erros, set }: Form) {
   return (
     <Bloco id="f-contactos" titulo="Contactos e morada">
       <div className="grid gap-5 sm:grid-cols-2">
-        <InputField label="Telefone" type="tel" autoComplete="tel" value={r.telefone} onChange={(e) => set('telefone', e.target.value)} error={erros.telefone} />
-        <InputField label="Email" type="email" autoComplete="email" value={r.email} onChange={(e) => set('email', e.target.value)} error={erros.email} />
+        <InputField label="Telefone" type="tel" inputMode="tel" autoComplete="tel" value={r.telefone} onChange={(e) => set('telefone', e.target.value)} error={erros.telefone} />
+        <InputField
+          label="Email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={r.email}
+          onChange={(e) => set('email', e.target.value)}
+          error={erros.email}
+        />
       </div>
-      <InputField label="Website" optional inputMode="url" value={r.website} onChange={(e) => set('website', e.target.value)} error={erros.website} placeholder="www.exemplo.pt" />
+      <InputField
+        label="Website"
+        optional
+        type="url"
+        inputMode="url"
+        autoComplete="url"
+        autoCapitalize="none"
+        spellCheck={false}
+        value={r.website}
+        onChange={(e) => set('website', e.target.value)}
+        error={erros.website}
+        placeholder="www.exemplo.pt"
+      />
       <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_10rem]">
         <InputField label="Morada" autoComplete="street-address" value={r.morada} onChange={(e) => set('morada', e.target.value)} />
-        <InputField label="Código postal" inputMode="numeric" value={r.codigoPostal} onChange={(e) => set('codigoPostal', e.target.value)} error={erros.codigoPostal} placeholder="0000-000" />
+        <InputField
+          label="Código postal"
+          inputMode="numeric"
+          autoComplete="postal-code"
+          maxLength={8}
+          value={r.codigoPostal}
+          onChange={(e) => set('codigoPostal', formatarCP(e.target.value))}
+          error={erros.codigoPostal}
+          placeholder="0000-000"
+        />
       </div>
     </Bloco>
   )
@@ -181,7 +221,7 @@ export function Equipa({ r, erros, set }: Form) {
     <Bloco id="f-equipa" titulo="Equipa" texto="Números simples, que as famílias comparam entre instituições.">
       <div className="grid items-end gap-5 sm:grid-cols-3">
         <InputField label="Cuidadores por 10 residentes" inputMode="decimal" value={r.cuidadoresPor10} onChange={(e) => set('cuidadoresPor10', e.target.value)} error={erros.cuidadoresPor10} placeholder="0" />
-        <InputField label="Enfermeiros" inputMode="numeric" value={r.enfermeiros} onChange={(e) => set('enfermeiros', e.target.value)} error={erros.enfermeiros} placeholder="0" />
+        <InputField label="Enfermeiros" inputMode="numeric" pattern="[0-9]*" value={r.enfermeiros} onChange={(e) => set('enfermeiros', e.target.value)} error={erros.enfermeiros} placeholder="0" />
         <InputField label="Horas de médico por semana" inputMode="decimal" value={r.medicoHorasSemana} onChange={(e) => set('medicoHorasSemana', e.target.value)} error={erros.medicoHorasSemana} placeholder="0" />
       </div>
     </Bloco>

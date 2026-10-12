@@ -22,7 +22,16 @@ const ORDER: (keyof LoginValues)[] = ['email', 'password']
 /** Tempo do visto verde no botão antes de mudar de página. */
 export const PAUSA_SUCESSO = 420
 
-export function LoginForm({ defaultEmail = '', onSuccess }: { defaultEmail?: string; onSuccess: (user: User) => void }) {
+export function LoginForm({
+  defaultEmail = '',
+  onPending,
+  onSuccess,
+}: {
+  defaultEmail?: string
+  /** true imediatamente antes de iniciar sessão (a página mantém o formulário durante o visto verde) */
+  onPending?: (pending: boolean) => void
+  onSuccess: (user: User) => void
+}) {
   const form = useForm<LoginValues>({ initial: { email: defaultEmail, password: '' }, rules: RULES, order: ORDER })
   const [falha, setFalha] = useState<{ n: number; msg: string } | null>(null)
   const [entrou, setEntrou] = useState(false)
@@ -31,6 +40,7 @@ export function LoginForm({ defaultEmail = '', onSuccess }: { defaultEmail?: str
   const submit = form.handleSubmit(async (v) => {
     setFalha(null)
     await pausa(400)
+    onPending?.(true)
     const r = login(v.email, v.password)
     if (r.ok) {
       setEntrou(true)
@@ -38,6 +48,7 @@ export function LoginForm({ defaultEmail = '', onSuccess }: { defaultEmail?: str
       onSuccess(r.user)
       return
     }
+    onPending?.(false)
     setFalha((f) => ({ n: (f?.n ?? 0) + 1, msg: r.error }))
     passwordRef.current?.focus()
     passwordRef.current?.select()

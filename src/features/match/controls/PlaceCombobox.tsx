@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn'
 import type { Local } from '../model'
 import { residenciais } from '../area'
 import { deTerra } from '../language'
+import { fundoUtil } from '../motion'
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 
@@ -16,18 +17,8 @@ const LIMITE = 8
 const LISTA_MAX = 384
 const LISTA_MIN = 156
 
-/**
- * Espaço livre por baixo do campo até ao que tapar o fundo do ecrã: o teclado (visualViewport)
- * ou a barra Voltar/Continuar fixa no telemóvel.
- */
-function espacoAbaixo(input: HTMLElement): number {
-  const vv = window.visualViewport
-  const fundoVisivel = (vv?.offsetTop ?? 0) + (vv?.height ?? window.innerHeight)
-  const campo = input.getBoundingClientRect()
-  const barra = document.querySelector('[data-match-barra]')?.getBoundingClientRect()
-  const limite = barra && barra.height > 0 && barra.top > campo.bottom ? Math.min(fundoVisivel, barra.top) : fundoVisivel
-  return Math.floor(limite - campo.bottom - 20)
-}
+/** Espaço livre por baixo do campo até ao que tapar o fundo do ecrã (teclado ou barra Voltar/Continuar). */
+const espacoAbaixo = (input: HTMLElement) => Math.floor(fundoUtil() - input.getBoundingClientRect().bottom - 20)
 
 /** Pesquisa de localidade (combobox ARIA 1.2 com lista): setas, Enter para escolher, Esc para fechar. */
 export function PlaceCombobox({

@@ -139,9 +139,10 @@ export default function SearchPage() {
       html.dataset.elVista = v
       setEntrada(null)
       const t = document.startViewTransition(aplicar)
-      t.finished.finally(() => {
+      const limpar = () => {
         if (html.dataset.elVista === v) delete html.dataset.elVista
-      })
+      }
+      t.finished.then(limpar, limpar)
       return
     }
     // sem View Transitions: a vista nova entra com uma animação curta

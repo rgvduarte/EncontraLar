@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { List, Map as MapIcon, SlidersHorizontal } from 'lucide-react'
+import { cn } from '@/lib/cn'
 import { Count, pillClasses } from './Chips'
 import { VagaPills, type Geo } from './FilterBar'
 import { PlaceCombobox } from './PlaceCombobox'
@@ -70,7 +71,15 @@ export const MobileBar = forwardRef<HTMLDivElement, Props>(function MobileBar({ 
 export function ViewToggle({ vista, onChange }: { vista: 'lista' | 'mapa'; onChange: (v: 'lista' | 'mapa') => void }) {
   const paraMapa = vista === 'lista'
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--tabbar-h,0px)+1rem)] z-[1050] flex justify-center px-4">
+    // z-[999]: acima da página, abaixo do cabeçalho/menu móvel (z-1001) e da barra de abas (z-1000).
+    // Sai do caminho (desce e desvanece) enquanto as sugestões da pesquisa estão abertas.
+    <div
+      className={cn(
+        'pointer-events-none fixed inset-x-0 bottom-[calc(var(--tabbar-h,0px)+1rem)] z-[999] flex justify-center px-4',
+        'transition-[opacity,translate] duration-300 ease-[cubic-bezier(.16,1,.3,1)]',
+        '[body:has([data-el-combo-aberto])_&]:translate-y-6 [body:has([data-el-combo-aberto])_&]:opacity-0 [body:has([data-el-combo-aberto])_&_button]:pointer-events-none',
+      )}
+    >
       <button
         type="button"
         onClick={() => onChange(paraMapa ? 'mapa' : 'lista')}

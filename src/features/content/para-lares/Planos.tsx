@@ -6,7 +6,7 @@ import type { Lar } from '@/types'
 import { euro } from '@/lib/format'
 import { QUARTO_LABEL } from '@/lib/labels'
 import { ButtonLink } from '@/components/ui/Button'
-import { Reveal } from '@/components/ui/Reveal'
+import { Reveal } from '@/components/motion'
 import { cn } from '@/lib/cn'
 import { SectionTitle, SWIPE_ITEM, SwipeRow } from '../shared/ui'
 

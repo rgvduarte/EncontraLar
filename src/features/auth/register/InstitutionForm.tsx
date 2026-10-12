@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useId, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { flushSync } from 'react-dom'
 import { Link, useNavigate } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
@@ -16,7 +16,7 @@ import { PasswordField } from '../shared/PasswordField'
 import { PasswordStrength } from '../shared/PasswordStrength'
 import { ActionButton } from '../shared/ActionButton'
 import { StickyAction } from '../shared/StickyAction'
-import { SlideSwitch } from '../shared/SlideSwitch'
+import { SLIDE_MS, SlideSwitch } from '../shared/SlideSwitch'
 import { Appear, cascade } from '../shared/Appear'
 import { controlos, enterAvanca } from '../shared/keyboard'
 import { guardarCargo } from '../shared/cargo'
@@ -49,8 +49,6 @@ const PASSOS: { key: string; titulo: string; descricao: string; campos: (keyof I
   },
 ]
 const ULTIMO = PASSOS.length - 1
-/** Duração da troca de passo (SlideSwitch) — esperar por ela antes de levar o foco a um campo. */
-const TROCA_MS = 620
 const PAUSA_SUCESSO = 420
 
 const passoDe = (k: keyof InstValues) => Math.max(0, PASSOS.findIndex((p) => p.campos.includes(k)))
@@ -66,16 +64,25 @@ function CabecalhoPasso({ id, titulo, descricao, delay }: { id: string; titulo: 
   )
 }
 
-function LinhaResumo({ titulo, linhas, onAlterar }: { titulo: string; linhas: ReactNode[]; onAlterar: () => void }) {
+function LinhaResumo({ titulo, linhas, onAlterar }: { titulo: string; linhas: string[][]; onAlterar: () => void }) {
   return (
     <div className="flex items-start gap-3 py-4 pr-2 pl-4">
       <div className="min-w-0 flex-1">
         <p className="text-sm text-ink-mute">{titulo}</p>
-        {linhas.map((l, i) => (
-          <p key={i} className={cn('break-words', i === 0 ? 'font-medium text-ink' : 'text-sm text-ink-soft')}>
-            {l}
-          </p>
-        ))}
+        {linhas
+          .map((l) => l.filter(Boolean))
+          .filter((l) => l.length)
+          .map((partes, i) => (
+            <p key={i} className={i === 0 ? 'font-medium text-ink' : 'text-sm text-ink-soft'}>
+              {/* cada parte fica inteira (só quebra nos "·"), a não ser que não caiba numa linha */}
+              {partes.map((parte, j) => (
+                <span key={j}>
+                  {j > 0 && ' · '}
+                  <span className="inline-block max-w-full break-words">{parte}</span>
+                </span>
+              ))}
+            </p>
+          ))}
       </div>
       <button
         type="button"
@@ -94,7 +101,7 @@ function LinhaResumo({ titulo, linhas, onAlterar }: { titulo: string; linhas: Re
  * "Continuar" fica ao alcance do polegar e a tecla "seguinte" do teclado avança de campo em campo.
  * Todos os campos continuam montados (voltar atrás não apaga nada); um erro num passo anterior leva lá.
  */
-export function InstitutionForm() {
+export function InstitutionForm({ onPending }: { onPending?: (pending: boolean) => void }) {
   const navigate = useNavigate()
   const lenis = useLenis()
   const uid = useId()
@@ -128,7 +135,7 @@ export function InstitutionForm() {
       const p = passoDe(k)
       if (p === etapaRef.current) return 0
       irPara(p, null)
-      return prefersReducedMotion() ? 30 : TROCA_MS
+      return prefersReducedMotion() ? 30 : SLIDE_MS
     },
   })
   const v = form.values
@@ -148,6 +155,7 @@ export function InstitutionForm() {
   const submit = form.handleSubmit(async (vals) => {
     setErroGeral(null)
     await pausa(500)
+    onPending?.(true)
     const r = register({
       role: 'lar',
       nome: vals.nome,
@@ -166,6 +174,7 @@ export function InstitutionForm() {
       },
     })
     if (!r.ok) {
+      onPending?.(false)
       if (/email/i.test(r.error)) {
         form.setFieldError('email', r.error)
         requestAnimationFrame(() => form.focusField('email'))
@@ -173,6 +182,7 @@ export function InstitutionForm() {
       return
     }
     guardarCargo(r.user.id, vals.cargo)
+    form.freeze()
     setRegistada(true)
     await pausa(prefersReducedMotion() ? 0 : PAUSA_SUCESSO)
     toast.success(`Instituição registada. Bem-vindo(a), ${primeiroNome(r.user.nome)}.`)
@@ -306,18 +316,19 @@ export function InstitutionForm() {
                 <div className="mt-6 overflow-hidden rounded-[1.25rem] ring-1 ring-line">
                   <LinhaResumo
                     titulo="Responsável"
-                    linhas={[[v.nome.trim(), v.cargo.trim()].filter(Boolean).join(' · '), [v.email.trim(), v.telefone.trim() && formatarTelefone(v.telefone)].filter(Boolean).join(' · ')]}
+                    linhas={[[v.nome.trim(), v.cargo.trim()], [v.email.trim(), v.telefone.trim() && formatarTelefone(v.telefone)]]}
                     onAlterar={() => irPara(0, 'campo')}
                   />
                   <div aria-hidden className="ml-4 h-px bg-line" />
                   <LinhaResumo
                     titulo="Instituição"
                     linhas={[
-                      [v.instNome.trim(), lugarCanonico(v.lugar) ?? v.lugar.trim()].filter(Boolean).join(' · '),
-                      [TIPO_LABEL[v.tipo as TipoResposta], NATUREZA_LABEL[v.natureza as Natureza]].filter(Boolean).join(' · '),
-                      [v.capacidade.trim() && `${v.capacidade.trim()} lugares`, v.precoDesde.trim() && `desde ${Number(v.precoDesde.trim()).toLocaleString('pt-PT')} €`]
-                        .filter(Boolean)
-                        .join(' · '),
+                      [v.instNome.trim(), lugarCanonico(v.lugar) ?? v.lugar.trim()],
+                      [TIPO_LABEL[v.tipo as TipoResposta], NATUREZA_LABEL[v.natureza as Natureza]],
+                      [
+                        v.capacidade.trim() && `${v.capacidade.trim()} lugares`,
+                        v.precoDesde.trim() && `desde ${Number(v.precoDesde.trim()).toLocaleString('pt-PT')} €`,
+                      ],
                     ]}
                     onAlterar={() => irPara(1, 'campo')}
                   />

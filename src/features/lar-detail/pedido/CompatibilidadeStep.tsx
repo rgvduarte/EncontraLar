@@ -95,7 +95,7 @@ export function CompatibilidadeStep({
             {scoreLabel(m.score)}
           </h3>
         </div>
-        <div key={perfil.id} className="ficha-medidor mt-4">
+        <div key={`medidor-${perfil.id}`} className="ficha-medidor mt-4">
           <Meter value={m.score / 100} tone={tom} label={`Compatibilidade: ${m.score}%`} />
         </div>
 
@@ -106,7 +106,7 @@ export function CompatibilidadeStep({
           </p>
         )}
 
-        <Cascata key={perfil.id} passo={60} className="mt-6 border-t border-line">
+        <Cascata key={`razoes-${perfil.id}`} passo={60} className="mt-6 border-t border-line">
           {m.razoes.map((r) => {
             const { Icon, cor, sr } = RAZAO[r.tipo]
             return (

@@ -228,7 +228,7 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
           onScroll={onScroll}
           aria-label="Instituições em comparação"
           data-lenis-prevent
-          className="-mx-5 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto overscroll-x-contain px-5 pb-2 [scrollbar-width:none]"
+          className="-mx-5 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto overscroll-x-contain overscroll-y-auto! px-5 pb-2 [scrollbar-width:none]"
         >
           {dados.map(({ lar }, i) => (
             <CartaoEntra key={lar.id} delay={i * 90}>
@@ -289,7 +289,7 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
       </div>
 
       {/* ecrãs largos: tabela; as colunas novas entram a deslizar */}
-      <div className="hidden overflow-x-auto [scrollbar-width:thin] sm:block" data-lenis-prevent>
+      <div className="hidden overflow-x-auto overscroll-x-contain overscroll-y-auto! [scrollbar-width:thin] sm:block" data-lenis-prevent>
         <table className="w-full min-w-[36rem] border-collapse text-left">
           <caption className="sr-only">
             Comparação de {lares.length} instituições guardadas. “Melhor” assinala o valor mais favorável de cada linha.

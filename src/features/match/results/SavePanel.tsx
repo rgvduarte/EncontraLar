@@ -72,7 +72,8 @@ export function SavePanel({
             size="lg"
             className="w-full max-w-sm text-center whitespace-normal sm:w-auto sm:max-w-full"
           >
-            Criar conta para receber alertas
+            <span className="sm:hidden">Criar conta gratuita</span>
+            <span className="max-sm:hidden">Criar conta para receber alertas</span>
           </ButtonLink>
           <TextLink to={`/entrar?voltar=${encodeURIComponent('/familia')}`} tone="light" className="min-h-12 px-3 text-lg">
             Já tenho conta

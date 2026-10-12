@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router'
 import { Check, X } from 'lucide-react'
 import type { Lar, User } from '@/types'
+import { Reveal } from '@/components/motion'
 import { cn } from '@/lib/cn'
 import { extenso, passosArranque } from '../lib/derive'
 import { useLocalFlag } from '../lib/hooks'
@@ -25,7 +26,8 @@ export function OnboardingChecklist({ lar, user }: { lar: Lar; user: User | null
   }
 
   return (
-    <section aria-labelledby="arranque-titulo" className="tile relative">
+    <Reveal variant="scale" duration={900}>
+    <section aria-labelledby="arranque-titulo" className="tile relative max-sm:p-6">
       <button
         type="button"
         onClick={fechar}
@@ -79,5 +81,6 @@ export function OnboardingChecklist({ lar, user }: { lar: Lar; user: User | null
         </p>
       )}
     </section>
+    </Reveal>
   )
 }

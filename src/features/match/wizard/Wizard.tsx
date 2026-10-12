@@ -49,7 +49,10 @@ export function Wizard({
   // passo desenhado no ecrã: fica no anterior enquanto a pergunta sai
   const [visto, setVisto] = useState(passo)
   const direcao = useRef<1 | -1>(entrada)
+  /** quando a pergunta desenhada mudou pela última vez (protege de toques duplos, também sem animação) */
+  const trocaEm = useRef(0)
   const emTransicao = visto !== passo
+  const bloqueado = () => emTransicao || performance.now() - trocaEm.current < 350
 
   const headerRef = useRef<HTMLElement>(null)
   const corpoRef = useRef<HTMLDivElement>(null)
@@ -91,6 +94,7 @@ export function Wizard({
   // 2) entrada (antes da pintura): limpa a saída, volta ao topo sem animação (nada visível a saltar),
   //    a nova pergunta entra do lado oposto — cabeçalho primeiro, opções 70ms depois — e só então recebe o foco
   useLayoutEffect(() => {
+    trocaEm.current = performance.now()
     const els = [headerRef.current, corpoRef.current].filter((x): x is HTMLElement => Boolean(x?.animate))
     els.forEach((el) => el.getAnimations().forEach((a) => a.cancel()))
     scrollPara(lenis, 0, { instant: true })
@@ -151,7 +155,7 @@ export function Wizard({
   }, [tecladoAberto])
 
   const continuar = () => {
-    if (emTransicao) return // toque duplo não salta uma pergunta
+    if (bloqueado()) return // toque duplo não salta uma pergunta
     const e = validarPasso(visto, r)
     if (Object.keys(e).length) {
       setTentou(visto)
@@ -187,7 +191,7 @@ export function Wizard({
   }
 
   const voltar = () => {
-    if (emTransicao) return
+    if (bloqueado()) return
     if (visto === 0) acoes.voltarAoInicio()
     else acoes.irPara(visto - 1)
   }
@@ -265,14 +269,16 @@ export function Wizard({
 
         {/*
           Navegação. < lg: presa ao fundo (sticky — pára no fim do formulário, nunca tapa o rodapé), por cima da
-          área segura; com o teclado aberto sobe para ficar logo acima dele. ≥ lg: no fim do conteúdo.
+          área segura; com o teclado aberto o `bottom` sticky passa a ser a altura do teclado (fica logo acima dele).
+          ≥ lg: no fim do conteúdo.
         */}
         <div
           data-match-barra={desktop ? undefined : ''}
-          style={tecladoAberto ? { transform: `translate3d(0,${-teclado}px,0)` } : undefined}
+          style={tecladoAberto ? { bottom: teclado } : undefined}
           className={cn(
             'sticky bottom-0 z-[900] border-t border-black/[0.06] bg-white/85 backdrop-blur-xl backdrop-saturate-150',
-            'transition-transform duration-300 ease-[cubic-bezier(.16,1,.3,1)]',
+            // o deslocamento sticky (bottom) respeita a posição natural da barra; anima-se para acompanhar o teclado
+            'transition-[bottom] duration-300 ease-[cubic-bezier(.16,1,.3,1)]',
             'lg:static lg:z-auto lg:border-0 lg:bg-transparent lg:backdrop-blur-none lg:transition-none',
           )}
         >

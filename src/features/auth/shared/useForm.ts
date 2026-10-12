@@ -44,6 +44,9 @@ export function useForm<V extends FormValues>({
   const [external, setExternal] = useState<Partial<Record<Key<V>, string>>>({})
   const [attempts, setAttempts] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  // depois de um envio bem-sucedido (ex.: conta criada) as regras deixam de se aplicar:
+  // "já existe uma conta com este email" passaria a ser verdade durante o visto verde
+  const [frozen, setFrozen] = useState(false)
   const submittingRef = useRef(false)
   const refs = useRef(new Map<Key<V>, HTMLElement | null>())
   const lenis = useLenis()
@@ -67,7 +70,7 @@ export function useForm<V extends FormValues>({
   )
 
   const errors = computeErrors(values, external)
-  const errorOf = (k: Key<V>) => (armed[k] ? errors[k] : undefined)
+  const errorOf = (k: Key<V>) => (!frozen && armed[k] ? errors[k] : undefined)
   /** Erro já pronto a mostrar (animado), para passar a `error` dos campos. */
   const errorView = (k: Key<V>) => {
     const msg = errorOf(k)
@@ -180,6 +183,8 @@ export function useForm<V extends FormValues>({
     checkbox,
     errorOf,
     errorView,
+    /** congela o formulário (sem erros) — chamar quando o envio teve sucesso, antes de mudar de página */
+    freeze: () => setFrozen(true),
     validate,
     isValid,
     visibleErrors,

@@ -51,7 +51,7 @@ function Ficha({ lar }: { lar: Lar }) {
   // barra fixa no telemóvel: só quando as ações do cartão não estão à vista e ainda não chegámos ao fim da ficha
   const ctaRef = useRef<HTMLDivElement>(null)
   const fimRef = useRef<HTMLDivElement>(null)
-  const ctaVisivel = useInView(ctaRef)
+  const ctaVisivel = useInView(ctaRef, '0px', ativa ? ativa.id : minhaFicha ? 'gestor' : 'livre')
   // a barra some antes de o último conteúdo entrar no ecrã (margem ≥ espaço inferior da página) e não volta no rodapé
   const fimVisivel = useJaPassou(fimRef, '0px 0px 128px 0px')
   const cartaoRef = useRef<HTMLDivElement>(null)

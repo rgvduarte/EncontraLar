@@ -154,6 +154,7 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
       ref={wrapRef}
       role="search"
       aria-label="Procurar por localidade"
+      data-el-combo-aberto={open || undefined}
       className={cn('relative', className)}
       onBlur={(e) => {
         if (!wrapRef.current?.contains(e.relatedTarget as Node | null)) fechar()
