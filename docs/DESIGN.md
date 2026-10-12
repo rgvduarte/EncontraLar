@@ -134,6 +134,7 @@ suspensos já são globais (Layout/Header).
 
 | Camada | z-index |
 |---|---|
+| Barras sticky dentro da página (índice do guia, navegação de secções) | 900 |
 | Controlos flutuantes da página (botão Mapa/Lista, cartões de marcador) | 999 |
 | Véu do menu suspenso (desktop) | 990 |
 | Barra de abas inferior | 1000 |
@@ -157,3 +158,7 @@ Não inventar valores intermédios (ex.: 1050) — usar esta escala.
 - **Toasts** ficam acima da barra de abas; páginas com barra de ação própria definem `--actionbar-h` no `<html>` enquanto está visível.
 - **Modal** tem `onClosed` (depois da animação de fecho) para encadear diálogos sem temporizadores.
 - **`ForecastStrip`** anima sozinho ao entrar no ecrã (`animate`, por omissão true); `CountUp` anima a partir do valor anterior.
+- **Não ligar SVGs grandes ao scroll** (ex.: zoom do mapa de Portugal com o scroll): preferir uma revelação única ao entrar.
+  `Parallax` e `ScrollZoom` escrevem `transform` diretamente; dentro de `StickyScene`, evitar ler `var(--p)` em subárvores grandes
+  (preferir `useSceneProgress()` em poucos elementos).
+- **`PortugalMap`**: o pulso das vagas é opcional (`pulse`, desligado por omissão) e usa só transform/opacity.

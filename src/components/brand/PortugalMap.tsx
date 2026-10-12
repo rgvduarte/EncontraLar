@@ -63,7 +63,7 @@ export interface PortugalMapProps {
   labels?: boolean
   theme?: 'light' | 'dark'
   className?: string
-  /** pulsar as instituições com vaga */
+  /** pulsar as instituições com vaga (por omissão desligado — custa repintura em mapas grandes) */
   pulse?: boolean
   title?: string
 }
@@ -76,7 +76,7 @@ export const PortugalMap = memo(function PortugalMap({
   labels = true,
   theme = 'light',
   className,
-  pulse = true,
+  pulse = false,
   title = 'Mapa de Portugal com as instituições e a sua disponibilidade',
 }: PortugalMapProps) {
   const [hover, setHover] = useState<string | null>(null)
@@ -145,10 +145,8 @@ export const PortugalMap = memo(function PortugalMap({
               : {})}
           >
             {pulse && d === 'disponivel' && (
-              <circle cx={x} cy={y} r="4" fill={DOT[d]} opacity="0.4">
-                <animate attributeName="r" values="4;11;4" dur="2.8s" begin={`${(x * 7 + y) % 2.8}s`} repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.4;0;0.4" dur="2.8s" begin={`${(x * 7 + y) % 2.8}s`} repeatCount="indefinite" />
-              </circle>
+              // halo leve: animação CSS só de transform/opacity (desligada com movimento reduzido)
+              <circle cx={x} cy={y} r="4" fill={DOT[d]} className="pt-pulse" style={{ animationDelay: `${((x * 7 + y) % 2.8).toFixed(2)}s` }} />
             )}
             <circle
               cx={x}

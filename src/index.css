@@ -234,3 +234,15 @@
 .leaflet-control-zoom a { width: 40px !important; height: 40px !important; line-height: 38px !important; font-size: 22px !important; }
 .leaflet-control-attribution { font-size: 11px; }
 .leaflet-bar { border: 1px solid var(--color-line-strong) !important; box-shadow: var(--shadow-soft) !important; }
+
+/* halo das vagas no mapa de Portugal (PortugalMap pulse) */
+.pt-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pt-pulse 2.8s ease-out infinite;
+  opacity: 0;
+}
+@keyframes pt-pulse {
+  0% { transform: scale(1); opacity: 0.45; }
+  100% { transform: scale(2.8); opacity: 0; }
+}

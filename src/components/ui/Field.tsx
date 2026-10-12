@@ -159,7 +159,7 @@ export function Checkbox({
     <label className={cn('group flex min-h-12 cursor-pointer items-start gap-3 rounded-xl py-2', className)}>
       <span className="relative mt-0.5 flex size-7 shrink-0 items-center justify-center">
         <input type="checkbox" className="peer absolute inset-0 cursor-pointer appearance-none rounded-[8px] border-[1.5px] border-line-strong bg-white transition-colors checked:border-terra-600 checked:bg-terra-600 group-hover:border-pine-400 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500" {...rest} />
-        <Check aria-hidden strokeWidth={3} className="pointer-events-none relative size-4.5 text-white opacity-0 peer-checked:opacity-100" />
+        <Check aria-hidden strokeWidth={3} className="pointer-events-none relative size-4.5 scale-50 text-white opacity-0 transition-[opacity,scale] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] peer-checked:scale-100 peer-checked:opacity-100" />
       </span>
       <span className="flex flex-col">
         <span className="text-base leading-snug font-medium text-ink">{label}</span>

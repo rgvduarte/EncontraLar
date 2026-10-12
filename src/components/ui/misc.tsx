@@ -74,7 +74,7 @@ export function Meter({ value, tone = 'pine', label, className }: { value: numbe
       aria-valuenow={pct}
       aria-label={label}
     >
-      <div className={cn('h-full rounded-full transition-[width] duration-500', color)} style={{ width: `${pct}%` }} />
+      <div className={cn('h-full origin-left rounded-full transition-[scale] duration-700 ease-[cubic-bezier(.16,1,.3,1)]', color)} style={{ scale: `${pct / 100} 1` }} />
     </div>
   )
 }

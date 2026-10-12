@@ -52,7 +52,7 @@ export function StickyScene({
       <div
         ref={inner}
         className={cn(
-          reduced ? 'relative' : 'sticky top-16 h-[calc(100dvh-4rem)] overflow-hidden',
+          reduced ? 'relative' : 'sticky top-16 h-[calc(100svh-4rem-var(--tabbar-h))] overflow-hidden',
           innerClassName,
         )}
       >

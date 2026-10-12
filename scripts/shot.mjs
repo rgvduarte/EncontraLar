@@ -62,8 +62,10 @@ await page.goto('about:blank')
 await page.goto(`${base}/#${route}`, { waitUntil: 'networkidle' }).catch(() => {})
 // percorrer a página com a roda do rato para disparar as animações de entrada (Reveal) antes da captura
 if (full) {
-  const h = await page.evaluate(() => document.documentElement.scrollHeight)
-  for (let y = 0; y < h; y += 500) {
+  await page.waitForSelector('main h1', { timeout: 8000 }).catch(() => {})
+  await page.waitForTimeout(400)
+  // re-mede a altura durante o percurso (secções carregadas/fixas podem crescer)
+  for (let y = 0; y < (await page.evaluate(() => document.documentElement.scrollHeight)); y += 500) {
     await page.mouse.wheel(0, 500)
     await page.waitForTimeout(90)
   }
