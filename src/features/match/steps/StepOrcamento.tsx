@@ -69,11 +69,12 @@ export function StepOrcamento({ r, patch, erros, lares, p }: StepProps) {
           <p
             aria-hidden
             className={cn(
-              'min-w-[5.5ch] text-center text-[3.25rem] leading-none font-semibold tracking-tight whitespace-nowrap tabular transition-colors duration-300 sm:text-7xl',
+              'min-w-[5.5ch] text-center leading-none font-semibold tracking-tight whitespace-nowrap tabular transition-colors duration-300',
+              semLimite ? 'text-[2.25rem] sm:text-6xl' : 'text-[3.25rem] sm:text-7xl',
               vazio ? 'text-line-strong' : 'text-ink',
             )}
           >
-            {vazio ? '— €' : euro(orc)}
+            {vazio ? '— €' : semLimite ? 'Sem limite' : euro(orc)}
           </p>
           <button
             type="button"
@@ -89,7 +90,7 @@ export function StepOrcamento({ r, patch, erros, lares, p }: StepProps) {
           {vazio
             ? 'Escolha um valor por mês, por pessoa'
             : semLimite
-              ? 'ou mais — sem limite, mostramos todos os preços'
+              ? 'Mostramos todos os preços da zona'
               : 'por mês, por pessoa'}
         </p>
 
