@@ -44,7 +44,10 @@ export function StartScreen({
             tabIndex={-1}
             className="mx-auto mt-4 max-w-5xl font-display text-[2.5rem] leading-[1.05] font-semibold text-ink outline-none sm:text-6xl"
           >
-            <span className="block">Diga-nos quem é.</span> <span className="block">Mostramos onde há <em>lugar</em>.</span>
+            <span className="block">Diga-nos quem é.</span>{' '}
+            <span className="block">
+              Mostramos onde há <em>lugar</em>.
+            </span>
           </h1>
         </Reveal>
         <Reveal delay={140} duration={900}>

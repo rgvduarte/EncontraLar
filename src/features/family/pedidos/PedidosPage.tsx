@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useLocation } from 'react-router'
 import { ButtonLink } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/misc'
-import { useDocumentTitle, useMediaQuery } from '@/lib/hooks'
+import { useDocumentTitle } from '@/lib/hooks'
 import { useLenis } from '@/components/motion'
 import { cn } from '@/lib/cn'
 import { usePedidos, usePerfisOrdenados, pesquisaUrl } from '../shared/data'
@@ -31,19 +31,22 @@ export default function PedidosPage() {
   }
 
   const lenis = useLenis()
-  const desktop = useMediaQuery('(min-width: 1024px)')
   // ir ao pedido indicado no endereço (ex.: vindo de uma notificação), depois do scroll-to-top do Layout
   useEffect(() => {
     if (!alvo) return
     const t = window.setTimeout(() => {
       const el = document.getElementById(`pedido-${alvo}`)
       if (!el) return
-      // cabeçalho (64px) + pílulas do painel no telemóvel
-      if (lenis) lenis.scrollTo(el, { offset: desktop ? -96 : -152 })
+      if (lenis) {
+        // a página acabou de crescer (secção carregada agora): o Lenis tem de medir de novo antes de deslizar.
+        // O Lenis (tal como o scrollIntoView) respeita o scroll-margin-top do cartão (cabeçalho + pílulas).
+        lenis.resize()
+        lenis.scrollTo(el)
+      }
       else el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 150)
     return () => window.clearTimeout(t)
-  }, [alvo, lenis, desktop])
+  }, [alvo, lenis])
 
   // trocar de separador: o painel entra pelo lado do separador escolhido
   const painel = useRef<HTMLDivElement>(null)

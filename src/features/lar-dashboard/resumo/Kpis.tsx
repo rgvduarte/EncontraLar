@@ -54,12 +54,19 @@ export function Kpis({ lar, n }: { lar: Lar; n: NumerosResumo }) {
           value={<Numero value={n.listaTotal} duration={1000} />}
           note={n.listaTotal > 0 ? `${n.listaOnline} pela plataforma · ${n.listaOffline} por telefone ou presencialmente` : 'Ninguém inscrito'}
         />
-        <Stat delay={280} label="Visualizações" value={<Numero value={n.visualizacoes} format={(v) => num(Math.round(v))} />} note="da ficha, nos últimos 30 dias" />
+        <Stat
+          delay={280}
+          label="Visualizações"
+          value={<Numero value={n.visualizacoes} format={(v) => num(Math.round(v))} />}
+          note="da ficha, nos últimos 30 dias"
+        />
         <Stat
           delay={350}
           label="Receita mensal em risco"
           value={<Numero value={n.receita} format={(v) => euro(Math.round(v))} />}
-          note={n.receita > 0 ? `por cada mês com ${n.livres === 1 ? 'o lugar livre vazio' : `os ${n.livres} lugares livres vazios`}` : 'Todos os lugares ocupados'}
+          note={
+            n.receita > 0 ? `por cada mês com ${n.livres === 1 ? 'o lugar livre vazio' : `os ${n.livres} lugares livres vazios`}` : 'Todos os lugares ocupados'
+          }
         />
       </dl>
     </section>

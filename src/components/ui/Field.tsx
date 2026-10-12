@@ -186,7 +186,7 @@ export function ChoiceCard({
   return (
     <label
       className={cn(
-        'group relative flex min-h-16 cursor-pointer items-start gap-4 rounded-[1.25rem] border border-line-strong bg-white p-5 transition-all duration-200',
+        'group relative flex min-h-16 cursor-pointer items-start gap-4 rounded-[1.25rem] border border-line-strong bg-white p-5 transition-all duration-200 active:scale-[0.985]',
         'hover:border-pine-400 has-[:checked]:border-terra-600 has-[:checked]:bg-terra-50/60 has-[:checked]:ring-1 has-[:checked]:ring-terra-600 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
         className,
       )}
@@ -209,7 +209,7 @@ export function ChoiceCard({
           type === 'radio' ? 'rounded-full' : 'rounded-md',
         )}
       >
-        <Check strokeWidth={3} className="size-3.5" />
+        <Check strokeWidth={3} className="size-3.5 scale-50 opacity-0 transition-[transform,opacity] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] group-has-[:checked]:scale-100 group-has-[:checked]:opacity-100" />
       </span>
     </label>
   )

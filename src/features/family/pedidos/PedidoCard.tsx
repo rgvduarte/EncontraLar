@@ -107,7 +107,7 @@ export function PedidoCard({
       style={{ transitionDelay: on ? `${Math.min(index, 4) * 90}ms` : '0ms' }}
       className={cn(
         enterCls(on, 'up'),
-        'scroll-mt-40 border-t border-line pt-12 first:border-t-0 first:pt-0 sm:rounded-[1.75rem] sm:border-t-0 sm:bg-white sm:p-10 sm:ring-1 sm:ring-line sm:first:pt-10',
+        'scroll-mt-40 border-t border-line pt-12 lg:scroll-mt-24 first:border-t-0 first:pt-0 sm:rounded-[1.75rem] sm:border-t-0 sm:bg-white sm:p-10 sm:ring-1 sm:ring-line sm:first:pt-10',
       )}
     >
       <header>

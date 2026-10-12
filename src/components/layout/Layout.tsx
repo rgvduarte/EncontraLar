@@ -8,8 +8,8 @@ import { Toaster } from '@/components/ui/Toast'
 import { Spinner } from '@/components/ui/misc'
 import { SmoothScroll, useLenis } from '@/components/motion/SmoothScroll'
 
-/** Páginas de ecrã inteiro (mapa) sem rodapé. */
-const SEM_RODAPE = ['/pesquisa']
+/** Páginas de ecrã inteiro (mapa) e fluxos focados (questionário) sem rodapé. */
+const SEM_RODAPE = ['/pesquisa', '/encontrar']
 
 /**
  * Chave da transição entre páginas: nos painéis só a secção muda (a moldura mantém-se),

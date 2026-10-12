@@ -14,19 +14,7 @@ const FECHADOS: Candidatura['estado'][] = ['aceite', 'recusada', 'cancelada']
  * Entra com um fade ao aparecer; quando muda de estado (e sai deste separador) desvanece e as
  * linhas de baixo sobem (FLIP na lista).
  */
-export function PedidoRow({
-  c,
-  lar,
-  agora,
-  verHref,
-  leaving = false,
-}: {
-  c: Candidatura
-  lar: Lar
-  agora: number
-  verHref: string
-  leaving?: boolean
-}) {
+export function PedidoRow({ c, lar, agora, verHref, leaving = false }: { c: Candidatura; lar: Lar; agora: number; verHref: string; leaving?: boolean }) {
   const p = c.perfil
   const ativo = !FECHADOS.includes(c.estado)
   const nec = necessidadesTexto(c)
@@ -34,34 +22,34 @@ export function PedidoRow({
     <li data-flip={c.id} data-leaving={leaving} inert={leaving} aria-hidden={leaving || undefined} className="bg-white py-10 first:pt-6">
       <Reveal variant="fade" duration={800}>
         <article aria-labelledby={`pedido-${c.id}`}>
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <p className="text-sm text-ink-mute">
-            {ativo && p.urgencia === 'imediata' && <span className="font-medium text-alert-700">Urgente — alta hospitalar · </span>}
-            Recebido {tempoRelativo(c.criadaEm, new Date(agora))}
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <p className="text-sm text-ink-mute">
+              {ativo && p.urgencia === 'imediata' && <span className="font-medium text-alert-700">Urgente — alta hospitalar · </span>}
+              Recebido {tempoRelativo(c.criadaEm, new Date(agora))}
+            </p>
+            {c.estado !== 'enviada' && <EstadoTag c={c} />}
+          </div>
+          <h3 id={`pedido-${c.id}`} className="mt-1 text-2xl font-semibold">
+            {p.nome}, {p.idade} anos
+          </h3>
+          <p className="mt-1 text-ink-soft">
+            {relacaoTexto(c)} · {GRAU_LABEL[p.grau].toLowerCase()}
           </p>
-          {c.estado !== 'enviada' && <EstadoTag c={c} />}
-        </div>
-        <h3 id={`pedido-${c.id}`} className="mt-1 text-2xl font-semibold">
-          {p.nome}, {p.idade} anos
-        </h3>
-        <p className="mt-1 text-ink-soft">
-          {relacaoTexto(c)} · {GRAU_LABEL[p.grau].toLowerCase()}
-        </p>
-        <p className="text-ink-soft">{nec ? `Precisa de ${nec}.` : 'Sem necessidades de saúde específicas indicadas.'}</p>
-        <p className="text-ink-soft">{procuraTexto(c)}</p>
-        {c.mensagem && <p className="mt-4 max-w-2xl text-ink">«{excerto(c.mensagem)}»</p>}
+          <p className="text-ink-soft">{nec ? `Precisa de ${nec}.` : 'Sem necessidades de saúde específicas indicadas.'}</p>
+          <p className="text-ink-soft">{procuraTexto(c)}</p>
+          {c.mensagem && <p className="mt-4 max-w-2xl text-ink">«{excerto(c.mensagem)}»</p>}
 
-        {ativo && <CompatLines lar={lar} perfil={p} className="mt-6" />}
-        <VisitaLinha c={c} className="mt-6" />
-        <PropostaLinha c={c} agora={agora} className="mt-6" />
+          {ativo && <CompatLines lar={lar} perfil={p} className="mt-6" />}
+          <VisitaLinha c={c} className="mt-6" />
+          <PropostaLinha c={c} agora={agora} className="mt-6" />
 
-        <ContactoLinks c={c} className="mt-4" />
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-3 max-sm:mt-6">
-          <PedidoAcoes c={c} lar={lar} agora={agora} verHref={verHref} className="max-sm:w-full" />
-          <MoreLink to={verHref} aria-label={`Perfil completo e histórico de ${p.nome}`}>
-            Perfil completo
-          </MoreLink>
-        </div>
+          <ContactoLinks c={c} className="mt-4" />
+          <div className="mt-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-3 max-sm:mt-6">
+            <PedidoAcoes c={c} lar={lar} agora={agora} verHref={verHref} className="max-sm:w-full" />
+            <MoreLink to={verHref} aria-label={`Perfil completo e histórico de ${p.nome}`}>
+              Perfil completo
+            </MoreLink>
+          </div>
         </article>
       </Reveal>
     </li>

@@ -61,42 +61,46 @@ function LinhaOnline({
   const est = estimarEspera(lar, { posicao })
   const q = c.estado === 'lista_espera' ? quartoParaPropor(lar, p) : null
   const outroQuarto = q && !q.preferido && p.quarto !== 'indiferente' ? `Pediu ${nomeQuarto(p.quarto)}; o lugar livre é em ${nomeQuarto(q.tipo)}` : null
-  const espera = est.imediata ? 'Há lugar livre para esta posição' : est.diasMediana != null ? `Espera estimada: ${duracaoHumana(est.diasMediana)}` : 'Espera estimada: mais de 2 anos'
+  const espera = est.imediata
+    ? 'Há lugar livre para esta posição'
+    : est.diasMediana != null
+      ? `Espera estimada: ${duracaoHumana(est.diasMediana)}`
+      : 'Espera estimada: mais de 2 anos'
   return (
     <li data-flip={c.id} data-leaving={leaving} inert={leaving} aria-hidden={leaving || undefined} className="bg-white">
       <Reveal variant="fade" delay={Math.min(indice, 4) * 70} duration={800} className="grid grid-cols-[3.5rem_1fr] gap-x-4 py-8 sm:grid-cols-[4.5rem_1fr]">
-      <Posicao n={posicao} />
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-          <div className="min-w-0">
-            {sugerido && <p className="text-sm font-medium text-terra-700">Sugestão: é a primeira da lista para o quarto livre</p>}
-            <h3 className="text-lg font-semibold">
-              <span className="sr-only">Posição {posicao}: </span>
-              {p.nome}, {p.idade} anos
-            </h3>
+        <Posicao n={posicao} />
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0">
+              {sugerido && <p className="text-sm font-medium text-terra-700">Sugestão: é a primeira da lista para o quarto livre</p>}
+              <h3 className="text-lg font-semibold">
+                <span className="sr-only">Posição {posicao}: </span>
+                {p.nome}, {p.idade} anos
+              </h3>
+            </div>
+            {c.estado === 'vaga_proposta' && <EstadoTag c={c} />}
           </div>
-          {c.estado === 'vaga_proposta' && <EstadoTag c={c} />}
+          <p className="text-ink-soft">
+            {relacaoTexto(c)} · {perfilLinha(c)}
+          </p>
+          <p className="text-ink-soft">{procuraTexto(c)}</p>
+          <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-mute">
+            <span>Inscrito(a) {tempoRelativo(inscrito, new Date(agora))}</span>
+            <span className={faltas ? 'font-medium text-alert-700' : undefined}>
+              {faltas ? `${faltas} ${faltas === 1 ? 'ponto' : 'pontos'} a verificar` : 'Compatível com a ficha'}
+            </span>
+            <span>{espera}</span>
+            {outroQuarto && <span>{outroQuarto}</span>}
+          </p>
+          <PropostaLinha c={c} agora={agora} className="mt-4" />
+          <div className="mt-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+            <PedidoAcoes c={c} lar={lar} agora={agora} apenasPrincipal discreto={haSugestao && !sugerido} verHref={verHref} className="max-sm:w-full" />
+            <MoreLink to={verHref} aria-label={`Ver o pedido de ${p.nome}`}>
+              Ver pedido
+            </MoreLink>
+          </div>
         </div>
-        <p className="text-ink-soft">
-          {relacaoTexto(c)} · {perfilLinha(c)}
-        </p>
-        <p className="text-ink-soft">{procuraTexto(c)}</p>
-        <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-mute">
-          <span>Inscrito(a) {tempoRelativo(inscrito, new Date(agora))}</span>
-          <span className={faltas ? 'font-medium text-alert-700' : undefined}>
-            {faltas ? `${faltas} ${faltas === 1 ? 'ponto' : 'pontos'} a verificar` : 'Compatível com a ficha'}
-          </span>
-          <span>{espera}</span>
-          {outroQuarto && <span>{outroQuarto}</span>}
-        </p>
-        <PropostaLinha c={c} agora={agora} className="mt-4" />
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-          <PedidoAcoes c={c} lar={lar} agora={agora} apenasPrincipal discreto={haSugestao && !sugerido} verHref={verHref} className="max-sm:w-full" />
-          <MoreLink to={verHref} aria-label={`Ver o pedido de ${p.nome}`}>
-            Ver pedido
-          </MoreLink>
-        </div>
-      </div>
       </Reveal>
     </li>
   )

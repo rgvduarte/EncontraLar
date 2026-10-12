@@ -1,10 +1,9 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Link, useNavigate } from 'react-router'
 import type { Lar } from '@/types'
 import { MapLegend, PortugalMap } from '@/components/brand/PortugalMap'
-import { Parallax } from '@/components/motion/Parallax'
 import { vagasLivres } from '@/lib/forecast'
-import { prefersReducedMotion, useInView } from '@/lib/motion'
+import { measureProgress, prefersReducedMotion, subscribeScroll, useInView } from '@/lib/motion'
 import { useMediaQuery } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
 import { tempoCurto, ultimasVagas } from './homeData'
@@ -53,6 +52,32 @@ function acenderMapa(svg: SVGSVGElement, base: number) {
 }
 
 /**
+ * Paralaxe que escreve o transform diretamente, medida na figura (que não se mexe). Não usa o <Parallax>
+ * partilhado de propósito: esse escreve a variável --p, que é herdada — mudá-la a cada frame obrigava a
+ * recalcular o estilo dos ~2000 pontos do mapa.
+ */
+function useProfundidade(el: RefObject<HTMLElement | null>, referencia: RefObject<HTMLElement | null>, velocidade: number) {
+  useEffect(() => {
+    const node = el.current
+    if (!node) return
+    if (!velocidade || prefersReducedMotion()) {
+      node.style.transform = ''
+      return
+    }
+    const parar = subscribeScroll(() => {
+      const ref = referencia.current
+      if (!ref) return
+      const p = measureProgress(ref, 'through')
+      node.style.transform = `translate3d(0, ${((0.5 - p) * 2 * velocidade).toFixed(1)}px, 0)`
+    })
+    return () => {
+      parar()
+      node.style.transform = ''
+    }
+  }, [el, referencia, velocidade])
+}
+
+/**
  * O "produto como imagem": o mapa de Portugal em pontos, com as últimas vagas a flutuar à volta.
  * Entrada: o mapa acende-se de norte para sul quando entra no ecrã; depois as etiquetas aparecem uma a uma.
  * Desktop largo: paralaxe subtil entre o mapa (mais longe) e as etiquetas (mais perto).
@@ -67,6 +92,11 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
   const [montado] = useState(() => performance.now())
   const [base, setBase] = useState(0)
   const largo = useMediaQuery('(min-width: 1280px)')
+  const camadaMapa = useRef<HTMLDivElement>(null)
+  const camadaEtiquetas = useRef<HTMLDivElement>(null)
+  // profundidade: o mapa fica "mais longe" (desce um pouco), as etiquetas "mais perto" (sobem mais depressa)
+  useProfundidade(camadaMapa, figRef, largo ? -18 : 0)
+  useProfundidade(camadaEtiquetas, figRef, largo ? 42 : 0)
 
   // O PortugalMap declara role="img" mas, com onSelect, contém ligações focáveis (um "img" não pode ter
   // controlos lá dentro). Até o componente partilhado tratar disto, expomo-lo como grupo de ligações.
@@ -86,7 +116,7 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
 
   return (
     <figure ref={figRef} className="hm-map relative mx-auto w-full max-w-[19rem] sm:max-w-[30rem] lg:max-w-[34rem]">
-      <Parallax speed={largo ? -18 : 0}>
+      <div ref={camadaMapa} className={cn(largo && 'will-change-transform')}>
         <div ref={mapaRef} className={cn(visto ? 'hm-in' : 'hm-wait')} style={entrada(base, 'hm-settle', 900)}>
           <PortugalMap
             lares={lares}
@@ -95,11 +125,11 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
             title={`Mapa de Portugal com ${lares.length} instituições, ${comVaga} com vaga agora. Cada ponto abre a ficha da instituição.`}
           />
         </div>
-      </Parallax>
+      </div>
 
       {ultimas.length > 0 && (
         // no ecrã largo as etiquetas flutuam à volta do mapa e andam um pouco mais depressa do que ele (profundidade)
-        <Parallax speed={largo ? 42 : 0} className="relative z-10 mt-8 xl:pointer-events-none xl:absolute xl:inset-0 xl:mt-0">
+        <div ref={camadaEtiquetas} className="relative z-10 mt-8 xl:pointer-events-none xl:absolute xl:inset-0 xl:mt-0 xl:will-change-transform">
           <ul aria-label="Vagas atualizadas há menos tempo" className="flex flex-col items-center gap-3 xl:block xl:h-full">
             {ultimas.map((l, i) => {
               const n = vagasLivres(l)
@@ -130,7 +160,7 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
               )
             })}
           </ul>
-        </Parallax>
+        </div>
       )}
 
       <figcaption

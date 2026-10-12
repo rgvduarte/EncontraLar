@@ -38,20 +38,20 @@ export default function VagasPage({ lar }: { lar: Lar }) {
     <div className="flex flex-col gap-10">
       <Reveal variant="blur">
         <section aria-labelledby="vagas-total">
-        <p id="vagas-total" className="flex flex-wrap items-baseline gap-x-3">
-          <Rolo value={livres} className="text-6xl leading-none font-semibold tracking-tight tabular" />
-          <span className="text-2xl font-semibold text-ink-mute">
-            {livres === 1 ? 'lugar livre' : 'lugares livres'} de {lar.capacidade}
-          </span>
-        </p>
-        <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-mute">
-          No mapa de vagas:{' '}
-          <span ref={badge} className="inline-flex">
-            <AvailabilityBadge lar={lar} />
-          </span>
-          <MoreLink to={`/lar/${lar.id}`}>Ver como as famílias veem</MoreLink>
-        </p>
-        <p className="mt-3 max-w-2xl text-ink-mute">{avisoTexto(d.lista, d.seguidores)}</p>
+          <p id="vagas-total" className="flex flex-wrap items-baseline gap-x-3">
+            <Rolo value={livres} className="text-6xl leading-none font-semibold tracking-tight tabular" />
+            <span className="text-2xl font-semibold text-ink-mute">
+              {livres === 1 ? 'lugar livre' : 'lugares livres'} de {lar.capacidade}
+            </span>
+          </p>
+          <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-mute">
+            No mapa de vagas:{' '}
+            <span ref={badge} className="inline-flex">
+              <AvailabilityBadge lar={lar} />
+            </span>
+            <MoreLink to={`/lar/${lar.id}`}>Ver como as famílias veem</MoreLink>
+          </p>
+          <p className="mt-3 max-w-2xl text-ink-mute">{avisoTexto(d.lista, d.seguidores)}</p>
         </section>
       </Reveal>
 

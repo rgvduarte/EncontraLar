@@ -60,12 +60,7 @@ export function PedidoAcoes({
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      <div
-        className={cn(
-          'flex flex-wrap items-center gap-2',
-          variante === 'linha' ? 'max-sm:hidden' : 'max-sm:flex-col max-sm:items-stretch sm:justify-end',
-        )}
-      >
+      <div className={cn('flex flex-wrap items-center gap-2', variante === 'linha' ? 'max-sm:hidden' : 'max-sm:flex-col max-sm:items-stretch sm:justify-end')}>
         {acoes.map((a, i) => (
           <Button
             key={a.id}

@@ -46,9 +46,11 @@ function Mapa() {
   const comVaga = useMemo(() => lares.filter((l) => vagasLivres(l) > 0).length, [lares])
   return (
     <div className="flex flex-col gap-5">
-      <ScrollZoom from={0.8} radiusFrom={0} radiusTo={0} className="overflow-visible">
+      {/* o mapa (SVG com centenas de pontos) entra com uma escala única; ligado ao scroll, obrigaria a
+          re-rasterizar o SVG em cada frame */}
+      <Reveal variant="scale" duration={1200}>
         <PortugalMap lares={lares} className="mx-auto max-w-[19rem] sm:max-w-[26rem] lg:max-w-[32rem]" title={`Mapa de Portugal com ${num(lares.length)} instituições de demonstração`} />
-      </ScrollZoom>
+      </Reveal>
       <div className="flex flex-col items-center gap-3">
         <p className="text-center text-base text-ink">
           <CountUp value={lares.length} className="font-semibold tabular" /> instituições ·{' '}

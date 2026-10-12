@@ -143,65 +143,65 @@ export function VagaLibertadaPanel({ lar }: { lar: Lar }) {
   return (
     <section aria-labelledby="saida-titulo" className="tile max-sm:p-6">
       <div ref={conteudo}>
-      {resultado ? (
-        <Sucesso
-          r={resultado}
-          onOutra={() => {
-            setResultado(null)
-            setTipo(inicial())
-          }}
-        />
-      ) : (
-        <>
-          <h2 id="saida-titulo" className="text-2xl font-semibold sm:text-3xl">
-            Saiu um residente?
-          </h2>
-          <p className="mt-1.5 text-ink-mute">Registe a vaga. Avisamos logo as famílias que esperam.</p>
+        {resultado ? (
+          <Sucesso
+            r={resultado}
+            onOutra={() => {
+              setResultado(null)
+              setTipo(inicial())
+            }}
+          />
+        ) : (
+          <>
+            <h2 id="saida-titulo" className="text-2xl font-semibold sm:text-3xl">
+              Saiu um residente?
+            </h2>
+            <p className="mt-1.5 text-ink-mute">Registe a vaga. Avisamos logo as famílias que esperam.</p>
 
-          {lar.quartos.length === 0 ? (
-            <p className="mt-6 text-ink-mute">
-              Indique primeiro os tipos de quarto. <MoreLink to="/gestao/vagas">Ir para Vagas</MoreLink>
-            </p>
-          ) : (
-            <>
-              <fieldset className="mt-6">
-                <legend className="mb-3 text-sm text-ink-mute">Que quarto ficou livre?</legend>
-                <div className="flex flex-col gap-2">
-                  {lar.quartos.map((q) => {
-                    const cheio = q.livres >= q.total
-                    return (
-                      <label
-                        key={q.tipo}
-                        className={cn(
-                          'group flex min-h-14 items-center gap-3 rounded-2xl bg-white px-5 ring-1 ring-transparent transition-shadow duration-200',
-                          'has-[:checked]:ring-2 has-[:checked]:ring-ink has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
-                          cheio ? 'cursor-not-allowed text-ink-mute' : 'cursor-pointer hover:ring-line-strong',
-                        )}
-                      >
-                        <input
-                          type="radio"
-                          name={nome}
-                          value={q.tipo}
-                          checked={tipo === q.tipo}
-                          disabled={cheio}
-                          onChange={() => setTipo(q.tipo)}
-                          className="sr-only"
-                        />
-                        <span className="flex-1 font-medium">{QUARTO_CURTO[q.tipo]}</span>
-                        <span className="text-sm text-ink-mute tabular">{cheio ? 'todos livres' : `${q.livres} de ${q.total} livres`}</span>
-                        <Check aria-hidden strokeWidth={2.5} className="hidden size-5 shrink-0 text-ink group-has-[:checked]:block" />
-                      </label>
-                    )
-                  })}
-                </div>
-              </fieldset>
-              <Button size="lg" full className="mt-5" disabled={!tipo} onClick={registar}>
-                {tipo ? `Registar vaga — ${QUARTO_CURTO[tipo].toLowerCase()}` : 'Escolha o quarto'}
-              </Button>
-            </>
-          )}
-        </>
-      )}
+            {lar.quartos.length === 0 ? (
+              <p className="mt-6 text-ink-mute">
+                Indique primeiro os tipos de quarto. <MoreLink to="/gestao/vagas">Ir para Vagas</MoreLink>
+              </p>
+            ) : (
+              <>
+                <fieldset className="mt-6">
+                  <legend className="mb-3 text-sm text-ink-mute">Que quarto ficou livre?</legend>
+                  <div className="flex flex-col gap-2">
+                    {lar.quartos.map((q) => {
+                      const cheio = q.livres >= q.total
+                      return (
+                        <label
+                          key={q.tipo}
+                          className={cn(
+                            'group flex min-h-14 items-center gap-3 rounded-2xl bg-white px-5 ring-1 ring-transparent transition-shadow duration-200',
+                            'has-[:checked]:ring-2 has-[:checked]:ring-ink has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
+                            cheio ? 'cursor-not-allowed text-ink-mute' : 'cursor-pointer hover:ring-line-strong',
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name={nome}
+                            value={q.tipo}
+                            checked={tipo === q.tipo}
+                            disabled={cheio}
+                            onChange={() => setTipo(q.tipo)}
+                            className="sr-only"
+                          />
+                          <span className="flex-1 font-medium">{QUARTO_CURTO[q.tipo]}</span>
+                          <span className="text-sm text-ink-mute tabular">{cheio ? 'todos livres' : `${q.livres} de ${q.total} livres`}</span>
+                          <Check aria-hidden strokeWidth={2.5} className="hidden size-5 shrink-0 text-ink group-has-[:checked]:block" />
+                        </label>
+                      )
+                    })}
+                  </div>
+                </fieldset>
+                <Button size="lg" full className="mt-5" disabled={!tipo} onClick={registar}>
+                  {tipo ? `Registar vaga — ${QUARTO_CURTO[tipo].toLowerCase()}` : 'Escolha o quarto'}
+                </Button>
+              </>
+            )}
+          </>
+        )}
       </div>
     </section>
   )

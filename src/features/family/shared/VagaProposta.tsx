@@ -149,10 +149,10 @@ function BarraPolegar({
       >
         <p className="flex items-center gap-2 px-2 pt-0.5 text-sm leading-snug">
           <span aria-hidden className="size-2 shrink-0 rounded-full bg-terra-600" />
-          <span className="min-w-0 truncate">
-            <span className="font-semibold">Vaga {emLar(lar.nome)}</span>
+          <span className="min-w-0 truncate font-semibold">
+            Vaga proposta<span className="sr-only"> {emLar(lar.nome)}</span>
           </span>
-          {ms > 0 && <span className="ml-auto shrink-0 text-ink-mute tabular">{restanteTxt(ms)}</span>}
+          {ms > 0 && <span className="ml-auto shrink-0 text-ink-mute tabular">faltam {restanteTxt(ms)}</span>}
         </p>
         <div className="mt-2.5 grid grid-cols-2 gap-2">
           <Button onClick={onAceitar}>Aceitar vaga</Button>

@@ -71,17 +71,7 @@ export function Numero({
 }
 
 /** Barra fina (0–1) que enche quando aparece e desliza quando o valor muda (scaleX, sem reflow). */
-export function Barra({
-  value,
-  label,
-  className,
-  fillClassName = 'bg-ink',
-}: {
-  value: number
-  label?: string
-  className?: string
-  fillClassName?: string
-}) {
+export function Barra({ value, label, className, fillClassName = 'bg-ink' }: { value: number; label?: string; className?: string; fillClassName?: string }) {
   const [ref, inView] = useInView<HTMLDivElement>()
   const v = Math.max(0, Math.min(1, value))
   return (
@@ -239,9 +229,7 @@ export function usePresenca<T>(items: T[], keyOf: (t: T) => string, ms = 340): P
     const prev = ultimo.current
     const removidos = prefersReducedMotion()
       ? []
-      : prev.flatMap((it, i) =>
-          agora.has(keyOf(it)) ? [] : [{ key: keyOf(it), item: it, index: i, after: i > 0 ? keyOf(prev[i - 1]!) : null }],
-        )
+      : prev.flatMap((it, i) => (agora.has(keyOf(it)) ? [] : [{ key: keyOf(it), item: it, index: i, after: i > 0 ? keyOf(prev[i - 1]!) : null }]))
     setAntes(assinatura)
     setSaidos((s) => [...s.filter((x) => !agora.has(x.key) && !removidos.some((r) => r.key === x.key)), ...removidos])
   }
@@ -349,7 +337,14 @@ export function VistoAnimado({ className, delay = 0 }: { className?: string; del
   const traco = useRef<SVGPathElement>(null)
   const caixa = useRef<SVGSVGElement>(null)
   useLayoutEffect(() => {
-    animar(caixa.current, [{ transform: 'scale(0.6)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 520, delay, fill: 'backwards' })
+    animar(
+      caixa.current,
+      [
+        { transform: 'scale(0.6)', opacity: 0 },
+        { transform: 'scale(1)', opacity: 1 },
+      ],
+      { duration: 520, delay, fill: 'backwards' },
+    )
     animar(circulo.current, [{ strokeDashoffset: 152 }, { strokeDashoffset: 0 }], { duration: 640, delay, fill: 'backwards' })
     animar(traco.current, [{ strokeDashoffset: 40 }, { strokeDashoffset: 0 }], { duration: 420, delay: delay + 320, fill: 'backwards' })
   }, [delay])

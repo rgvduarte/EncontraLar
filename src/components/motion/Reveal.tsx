@@ -41,8 +41,9 @@ export function Reveal({
       ref={ref}
       style={{ transitionDelay: inView ? `${delay}ms` : '0ms', transitionDuration: `${duration}ms`, ...style }}
       className={cn(
-        'transition-[opacity,transform,filter] ease-[cubic-bezier(.16,1,.3,1)] will-change-transform motion-reduce:transition-none',
-        inView ? 'translate-x-0 translate-y-0 scale-100 opacity-100 blur-0' : HIDDEN[variant],
+        'transition-[opacity,transform,filter] ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
+        // will-change só enquanto espera para entrar (poupa memória em listas longas)
+        inView ? 'translate-x-0 translate-y-0 scale-100 opacity-100 blur-0' : cn(HIDDEN[variant], 'will-change-transform'),
         className,
       )}
     >
