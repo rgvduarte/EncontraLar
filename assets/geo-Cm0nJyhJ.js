@@ -1,1 +1,0 @@
-function e(e,t){let n=(t.lat-e.lat)*Math.PI/180,r=(t.lng-e.lng)*Math.PI/180,i=Math.sin(n/2)**2+Math.cos(e.lat*Math.PI/180)*Math.cos(t.lat*Math.PI/180)*Math.sin(r/2)**2;return 12742*Math.asin(Math.min(1,Math.sqrt(i)))}export{e as t};
