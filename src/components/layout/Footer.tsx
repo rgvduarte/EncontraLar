@@ -1,6 +1,5 @@
 import { Link } from 'react-router'
-import { resetDemo } from '@/lib/store'
-import { toast } from '@/components/ui/Toast'
+import { useReporDemo } from './useReporDemo'
 
 const COLS = [
   {
@@ -25,6 +24,7 @@ const COLS = [
     links: [
       { to: '/sobre', label: 'Sobre o projeto' },
       { to: '/sobre#previsao', label: 'Como calculamos a previsão' },
+      { to: '/como-ordenamos', label: 'Como ordenamos' },
       { to: '/privacidade', label: 'Privacidade' },
     ],
   },
@@ -32,6 +32,7 @@ const COLS = [
 
 /** Rodapé discreto, estilo Apple: cinza claro, texto pequeno, colunas simples. */
 export function Footer() {
+  const repor = useReporDemo()
   return (
     <footer className="mt-auto bg-sand text-ink-mute">
       <div className="container-page py-14">
@@ -46,7 +47,7 @@ export function Footer() {
               <ul className="flex flex-col">
                 {c.links.map((l) => (
                   <li key={l.to}>
-                    <Link to={l.to} className="inline-flex min-h-10 items-center text-sm hover:text-ink hover:underline">
+                    <Link to={l.to} className="inline-flex min-h-12 items-center text-sm hover:text-ink hover:underline">
                       {l.label}
                     </Link>
                   </li>
@@ -62,11 +63,8 @@ export function Footer() {
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
             <button
               type="button"
-              onClick={() => {
-                resetDemo()
-                toast.success('Dados de demonstração repostos')
-              }}
-              className="inline-flex min-h-10 items-center text-xs text-ink-mute hover:text-ink hover:underline"
+              onClick={repor.pedir}
+              className="inline-flex min-h-12 items-center text-xs text-ink-mute hover:text-ink hover:underline"
             >
               Repor dados de demonstração
             </button>
@@ -74,13 +72,14 @@ export function Footer() {
               href="https://www.buildity.pt"
               target="_blank"
               rel="noopener"
-              className="inline-flex min-h-10 items-center text-xs text-ink-mute transition-colors hover:text-ink"
+              className="inline-flex min-h-12 items-center text-xs text-ink-mute transition-colors hover:text-ink"
             >
               by Buildity
             </a>
           </div>
         </div>
       </div>
+      {repor.modal}
     </footer>
   )
 }

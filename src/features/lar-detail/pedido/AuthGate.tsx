@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
 import { loginDemo } from '@/lib/store'
 import type { Lar } from '@/types'
+import { aoLar, noLar } from '../helpers'
 
 const PONTOS = [
   { t: 'Preenche o perfil uma vez', d: 'Serve para este e para outros pedidos.' },
@@ -10,7 +11,7 @@ const PONTOS = [
 ]
 
 /** Explicação para quem ainda não tem sessão iniciada. Os botões "Criar conta" e "Entrar" ficam no rodapé do modal. */
-export function AuthGate({ lar }: { lar: Lar }) {
+export function AuthGate({ lar, comVisita = false }: { lar: Lar; comVisita?: boolean }) {
   const experimentar = () => {
     const r = loginDemo('familia')
     if (r.ok) toast.success('Sessão iniciada', `Entrou como ${r.user.nome} (conta de demonstração).`)
@@ -19,7 +20,7 @@ export function AuthGate({ lar }: { lar: Lar }) {
   return (
     <div>
       <p className="text-lg text-ink">
-        Para pedir vaga em {lar.nome} precisa de uma conta de família.
+        {comVisita ? `Para marcar uma visita ${aoLar(lar.nome)}` : `Para pedir vaga ${noLar(lar.nome)}`} precisa de uma conta de família.
       </p>
       <ul className="mt-5 border-t border-line">
         {PONTOS.map((p) => (

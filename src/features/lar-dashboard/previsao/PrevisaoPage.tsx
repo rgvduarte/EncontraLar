@@ -61,7 +61,8 @@ export default function PrevisaoPage({ lar, n }: { lar: Lar; n: NumerosResumo })
           <p className="mt-10 max-w-2xl text-2xl leading-snug font-semibold tracking-[-0.02em] text-ink sm:mt-12">{conselho(ins.contactar, n.listaTotal)}</p>
           {n.listaTotal > 0 && (
             <p className="mt-2 max-w-2xl text-ink-mute">
-              Em média, só {Math.round(FATOR_LISTA_EFETIVA * 10)} em cada 10 pessoas inscritas ainda aceitam a vaga quando são contactadas.
+              Na previsão, contamos que cerca de {Math.round(FATOR_LISTA_EFETIVA * 10)} em cada 10 inscritos ainda aceitam a vaga quando são contactados
+              (um pressuposto do modelo).
             </p>
           )}
           {n.listaTotal > 0 && (

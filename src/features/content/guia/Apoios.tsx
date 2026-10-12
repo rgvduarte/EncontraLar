@@ -35,7 +35,9 @@ const APOIOS = [
     nome: 'Dedução das despesas com lares no IRS',
     texto:
       'Parte das mensalidades pagas a lares pode ser deduzida no IRS, até um limite anual. Deduz o próprio residente ou, se os pais tiverem rendimentos baixos (há um limite na lei), os filhos que pagam o lar.',
-    onde: 'No e-Fatura, confirme que as faturas estão no NIF de quem paga e na categoria certa.',
+    rotulo: 'Como',
+    onde:
+      'Na declaração anual de IRS. Antes, confirme no e-Fatura que as faturas estão no NIF de quem paga e na categoria certa; se paga o lar de um dos pais, confirme no Portal das Finanças como o indicar na declaração.',
     fonte: 'financas',
   },
 ] as const
@@ -53,7 +55,7 @@ export function Apoios() {
             <h3 className="text-xl font-semibold text-ink">{a.nome}</h3>
             <p className="mt-2 text-lg leading-relaxed text-ink-soft">{a.texto}</p>
             <p className="mt-2 text-base text-ink-soft">
-              <span className="font-medium text-ink">Onde pedir: </span>
+              <span className="font-medium text-ink">{'rotulo' in a ? a.rotulo : 'Onde pedir'}: </span>
               {a.onde}
             </p>
             <Confirme fonte={a.fonte} className="mt-2" />

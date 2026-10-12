@@ -37,6 +37,8 @@ Vetores do produto: **geolocalização, perfil clínico, transparência** + **pr
 - Texto: `text-ink` (#1d1d1f), `text-ink-soft`, `text-ink-mute` (#6e6e73).
 - **Nomes legados**: `pine-*` = escala de grafite (pine-700 = #1d1d1f; pine-950 = preto). `terra-*` = **acento azul** (terra-600 = #0071e3) para ligações e destaques pontuais.
 - Estados de vaga (sempre com texto): verde `leaf` (#34c759) = disponível, laranja `sun` (#ff9500) = em breve, cinza `dusk` = lista de espera. Alerta: `alert`.
+  Lugar livre já prometido a quem está na lista (`vagaParaNovos(lar)` falso): o `AvailabilityBadge` mostra-o a laranja,
+  "1 lugar livre · lista à frente" ("Lista à frente" sobre imagens) — nunca "Com vaga" a verde. Contagens "com vaga agora" usam `vagaParaNovos`.
 - **Proibido**: cores hex fixas da v1 (#1d564e, #2f7f72, #4f9b8c, #d25b3b, #b9472f, #fbf8f3, #efe7da…), gradientes decorativos de fundo, sombras pesadas.
 
 **Superfícies e forma**
@@ -47,12 +49,14 @@ Vetores do produto: **geolocalização, perfil clínico, transparência** + **pr
 - Capas de instituição: `LarCover` (gradiente pastel + silhueta) — sem fotografias no protótipo.
 
 **Componentes de marca disponíveis** (`src/components/brand/`): `PortugalMap` (mapa em pontos, halftone), `MapLegend`, `VagasBoard` (lista "Atualizadas agora", tema claro/escuro), `ForecastStrip` (previsão mês a mês: % + barra fina; `variant="mini"`), `SeloVerificado` (roseta azul).
-`patterns.tsx` (azulejo/calçada) está **descontinuado** e não renderiza nada — remover as importações.
-`src/components/ui/Reveal.tsx`: envolver blocos para entrada suave ao fazer scroll.
+Os padrões da v1 (azulejo/calçada, `patterns.tsx`) foram **removidos**.
+`Reveal` (de `@/components/motion`): envolver blocos para entrada suave ao fazer scroll.
 
 **Layout**
 - `container-page` (max 80rem) e `container-narrow` (60rem). Hero e títulos de secção podem ser centrados (estilo Apple); conteúdo de leitura alinhado à esquerda.
-- Header: barra translúcida `h-16` (sticky, z-1000) — offsets sticky usam `top-16`.
+- Header: barra translúcida `h-16` (sticky, z-1000) — offsets sticky usam `top-16`. Navegação principal a partir de `xl`;
+  conta (Entrar/Criar conta ou menu da conta) a partir de `lg`; abaixo disso, menu e barra de abas. Texto inativo em `text-ink-soft`
+  (contraste AA mesmo sobre secções pretas). Terminar sessão: sempre `terminarSessao(navigate)` (`components/layout/RequireAuth`).
 - Mobile first: tudo tem de funcionar a 390px; alvos ≥ 48px.
 
 ## 4. Linguagem — português de Portugal
@@ -71,7 +75,7 @@ Famílias                               Instituições                  Contas
 /lar/:id       Ficha da instituição
 /encontrar     Ajuda-me a escolher
 /guia          Guia e apoios (#tipos #escolher #visita #apoios #alerta #faq #linhas)
-/sobre (#previsao), /privacidade
+/sobre (#previsao), /como-ordenamos, /privacidade
 
 Painel da família  /familia · /familia/pedidos · /familia/guardados · /familia/perfil · /familia/conta
 Painel do lar      /gestao · /gestao/vagas · /gestao/pedidos · /gestao/previsao · /gestao/ficha
@@ -87,7 +91,7 @@ HashRouter: âncoras dentro da página fazem-se com `scrollIntoView`, nunca com 
 
 ## 6. Acessibilidade (WCAG 2.2 AA)
 
-Um `h1` por página; hierarquia de títulos; etiquetas em todos os campos; foco visível; contraste AA (atenção a texto cinza claro: usar `text-ink-mute` no mínimo); nada só por cor; `aria-live` em resultados que mudam; alvos ≥ 48px; o mapa é complementar à lista.
+Um `h1` por página (páginas que são só um estado vazio: `<EmptyState as="h1">` + `useDocumentTitle`); hierarquia de títulos; etiquetas em todos os campos; foco visível; contraste AA (atenção a texto cinza claro: usar `text-ink-mute` no mínimo); nada só por cor; `aria-live` em resultados que mudam; alvos ≥ 48px; o mapa é complementar à lista.
 
 ## 7. Movimento e scroll (estilo Apple)
 
@@ -156,9 +160,22 @@ Não inventar valores intermédios (ex.: 1050) — usar esta escala.
 - **Elementos `position: fixed` dentro de páginas** devem ir por portal para `document.body`.
 - **`sr-only` dentro de filas horizontais** precisa de um antepassado `relative`, senão alarga a página no telemóvel.
 - **Toasts** ficam acima da barra de abas; páginas com barra de ação própria definem `--actionbar-h` no `<html>` enquanto está visível.
-- **Modal** tem `onClosed` (depois da animação de fecho) para encadear diálogos sem temporizadores.
+- **Modal** tem `onClosed` (depois da animação de fecho) para encadear diálogos sem temporizadores. O título e a descrição
+  dão nome ao `<dialog>` (`aria-labelledby`/`aria-describedby`) — passar sempre um `title` com sentido.
+- **Alterações por guardar**: em formulários longos chamar `useAvisoAlteracoes(sujo)` (`@/components/ui/useAvisoAlteracoes`):
+  pede confirmação ao sair para outra página (useBlocker) e ao fechar o separador. O diálogo vive no Layout.
+- **Ações destrutivas** pedem sempre confirmação. "Repor dados de demonstração": `useReporDemo()` (`components/layout/useReporDemo`).
+- **Listas que rodam sozinhas** (ex.: `VagasBoard`) param com o ponteiro ou o foco em cima, com o separador escondido e têm botão
+  Pausar/Retomar (WCAG 2.2.2).
+- **Pulso "com vaga"**: classe `pulse-dot` (halo num pseudo-elemento, só transform/opacity, 3 repetições). Nada de animações
+  infinitas fora do ecrã nem de `box-shadow` animado.
+- **Última pesquisa**: a pesquisa guarda o seu endereço em `sessionStorage['encontralar:ultima-pesquisa']`; o separador Mapa e a
+  lupa do cabeçalho reabrem-na (na própria pesquisa, a lupa sobe e foca o campo; tocar no separador ativo sobe ao topo).
 - **`ForecastStrip`** anima sozinho ao entrar no ecrã (`animate`, por omissão true); `CountUp` anima a partir do valor anterior.
 - **Não ligar SVGs grandes ao scroll** (ex.: zoom do mapa de Portugal com o scroll): preferir uma revelação única ao entrar.
   `Parallax` e `ScrollZoom` escrevem `transform` diretamente; dentro de `StickyScene`, evitar ler `var(--p)` em subárvores grandes
   (preferir `useSceneProgress()` em poucos elementos).
-- **`PortugalMap`**: o pulso das vagas é opcional (`pulse`, desligado por omissão) e usa só transform/opacity.
+- **`PortugalMap`**: o pulso das vagas é opcional (`pulse`, desligado por omissão) e usa só transform/opacity. O SVG é sempre
+  `role="img"` com `title`; com `onSelect`, os pontos são só atalho para rato (`tabIndex=-1`, `aria-hidden`) — use-o só com
+  ponteiro fino. Os nomes das cidades desenham-se por cima dos pontos, com contorno.
+- **Atribuição dos mapas Leaflet** em pílula afastada do canto (index.css): os contentores arredondados cortavam o texto.

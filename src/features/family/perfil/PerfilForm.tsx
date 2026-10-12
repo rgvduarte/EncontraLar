@@ -4,6 +4,7 @@ import { deletePerfil, savePerfil, useLares, type PerfilInput } from '@/lib/stor
 import { Button } from '@/components/ui/Button'
 import { ChoiceCard, InputField, SelectField, Switch, TextareaField } from '@/components/ui/Field'
 import { toast } from '@/components/ui/Toast'
+import { useAvisoAlteracoes } from '@/components/ui/useAvisoAlteracoes'
 import { DISTRITOS, LUGARES } from '@/data/localidades'
 import {
   COMODIDADE_LABEL,
@@ -81,12 +82,9 @@ export function PerfilForm({
   )
 
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange])
-  useEffect(() => {
-    if (!dirty) return
-    const h = (e: BeforeUnloadEvent) => e.preventDefault()
-    window.addEventListener('beforeunload', h)
-    return () => window.removeEventListener('beforeunload', h)
-  }, [dirty])
+  // sair para outra secção (pílulas, barra lateral, barra de abas) ou fechar o separador com alterações
+  // por guardar pede confirmação; trocar de pessoa (?id=) já tem a confirmação da PerfilPage
+  useAvisoAlteracoes(dirty)
 
   const set = <K extends keyof PerfilInput>(k: K, v: PerfilInput[K]) => {
     setForm((f) => ({ ...f, [k]: v }))

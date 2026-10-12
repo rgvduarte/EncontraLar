@@ -19,12 +19,11 @@ import { Stepper } from './ProductShot'
  * Um tile do bento. Entra a subir; a peça de interface "monta-se" logo a seguir (escala suave).
  * No telemóvel é um cartão de uma faixa deslizável.
  */
-function Tile({ title, text, plano, children, className, delay = 0 }: { title: string; text: string; plano?: string; children: ReactNode; className?: string; delay?: number }) {
+function Tile({ title, text, children, className, delay = 0 }: { title: string; text: string; children: ReactNode; className?: string; delay?: number }) {
   return (
     <Reveal as="li" delay={delay} className={cn(SWIPE_ITEM, 'flex w-[88%] flex-col rounded-[1.75rem] bg-sand p-5 sm:p-10 md:w-auto', className)}>
       <h3 className="text-2xl font-semibold text-ink sm:text-3xl">{title}</h3>
       <p className="mt-3 max-w-[40ch] text-lg text-ink-mute">{text}</p>
-      {plano && <p className="mt-2 text-sm text-ink-mute">{plano}</p>}
       <Reveal variant="scale" delay={delay + 220} duration={1100} className="mt-8 flex flex-1 flex-col justify-end">
         {children}
       </Reveal>
@@ -182,7 +181,7 @@ export function Bento({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
   return (
     <section aria-labelledby="pl-funcoes" className="container-page py-20 sm:py-32 lg:py-40">
       <Reveal variant="blur">
-        <SectionTitle id="pl-funcoes" title="Feito para quem não tem tempo." subtitle="Quatro coisas. Bem feitas." />
+        <SectionTitle id="pl-funcoes" title="Feito para quem não tem tempo." subtitle="Quatro coisas, bem feitas. Incluídas para todas as instituições." />
       </Reveal>
       <SwipeRow as="ul" label="Funcionalidades" className="mt-12 sm:mt-20 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-12">
         <Tile title="Vagas num toque." text="Mais uma, menos uma. O cartão que as famílias veem muda no mesmo instante." className="md:col-span-2 lg:col-span-7">
@@ -191,13 +190,12 @@ export function Bento({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
         <Tile title="Pedidos com perfil clínico." text="Grau de dependência, cuidados e urgência, já comparados com a sua casa." className="lg:col-span-5" delay={100}>
           <Pedido lar={base} />
         </Tile>
-        <Tile title="Lista de espera digital." text="Propõe a vaga e a família tem 48 horas para responder." plano="Plano Profissional" className="lg:col-span-5">
+        <Tile title="Lista de espera digital." text="Propõe a vaga e a família tem 48 horas para responder." className="lg:col-span-5">
           <ListaEspera lar={base} />
         </Tile>
         <Tile
           title="Previsão de ocupação."
           text="Saiba quantos lugares deverão libertar-se e prepare as entradas com tempo."
-          plano="Plano Profissional"
           className="md:col-span-2 lg:col-span-7"
           delay={100}
         >

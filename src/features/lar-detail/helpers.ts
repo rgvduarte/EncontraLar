@@ -33,6 +33,41 @@ export function dividirNome(nome: string): { prefixo: string | null; nucleo: str
   return { prefixo: null, nucleo: nome }
 }
 
+/** Género e número do nome da instituição, para o artigo: "o Lar…", "a Casa…", "as Residências…". */
+type Artigo = 'o' | 'a' | 'os' | 'as'
+
+const FEMININOS = ['Casa', 'Residência', 'Quinta', 'Santa', 'Vila', 'Aldeia', 'Fundação', 'Associação', 'Instituição', 'Misericórdia', 'Unidade', 'Comunidade', 'Obra', 'Estrutura']
+
+export function artigoLar(nome: string): Artigo {
+  const p = nome.trim().split(/\s+/)[0] ?? ''
+  if (p === 'Residências' || p === 'Casas') return 'as'
+  if (p === 'Lares' || p === 'Centros') return 'os'
+  if (FEMININOS.includes(p) || /(ção|dade|ência|ância)$/.test(p)) return 'a'
+  return 'o'
+}
+
+const CONTRACAO: Record<'' | 'em' | 'de' | 'a', Record<Artigo, string>> = {
+  '': { o: 'o', a: 'a', os: 'os', as: 'as' },
+  em: { o: 'no', a: 'na', os: 'nos', as: 'nas' },
+  de: { o: 'do', a: 'da', os: 'dos', as: 'das' },
+  a: { o: 'ao', a: 'à', os: 'aos', as: 'às' },
+}
+
+const comArtigo = (prep: keyof typeof CONTRACAO) => (nome: string) => `${CONTRACAO[prep][artigoLar(nome)]} ${nome}`
+/** "o Lar X" / "a Casa X" (a meio da frase). */
+export const oLar = comArtigo('')
+/** "no Lar X" / "na Casa X" */
+export const noLar = comArtigo('em')
+/** "do Lar X" / "da Casa X" */
+export const doLar = comArtigo('de')
+/** "ao Lar X" / "à Casa X" */
+export const aoLar = comArtigo('a')
+/** "O Lar X" / "A Casa X" (início de frase). */
+export const OLar = (nome: string) => {
+  const s = oLar(nome)
+  return s[0]!.toUpperCase() + s.slice(1)
+}
+
 // ————————————————————————————————————————— secções
 
 export const SECOES = [
@@ -120,6 +155,15 @@ export interface DadosLar {
   unidade: { um: string; varios: string }
 }
 
+/**
+ * Ação principal da ficha. Com lugar livre mas já prometido a quem está na lista (a estimativa não é imediata),
+ * pedir hoje é, na prática, entrar na lista de espera — o botão diz isso, como a previsão logo acima.
+ */
+export function ctaPedido(dados: Pick<DadosLar, 'livres' | 'est' | 'centroDia'>, curto = false): string {
+  if (dados.livres > 0 && dados.est.imediata) return dados.centroDia ? 'Pedir lugar' : 'Pedir vaga'
+  return curto ? 'Entrar na lista' : 'Entrar na lista de espera'
+}
+
 export function useDadosLar(lar: Lar): DadosLar {
   return useMemo(() => {
     const est = estimarEspera(lar)
@@ -137,17 +181,24 @@ export function useDadosLar(lar: Lar): DadosLar {
 
 // ————————————————————————————————————————— pedido: mensagem e visita
 
-const POSSESSIVO: Record<string, string> = {
-  Mãe: 'a minha mãe',
-  Pai: 'o meu pai',
-  Avó: 'a minha avó',
-  Avô: 'o meu avô',
-  Sogra: 'a minha sogra',
-  Sogro: 'o meu sogro',
-  Tia: 'a minha tia',
-  Tio: 'o meu tio',
-  Cônjuge: 'o meu cônjuge',
-  'Outro familiar': 'um familiar',
+/** "Escrevo a propósito da minha mãe…": já com a contração (de + a = da, de + o = do). */
+const A_PROPOSITO_DE: Record<string, string> = {
+  Mãe: 'da minha mãe',
+  Pai: 'do meu pai',
+  Avó: 'da minha avó',
+  Avô: 'do meu avô',
+  Sogra: 'da minha sogra',
+  Sogro: 'do meu sogro',
+  Tia: 'da minha tia',
+  Tio: 'do meu tio',
+  'Outro familiar': 'de um familiar',
+}
+
+function aPropositoDe(perfil: PerfilIdoso): string {
+  const g = perfil.genero
+  if (perfil.relacao === 'Amigo(a)') return g === 'F' ? 'de uma amiga' : g === 'M' ? 'de um amigo' : 'de um(a) amigo(a)'
+  if (perfil.relacao === 'Cônjuge') return g === 'F' ? 'da minha mulher' : g === 'M' ? 'do meu marido' : 'do meu cônjuge'
+  return A_PROPOSITO_DE[perfil.relacao] ?? 'de um familiar'
 }
 
 export function generoDaRelacao(relacao: string): 'F' | 'M' | undefined {
@@ -166,7 +217,6 @@ const URGENCIA_FRASE: Record<PerfilIdoso['urgencia'], string> = {
 /** Mensagem inicial sugerida à instituição — a família pode editá-la. */
 export function mensagemSugerida(perfil: PerfilIdoso, lar: Lar, remetente: string): string {
   const proprio = perfil.relacao === 'Eu próprio(a)'
-  const amigo = perfil.relacao === 'Amigo(a)'
   const fem = perfil.genero === 'F'
   const autonomo = perfil.grau === 'autonomo'
   const estado = autonomo
@@ -177,8 +227,7 @@ export function mensagemSugerida(perfil: PerfilIdoso, lar: Lar, remetente: strin
   if (proprio) {
     linhas.push(`Escrevo para pedir uma vaga para mim. Tenho ${perfil.idade} anos e sou ${autonomo ? estado : `uma pessoa ${estado}`}.`)
   } else {
-    const quem = amigo ? (fem ? 'uma amiga' : perfil.genero === 'M' ? 'um amigo' : 'um(a) amigo(a)') : (POSSESSIVO[perfil.relacao] ?? 'um familiar')
-    linhas.push(`Escrevo a propósito de ${quem}, ${perfil.nome}, de ${perfil.idade} anos, ${estado}.`)
+    linhas.push(`Escrevo a propósito ${aPropositoDe(perfil)}, ${perfil.nome}, de ${perfil.idade} anos, ${estado}.`)
   }
   linhas.push(URGENCIA_FRASE[perfil.urgencia])
   linhas.push(`Gostaria de saber se há possibilidade de vaga${quarto} e quais são os próximos passos.`)

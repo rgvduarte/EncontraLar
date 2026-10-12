@@ -188,7 +188,7 @@ export function VagaProposta({ c, lar, variant = 'tile', thumbBar = false }: { c
     setModal(null)
     sairEDepois(root.current, () => {
       responderVaga(c.id, true)
-      toast.success('Vaga aceite', `${lar.nome} vai contactá-lo(a) para combinar a entrada.`)
+      toast.success('Vaga aceite', `${lar.nome} vai entrar em contacto consigo para combinar a entrada.`)
     })
   }
   const recusar = () => {

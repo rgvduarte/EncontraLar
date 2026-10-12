@@ -61,7 +61,7 @@ export const ResultsList = memo(function ResultsList({ resultados, geracao, orde
   )
 
   return (
-    <div key={geracao} ref={raiz} data-revelar={animar ? '' : undefined} className="px-2 pt-4 sm:px-3 lg:px-5">
+    <div key={geracao} ref={raiz} data-revelar={animar ? '' : undefined} className="px-2 pt-4 sm:px-3 xl:px-5">
       {grupos
         ? grupos.map((g, i) => (
             <section key={g.id} aria-labelledby={`grupo-${g.id}`} className={i > 0 ? 'mt-12' : undefined}>
@@ -95,9 +95,10 @@ export const ResultsList = memo(function ResultsList({ resultados, geracao, orde
 /** Nota final da lista: honestidade sobre os dados + assinatura discreta (a página não tem rodapé). */
 export function NotaFinal() {
   return (
-    <footer className="mx-5 mt-16 border-t border-line pt-6 pb-10 text-sm text-ink-mute sm:mx-6 lg:mx-8">
+    <footer className="mx-5 mt-16 border-t border-line pt-6 pb-10 text-sm text-ink-mute sm:mx-6 xl:mx-8">
       <p className="max-w-[34rem]">
-        As vagas são indicadas pelas próprias instituições e a previsão é uma estimativa, não uma garantia. Confirme por telefone antes de se deslocar.
+        Protótipo: instituições e vagas fictícias. As vagas são indicadas pelas próprias instituições e a previsão é uma estimativa, não uma
+        garantia. Confirme por telefone antes de se deslocar.
       </p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6">
         <Link to="/sobre#previsao" className="inline-flex min-h-12 items-center font-medium text-terra-600 hover:underline">

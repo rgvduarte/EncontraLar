@@ -14,13 +14,19 @@ import {
   Search,
 } from 'lucide-react'
 import { Logo } from './Logo'
+import { terminarSessao } from './RequireAuth'
+import { ultimaPesquisa } from './MobileTabBar'
 import { ButtonLink, buttonClasses } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/misc'
-import { loginDemo, logout, marcarNotificacaoLida, marcarTodasLidas, useCurrentUser, useLares, useNotificacoes } from '@/lib/store'
+import { toast } from '@/components/ui/Toast'
+import { useLenis } from '@/components/motion/SmoothScroll'
+import { loginDemo, marcarNotificacaoLida, marcarTodasLidas, useCurrentUser, useLares, useNotificacoes } from '@/lib/store'
 import { useDismiss } from '@/lib/hooks'
 import { tempoRelativo } from '@/lib/format'
-import { vagasLivres } from '@/lib/forecast'
+import { vagaParaNovos } from '@/lib/forecast'
+import { prefersReducedMotion } from '@/lib/motion'
 import { cn } from '@/lib/cn'
+import { DEMO_LAR_EMAIL } from '@/data/seed'
 import type { Distrito, Notificacao } from '@/types'
 
 export function painelPath(role: 'familia' | 'lar') {
@@ -54,7 +60,8 @@ const DISTRITOS_MENU: Distrito[] = ['Porto', 'Lisboa', 'Braga', 'Coimbra', 'Set�
 function useMenus(): MenuDef[] {
   const lares = useLares()
   return useMemo(() => {
-    const comVaga = lares.filter((l) => vagasLivres(l) > 0).length
+    // o mesmo critério do filtro "Com vaga agora" da pesquisa: lugar livre para quem pede hoje
+    const comVaga = lares.filter((l) => vagaParaNovos(l)).length
     return [
       {
         id: 'mapa',
@@ -167,6 +174,12 @@ const NOTIF_ICON: Record<Notificacao['tipo'], typeof Bell> = {
   sistema: Info,
 }
 
+/** As notificações do lar apontam para /gestao: com um pedido associado, abre-se o próprio pedido. */
+function destinoDaNotificacao(n: Notificacao): string | undefined {
+  if (n.link === '/gestao' && n.candidaturaId) return `/gestao/pedidos?pedido=${encodeURIComponent(n.candidaturaId)}`
+  return n.link
+}
+
 function NotificationBell() {
   const notifs = useNotificacoes()
   const [open, setOpen] = useState(false)
@@ -216,7 +229,8 @@ function NotificationBell() {
                       onClick={() => {
                         marcarNotificacaoLida(n.id)
                         setOpen(false)
-                        if (n.link) navigate(n.link)
+                        const destino = destinoDaNotificacao(n)
+                        if (destino) navigate(destino)
                       }}
                       className="flex w-full gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-sand"
                     >
@@ -277,9 +291,8 @@ function UserMenu() {
           <button
             type="button"
             onClick={() => {
-              logout()
               setOpen(false)
-              navigate('/')
+              void terminarSessao(navigate)
             }}
             className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-4 hover:bg-sand"
           >
@@ -299,6 +312,7 @@ export function Header() {
   const menus = useMenus()
   const location = useLocation()
   const navigate = useNavigate()
+  const lenis = useLenis()
   const [aberto, setAberto] = useState<string | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [sub, setSub] = useState<string | null>(null)
@@ -351,13 +365,51 @@ export function Header() {
     timer.current = window.setTimeout(() => setAberto(id), ms)
   }
 
+  const paraOTopo = () => {
+    if (lenis) lenis.scrollTo(0)
+    else window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  }
+
+  const fecharMenus = () => {
+    setMobileOpen(false)
+    setSub(null)
+    setAberto(null)
+  }
+
   const go = (l: MenuLink) => {
+    // fechar primeiro: uma ligação para a página onde já se está não muda o endereço (e o menu ficava aberto)
+    fecharMenus()
     if (l.action === 'demo-lar') {
-      loginDemo('lar')
-      navigate('/gestao')
+      if (!user) {
+        // só sem sessão se entra na conta de demonstração da instituição
+        loginDemo('lar')
+        toast.success('Entrou na conta de demonstração da instituição', 'Pode explorar o painel à vontade: os dados são fictícios.')
+        navigate('/gestao')
+      } else if (user.email === DEMO_LAR_EMAIL) {
+        navigate('/gestao')
+      } else {
+        // com outra sessão (ex.: uma família) não a trocamos às escondidas: a página para instituições tem o painel em modo de ensaio
+        navigate('/para-lares')
+      }
+      return
+    }
+    const aqui = location.pathname + location.search + location.hash
+    if (l.to === aqui && !location.hash) {
+      paraOTopo()
       return
     }
     navigate(l.to)
+  }
+
+  // lupa: na pesquisa, sobe e põe o cursor no campo (sem perder os filtros); fora dela, reabre a última pesquisa
+  const naPesquisa = location.pathname === '/pesquisa'
+  const destinoPesquisa = naPesquisa ? location.pathname + location.search : ultimaPesquisa()
+  const abrirPesquisa = (e: React.MouseEvent) => {
+    if (!naPesquisa) return
+    e.preventDefault()
+    fecharMenus()
+    paraOTopo()
+    document.querySelector<HTMLInputElement>('main input[role="combobox"]')?.focus({ preventScroll: true })
   }
 
   const menuAtivo = menus.find((m) => m.id === aberto)
@@ -380,10 +432,11 @@ export function Header() {
         onMouseLeave={() => abrirComAtraso(null, 160)}
         className={cn(
           'sticky top-0 z-[1000] transition-colors duration-300',
-          menuAtivo || mobileOpen ? 'bg-white' : 'border-b border-black/[0.06] bg-white/80 backdrop-blur-xl backdrop-saturate-150',
+          menuAtivo || mobileOpen ? 'bg-white' : 'border-b border-black/[0.06] bg-white/90 backdrop-blur-xl backdrop-saturate-150',
         )}
       >
-        <div className="container-page flex h-16 items-center justify-between gap-4">
+        {/* na pesquisa (ecrã inteiro) o cabeçalho alinha com a barra de filtros e a lista, de margem a margem */}
+        <div className={cn('container-page flex h-16 items-center justify-between gap-4', naPesquisa && 'lg:max-w-none lg:px-6 xl:px-8')}>
           <Link to="/" className="rounded-xl" aria-label="EncontraLar — página inicial" onMouseEnter={() => abrirComAtraso(null)}>
             <Logo />
           </Link>
@@ -397,7 +450,8 @@ export function Header() {
                     className={({ isActive }) =>
                       cn(
                         'flex min-h-11 items-center px-3.5 text-[0.9375rem] whitespace-nowrap transition-colors duration-200',
-                        isActive || aberto === m.id ? 'text-ink' : 'text-ink-mute hover:text-ink',
+                        // ink-soft (não mute): mantém contraste AA quando o cabeçalho translúcido passa sobre secções pretas
+                        isActive || aberto === m.id ? 'text-ink' : 'text-ink-soft hover:text-ink',
                         isActive && 'font-medium',
                       )
                     }
@@ -419,20 +473,26 @@ export function Header() {
             </ul>
           </nav>
 
-          <div className="flex items-center gap-1" onMouseEnter={() => abrirComAtraso(null)}>
-            <Link to="/pesquisa" aria-label="Pesquisar no mapa de vagas" className="flex size-11 items-center justify-center rounded-full text-ink hover:bg-sand xl:hidden">
+          <div className="flex items-center gap-2" onMouseEnter={() => abrirComAtraso(null)}>
+            <Link
+              to={destinoPesquisa}
+              onClick={abrirPesquisa}
+              aria-label="Pesquisar no mapa de vagas"
+              className="flex size-11 items-center justify-center rounded-full text-ink hover:bg-sand xl:hidden"
+            >
               <Search aria-hidden className="size-5" />
             </Link>
             {user ? (
               <>
                 <NotificationBell />
-                <div className="hidden xl:block">
+                {/* conta visível a partir de 1024px (portáteis com zoom, tablets na horizontal), não só em ecrãs largos */}
+                <div className="hidden lg:block">
                   <UserMenu />
                 </div>
               </>
             ) : (
-              <div className="hidden items-center gap-1 xl:flex">
-                <Link to="/entrar" className="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-ink-mute hover:text-ink">
+              <div className="hidden items-center gap-1 lg:flex">
+                <Link to="/entrar" className="inline-flex min-h-11 items-center px-3 text-[0.9375rem] text-ink-soft hover:text-ink">
                   Entrar
                 </Link>
                 <ButtonLink to="/registar" variant="primary" size="sm" className="ml-1">
@@ -541,15 +601,15 @@ export function Header() {
                 <p className="text-sm text-ink-mute">
                   Sessão iniciada como <span className="font-medium text-ink">{user.nome}</span>
                 </p>
-                <Link to={painelPath(user.role)} className={buttonClasses('primary', 'lg', 'w-full')}>
+                <Link to={painelPath(user.role)} onClick={fecharMenus} className={buttonClasses('primary', 'lg', 'w-full')}>
                   <LayoutDashboard aria-hidden />
                   {user.role === 'lar' ? 'Painel da instituição' : 'O meu painel'}
                 </Link>
                 <button
                   type="button"
                   onClick={() => {
-                    logout()
-                    navigate('/')
+                    fecharMenus()
+                    void terminarSessao(navigate)
                   }}
                   className={buttonClasses('subtle', 'lg', 'w-full')}
                 >
@@ -558,10 +618,10 @@ export function Header() {
               </>
             ) : (
               <>
-                <ButtonLink to="/registar" variant="primary" size="lg" full>
+                <ButtonLink to="/registar" onClick={fecharMenus} variant="primary" size="lg" full>
                   Criar conta gratuita
                 </ButtonLink>
-                <ButtonLink to="/entrar" variant="subtle" size="lg" full>
+                <ButtonLink to="/entrar" onClick={fecharMenus} variant="subtle" size="lg" full>
                   Entrar
                 </ButtonLink>
               </>

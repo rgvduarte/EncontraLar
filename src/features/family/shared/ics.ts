@@ -3,6 +3,7 @@
  * Inclui o fuso horário (Lisboa ou Açores) para a hora ficar certa em qualquer aplicação.
  */
 import type { Candidatura, Lar } from '@/types'
+import { aoLar, doLar } from './estado'
 import { dataLocal, telHref } from './text'
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -48,7 +49,7 @@ export function visitaICS(c: Candidatura, lar: Lar, guiaUrl: string): string | n
   const fim = new Date(inicio.getTime() + 60 * 60_000)
   const morada = [lar.morada, `${lar.codigoPostal} ${lar.localidade}`.trim()].filter(Boolean).join(', ')
   const descricao = [
-    `Visita às instalações de ${lar.nome} (pedido para ${c.perfil.nome}).`,
+    `Visita às instalações ${doLar(lar.nome)} (pedido para ${c.perfil.nome}).`,
     c.visita.estado === 'confirmada' ? 'Visita confirmada pela instituição.' : 'A aguardar confirmação da instituição.',
     `Contacto: ${lar.telefone} (${telHref(lar.telefone)}) · ${lar.email}`,
     `O que observar e perguntar: ${guiaUrl}`,
@@ -65,14 +66,14 @@ export function visitaICS(c: Candidatura, lar: Lar, guiaUrl: string): string | n
     `DTSTAMP:${utc(new Date())}`,
     `DTSTART;TZID=${tz}:${local(inicio)}`,
     `DTEND;TZID=${tz}:${local(fim)}`,
-    `SUMMARY:${esc(`Visita a ${lar.nome}`)}`,
+    `SUMMARY:${esc(`Visita ${aoLar(lar.nome)}`)}`,
     `LOCATION:${esc(morada)}`,
     `GEO:${lar.lat.toFixed(5)};${lar.lng.toFixed(5)}`,
     `DESCRIPTION:${esc(descricao)}`,
     'BEGIN:VALARM',
     'ACTION:DISPLAY',
     'TRIGGER:-P1D',
-    `DESCRIPTION:${esc(`Amanhã: visita a ${lar.nome} às ${c.visita.hora}`)}`,
+    `DESCRIPTION:${esc(`Amanhã: visita ${aoLar(lar.nome)} às ${c.visita.hora}`)}`,
     'END:VALARM',
     'END:VEVENT',
     'END:VCALENDAR',

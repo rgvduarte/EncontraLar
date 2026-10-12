@@ -1,3 +1,5 @@
+export { deTerra as deLugar, emTerra as emLugar, pertoDe, deLocal } from './lugares'
+
 const euroFmt = new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
 const numFmt = new Intl.NumberFormat('pt-PT')
 const pctFmt = new Intl.NumberFormat('pt-PT', { style: 'percent', maximumFractionDigits: 0 })
@@ -10,6 +12,30 @@ export const pct = (v: number) => pctFmt.format(v)
 /** distância com espaço inseparável ("15\u00a0km" não parte entre linhas) */
 export const km = (v: number) =>
   v < 1 ? `${Math.round(v * 1000)}\u00a0m` : `${v.toLocaleString('pt-PT', { maximumFractionDigits: v < 10 ? 1 : 0 })}\u00a0km`
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/**
+ * "2026-11-20" (+ "15:00") → Date no fuso local. `new Date('2026-11-20')` lê a data como meia-noite UTC,
+ * o que nos Açores dá o dia anterior; esta função não tem esse desvio.
+ */
+export function dataLocal(ymd: string, hora = '00:00'): Date {
+  const [y, m, d] = ymd.slice(0, 10).split('-').map(Number)
+  const [hh, mm] = hora.split(':').map(Number)
+  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1, hh || 0, mm || 0)
+}
+
+/** Data local em formato "AAAA-MM-DD" (sem passar por UTC, ao contrário de toISOString). */
+export function isoDia(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+
+/** "sexta-feira, 20 de novembro" a partir de "2026-11-20" (data local). */
+export const diaPorExtenso = (ymd: string) =>
+  dataLocal(ymd).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })
+
+/** "15:00" → "15h00" (forma habitual em PT-PT). */
+export const horaPt = (hora: string) => hora.replace(':', 'h')
 
 /** "12 de outubro de 2026" */
 export const dataLonga = (iso: string) =>
@@ -68,6 +94,12 @@ export const iniciais = (nome: string) =>
     .join('')
 
 export const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
+/**
+ * Rótulo curto de um mês: "out.", ou "jan. 2027" com o ano.
+ * Nunca "Jan 27", que se lê como 27 de janeiro.
+ */
+export const rotuloMes = (mes: number, ano?: number) => `${MESES_CURTOS[((mes % 12) + 12) % 12]}.${ano != null ? ` ${ano}` : ''}`
+
 export const MESES_LONGOS = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',

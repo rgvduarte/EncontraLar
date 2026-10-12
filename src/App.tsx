@@ -1,5 +1,7 @@
 import { lazy } from 'react'
-import { createHashRouter, RouterProvider } from 'react-router'
+import { createHashRouter } from 'react-router'
+// RouterProvider de 'react-router/dom': necessário para navigate(…, { flushSync: true }) (ver terminarSessao)
+import { RouterProvider } from 'react-router/dom'
 import { Layout } from '@/components/layout/Layout'
 import { RequireAuth } from '@/components/layout/RequireAuth'
 import { RouteError } from '@/components/layout/RouteError'
@@ -16,6 +18,7 @@ const ForLaresPage = lazy(() => import('@/features/content/ForLaresPage'))
 const GuidePage = lazy(() => import('@/features/content/GuidePage'))
 const AboutPage = lazy(() => import('@/features/content/AboutPage'))
 const PrivacyPage = lazy(() => import('@/features/content/PrivacyPage'))
+const ComoOrdenamosPage = lazy(() => import('@/features/content/ComoOrdenamosPage'))
 const NotFoundPage = lazy(() => import('@/features/content/NotFoundPage'))
 
 // HashRouter: URLs do tipo /#/pesquisa — funciona no GitHub Pages sem configuração de servidor.
@@ -54,6 +57,7 @@ const router = createHashRouter([
           { path: 'guia', element: <GuidePage /> },
           { path: 'sobre', element: <AboutPage /> },
           { path: 'privacidade', element: <PrivacyPage /> },
+          { path: 'como-ordenamos', element: <ComoOrdenamosPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

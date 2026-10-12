@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { Check } from 'lucide-react'
 import { InputField } from '@/components/ui/Field'
 import { toast } from '@/components/ui/Toast'
-import { register } from '@/lib/store'
+import { register, savePerfil } from '@/lib/store'
 import { prefersReducedMotion } from '@/lib/motion'
 import { EmailExisteErro, primeiroNome } from '../shared/EmailExisteErro'
 import { ErrorSummary } from '../shared/ErrorSummary'
@@ -23,8 +23,10 @@ import {
   validarPalavraPasseNova,
   validarTelemovel,
 } from '../shared/validators'
+import { apagarRascunho, lerRascunho } from '@/features/family/perfil/perfilModel'
 import { ConsentFields } from './ConsentFields'
-import { lerRascunho, temRascunho } from './draft'
+import { CondicoesPrototipo } from './CondicoesPrototipo'
+import { temRascunho } from './draft'
 
 type FamilyValues = {
   nome: string
@@ -40,7 +42,7 @@ const RULES: Rules<FamilyValues> = {
   email: (v) => validarEmail(v, { novo: true }),
   telefone: (v) => validarTelemovel(v),
   password: (v) => validarPalavraPasseNova(v),
-  termos: (v) => (v ? undefined : 'Para criar a conta, aceite os termos de utilização.'),
+  termos: (v) => (v ? undefined : 'Para criar a conta, aceite as condições deste protótipo.'),
   privacidade: (v) => (v ? undefined : 'Confirme que leu a política de privacidade.'),
 }
 const ORDER: (keyof FamilyValues)[] = ['nome', 'email', 'telefone', 'password', 'termos', 'privacidade']
@@ -50,15 +52,20 @@ const INITIAL: FamilyValues = { nome: '', email: '', telefone: '', password: '',
 const PAUSA_SUCESSO = 420
 
 /**
- * Registo da família. Destino: com respostas do questionário por guardar → /familia?importar=1;
- * vindo de uma página pública (ex.: a ficha de um lar) → volta lá; senão → /familia?bemvindo=1.
+ * Registo da família.
+ * - Perfil do questionário "Ajuda-me a escolher" com nome → fica guardado na conta logo ao criá-la, sem mais cliques.
+ * - Destino: vindo de uma página pública (ex.: a ficha de um lar, a meio de um pedido: `/lar/x?acao=pedir`) → volta lá,
+ *   com a intenção intacta; senão, com respostas do questionário ainda por guardar (sem nome) → /familia?importar=1;
+ *   senão → /familia?bemvindo=1.
  */
 export function FamilyForm({ voltar, onPending }: { voltar: string | null; onPending?: (pending: boolean) => void }) {
   const navigate = useNavigate()
   const form = useForm<FamilyValues>({ initial: INITIAL, rules: RULES, order: ORDER })
   const [erroGeral, setErroGeral] = useState<string | null>(null)
   const [criada, setCriada] = useState(false)
+  // o perfil completo do questionário (o mesmo que o painel guardaria), lido uma vez
   const rascunho = useMemo(() => lerRascunho(), [])
+  const haRespostas = useMemo(() => temRascunho(), [])
   const pessoal = useMemo(() => [form.values.nome, form.values.email], [form.values.nome, form.values.email])
 
   const submit = form.handleSubmit(async (v) => {
@@ -80,11 +87,19 @@ export function FamilyForm({ voltar, onPending }: { voltar: string | null; onPen
       } else setErroGeral(r.error)
       return
     }
+    // o perfil do questionário fica guardado já (é o que prometemos acima); sem nome, o painel pede-o depois
+    const perfil = lerRascunho()
+    const guardado = perfil?.nome.trim() ? savePerfil({ ...perfil, nome: perfil.nome.trim() }) : null
+    if (guardado) apagarRascunho()
     form.freeze()
     setCriada(true)
     await pausa(prefersReducedMotion() ? 0 : PAUSA_SUCESSO)
-    toast.success(`Conta criada. Bem-vindo(a), ${primeiroNome(r.user.nome)}.`)
-    navigate(temRascunho() ? '/familia?importar=1' : (voltarPublico(voltar) ?? '/familia?bemvindo=1'), { replace: true })
+    toast.success(
+      `Conta criada. Bem-vindo(a), ${primeiroNome(r.user.nome)}.`,
+      guardado ? `O perfil de ${primeiroNome(guardado.nome)} ficou guardado.` : undefined,
+    )
+    // o caminho de volta ganha: quem estava a pedir vaga num lar regressa lá (com ?acao=… para retomar)
+    navigate(voltarPublico(voltar) ?? (temRascunho() ? '/familia?importar=1' : '/familia?bemvindo=1'), { replace: true })
   })
 
   const email = form.field('email')
@@ -96,14 +111,14 @@ export function FamilyForm({ voltar, onPending }: { voltar: string | null; onPen
         <ErrorSummary key={form.attempts} errors={form.visibleErrors} onSelect={form.focusField} extra={erroGeral} />
       )}
 
-      {rascunho && (
+      {haRespostas && (
         <Appear delay={cascade(i++)}>
           <p className="flex gap-2.5 rounded-2xl bg-sand px-4 py-3 text-sm text-ink-soft">
             <Check aria-hidden className="mt-0.5 size-4.5 shrink-0 text-leaf-600" />
             <span>
-              {rascunho.nome
-                ? `O perfil de ${rascunho.nome.split(' ')[0]} que preencheu no questionário fica guardado na conta.`
-                : 'As respostas do questionário ficam guardadas na conta.'}
+              {rascunho?.nome.trim()
+                ? `O perfil de ${primeiroNome(rascunho.nome)} que preencheu no questionário fica guardado na conta.`
+                : 'Depois de criar a conta, pode guardar as respostas do questionário no seu painel.'}
             </span>
           </p>
         </Appear>
@@ -156,7 +171,11 @@ export function FamilyForm({ voltar, onPending }: { voltar: string | null; onPen
               key: 'termos',
               props: form.checkbox('termos'),
               error: form.errorOf('termos'),
-              label: 'Aceito os termos de utilização',
+              label: (
+                <>
+                  Aceito as <CondicoesPrototipo onAceitar={() => form.setValue('termos', true)} />
+                </>
+              ),
               description: 'A previsão de vagas é uma estimativa, não uma garantia.',
             },
             {

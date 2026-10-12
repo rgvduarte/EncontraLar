@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { prefersReducedMotion } from '@/lib/motion'
 import { cn } from '@/lib/cn'
 import { animar, useBump } from './motion'
+import { capitalizar } from './ui'
 
 export interface Segmento<T extends string> {
   id: T
@@ -10,6 +11,8 @@ export interface Segmento<T extends string> {
   n?: number
   /** contador em azul (ex.: pedidos novos por ler) */
   destaque?: boolean
+  /** ponto azul com uma nota para o leitor de ecrã (ex.: "1 visita por confirmar") */
+  marca?: string
 }
 
 function Contagem({ n, destaque, ativo }: { n: number; destaque?: boolean; ativo: boolean }) {
@@ -130,6 +133,12 @@ export function Segmented<T extends string>({
               >
                 {it.label}
                 {it.n != null && <Contagem n={it.n} destaque={it.destaque} ativo={ativo} />}
+                {it.marca && (
+                  <>
+                    <span aria-hidden title={capitalizar(it.marca)} className="-ml-0.5 size-2 shrink-0 rounded-full bg-terra-600" />
+                    <span className="sr-only">, {it.marca}</span>
+                  </>
+                )}
               </button>
             )
           })}

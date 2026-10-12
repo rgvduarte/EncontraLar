@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useParams, useSearchParams } from 'react-router'
 import type { Candidatura, Lar } from '@/types'
-import { useCurrentUser, useLar, useMinhasCandidaturas } from '@/lib/store'
+import { setAlerta, toggleFavorito, useCurrentUser, useFavorito, useLar, useMinhasCandidaturas } from '@/lib/store'
+import { toast } from '@/components/ui/Toast'
 import { useDocumentTitle } from '@/lib/hooks'
-import { dividirNome, useDadosLar } from './helpers'
+import { dividirNome, oLar, useDadosLar } from './helpers'
 import { useInView, useJaPassou, useStickyTop } from './hooks'
 import { LarNotFound } from './LarNotFound'
 import { Breadcrumbs, LarCapa, LarHero } from './LarHero'
@@ -47,13 +48,14 @@ function Ficha({ lar }: { lar: Lar }) {
   const [pedido, setPedido] = useState({ n: 0, aberto: false, visita: false })
   const abrirPedido = (visita: boolean) => setPedido((p) => ({ n: p.n + 1, aberto: true, visita }))
   const [visitaDe, setVisitaDe] = useState<Candidatura | null>(null)
+  useRetomarIntencao(lar, ativa, abrirPedido, setVisitaDe)
 
   // barra fixa no telemóvel: só quando as ações do cartão não estão à vista e ainda não chegámos ao fim da ficha
   const ctaRef = useRef<HTMLDivElement>(null)
   const fimRef = useRef<HTMLDivElement>(null)
   const ctaVisivel = useInView(ctaRef, '0px', ativa ? ativa.id : minhaFicha ? 'gestor' : 'livre')
   // a barra some antes de o último conteúdo entrar no ecrã (margem ≥ espaço inferior da página) e não volta no rodapé
-  const fimVisivel = useJaPassou(fimRef, '0px 0px 128px 0px')
+  const fimVisivel = useJaPassou(fimRef, 128)
   const cartaoRef = useRef<HTMLDivElement>(null)
   const topoCartao = useStickyTop(cartaoRef)
 
@@ -123,4 +125,57 @@ function Ficha({ lar }: { lar: Lar }) {
       <VisitaModal key={visitaDe?.id ?? 'nenhuma'} lar={lar} c={visitaDe} open={Boolean(visitaDe)} onClose={() => setVisitaDe(null)} />
     </div>
   )
+}
+
+/**
+ * Retoma o que a pessoa estava a fazer quando teve de entrar ou criar conta (ux-intuitive-2):
+ * o regresso traz `?acao=pedir|visita|alerta` (pedido, visita, alerta de vaga) ou `?guardar=<id>` (coração).
+ * Aplica-se uma vez, já com sessão, e tira-se do URL (replace) para não repetir ao recarregar ou voltar atrás.
+ * Idempotente: se o alerta ou o favorito já foram aplicados no início de sessão, não faz nada nem repete o aviso.
+ */
+function useRetomarIntencao(
+  lar: Lar,
+  ativa: Candidatura | undefined,
+  abrirPedido: (visita: boolean) => void,
+  abrirVisita: (c: Candidatura) => void,
+) {
+  const user = useCurrentUser()
+  const fav = useFavorito(lar.id)
+  const [params, setParams] = useSearchParams()
+  const acao = params.get('acao')
+  const guardar = params.get('guardar')
+  const tratada = useRef<string | null>(null)
+
+  useEffect(() => {
+    // sem sessão ainda (ex.: a sessão está a ser reposta): espera, a intenção fica no URL
+    if (!user || (!acao && !guardar)) return
+    const chave = `${acao}|${guardar}`
+    if (tratada.current === chave) return // StrictMode / novo render antes de o URL mudar
+    tratada.current = chave
+
+    if (acao === 'pedir' || acao === 'visita') {
+      const visita = acao === 'visita'
+      // já há pedido ativo: a visita marca-se nesse pedido (como no cartão), em vez de abrir um pedido novo
+      const podeVisitar = ativa && !ativa.visita && ['enviada', 'em_analise', 'lista_espera'].includes(ativa.estado)
+      if (visita && podeVisitar) abrirVisita(ativa)
+      // a folha trata o resto: perfis com pedido ativo, e contas de instituição ("só para famílias")
+      else abrirPedido(visita)
+    } else if (acao === 'alerta' && user.role === 'familia' && !fav?.alerta) {
+      setAlerta(lar.id, true)
+      toast.success('Alerta de vaga ativado', `Avisamos assim que ${oLar(lar.nome)} indicar um lugar livre.`)
+    }
+    if (guardar === lar.id && user.role === 'familia' && !fav) {
+      toggleFavorito(lar.id)
+      toast.success('Guardado nos seus favoritos', 'Vamos avisá-lo(a) quando houver vaga.')
+    }
+
+    setParams(
+      (p) => {
+        p.delete('acao')
+        p.delete('guardar')
+        return p
+      },
+      { replace: true },
+    )
+  }, [user, acao, guardar, fav, ativa, lar, abrirPedido, abrirVisita, setParams])
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router'
 import type { Candidatura, Lar } from '@/types'
 import { ButtonLink } from '@/components/ui/Button'
-import { FILTROS, filtroDoEstado, type FiltroPedidos } from '../lib/derive'
+import { FILTROS, filtroDoEstado, visitaPorConfirmar, type FiltroPedidos } from '../lib/derive'
 import { useAgora } from '../lib/hooks'
 import { useFlip, usePresenca, useTroca } from '../shared/motion'
 import { Segmented } from '../shared/Segmented'
@@ -44,8 +44,13 @@ export default function PedidosPage({ lar, cands }: { lar: Lar; cands: Candidatu
   const [params, setParams] = useSearchParams()
   const agora = useAgora()
   const contagem = Object.fromEntries(FILTROS.map((f) => [f.id, cands.filter((c) => f.estados.includes(c.estado)).length])) as Record<FiltroPedidos, number>
+  // visitas por confirmar em cada separador: o número da barra lateral (novos + visitas) tem de se encontrar aqui
+  const visitas = Object.fromEntries(
+    FILTROS.map((f) => [f.id, cands.filter((c) => f.estados.includes(c.estado) && visitaPorConfirmar(c)).length]),
+  ) as Record<FiltroPedidos, number>
 
-  const pedidoId = params.get('pedido')
+  // ligação direta a um pedido (notificações, resumo): ?pedido=<id> (também aceita ?id=<id>)
+  const pedidoId = params.get('pedido') ?? params.get('id')
   const aberto = pedidoId ? cands.find((c) => c.id === pedidoId) : undefined
   // o último pedido aberto fica montado enquanto a folha desce (animação de fecho)
   const ultimoAberto = useRef<Candidatura | undefined>(undefined)
@@ -83,12 +88,14 @@ export default function PedidosPage({ lar, cands }: { lar: Lar; cands: Candidatu
     const next = new URLSearchParams(params)
     next.set('filtro', f)
     next.delete('pedido')
+    next.delete('id')
     setParams(next, { replace: true })
   }
   const verHref = (c: Candidatura) => `/gestao/pedidos?filtro=${filtro}&pedido=${encodeURIComponent(c.id)}`
   const fecharDetalhe = () => {
     const next = new URLSearchParams(params)
     next.delete('pedido')
+    next.delete('id')
     setParams(next)
   }
 
@@ -117,13 +124,20 @@ export default function PedidosPage({ lar, cands }: { lar: Lar; cands: Candidatu
         label="Mostrar pedidos por estado"
         valor={filtro}
         onChange={mudarFiltro}
-        itens={FILTROS.map((f) => ({ id: f.id, label: f.label, n: contagem[f.id], destaque: f.id === 'novos' }))}
+        itens={FILTROS.map((f) => ({
+          id: f.id,
+          label: f.label,
+          n: contagem[f.id],
+          destaque: f.id === 'novos',
+          marca: visitas[f.id] > 0 ? (visitas[f.id] === 1 ? '1 visita por confirmar' : `${visitas[f.id]} visitas por confirmar`) : undefined,
+        }))}
       />
 
       <div ref={palco} className="flex flex-col gap-4">
         {filtro !== 'lista' && (
           <p role="status" aria-live="polite" className="mt-2 text-ink-mute">
             {lista.length ? RESUMO_FILTRO[filtro](lista.length) : def.vazio}
+            {visitas[filtro] > 0 && ` Há ${visitas[filtro] === 1 ? '1 visita' : `${visitas[filtro]} visitas`} por confirmar.`}
           </p>
         )}
 

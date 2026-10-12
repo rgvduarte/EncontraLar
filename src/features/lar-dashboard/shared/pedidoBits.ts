@@ -1,5 +1,5 @@
 import type { Candidatura, Urgencia } from '@/types'
-import { CUIDADO_LABEL, GRAU_LABEL } from '@/lib/labels'
+import { CUIDADO_FRASE, GRAU_LABEL } from '@/lib/labels'
 import { euro } from '@/lib/format'
 import { minuscula, nomeQuarto } from '../lib/derive'
 import { capitalizar } from './ui'
@@ -21,19 +21,19 @@ export function relacaoTexto(c: Candidatura): string {
 
 const listaHumana = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}`)
 
-/** "pessoas acamadas, enfermagem 24 horas e gestão de diabetes" (ou null) */
+/** "cuidados de pessoa acamada, enfermagem 24 horas e controlo da diabetes" (ou null) — para "Precisa de …". */
 export function necessidadesTexto(c: Candidatura, max = 99): string | null {
-  const nec = c.perfil.necessidades.map((n) => minuscula(CUIDADO_LABEL[n]))
+  const nec = c.perfil.necessidades.map((n) => CUIDADO_FRASE[n])
   if (!nec.length) return null
   const vis = nec.slice(0, max)
   const mais = nec.length - vis.length
   return mais > 0 ? `${vis.join(', ')} e mais ${mais}` : listaHumana(vis)
 }
 
-/** "dependência grave · pessoas acamadas, enfermagem 24 horas e mais 1" (para meio de frase) */
+/** "dependência grave · precisa de cuidados de pessoa acamada, enfermagem 24 horas e mais 1" (para meio de frase) */
 export function perfilLinha(c: Candidatura, maxCuidados = 2): string {
   const nec = necessidadesTexto(c, maxCuidados)
-  return [minuscula(GRAU_LABEL[c.perfil.grau]), nec].filter(Boolean).join(' · ')
+  return [minuscula(GRAU_LABEL[c.perfil.grau]), nec && `precisa de ${nec}`].filter(Boolean).join(' · ')
 }
 
 /** "Qualquer quarto · até 2100 €/mês" */

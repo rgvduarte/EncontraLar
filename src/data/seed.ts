@@ -23,8 +23,12 @@ import { LOCALIDADES, type Localidade } from './localidades'
 import { createRng, type Rng } from '@/lib/random'
 import { SAZONALIDADE } from '@/lib/forecast'
 import { hashPassword } from '@/lib/hash'
+import { diaPorExtenso, isoDia } from '@/lib/format'
+import { emTerra } from '@/lib/lugares'
+import { aoLar, flexLar, larPlural, noLar, oLar } from '@/lib/artigos'
 
-export const SEED_VERSION = 3
+/** 4: textos gerados revistos, telefones com 9 dígitos, acordos com a Segurança Social só no setor social. */
+export const SEED_VERSION = 4
 export const DEMO_PASSWORD = 'demo1234'
 export const DEMO_FAMILIA_EMAIL = 'familia@exemplo.pt'
 export const DEMO_LAR_EMAIL = 'lar@exemplo.pt'
@@ -97,31 +101,50 @@ const NOMES_F = ['Teresa', 'Ana', 'Paula', 'Sandra', 'Isabel', 'Cristina', 'Hele
 const NOMES_M = ['João', 'Miguel', 'Rui', 'Pedro', 'Luís', 'Carlos', 'António', 'Nuno', 'Paulo', 'José', 'Ricardo', 'Jorge', 'Filipe', 'Vítor', 'Hugo', 'Fernando']
 const APELIDOS = ['Silva', 'Santos', 'Ferreira', 'Pereira', 'Oliveira', 'Costa', 'Rodrigues', 'Martins', 'Jesus', 'Sousa', 'Fernandes', 'Gonçalves', 'Gomes', 'Lopes', 'Marques', 'Alves', 'Almeida', 'Ribeiro', 'Pinto', 'Carvalho', 'Teixeira', 'Moreira', 'Correia', 'Mendes', 'Nunes', 'Soares', 'Vieira', 'Monteiro', 'Cardoso', 'Rocha', 'Neves', 'Coelho', 'Cruz', 'Cunha', 'Pires', 'Ramos', 'Reis', 'Simões', 'Antunes', 'Matos']
 
-const REVIEWS_BOAS = [
-  'A minha mãe está aqui há quase dois anos e sentimo-nos sempre bem recebidos. A equipa de enfermagem é atenta e liga-nos sempre que há alguma alteração.',
-  'O meu pai adaptou-se muito melhor do que esperávamos. As auxiliares tratam-no pelo nome e conhecem as manias dele. A comida é caseira e variada.',
-  'Instalações limpas e luminosas, e o jardim é um encanto. As atividades da tarde fazem muita diferença no humor da minha avó.',
-  'Gostei da transparência desde a primeira visita: mostraram-nos tudo, explicaram os custos sem surpresas e responderam a todas as dúvidas.',
-  'A fisioterapia ajudou a minha mãe a voltar a andar com andarilho depois da fratura. Estamos muito gratos a toda a equipa.',
-  'Comunicação excelente — recebemos fotografias das atividades e a diretora técnica está sempre disponível para conversar.',
-  'Ambiente familiar, pequeno e acolhedor. Não é luxuoso, mas o carinho com que tratam os residentes vale tudo.',
-  'Cuidaram do meu pai com enorme dignidade até ao fim. Nunca esquecerei a sensibilidade da equipa connosco.',
-  'A minha tia tem Alzheimer e aqui encontrou paciência e rotina. Os funcionários têm formação e nota-se.',
-  'Visitamos ao fim de semana e há sempre alguém disponível para nos pôr ao corrente. Sentimos que a nossa mãe está em boas mãos.',
-  'Os quartos são confortáveis e a casa de banho privativa fez toda a diferença para o meu avô, que preza muito a privacidade.',
-  'Desde a candidatura até à entrada foi tudo rápido e bem explicado. A integração nas primeiras semanas foi muito cuidada.',
+/** Quem escreve, quando o texto o diz ("a minha mãe" → filho/filha); sem `quem`, qualquer familiar. */
+type Quem = 'filho' | 'neto' | 'sobrinho' | 'antigo'
+interface TextoReview {
+  texto: string
+  quem?: Quem
+}
+
+const REVIEWS_BOAS: TextoReview[] = [
+  { quem: 'filho', texto: 'A minha mãe está aqui há quase dois anos e sentimo-nos sempre bem recebidos. A equipa de enfermagem é atenta e liga-nos sempre que há alguma alteração.' },
+  { quem: 'filho', texto: 'O meu pai adaptou-se muito melhor do que esperávamos. As auxiliares tratam-no pelo nome e conhecem as manias dele. A comida é caseira e variada.' },
+  { quem: 'neto', texto: 'Instalações limpas e luminosas, e o jardim é um encanto. As atividades da tarde fazem muita diferença no humor da minha avó.' },
+  { texto: 'Gostei da transparência desde a primeira visita: mostraram-nos tudo, explicaram os custos sem surpresas e responderam a todas as dúvidas.' },
+  { quem: 'filho', texto: 'A fisioterapia ajudou a minha mãe a voltar a andar com andarilho depois da fratura. Estamos muito gratos a toda a equipa.' },
+  { texto: 'Comunicação excelente — recebemos fotografias das atividades e a diretora técnica está sempre disponível para conversar.' },
+  { texto: 'Ambiente familiar, pequeno e acolhedor. Não é luxuoso, mas o carinho com que tratam os residentes vale tudo.' },
+  { quem: 'antigo', texto: 'Cuidaram do meu pai com enorme dignidade até ao fim. Nunca esquecerei a sensibilidade da equipa connosco.' },
+  { quem: 'sobrinho', texto: 'A minha tia tem Alzheimer e aqui encontrou paciência e rotina. Os funcionários têm formação e nota-se.' },
+  { quem: 'filho', texto: 'Visitamos ao fim de semana e há sempre alguém disponível para nos pôr ao corrente. Sentimos que a nossa mãe está em boas mãos.' },
+  { quem: 'neto', texto: 'Os quartos são confortáveis e a casa de banho privativa fez toda a diferença para o meu avô, que preza muito a privacidade.' },
+  { texto: 'Desde a candidatura até à entrada foi tudo rápido e bem explicado. A integração nas primeiras semanas foi muito cuidada.' },
 ]
-const REVIEWS_MISTAS = [
-  'Os cuidados são bons, mas a comunicação podia ser melhor: às vezes temos de ligar várias vezes para obter informações.',
-  'Bom acompanhamento de enfermagem. Os quartos duplos são um pouco pequenos e o horário das visitas é algo rígido.',
-  'Pessoal simpático e dedicado, embora pareça haver pouca gente ao fim de semana. A alimentação é boa.',
-  'Preço justo para a zona. As instalações precisam de alguma renovação, mas o essencial está garantido.',
-  'A minha mãe gosta das atividades, mas gostaríamos que houvesse mais saídas ao exterior quando o tempo está bom.',
+const REVIEWS_MISTAS: TextoReview[] = [
+  { texto: 'Os cuidados são bons, mas a comunicação podia ser melhor: às vezes temos de ligar várias vezes para obter informações.' },
+  { texto: 'Bom acompanhamento de enfermagem. Os quartos duplos são um pouco pequenos e o horário das visitas é algo rígido.' },
+  { texto: 'Pessoal simpático e dedicado, embora pareça haver pouca gente ao fim de semana. A alimentação é boa.' },
+  { texto: 'Preço justo para a zona. As instalações precisam de alguma renovação, mas o essencial está garantido.' },
+  { quem: 'filho', texto: 'A minha mãe gosta das atividades, mas gostaríamos que houvesse mais saídas ao exterior quando o tempo está bom.' },
 ]
-const REVIEWS_FRACAS = [
-  'A equipa é simpática, mas notámos bastante rotatividade de funcionários e isso afeta a minha mãe, que tem demência.',
-  'Esperávamos mais pelo valor da mensalidade. Os cuidados básicos estão assegurados, mas falta animação durante o dia.',
+const REVIEWS_FRACAS: TextoReview[] = [
+  { quem: 'filho', texto: 'A equipa é simpática, mas notámos bastante rotatividade de funcionários e isso afeta a minha mãe, que tem demência.' },
+  { texto: 'Esperávamos mais pelo valor da mensalidade. Os cuidados básicos estão assegurados, mas falta animação durante o dia.' },
 ]
+
+/** Relação com o residente, coerente com o texto (sempre um único sorteio, para não mudar o resto do seed). */
+const RELACOES_REVIEW: Record<Quem | 'qualquer', { f: string[]; m: string[] }> = {
+  filho: { f: ['Filha de residente'], m: ['Filho de residente'] },
+  neto: { f: ['Neta de residente'], m: ['Neto de residente'] },
+  sobrinho: { f: ['Sobrinha de residente'], m: ['Sobrinho de residente'] },
+  antigo: { f: ['Filha de antigo residente'], m: ['Filho de antigo residente'] },
+  qualquer: {
+    f: ['Filha de residente', 'Filha de residente', 'Neta de residente', 'Nora de residente', 'Sobrinha de residente'],
+    m: ['Filho de residente', 'Filho de residente', 'Neto de residente', 'Genro de residente', 'Sobrinho de residente'],
+  },
+}
 
 function gerarReviews(rng: Rng, media: number, n: number, agora: number, id: string): Review[] {
   const reviews: Review[] = []
@@ -129,14 +152,14 @@ function gerarReviews(rng: Rng, media: number, n: number, agora: number, id: str
   for (let i = 0; i < n; i++) {
     const nota = Math.max(1, Math.min(5, Math.round(media + rng.float(-1.1, 0.9))))
     const pool = nota >= 4 ? REVIEWS_BOAS : nota === 3 ? REVIEWS_MISTAS : REVIEWS_FRACAS
-    let texto = rng.pick(pool)
-    for (let t = 0; t < 5 && usadas.has(texto); t++) texto = rng.pick(pool)
+    let escolhido = rng.pick(pool)
+    for (let t = 0; t < 5 && usadas.has(escolhido.texto); t++) escolhido = rng.pick(pool)
+    const texto = escolhido.texto
     usadas.add(texto)
     const fem = rng.chance(0.68)
     const nome = rng.pick(fem ? NOMES_F : NOMES_M)
-    const relacao = fem
-      ? rng.pick(['Filha de residente', 'Filha de residente', 'Neta de residente', 'Nora de residente', 'Sobrinha de residente'])
-      : rng.pick(['Filho de residente', 'Filho de residente', 'Neto de residente', 'Genro de residente', 'Sobrinho de residente'])
+    const opcoes = RELACOES_REVIEW[escolhido.quem ?? 'qualquer']
+    const relacao = rng.pick(fem ? opcoes.f : opcoes.m)
     const asp = () => Math.max(1, Math.min(5, Math.round(nota + rng.float(-0.8, 0.6))))
     reviews.push({
       id: `${id}-r${i}`,
@@ -379,13 +402,21 @@ function gerarLar(ctx: Ctx, loc: Localidade, idx: number, i: number): Lar {
   const enfermeiros = Math.max(1, Math.round((capacidade / (cuidados.includes('enfermagem24h') ? 9 : 16)) * rng.float(0.8, 1.2)))
 
   const ruaNum = `${rng.pick(RUAS)}, ${rng.int(2, 380)}`
-  const tel = `${loc.ind} 000 ${String(100 + idx).padStart(3, '0')}`
+  // 9 dígitos, como todos os números portugueses: indicativo completado com zeros + nº da instituição
+  const digitos = `${(loc.ind + '000000').slice(0, 6)}${String(100 + idx).padStart(3, '0')}`
+  const tel = `${digitos.slice(0, 3)} ${digitos.slice(3, 6)} ${digitos.slice(6)}`
 
   const destaqueCuidados = cuidados
     .filter((c) => ['demencia', 'enfermagem24h', 'fisioterapia', 'paliativos'].includes(c))
     .slice(0, 2)
-  const resumo = gerarResumo(rng, tipo, natureza, destaqueCuidados, comodidades, loc)
-  const descricao = gerarDescricao(rng, { nome, tipo, natureza, capacidade, fundacao, loc, cuidados, comodidades, enfermeiros })
+  const resumo = gerarResumo(rng, tipo, destaqueCuidados, comodidades, loc)
+  const descricaoCom = gerarDescricao(rng, { nome, tipo, natureza, capacidade, fundacao, loc, cuidados, comodidades, enfermeiros })
+  const codigoPostal = `${loc.cp}-${String(rng.int(1, 899)).padStart(3, '0')}`
+  // Acordo de cooperação com a Segurança Social: só IPSS e Misericórdias. O sorteio faz-se sempre
+  // (mesmo nº de sorteios por instituição), para não mudar as instituições seguintes nem os ids.
+  const sorteioSS = rng.chance(social ? 0.88 : 0.06)
+  const acordoSS = social && sorteioSS
+  const descricao = descricaoCom(acordoSS)
 
   return {
     id,
@@ -395,7 +426,7 @@ function gerarLar(ctx: Ctx, loc: Localidade, idx: number, i: number): Lar {
     resumo,
     descricao,
     morada: ruaNum,
-    codigoPostal: `${loc.cp}-${String(rng.int(1, 899)).padStart(3, '0')}`,
+    codigoPostal,
     localidade: loc.localidade,
     concelho: loc.concelho,
     distrito: loc.distrito,
@@ -411,7 +442,7 @@ function gerarLar(ctx: Ctx, loc: Localidade, idx: number, i: number): Lar {
     historicoSaidas,
     mensalidadeMin,
     mensalidadeMax,
-    acordoSS: social ? rng.chance(0.88) : rng.chance(0.06),
+    acordoSS,
     incluido,
     extras,
     graus,
@@ -434,7 +465,7 @@ function gerarLar(ctx: Ctx, loc: Localidade, idx: number, i: number): Lar {
   }
 }
 
-function gerarResumo(rng: Rng, tipo: TipoResposta, natureza: Natureza, destaques: Cuidado[], comod: Comodidade[], loc: Localidade): string {
+function gerarResumo(rng: Rng, tipo: TipoResposta, destaques: Cuidado[], comod: Comodidade[], loc: Localidade): string {
   const ambiente = rng.pick(['Ambiente familiar', 'Casa acolhedora', 'Espaço tranquilo', 'Ambiente caloroso', 'Instituição de referência'])
   const extra = destaques.includes('demencia')
     ? 'com unidade dedicada a demências'
@@ -445,25 +476,41 @@ function gerarResumo(rng: Rng, tipo: TipoResposta, natureza: Natureza, destaques
         : comod.includes('jardim')
           ? 'com amplo jardim'
           : 'com equipa dedicada'
-  if (tipo === 'residencia') return `Residência sénior ${rng.pick(['moderna', 'de tipo hoteleiro', 'luminosa'])} ${extra}, em ${loc.localidade}.`
-  if (tipo === 'centro_dia') return `Centro de dia ${extra}, com transporte e atividades diárias em ${loc.localidade}.`
-  const nat = natureza === 'privado' ? '' : natureza === 'misericordia' ? ' da Misericórdia' : ' de solidariedade social'
-  return `${ambiente}${nat} ${extra}, em ${loc.localidade}.`
+  const onde = emTerra(loc.localidade)
+  if (tipo === 'residencia') return `Residência sénior ${rng.pick(['moderna', 'de tipo hoteleiro', 'luminosa'])} ${extra}, ${onde}.`
+  if (tipo === 'centro_dia') return `Centro de dia ${extra}, com transporte e atividades diárias ${onde}.`
+  // a natureza (IPSS, Misericórdia) já aparece na ficha; "Ambiente familiar de solidariedade social" não se diz
+  return `${ambiente} ${extra}, ${onde}.`
 }
 
+/**
+ * Descrição em 3 parágrafos. Devolve uma função do acordo com a Segurança Social, que só é sorteado
+ * depois (a ordem dos sorteios mantém-se igual à das versões anteriores do seed).
+ */
 function gerarDescricao(
   rng: Rng,
   d: { nome: string; tipo: TipoResposta; natureza: Natureza; capacidade: number; fundacao: number; loc: Localidade; cuidados: Cuidado[]; comodidades: Comodidade[]; enfermeiros: number },
-): string {
-  const p1 =
+): (acordoSS: boolean) => string {
+  const onde = emTerra(d.loc.localidade)
+  const quem = oLar(d.nome) // "o Lar …", "a Casa …", "as Residências …"
+  const pl = larPlural(d.nome)
+  const acolhe = pl ? 'acolhem' : 'acolhe'
+  const p1 = (acordoSS: boolean) =>
     d.tipo === 'residencia'
-      ? `Inaugurada em ${d.fundacao}, a ${d.nome} oferece ${d.capacidade} lugares em quartos e suítes com casa de banho privativa, pensada para quem quer manter a independência com a segurança de uma equipa sempre presente.`
+      ? `${flexLar(d.nome, 'Inaugurado', 'Inaugurada')} em ${d.fundacao}, ${quem} ${pl ? 'oferecem' : 'oferece'} ${d.capacidade} lugares em quartos e suites com casa de banho privativa, ${flexLar(d.nome, 'pensado', 'pensada')} para quem quer manter a independência com a segurança de uma equipa sempre presente.`
       : d.tipo === 'centro_dia'
-        ? `Desde ${d.fundacao}, o ${d.nome} acolhe diariamente até ${d.capacidade} pessoas em ${d.loc.localidade}, de segunda a sexta-feira, com transporte de e para casa.`
-        : `${d.natureza === 'privado' ? 'Fundada' : 'Criada'} em ${d.fundacao}, ${d.nome.startsWith('Casa') || d.nome.startsWith('Residência') ? 'a' : 'o'} ${d.nome} acolhe ${d.capacidade} residentes em ${d.loc.localidade}. ${d.natureza === 'privado' ? 'É uma instituição privada com licença de funcionamento emitida pela Segurança Social.' : 'É uma instituição sem fins lucrativos, com acordo de cooperação com a Segurança Social para parte das vagas.'}`
+        ? `Desde ${d.fundacao}, ${quem} ${acolhe} diariamente até ${d.capacidade} pessoas ${onde}, de segunda a sexta-feira, com transporte de e para casa.`
+        : `${d.natureza === 'privado' ? flexLar(d.nome, 'Fundado', 'Fundada') : flexLar(d.nome, 'Criado', 'Criada')} em ${d.fundacao}, ${quem} ${acolhe} ${d.capacidade} residentes ${onde}. ${
+            d.natureza === 'privado'
+              ? 'É uma instituição privada com licença de funcionamento emitida pela Segurança Social.'
+              : acordoSS
+                ? 'É uma instituição sem fins lucrativos, com acordo de cooperação com a Segurança Social para parte das vagas.'
+                : 'É uma instituição sem fins lucrativos.'
+          }`
   const saude: string[] = []
-  if (d.cuidados.includes('enfermagem24h')) saude.push(`enfermagem 24 horas (${d.enfermeiros} enfermeiros)`)
-  else saude.push(`uma equipa de ${d.enfermeiros} ${d.enfermeiros === 1 ? 'enfermeiro' : 'enfermeiros'}`)
+  const enf = `${d.enfermeiros} ${d.enfermeiros === 1 ? 'enfermeiro' : 'enfermeiros'}`
+  if (d.cuidados.includes('enfermagem24h')) saude.push(`enfermagem 24 horas (${enf})`)
+  else saude.push(`enfermagem diária (${enf})`)
   if (d.cuidados.includes('medico')) saude.push('médico assistente semanal')
   if (d.cuidados.includes('fisioterapia')) saude.push('fisioterapia')
   if (d.cuidados.includes('demencia')) saude.push('acompanhamento especializado em demências')
@@ -477,7 +524,7 @@ function gerarDescricao(
   const p3 = vida.length
     ? `O dia a dia inclui ${vida.slice(0, -1).join(', ')}${vida.length > 1 ? ' e ' : ''}${vida[vida.length - 1]}. ${d.comodidades.includes('visitas_livres') ? 'As famílias podem visitar a qualquer hora do dia.' : 'As visitas são diárias, em horário alargado.'}`
     : 'As famílias são sempre bem-vindas e incentivamos a participação nas festas e datas especiais.'
-  return [p1, p2, p3].join('\n\n')
+  return (acordoSS) => [p1(acordoSS), p2, p3].join('\n\n')
 }
 
 // ————————————————————————————————————————— instituição de demonstração (painel "lar")
@@ -504,7 +551,7 @@ function larDemo(agora: number): Lar {
     regiao: 'Norte',
     lat: 41.1752,
     lng: -8.6045,
-    telefone: '22 000 042',
+    telefone: '220 000 042',
     email: 'geral@jardinsdodouro.exemplo.pt',
     capacidade: 42,
     quartos: [
@@ -588,12 +635,14 @@ export function createSeed(agora = Date.now()): DB {
   }
 
   const iso = (diasAtras: number, horas = 0) => new Date(agora - diasAtras * DIA - horas * 3_600_000).toISOString()
-  const futuro = (dias: number) => new Date(agora + dias * DIA).toISOString().slice(0, 10)
+  // data local (AAAA-MM-DD): toISOString daria o dia em UTC, que difere do local perto da meia-noite
+  const futuro = (dias: number) => isoDia(new Date(agora + dias * DIA))
+  const linkPedido = (id: string) => `/gestao/pedidos?pedido=${encodeURIComponent(id)}`
   const demoHash = hashPassword(DEMO_PASSWORD, DEMO_FAMILIA_EMAIL)
 
   const users: User[] = [
     { id: DEMO_FAMILIA_ID, role: 'familia', nome: 'Ana Ferreira', email: DEMO_FAMILIA_EMAIL, passwordHash: demoHash, telefone: '912 000 101', criadoEm: iso(41), demo: true },
-    { id: DEMO_LAR_USER_ID, role: 'lar', nome: 'Helena Marques', email: DEMO_LAR_EMAIL, passwordHash: hashPassword(DEMO_PASSWORD, DEMO_LAR_EMAIL), telefone: '22 000 042', criadoEm: iso(400), larId: DEMO_LAR_ID, demo: true },
+    { id: DEMO_LAR_USER_ID, role: 'lar', nome: 'Helena Marques', email: DEMO_LAR_EMAIL, passwordHash: hashPassword(DEMO_PASSWORD, DEMO_LAR_EMAIL), telefone: '220 000 042', criadoEm: iso(400), larId: DEMO_LAR_ID, demo: true },
   ]
 
   const maria = perfil(
@@ -738,12 +787,12 @@ export function createSeed(agora = Date.now()): DB {
   const notificacoes: Notificacao[] = [
     {
       id: 'n-ana-1', userId: DEMO_FAMILIA_ID, tipo: 'vaga', titulo: 'Nova vaga disponível',
-      texto: `${larAlerta.nome} indicou que tem uma vaga livre. Contacte a instituição se ainda tiver interesse.`,
+      texto: `Há uma vaga livre ${noLar(larAlerta.nome)}. Contacte a instituição se ainda tiver interesse.`,
       larId: larAlerta.id, link: `/lar/${larAlerta.id}`, lida: false, criadaEm: iso(0, 2),
     },
     {
       id: 'n-ana-2', userId: DEMO_FAMILIA_ID, tipo: 'visita', titulo: 'Visita confirmada',
-      texto: `A visita a ${larVisita.nome} ficou marcada para ${new Date(futuro(5)).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}, às 11h00.`,
+      texto: `A visita ${aoLar(larVisita.nome)} ficou marcada para ${diaPorExtenso(futuro(5))}, às 11h00.`,
       larId: larVisita.id, candidaturaId: 'c-ana-2', link: '/familia', lida: false, criadaEm: iso(1),
     },
     {
@@ -754,12 +803,12 @@ export function createSeed(agora = Date.now()): DB {
     {
       id: 'n-lar-1', userId: DEMO_LAR_USER_ID, tipo: 'candidatura', titulo: 'Novo pedido de vaga',
       texto: 'Rui Sousa enviou um pedido para Joaquim Sousa (88 anos, dependência grave). Indicou urgência: alta hospitalar.',
-      candidaturaId: 'c-fam-0', link: '/gestao', lida: false, criadaEm: iso(0.3),
+      candidaturaId: 'c-fam-0', link: linkPedido('c-fam-0'), lida: false, criadaEm: iso(0.3),
     },
     {
       id: 'n-lar-2', userId: DEMO_LAR_USER_ID, tipo: 'visita', titulo: 'Pedido de visita',
-      texto: `Sandra Lopes pediu uma visita para ${new Date(futuro(4)).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}, às 15h00.`,
-      candidaturaId: 'c-fam-1', link: '/gestao', lida: false, criadaEm: iso(3),
+      texto: `Sandra Lopes pediu uma visita para ${diaPorExtenso(futuro(4))}, às 15h00.`,
+      candidaturaId: 'c-fam-1', link: linkPedido('c-fam-1'), lida: false, criadaEm: iso(3),
     },
     {
       id: 'n-lar-3', userId: DEMO_LAR_USER_ID, tipo: 'sistema', titulo: 'Mantenha as vagas atualizadas',

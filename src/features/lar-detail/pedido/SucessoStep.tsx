@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Candidatura, Lar } from '@/types'
-import { diaPorExtenso, telHref } from '../helpers'
+import { OLar, aoLar, diaPorExtenso, telHref } from '../helpers'
 import { Cascata } from '../motion'
 
 /** Confirmação depois de enviar: o que acontece a seguir. */
@@ -11,7 +11,7 @@ export function SucessoStep({ lar, c }: { lar: Lar; c: Candidatura }) {
   }, [])
   const nome = c.perfil.nome.split(' ')[0]
   const passos = [
-    { t: 'A equipa técnica recebe o pedido', d: `${lar.nome} já tem o perfil de ${nome} e a sua mensagem.` },
+    { t: 'A equipa técnica recebe o pedido', d: `${OLar(lar.nome)} já tem o perfil de ${nome} e a sua mensagem.` },
     {
       t: 'Responde-lhe em poucos dias úteis',
       d: 'Por aqui, por telefone ou por email. Recebe uma notificação no seu painel.',
@@ -30,7 +30,7 @@ export function SucessoStep({ lar, c }: { lar: Lar; c: Candidatura }) {
         </svg>
       </span>
       <h3 ref={titulo} tabIndex={-1} className="mt-5 text-2xl font-semibold tracking-tight outline-none">
-        Enviado a {lar.nome}
+        Enviado {aoLar(lar.nome)}
       </h3>
       <p className="mt-1 text-ink-mute">Guardámos uma cópia em “Os meus pedidos”.</p>
 

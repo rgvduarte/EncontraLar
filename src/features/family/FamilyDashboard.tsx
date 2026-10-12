@@ -1,5 +1,5 @@
-import { useEffect, type ReactNode } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router'
+import { useEffect, type ComponentType, type ReactNode } from 'react'
+import { Navigate, useLocation } from 'react-router'
 import { FileText, Heart, LayoutGrid, Settings, UserRound } from 'lucide-react'
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell'
 import { useCurrentUser } from '@/lib/store'
@@ -16,6 +16,19 @@ import ContaPage from './conta/ContaPage'
 
 type Seccao = '' | 'pedidos' | 'guardados' | 'perfil' | 'conta'
 
+/**
+ * Secções do painel. Escolhem-se pelo caminho, sem <Routes> aninhadas: dentro de <Routes> descendentes o
+ * useNavigate() não é o do router de dados (ignora `flushSync` e não devolve promessa), e o
+ * "Terminar sessão" e o "Repor dados" da Conta precisam dele para sair antes de a sessão acabar.
+ */
+const PAGINAS = new Map<Seccao, ComponentType>([
+  ['', ResumoPage],
+  ['pedidos', PedidosPage],
+  ['guardados', GuardadosPage],
+  ['perfil', PerfilPage],
+  ['conta', ContaPage],
+])
+
 const TITULOS: Record<Exclude<Seccao, ''>, { title: string; subtitle: string }> = {
   pedidos: { title: 'Pedidos', subtitle: 'Em que ponto está cada pedido e quanto deverá esperar.' },
   guardados: { title: 'Guardados', subtitle: 'Compare lado a lado e saiba logo quando abre vaga.' },
@@ -29,7 +42,10 @@ export default function FamilyDashboard() {
   const { pathname } = useLocation()
   const { principal } = usePerfisOrdenados()
   const { ativos } = usePedidos()
-  const seccao = (pathname.replace(/^\/familia\/?/, '').split('/')[0] ?? '') as Seccao
+  const resto = pathname.replace(/^\/familia\/?/, '').replace(/\/$/, '')
+  const seccao = (resto.split('/')[0] ?? '') as Seccao
+  // /familia/<secção> exato; qualquer outro caminho volta ao resumo
+  const Pagina = resto.includes('/') ? undefined : PAGINAS.get(seccao)
   const propostas = ativos.filter((p) => p.c.estado === 'vaga_proposta').length
 
   const nav: DashboardNavItem[] = [
@@ -42,7 +58,7 @@ export default function FamilyDashboard() {
 
   let title: ReactNode
   let subtitle: ReactNode
-  if (seccao && seccao in TITULOS) {
+  if (seccao && Pagina) {
     title = TITULOS[seccao].title
     subtitle = TITULOS[seccao].subtitle
   } else {
@@ -93,14 +109,7 @@ export default function FamilyDashboard() {
     >
       <DraftBanner />
       <div key={chave} className="motion-safe:animate-[fade-in_.4s_ease-out_both]">
-        <Routes>
-          <Route index element={<ResumoPage />} />
-          <Route path="pedidos" element={<PedidosPage />} />
-          <Route path="guardados" element={<GuardadosPage />} />
-          <Route path="perfil" element={<PerfilPage />} />
-          <Route path="conta" element={<ContaPage />} />
-          <Route path="*" element={<Navigate to="/familia" replace />} />
-        </Routes>
+        {Pagina ? <Pagina /> : <Navigate to="/familia" replace />}
       </div>
     </DashboardShell>
   )

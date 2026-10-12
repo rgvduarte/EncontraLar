@@ -1,7 +1,7 @@
 import { forwardRef } from 'react'
 import { LoaderCircle, Navigation, SlidersHorizontal } from 'lucide-react'
 import { Checkbox } from '@/components/ui/Field'
-import { TIPO_LABEL } from '@/lib/labels'
+import { TIPO_LABEL, TIPO_RESUMO } from '@/lib/labels'
 import { cn } from '@/lib/cn'
 import { BudgetPill } from './BudgetControl'
 import { Count, DispDot, pillClasses, QuietSelect, TogglePill } from './Chips'
@@ -9,20 +9,14 @@ import { PillPopover } from './PillPopover'
 import { PlaceCombobox } from './PlaceCombobox'
 import type { SearchModel } from './useSearch'
 import type { GeoEstado } from './useGeolocation'
-import { centroDe, contarMaisFiltros, opcoesRaio, TIPO_CURTO, TIPOS, type VagaFiltro } from './searchState'
+import { centroDe, contarMaisFiltros, opcoesRaio, TIPO_CURTO, TIPOS, VAGA_LABEL, type VagaFiltro } from './searchState'
 
 export interface Geo {
   estado: GeoEstado
   localizar: () => void
 }
 
-const TIPO_RESUMO = {
-  erpi: 'Alojamento permanente, com cuidados diários.',
-  residencia: 'Para quem ainda é autónomo.',
-  centro_dia: 'Passa o dia e regressa a casa.',
-} as const
-
-/** "Com vaga agora" e "Vaga em breve" — usados na barra do desktop e do telemóvel. */
+/** "Com vaga agora" e "Agora ou em breve" — usados na barra do desktop e do telemóvel. */
 export function VagaPills({ model }: { model: SearchModel }) {
   const { state, update } = model
   const setVaga = (v: VagaFiltro) => update({ vaga: state.vaga === v ? null : v })
@@ -30,11 +24,11 @@ export function VagaPills({ model }: { model: SearchModel }) {
     <>
       <TogglePill pressed={state.vaga === 'agora'} onClick={() => setVaga('agora')}>
         <DispDot disp="disponivel" />
-        Com vaga agora
+        {VAGA_LABEL.agora}
       </TogglePill>
       <TogglePill pressed={state.vaga === 'breve'} onClick={() => setVaga('breve')} title="Com vaga agora ou vaga provável nos próximos 3 meses">
         <DispDot disp="breve" />
-        Vaga em breve
+        {VAGA_LABEL.breve}
       </TogglePill>
     </>
   )

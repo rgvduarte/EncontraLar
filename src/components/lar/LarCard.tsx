@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { Star } from 'lucide-react'
 import type { Lar } from '@/types'
 import { LarCover } from './LarCover'
-import { AvailabilityBadge, VerifiedBadge } from './badges'
+import { AvailabilityBadge, VerifiedBadge, livreComListaAFrente } from './badges'
 import { FavoriteButton } from './FavoriteButton'
 import { disponibilidade, estimarEspera, resumoPrevisao } from '@/lib/forecast'
 import { CUIDADO_LABEL, NATUREZA_LABEL, TIPO_LABEL } from '@/lib/labels'
@@ -43,6 +43,8 @@ export const LarCard = memo(function LarCard({
   const est = useMemo(() => match?.espera ?? estimarEspera(lar), [lar, match])
   const disp = disponibilidade(lar, est)
   const previsao = resumoPrevisao(lar, est)
+  // lugar livre já prometido à lista de espera: o cartão mostra a espera estimada, como nos outros estados
+  const listaAFrente = livreComListaAFrente(lar, disp, est)
   const destaques = DESTAQUES.filter((c) => lar.cuidados.includes(c)).slice(0, 2)
   const horizontal = layout === 'horizontal'
   const centroDia = lar.tipo === 'centro_dia'
@@ -68,7 +70,7 @@ export const LarCard = memo(function LarCard({
       >
         <LarCover hue={lar.capa.hue} variante={lar.capa.variante} className="transition-transform duration-700 ease-[cubic-bezier(.25,.1,.25,1)] group-hover:scale-[1.04]" />
         <div className="absolute top-3 left-3">
-          <AvailabilityBadge lar={lar} estado={disp} overlay />
+          <AvailabilityBadge lar={lar} estado={disp} est={est} overlay />
         </div>
         <div className="absolute top-2 right-2">
           <FavoriteButton larId={lar.id} larNome={lar.nome} />
@@ -105,10 +107,11 @@ export const LarCard = memo(function LarCard({
         </p>
 
         {(destaques.length > 0 || lar.verificacao.estado === 'verificado') && (
-          <p className="flex flex-wrap items-center gap-x-2 text-sm text-ink-soft">
+          // sem separador "|" (quando a lista quebrava de linha ficava pendurado no fim): o espaço chega para separar.
+          // O "·" fica preso às duas palavras vizinhas (espaços não separáveis) para nunca ficar sozinho no fim da linha.
+          <p className="flex flex-wrap items-center gap-x-3 text-sm text-ink-soft">
             <VerifiedBadge lar={lar} />
-            {destaques.length > 0 && lar.verificacao.estado === 'verificado' && <span aria-hidden className="text-line-strong">|</span>}
-            {destaques.map((c) => CUIDADO_LABEL[c]).join(' · ')}
+            {destaques.length > 0 && <span>{destaques.map((c) => CUIDADO_LABEL[c]).join('\u00a0·\u00a0')}</span>}
           </p>
         )}
 
@@ -120,7 +123,7 @@ export const LarCard = memo(function LarCard({
             <span className="text-sm text-ink-mute"> /mês</span>
             {lar.natureza !== 'privado' && <span className="block text-sm text-ink-mute">Conforme os rendimentos</span>}
           </p>
-          {!centroDia && disp !== 'disponivel' && <p className="text-sm text-ink-mute">{previsao}</p>}
+          {!centroDia && (disp !== 'disponivel' || listaAFrente) && <p className="text-sm text-ink-mute">{previsao}</p>}
         </div>
       </div>
     </article>

@@ -99,7 +99,7 @@ export function Verificacao() {
             <SectionTitle
               id="pl-verificacao"
               title="Verificadas, uma a uma."
-              subtitle={`O selo não se compra, e é igual em todos os planos. ${num(verificadas)} das ${num(lares.length)} instituições do mapa já o têm.`}
+              subtitle={`O selo não se compra: as regras são as mesmas para todas as instituições. ${num(verificadas)} das ${num(lares.length)} instituições do mapa já o têm.`}
             />
           </Reveal>
         </div>

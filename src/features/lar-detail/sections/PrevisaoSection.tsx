@@ -7,7 +7,7 @@ import { FATOR_LISTA_EFETIVA } from '@/lib/forecast'
 import { num, pct, plural } from '@/lib/format'
 import { Bloco, Secao, Subtitulo } from '../Secao'
 import { GraficoAnimado, PalavrasAcesas, TiraAnimada } from '../motion'
-import { esperaEstimada, type DadosLar } from '../helpers'
+import { esperaEstimada, noLar, type DadosLar } from '../helpers'
 
 /**
  * O "clímax" da ficha: a frase-chave acende-se palavra a palavra, os meses da tira entram um a um com a
@@ -60,7 +60,7 @@ export function PrevisaoSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
           <ForecastChart
             data={previsao}
             probabilidade={est.imediata ? undefined : est.curva}
-            caption={`Previsão de ${unidade.varios} em ${lar.nome} nos próximos 12 meses`}
+            caption={`Previsão de ${unidade.varios} ${noLar(lar.nome)} nos próximos 12 meses`}
           />
         </GraficoAnimado>
       </div>

@@ -7,7 +7,7 @@ import { CircleCheck, Minus, Plus } from 'lucide-react'
 import type { Lar, TipoQuarto } from '@/types'
 import { useDB } from '@/lib/store'
 import { previsaoMensal } from '@/lib/forecast'
-import { euro, plural, tempoRelativo } from '@/lib/format'
+import { plural, tempoRelativo } from '@/lib/format'
 import { QUARTO_CURTO, QUARTO_LABEL } from '@/lib/labels'
 import { LogoMark } from '@/components/layout/Logo'
 import { ForecastChart } from '@/components/lar/ForecastChart'
@@ -103,10 +103,7 @@ export function ProductShot({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
                   <li key={q.tipo} className="flex items-center justify-between gap-3 py-3.5">
                     <div className="min-w-0">
                       <p className="font-medium text-ink">{QUARTO_CURTO[q.tipo]}</p>
-                      <p className="text-sm text-ink-mute tabular">
-                        {plural(q.total, 'lugar', 'lugares')}
-                        <span className="hidden sm:inline"> · {euro(q.precoMin)}</span>
-                      </p>
+                      <p className="text-sm text-ink-mute tabular">{plural(q.total, 'lugar', 'lugares')}</p>
                     </div>
                     <Stepper tipo={q.tipo} n={ensaio.livres[q.tipo] ?? 0} max={q.total} onChange={(d) => ensaio.mudar(q.tipo, d)} />
                   </li>

@@ -6,8 +6,11 @@
  *   * datas → ISO 8601 em UTC (como Date#toISOString no protótipo);
  *   * colunas anuláveis → campos opcionais (undefined) do lado da app;
  *   * Lar.id = instituicoes.id (o slug público usado nas rotas /lar/:id);
- *   * a cópia do perfil numa candidatura (perfil_snapshot) tem o formato de uma linha de
- *     perfis_cuidados — pode estar minimizada (só nome/idade) após o prazo de retenção.
+ *   * a cópia do perfil numa candidatura (perfil_snapshot) tem um SUBCONJUNTO das colunas de
+ *     perfis_cuidados (sem coordenadas, raio, id nem datas — ver private.snapshot_perfil) e pode
+ *     estar minimizada ({nome, idade, minimizado_em}) depois de o pedido ser cancelado/recusado:
+ *     nesse caso devolvemos PerfilMinimizado em vez de inventar grau/necessidades;
+ *   * owner_id e visualizacoes_30d não são legíveis pelos clientes: vêm de painel_instituicao().
  */
 import type {
   Candidatura,
@@ -26,7 +29,9 @@ import type {
   TipoQuarto,
   User,
 } from '@/types'
-import type { Json, Tables, TablesInsert, TablesUpdate } from './database.types'
+import type { Database, Json, Tables, TablesInsert, TablesUpdate } from './database.types'
+import type { RegisterInput } from './store'
+import { LOCALIDADES, LUGARES } from '@/data/localidades'
 
 export type InstituicaoPublicaRow = Tables<'instituicoes_publicas'>
 export type AvaliacaoPublicaRow = Omit<Tables<'avaliacoes'>, 'user_id'>
@@ -36,6 +41,7 @@ export type CandidaturaEventoRow = Tables<'candidatura_eventos'>
 export type NotificacaoRow = Tables<'notificacoes'>
 export type FavoritoRow = Tables<'favoritos'>
 export type PerfilUtilizadorRow = Tables<'perfis_utilizador'>
+export type PainelInstituicaoRow = Database['public']['Functions']['painel_instituicao']['Returns'][number]
 
 /** Colunas públicas de avaliacoes (user_id não é legível por anon/authenticated: usar sempre esta lista). */
 export const COLUNAS_AVALIACAO =
@@ -57,6 +63,8 @@ const obj = (v: Json | null | undefined): Record<string, Json | undefined> =>
 const lista = (v: Json | null | undefined): Json[] => (Array.isArray(v) ? v : [])
 const texto = (v: Json | undefined, padrao = ''): string => (typeof v === 'string' ? v : padrao)
 const opcional = <T>(v: T | null | undefined): T | undefined => (v == null ? undefined : v)
+/** Ordena por data ISO (mais antiga primeiro), comparando instantes e não texto. */
+const porData = (a: string, b: string) => Date.parse(a) - Date.parse(b)
 
 // ————————————————————————————————————————— instituições
 
@@ -73,8 +81,19 @@ export function quartosDeJson(v: Json | null | undefined): RoomOffer[] {
   })
 }
 
-/** Linha de instituicoes_publicas → Lar. As avaliações (texto) carregam-se à parte. */
-export function larDeLinha(r: InstituicaoPublicaRow, reviews: Review[] = []): Lar {
+/** Dados do dono (painel_instituicao) que a vista pública não expõe. */
+export interface DadosDoDono {
+  /** auth.uid() do gestor, quando a ficha é a da sessão atual */
+  ownerId?: string
+  visualizacoes30d?: number
+}
+
+/**
+ * Linha de instituicoes_publicas → Lar. As avaliações (texto) carregam-se à parte e ficam da mais
+ * recente para a mais antiga (como no protótipo). ownerId/visualizacoes30d só para a ficha do
+ * próprio gestor (painel_instituicao); nas restantes ficam undefined/0.
+ */
+export function larDeLinha(r: InstituicaoPublicaRow, reviews: Review[] = [], dono: DadosDoDono = {}): Lar {
   const capa = obj(r.capa)
   return {
     id: r.id ?? '',
@@ -120,24 +139,44 @@ export function larDeLinha(r: InstituicaoPublicaRow, reviews: Review[] = []): La
     },
     avaliacao: num(r.avaliacao_media),
     numAvaliacoes: num(r.num_avaliacoes),
-    reviews,
+    reviews: [...reviews].sort((a, b) => porData(b.data, a.data)),
     fundacao: num(r.fundacao, new Date().getFullYear()),
     atualizadoEm: isoObrigatorio(r.atualizado_em),
     capa: { hue: num(capa.hue as number, 152), variante: num(capa.variante as number) },
-    ownerId: opcional(r.owner_id),
-    visualizacoes30d: num(r.visualizacoes_30d),
+    ownerId: dono.ownerId,
+    visualizacoes30d: dono.visualizacoes30d ?? 0,
+  }
+}
+
+/** Resultado de painel_instituicao() (dono) → id da ficha gerida e dados internos. */
+export function painelDeLinha(r: PainelInstituicaoRow, ownerId: string) {
+  return {
+    larId: r.id,
+    publicado: r.publicado,
+    verificacao: r.verificacao_estado,
+    listaEsperaOffline: num(r.lista_espera_offline),
+    listaEsperaOnline: num(r.lista_espera_online),
+    dono: { ownerId, visualizacoes30d: num(r.visualizacoes_30d) } satisfies DadosDoDono,
   }
 }
 
 /**
- * Alterações à ficha (atualizarLar) → UPDATE em instituicoes, só com as colunas que o dono pode
- * escrever. `listaEspera` é o TOTAL na app; na BD guarda-se a parte offline (total − plataforma).
- * Quartos, id, dono, verificação, agregados e frescura não passam por aqui.
+ * Endereço do site como a ficha o aceita ("www.exemplo.pt") → com esquema, como a base de dados
+ * exige (o CHECK ^https?:// também impede ligações javascript: no href). Vazio → null.
  */
-export function larParaAtualizacao(
-  patch: Partial<Omit<Lar, 'id' | 'ownerId'>>,
-  ctx: { listaEsperaOnline?: number } = {},
-): TablesUpdate<'instituicoes'> {
+export function normalizarWebsite(v: string | null | undefined): string | null {
+  const w = v?.trim()
+  if (!w) return null
+  return /^https?:\/\//i.test(w) ? w : `https://${w}`
+}
+
+/**
+ * Alterações à ficha (atualizarLar) → UPDATE em instituicoes, só com as colunas que o dono pode
+ * escrever. Quartos, id, dono, publicação, verificação, agregados, frescura e lista de espera
+ * (`listaEspera`: só o administrador mexe nas inscrições offline) não passam por aqui.
+ * Mudar nome, morada, contactos, licença… numa ficha verificada fá-la voltar a "pendente" (servidor).
+ */
+export function larParaAtualizacao(patch: Partial<Omit<Lar, 'id' | 'ownerId'>>): TablesUpdate<'instituicoes'> {
   const u: TablesUpdate<'instituicoes'> = {}
   if (patch.nome !== undefined) u.nome = patch.nome
   if (patch.tipo !== undefined) u.tipo = patch.tipo
@@ -154,9 +193,8 @@ export function larParaAtualizacao(
   if (patch.lng !== undefined) u.lng = patch.lng
   if (patch.telefone !== undefined) u.telefone = patch.telefone || null
   if (patch.email !== undefined) u.email = patch.email || null
-  if ('website' in patch) u.website = patch.website || null
+  if ('website' in patch) u.website = normalizarWebsite(patch.website)
   if (patch.capacidade !== undefined) u.capacidade = patch.capacidade
-  if (patch.listaEspera !== undefined) u.lista_espera_offline = Math.max(0, patch.listaEspera - (ctx.listaEsperaOnline ?? 0))
   if (patch.estadiaMediaMeses !== undefined) u.estadia_media_meses = patch.estadiaMediaMeses
   if (patch.acordoSS !== undefined) u.acordo_ss = patch.acordoSS
   if (patch.incluido !== undefined) u.incluido = patch.incluido
@@ -165,9 +203,10 @@ export function larParaAtualizacao(
   if (patch.cuidados !== undefined) u.cuidados = patch.cuidados
   if (patch.comodidades !== undefined) u.comodidades = patch.comodidades
   if (patch.equipa !== undefined) {
-    u.equipa_cuidadores_por_10 = patch.equipa.cuidadoresPor10
-    u.equipa_enfermeiros = patch.equipa.enfermeiros
-    u.equipa_medico_horas_semana = patch.equipa.medicoHorasSemana
+    // cuidadores e horas de médico são numeric(4,1) na BD (aceitam "4,5" e "7,5"); enfermeiros é inteiro
+    u.equipa_cuidadores_por_10 = Math.round(patch.equipa.cuidadoresPor10 * 10) / 10
+    u.equipa_enfermeiros = Math.round(patch.equipa.enfermeiros)
+    u.equipa_medico_horas_semana = Math.round(patch.equipa.medicoHorasSemana * 10) / 10
   }
   if (patch.verificacao !== undefined) u.licenca = patch.verificacao.licenca
   if (patch.fundacao !== undefined) u.fundacao = patch.fundacao
@@ -178,6 +217,60 @@ export function larParaAtualizacao(
 /** Novo tipo de quarto (os lugares livres começam em 0 e mudam pela RPC definir_vagas). */
 export function quartoParaInsercao(larId: string, q: Pick<RoomOffer, 'tipo' | 'total' | 'precoMin' | 'precoMax'>): TablesInsert<'quartos'> {
   return { instituicao_id: larId, tipo: q.tipo, total: q.total, preco_min: q.precoMin, preco_max: q.precoMax }
+}
+
+type InstituicaoRegisto = NonNullable<RegisterInput['instituicao']>
+
+const DISTRITO_REGIAO = Object.fromEntries(LOCALIDADES.map((l) => [l.distrito, l.regiao])) as Record<Distrito, Regiao>
+
+/**
+ * Registo de uma conta 'lar' (store.register) → ficha a inserir em instituicoes, com os mesmos
+ * campos derivados do protótipo. id, dono (auth.uid()), publicação e verificação ficam a cargo do
+ * servidor: a ficha nasce por publicar e "pendente". Inserir com .select('id') (o id é gerado).
+ */
+export function larParaInsercao(
+  inst: InstituicaoRegisto,
+  conta: { email: string; telefone?: string },
+  aleatorio: () => number = Math.random,
+): TablesInsert<'instituicoes'> {
+  const lugar = LUGARES.find((l) => l.label === inst.lugar) ?? LUGARES[0]!
+  const loc = LOCALIDADES.find((l) => l.concelho === lugar.label || l.nome === lugar.label)
+  const nomeLugar = lugar.label.split(' — ')[0]!
+  const r5 = (x: number) => Math.round(x * 1e5) / 1e5 // numeric(8,5)
+  return {
+    nome: inst.nome.trim(),
+    tipo: inst.tipo,
+    natureza: inst.natureza,
+    morada: inst.morada?.trim() || '',
+    codigo_postal: loc ? `${loc.cp}-000` : null,
+    localidade: nomeLugar,
+    concelho: loc?.concelho ?? nomeLugar,
+    distrito: lugar.distrito,
+    regiao: DISTRITO_REGIAO[lugar.distrito] ?? 'Norte',
+    lat: r5(lugar.lat + 0.004),
+    lng: r5(lugar.lng + 0.004),
+    telefone: conta.telefone?.trim() || null,
+    email: conta.email.trim().toLowerCase(),
+    capacidade: capacidadeRegisto(inst),
+    estadia_media_meses: 36,
+    acordo_ss: false,
+    incluido: ['Alojamento e todas as refeições', 'Higiene pessoal e apoio diário', 'Tratamento de roupa'],
+    extras: [],
+    graus: inst.tipo === 'residencia' ? ['autonomo', 'ligeira'] : ['ligeira', 'moderada'],
+    cuidados: [],
+    comodidades: [],
+    licenca: inst.licenca.trim(),
+    fundacao: new Date().getFullYear(),
+    capa: { hue: Math.floor(aleatorio() * 360), variante: Math.floor(aleatorio() * 4) },
+  }
+}
+
+const capacidadeRegisto = (inst: InstituicaoRegisto) => Math.max(1, Math.round(inst.capacidade || 1))
+
+/** Primeiro tipo de quarto de uma ficha registada: individual, todos os lugares, preço "desde" (+20 % no máximo). */
+export function quartoInicial(larId: string, inst: InstituicaoRegisto): TablesInsert<'quartos'> {
+  const preco = Math.max(0, Math.round(inst.precoDesde || 0))
+  return quartoParaInsercao(larId, { tipo: 'individual', total: capacidadeRegisto(inst), precoMin: preco, precoMax: Math.round(preco * 1.2) })
 }
 
 /** Alteração de lugares/preços de um tipo de quarto (sem livres). */
@@ -211,9 +304,26 @@ export function reviewDeLinha(r: AvaliacaoPublicaRow): Review {
 
 // ————————————————————————————————————————— perfis de cuidados (dados de saúde)
 
-/** Linha de perfis_cuidados — ou a cópia guardada numa candidatura — → PerfilIdoso. */
+/** Cópia do perfil reduzida ao mínimo (pedido cancelado/recusado ou perfil apagado — RGPD). */
+export interface PerfilMinimizado {
+  minimizado: true
+  nome: string
+  idade: number
+  minimizadoEm: string
+}
+
+export function snapshotMinimizado(v: Json | null | undefined): boolean {
+  return typeof obj(v).minimizado_em === 'string'
+}
+
+/**
+ * Linha de perfis_cuidados — ou a cópia (não minimizada) guardada numa candidatura — → PerfilIdoso.
+ * A cópia não traz coordenadas nem raio (não são partilhados com a instituição): ficam NaN/15,
+ * para que nenhuma distância seja calculada a partir de um local inventado.
+ */
 export function perfilDeLinha(r: PerfilCuidadosRow | Json, userId?: string): PerfilIdoso {
   const o = obj(r as Json)
+  const coordenada = (v: Json | undefined) => (v == null ? Number.NaN : num(v as number))
   const quarto = texto(o.quarto, 'indiferente')
   const genero = o.genero === 'F' || o.genero === 'M' ? o.genero : undefined
   return {
@@ -227,7 +337,7 @@ export function perfilDeLinha(r: PerfilCuidadosRow | Json, userId?: string): Per
     necessidades: (Array.isArray(o.necessidades) ? o.necessidades : []) as Cuidado[],
     preferencias: (Array.isArray(o.preferencias) ? o.preferencias : []) as Comodidade[],
     quarto: (['individual', 'duplo', 'casal'].includes(quarto) ? quarto : 'indiferente') as PerfilIdoso['quarto'],
-    local: { label: texto(o.local_label), lat: num(o.local_lat as number), lng: num(o.local_lng as number) },
+    local: { label: texto(o.local_label), lat: coordenada(o.local_lat), lng: coordenada(o.local_lng) },
     raioKm: num(o.raio_km as number, 15),
     orcamentoMax: num(o.orcamento_max as number),
     urgencia: texto(o.urgencia, '1-3meses') as PerfilIdoso['urgencia'],
@@ -264,23 +374,31 @@ export function perfilParaLinha(p: Omit<PerfilIdoso, 'id' | 'userId' | 'criadoEm
 
 type EventoMinimo = Pick<CandidaturaEventoRow, 'estado' | 'nota' | 'created_at'>
 
-export function candidaturaDeLinha(r: CandidaturaRow & { candidatura_eventos?: EventoMinimo[] | null }): Candidatura {
+/** Pedido cuja cópia do perfil foi minimizada: só nome e idade; contacto só com o nome. */
+export type CandidaturaMinimizada = Omit<Candidatura, 'perfil' | 'contacto'> & {
+  perfil: PerfilMinimizado
+  contacto: { nome: string; email?: undefined; telefone?: undefined }
+}
+
+export function eCandidaturaMinimizada(c: Candidatura | CandidaturaMinimizada): c is CandidaturaMinimizada {
+  return 'minimizado' in c.perfil
+}
+
+/**
+ * Linha de candidaturas (com candidatura_eventos embutidos) → Candidatura, ou CandidaturaMinimizada
+ * se a cópia do perfil já tiver sido minimizada (use eCandidaturaMinimizada para distinguir).
+ */
+export function candidaturaDeLinha(
+  r: CandidaturaRow & { candidatura_eventos?: EventoMinimo[] | null },
+): Candidatura | CandidaturaMinimizada {
   const contacto = obj(r.contacto)
-  const perfil = perfilDeLinha(r.perfil_snapshot, r.user_id)
   const historico = [...(r.candidatura_eventos ?? [])]
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .sort((a, b) => porData(a.created_at, b.created_at))
     .map((e) => ({ data: isoObrigatorio(e.created_at), estado: e.estado as EstadoCandidatura, nota: opcional(e.nota) }))
-  return {
+  const comum = {
     id: r.id,
     larId: r.instituicao_id,
     userId: r.user_id,
-    perfilId: r.perfil_id ?? perfil.id,
-    perfil,
-    contacto: {
-      nome: texto(contacto.nome),
-      email: texto(contacto.email),
-      telefone: typeof contacto.telefone === 'string' ? contacto.telefone : undefined,
-    },
     estado: r.estado,
     posicao: opcional(r.posicao),
     mensagem: opcional(r.mensagem),
@@ -292,6 +410,27 @@ export function candidaturaDeLinha(r: CandidaturaRow & { candidatura_eventos?: E
     criadaEm: isoObrigatorio(r.created_at),
     atualizadaEm: isoObrigatorio(r.updated_at),
     historico,
+  }
+  if (snapshotMinimizado(r.perfil_snapshot)) {
+    const o = obj(r.perfil_snapshot)
+    return {
+      ...comum,
+      perfilId: r.perfil_id ?? '',
+      perfil: { minimizado: true, nome: texto(o.nome), idade: num(o.idade as number), minimizadoEm: isoObrigatorio(texto(o.minimizado_em) || null) },
+      contacto: { nome: texto(contacto.nome) },
+    }
+  }
+  const perfil = perfilDeLinha(r.perfil_snapshot, r.user_id)
+  return {
+    ...comum,
+    // a cópia não traz o id do perfil: o perfil de origem (null se entretanto foi apagado)
+    perfilId: r.perfil_id ?? '',
+    perfil: { ...perfil, id: r.perfil_id ?? '' },
+    contacto: {
+      nome: texto(contacto.nome),
+      email: texto(contacto.email),
+      telefone: typeof contacto.telefone === 'string' ? contacto.telefone : undefined,
+    },
   }
 }
 
@@ -320,7 +459,7 @@ export function favoritoDeLinha(r: FavoritoRow): Favorito {
  * perfis_utilizador + email da sessão (supabase.auth) → User. A palavra-passe é gerida pelo
  * Supabase Auth: passwordHash fica vazio (o campo só existe no modo demonstração).
  */
-export function utilizadorDeLinha(r: PerfilUtilizadorRow, email: string, larId?: string): User {
+export function utilizadorDeLinha(r: Omit<PerfilUtilizadorRow, 'demonstracao'> & { demonstracao?: boolean }, email: string, larId?: string): User {
   return {
     id: r.id,
     role: r.role,
@@ -330,5 +469,6 @@ export function utilizadorDeLinha(r: PerfilUtilizadorRow, email: string, larId?:
     telefone: opcional(r.telefone),
     criadoEm: isoObrigatorio(r.created_at),
     larId,
+    demo: r.demonstracao || undefined,
   }
 }

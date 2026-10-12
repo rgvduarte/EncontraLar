@@ -2,9 +2,8 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import type { Role } from '@/types'
 import { useDocumentTitle } from '@/lib/hooks'
-import { useCurrentUser } from '@/lib/store'
+import { useCurrentUser, useLares } from '@/lib/store'
 import { TextLink } from '@/components/ui/Button'
-import { painelPath } from '@/components/layout/Header'
 import { AccountSwitch } from './register/AccountSwitch'
 import { FamilyForm } from './register/FamilyForm'
 import { InstitutionForm } from './register/InstitutionForm'
@@ -13,7 +12,7 @@ import { PrototypeNote } from './shared/PrototypeNote'
 import { SignedInNotice } from './shared/SignedInNotice'
 import { SlideSwitch } from './shared/SlideSwitch'
 import { Appear, cascade } from './shared/Appear'
-import { isInternalPath } from './shared/redirect'
+import { destinoAposEntrar, intencaoDe, isInternalPath, motivoDoDestino } from './shared/redirect'
 
 const DESCRICAO: Record<Role, string> = {
   familia: 'Gratuita. Guarde lares, peça vaga e receba alertas.',
@@ -32,11 +31,12 @@ export default function RegisterPage() {
   }
   useDocumentTitle(tipo === 'lar' ? 'Registar instituição' : 'Criar conta')
   const user = useCurrentUser()
+  const lares = useLares()
   const voltar = params.get('voltar')
   // a conta fica com sessão iniciada antes do visto verde no botão: manter o formulário até mudar de página
   const [aCriar, setACriar] = useState(false)
 
-  if (user && !aCriar) return <SignedInNotice user={user} destino={painelPath(user.role)} contexto="registar" />
+  if (user && !aCriar) return <SignedInNotice user={user} destino={destinoAposEntrar(voltar, user.role)} contexto="registar" />
 
   const escolher = (r: Role) => {
     setTipo(r)
@@ -51,6 +51,9 @@ export default function RegisterPage() {
   }
 
   const entrar = isInternalPath(voltar) ? `/entrar?voltar=${encodeURIComponent(voltar)}` : '/entrar'
+  // a meio de uma ação (ex.: pedir vaga num lar): lembrar que, criada a conta, continua de onde estava
+  const motivo = intencaoDe(voltar) ? motivoDoDestino(voltar, lares) : null
+  const descricao = tipo === 'familia' && motivo ? `Gratuita. A seguir, pode ${motivo}.` : DESCRICAO[tipo]
 
   return (
     <AuthShell title="Criar conta">
@@ -59,8 +62,8 @@ export default function RegisterPage() {
       </Appear>
       <Appear delay={cascade(1)} variant="fade">
         <p aria-live="polite" className="mt-4 mb-8 text-center text-ink-mute sm:mb-10">
-          <span key={tipo} className="inline-block animate-[pop-in_.4s_cubic-bezier(.16,1,.3,1)_both] motion-reduce:animate-none">
-            {DESCRICAO[tipo]}
+          <span key={tipo} className="inline-block text-balance animate-[pop-in_.4s_cubic-bezier(.16,1,.3,1)_both] motion-reduce:animate-none">
+            {descricao}
           </span>
         </p>
       </Appear>

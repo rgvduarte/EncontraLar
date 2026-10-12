@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router'
 import type { Disponibilidade } from '@/types'
 import { useLares } from '@/lib/store'
 import { disponibilidade, estimarEspera, type EstimativaEspera } from '@/lib/forecast'
-import { construirEntradas, filtrar, ordenar, type Entrada } from './filtering'
+import { comVagaAgora, construirEntradas, filtrar, ordenar, type Entrada } from './filtering'
 import { centroDe, parseSearch, toSearchParams, withPatch, type SearchState } from './searchState'
 
 export interface SearchModel {
@@ -12,6 +12,7 @@ export interface SearchModel {
   entradas: Entrada[]
   /** resultados filtrados e ordenados */
   resultados: Entrada[]
+  /** resultados com vaga para quem pede hoje */
   comVaga: number
   update: (patch: Partial<SearchState>) => void
   /** substitui o estado (usado pelo "Limpar tudo") */
@@ -44,7 +45,8 @@ export function useSearch(): SearchModel {
   )
 
   const resultados = useMemo(() => ordenar(filtrar(entradas, state), state.ordem), [entradas, state])
-  const comVaga = useMemo(() => resultados.filter((e) => e.disp === 'disponivel').length, [resultados])
+  // "com vaga agora" = vaga para quem pede hoje (um lugar livre já prometido à lista de espera não conta)
+  const comVaga = useMemo(() => resultados.filter(comVagaAgora).length, [resultados])
 
   const replace = useCallback(
     (next: SearchState) => {

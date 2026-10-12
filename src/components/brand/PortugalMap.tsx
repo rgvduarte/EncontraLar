@@ -48,7 +48,8 @@ function grelha() {
 const CIDADES = [
   { nome: 'Porto', lat: 41.15, lng: -8.61, dx: -10, anchor: 'end' },
   { nome: 'Coimbra', lat: 40.21, lng: -8.43, dx: -10, anchor: 'end' },
-  { nome: 'Lisboa', lat: 38.72, lng: -9.14, dx: -10, anchor: 'end' },
+  // sobre o mar, a oeste do aglomerado de Lisboa/Sintra/Cascais (não tapa os pontos)
+  { nome: 'Lisboa', lat: 38.72, lng: -9.14, dx: -22, anchor: 'end' },
   { nome: 'Évora', lat: 38.57, lng: -7.91, dx: 10, anchor: 'start' },
   { nome: 'Faro', lat: 37.02, lng: -7.93, dx: 10, anchor: 'start' },
   { nome: 'Braga', lat: 41.55, lng: -8.42, dx: 10, anchor: 'start' },
@@ -98,8 +99,9 @@ export const PortugalMap = memo(function PortugalMap({
     <svg
       viewBox={`${PT_VIEWBOX.x} ${PT_VIEWBOX.y} ${PT_VIEWBOX.w} ${PT_VIEWBOX.h}`}
       className={cn('block h-auto w-full', className)}
-      // com pontos clicáveis é um grupo de ligações; sem interação é uma imagem
-      role={onSelect ? 'group' : 'img'}
+      // sempre uma imagem com nome: os pontos clicáveis (onSelect) são só um atalho para rato — pontos de 4–6px
+      // não são alvos de toque nem de teclado; as fichas abrem-se pelas listas e pela pesquisa
+      role="img"
       aria-label={title}
     >
       {base.map((p, i) => (
@@ -112,16 +114,6 @@ export const PortugalMap = memo(function PortugalMap({
           {b.label}
         </text>
       ))}
-
-      {labels &&
-        CIDADES.map((c) => {
-          const p = projectPT(c.lat, c.lng)
-          return (
-            <text key={c.nome} x={p.x + c.dx} y={p.y + 4} textAnchor={c.anchor} fill={text} fontSize="11.5" fontWeight="500" fontFamily="'Inter Variable', sans-serif">
-              {c.nome}
-            </text>
-          )
-        })}
 
       {pontos.map(({ lar, x, y, d }) => {
         const isAtivo = ativo === lar.id
@@ -138,9 +130,8 @@ export const PortugalMap = memo(function PortugalMap({
                   },
                   onMouseEnter: () => setHover(lar.id),
                   onMouseLeave: () => setHover(null),
-                  onFocus: () => setHover(lar.id),
-                  onBlur: () => setHover(null),
-                  'aria-label': lar.nome,
+                  tabIndex: -1,
+                  'aria-hidden': true,
                 }
               : {})}
           >
@@ -160,6 +151,31 @@ export const PortugalMap = memo(function PortugalMap({
           </Comp>
         )
       })}
+
+      {/* nomes das cidades por cima dos pontos, com contorno da cor do fundo (legíveis sobre o aglomerado) */}
+      {labels &&
+        CIDADES.map((c) => {
+          const p = projectPT(c.lat, c.lng)
+          return (
+            <text
+              key={c.nome}
+              x={p.x + c.dx}
+              y={p.y + 4}
+              textAnchor={c.anchor}
+              fill={text}
+              fontSize="11.5"
+              fontWeight="500"
+              fontFamily="'Inter Variable', sans-serif"
+              pointerEvents="none"
+              paintOrder="stroke"
+              stroke={dark ? '#000' : '#fff'}
+              strokeWidth={3}
+              strokeLinejoin="round"
+            >
+              {c.nome}
+            </text>
+          )
+        })}
 
       {ativoP && (
         <g pointerEvents="none">

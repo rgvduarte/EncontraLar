@@ -3,6 +3,42 @@ import type { FaqItem } from '../shared/Faq'
 
 export const LARES_FAQ: FaqItem[] = [
   {
+    q: 'Quanto custa?',
+    a: (
+      <>
+        <p>
+          Estar no EncontraLar é gratuito para todas as instituições, com todas as funcionalidades. Os lares privados pagam apenas uma taxa fixa
+          por cada pessoa que entra através da plataforma. IPSS e Misericórdias não pagam qualquer taxa.
+        </p>
+        <p>
+          A taxa é fixa e só é devida quando a pessoa entra; o valor é acordado no contrato. Não há mensalidade, percentagem sobre a mensalidade
+          nem custos de adesão.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'Como se sabe que a pessoa entrou através do EncontraLar?',
+    a: (
+      <p>
+        O pedido nasce na plataforma, com data. Quando a pessoa entra, a instituição marca a entrada no painel e a família confirma-a do seu
+        lado. Conta a entrada que acontece até 12 meses depois do pedido.
+      </p>
+    ),
+  },
+  {
+    q: 'Podemos pagar para aparecer primeiro?',
+    a: (
+      <p>
+        Não. Ninguém paga para aparecer primeiro e não há posições pagas: conforme a ordenação escolhida, a ordem depende da vaga, da distância,
+        do preço ou das avaliações das famílias.{' '}
+        <Link to="/como-ordenamos" className="link">
+          Ver como ordenamos
+        </Link>
+      </p>
+    ),
+  },
+  {
     q: 'Quanto tempo leva a pôr a instituição no mapa?',
     a: (
       <p>
@@ -15,8 +51,9 @@ export const LARES_FAQ: FaqItem[] = [
     q: 'Temos vagas com acordo de cooperação. Faz sentido aderir?',
     a: (
       <p>
-        Sim. Indique na ficha que tem vagas comparticipadas pela Segurança Social: as famílias que precisam de comparticipação filtram por isso.
-        A lista de espera digital ajuda a gerir as inscrições, que nestas vagas costumam ser mais longas.
+        Sim, e não paga nada: IPSS e Misericórdias estão isentas de qualquer taxa. Indique na ficha que tem vagas comparticipadas pela Segurança
+        Social: as famílias que precisam de comparticipação filtram por isso. A lista de espera digital ajuda a gerir as inscrições, que nestas
+        vagas costumam ser mais longas.
       </p>
     ),
   },

@@ -5,8 +5,11 @@
 import type { Candidatura, DB, EstadoCandidatura, Lar, PerfilIdoso, TipoQuarto, User } from '@/types'
 import { FATOR_LISTA_EFETIVA, ocupados, poissonQuantile, previsaoMensal, taxaOcupacao, taxaSaidasMensal, vagasLivres } from '@/lib/forecast'
 import { precoReferencia } from '@/lib/matching'
-import { CUIDADO_LABEL, CUIDADOS_CRITICOS, GRAU_LABEL } from '@/lib/labels'
-import { euro } from '@/lib/format'
+import { CUIDADO_FRASE, CUIDADOS_CRITICOS, GRAU_PESSOAS } from '@/lib/labels'
+import { dataLocal, euro } from '@/lib/format'
+
+// "2026-10-16" → Date local (sem o desvio de fuso de new Date('YYYY-MM-DD')); a versão comum vive em lib/format
+export { dataLocal }
 
 export const HORA_MS = 3_600_000
 export const DIA_MS = 24 * HORA_MS
@@ -19,6 +22,12 @@ export const ESTADOS_ATIVOS: EstadoCandidatura[] = ['enviada', 'em_analise', 'li
 export const naLista = (c: Candidatura) => c.estado === 'lista_espera' || c.estado === 'vaga_proposta'
 
 export const visitaPorConfirmar = (c: Candidatura) => c.visita?.estado === 'pedida' && ESTADOS_ATIVOS.includes(c.estado)
+
+/**
+ * Pedidos à espera de quem gere a casa: novos (estado "enviada") ou com uma visita por confirmar.
+ * Um pedido novo que também pede visita conta uma só vez. É o número da barra lateral e da barra de abas.
+ */
+export const pedidosPorTratar = (cands: Candidatura[]): number => cands.filter((c) => c.estado === 'enviada' || visitaPorConfirmar(c)).length
 
 export type FiltroPedidos = 'novos' | 'analise' | 'lista' | 'proposta' | 'concluidos'
 
@@ -88,10 +97,23 @@ export interface Assuntos {
   novos: Candidatura[]
   visitas: Candidatura[]
   propostas: Candidatura[]
+  /** vagas propostas que a família aceitou nos últimos dias: falta combinar a data de entrada */
+  entradas: Candidatura[]
   /** há lugares livres sem proposta e famílias da plataforma na lista */
   vagaPorPreencher: boolean
   desatualizada: boolean
   total: number
+}
+
+/** Quanto tempo uma vaga aceite fica em "Precisa da sua atenção" (para combinar a entrada). */
+export const ENTRADA_RECENTE_MS = 2 * DIA_MS
+
+/** A família aceitou a vaga proposta há pouco (o passo anterior era "vaga proposta"). */
+export function vagaAceiteHaPouco(c: Candidatura, agora = Date.now()): boolean {
+  if (c.estado !== 'aceite') return false
+  const desde = agora - new Date(c.atualizadaEm).getTime()
+  if (!(desde >= 0 && desde <= ENTRADA_RECENTE_MS)) return false
+  return c.historico.at(-2)?.estado === 'vaga_proposta'
 }
 
 export function assuntosPendentes(lar: Lar, cands: Candidatura[], agora = Date.now()): Assuntos {
@@ -102,15 +124,17 @@ export function assuntosPendentes(lar: Lar, cands: Candidatura[], agora = Date.n
     .filter(visitaPorConfirmar)
     .sort((a, b) => dataLocal(a.visita!.data, a.visita!.hora).getTime() - dataLocal(b.visita!.data, b.visita!.hora).getTime())
   const propostas = cands.filter((c) => c.estado === 'vaga_proposta')
+  const entradas = cands.filter((c) => vagaAceiteHaPouco(c, agora)).sort((a, b) => b.atualizadaEm.localeCompare(a.atualizadaEm))
   const vagaPorPreencher = vagasLivres(lar) > propostas.length && cands.some((c) => c.estado === 'lista_espera')
   const desatualizada = frescura(lar.atualizadoEm, agora) === 'desatualizada'
   return {
     novos,
     visitas,
     propostas,
+    entradas,
     vagaPorPreencher,
     desatualizada,
-    total: novos.length + visitas.length + propostas.length + Number(vagaPorPreencher) + Number(desatualizada),
+    total: novos.length + visitas.length + propostas.length + entradas.length + Number(vagaPorPreencher) + Number(desatualizada),
   }
 }
 
@@ -124,13 +148,6 @@ export function destinatariosAviso(db: DB, lar: Lar): { lista: number; seguidore
 }
 
 // ————————————————————————————————————————— datas e prazos
-
-/** "2026-10-16" → Date local (evita o desvio de fuso de new Date('YYYY-MM-DD')). */
-export function dataLocal(ymd: string, hora = '00:00'): Date {
-  const [y, m, d] = ymd.split('-').map(Number)
-  const [h, min] = hora.split(':').map(Number)
-  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1, h ?? 0, min ?? 0)
-}
 
 /** "sexta-feira, 16 de outubro, às 15:00" */
 export function textoVisita(v: { data: string; hora: string }): string {
@@ -185,7 +202,8 @@ export const nomeQuarto = (t: TipoQuarto) => NOME_QUARTO[t]
 /** Só a primeira letra em minúscula — mantém nomes próprios ("demência e Alzheimer"). */
 export const minuscula = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
 
-const grauTexto = (g: PerfilIdoso['grau']) => (g === 'autonomo' ? 'pessoas autónomas' : GRAU_LABEL[g].toLowerCase())
+/** "pessoas com dependência grave" — o grau como complemento de "admite …". */
+const grauTexto = (g: PerfilIdoso['grau']) => GRAU_PESSOAS[g]
 const listaHumana = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}`)
 
 export function verificarCompatibilidade(lar: Lar, perfil: PerfilIdoso): CompatCheck[] {
@@ -203,8 +221,8 @@ export function verificarCompatibilidade(lar: Lar, perfil: PerfilIdoso): CompatC
     criticos.length === 0
       ? { id: 'cuidados', estado: 'ok', titulo: 'Cuidados essenciais', texto: 'Não indicou cuidados críticos' }
       : faltam.length
-        ? { id: 'cuidados', estado: 'falta', titulo: 'Cuidados essenciais', texto: `Não assegura ${listaHumana(faltam.map((n) => minuscula(CUIDADO_LABEL[n])))}` }
-        : { id: 'cuidados', estado: 'ok', titulo: 'Cuidados essenciais', texto: `Assegura ${listaHumana(criticos.map((n) => minuscula(CUIDADO_LABEL[n])))}` },
+        ? { id: 'cuidados', estado: 'falta', titulo: 'Cuidados essenciais', texto: `Não assegura ${listaHumana(faltam.map((n) => CUIDADO_FRASE[n]))}` }
+        : { id: 'cuidados', estado: 'ok', titulo: 'Cuidados essenciais', texto: `Assegura ${listaHumana(criticos.map((n) => CUIDADO_FRASE[n]))}` },
   )
 
   if (perfil.quarto === 'indiferente') {

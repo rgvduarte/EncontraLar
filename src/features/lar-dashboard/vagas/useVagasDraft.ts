@@ -52,8 +52,23 @@ export function useVagasDraft(larId: string, tipo: TipoQuarto, livres: number) {
     [flush],
   )
 
-  // grava o que ficou pendente ao sair da página
+  // grava o que ficou pendente ao sair da página (mudar de secção do painel)
   useEffect(() => () => flush(), [flush])
+
+  // …e também ao recarregar, fechar o separador ou passar a app para segundo plano (o sistema pode descartá-la):
+  // nesses casos o React não desmonta. definirVagas grava no localStorage de forma síncrona, por isso termina a tempo.
+  useEffect(() => {
+    const onPageHide = () => flush()
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    window.addEventListener('pagehide', onPageHide)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pagehide', onPageHide)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [flush])
 
   return { value: draft ?? livres, set, estado, flush }
 }

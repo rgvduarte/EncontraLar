@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type RefObject } from 'react'
 import { useLenis } from '@/components/motion/SmoothScroll'
+import { subscribeScroll } from '@/lib/motion'
 import { prefereMenosMovimento } from './helpers'
 
 /**
@@ -55,19 +56,46 @@ export function useInView(ref: RefObject<Element | null>, rootMargin = '0px', ch
 }
 
 /**
- * true quando o elemento está visível ou já ficou para trás (acima do ecrã) — ex.: "já chegámos ao fim da ficha",
- * que continua verdadeiro enquanto se lê o rodapé.
+ * true quando o topo do elemento já entrou no ecrã (com `margem` px de antecedência) ou ficou para trás —
+ * ex.: "já chegámos ao fim da ficha", que continua verdadeiro enquanto se lê o rodapé.
+ * Mede a posição a cada scroll (e quando a página muda de altura) em vez de usar um IntersectionObserver:
+ * um salto direto ao fundo (tecla End, scroll programático, leitor de ecrã) passa por cima de uma sentinela
+ * sem nunca a "intersetar", e o observador não chegava a avisar.
  */
-export function useJaPassou(ref: RefObject<Element | null>, rootMargin = '0px'): boolean {
+export function useJaPassou(ref: RefObject<Element | null>, margem = 0): boolean {
   const [passou, setPassou] = useState(false)
   useEffect(() => {
+    const medir = () => {
+      const el = ref.current
+      if (el) setPassou(el.getBoundingClientRect().top < window.innerHeight + margem)
+    }
+    const sair = subscribeScroll(medir)
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(medir) : null
+    ro?.observe(document.body)
+    return () => {
+      sair()
+      ro?.disconnect()
+    }
+  }, [ref, margem])
+  return passou
+}
+
+/**
+ * Passa a true (e fica) quando o elemento chega perto do ecrã — para montar tarde o que é pesado (ex.: o mapa).
+ * Observador próprio: o useInView de lib/motion devolve true logo à entrada com movimento reduzido.
+ */
+export function useJaPerto(ref: RefObject<Element | null>, rootMargin = '800px 0px'): boolean {
+  const [perto, setPerto] = useState(() => typeof IntersectionObserver === 'undefined')
+  useEffect(() => {
     const el = ref.current
-    if (!el || typeof IntersectionObserver === 'undefined') return
-    const io = new IntersectionObserver(([e]) => setPassou(Boolean(e && (e.isIntersecting || e.boundingClientRect.top < 0))), { rootMargin })
+    if (perto || !el) return
+    const io = new IntersectionObserver(([e]) => {
+      if (e?.isIntersecting) setPerto(true)
+    }, { rootMargin })
     io.observe(el)
     return () => io.disconnect()
-  }, [ref, rootMargin])
-  return passou
+  }, [ref, rootMargin, perto])
+  return perto
 }
 
 /**

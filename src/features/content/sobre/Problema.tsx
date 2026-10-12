@@ -12,9 +12,9 @@ const AFIRMACAO =
   'Hoje, quem procura um lar decide com pressa e quase às cegas. As vagas não estão publicadas, os preços passam de boca em boca e ninguém sabe quanto tempo vai esperar.'
 
 const PROBLEMAS = [
-  { t: 'Informação desigual.', d: 'As instituições sabem o que oferecem. As famílias decidem com pressa e quase às cegas.' },
-  { t: 'Listas de espera lentas.', d: 'Inscrições em papel, telefonemas sem resposta, e ninguém sabe quanto tempo falta.' },
-  { t: 'Tudo de boca em boca.', d: 'Preços, cuidados e vagas passam de conhecido em conhecido, quando passam.' },
+  { t: 'Informação desigual.', d: 'As instituições sabem quantos lugares têm livres; as famílias só sabem se telefonarem.' },
+  { t: 'Listas de espera lentas.', d: 'Inscrições em papel e telefonemas sem resposta.' },
+  { t: 'Preços só por telefone.', d: 'Raramente por escrito, e quase nunca comparáveis.' },
   { t: 'Oferta invisível.', d: 'Boas casas com quartos livres que ninguém encontra a tempo.' },
 ] as const
 

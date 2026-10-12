@@ -9,6 +9,8 @@ import { QUARTO_TABELA, intervaloPreco, precoSocial, type DadosLar } from '../he
 
 export function PrecosSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
   const social = precoSocial(lar)
+  // sem acordo com a Segurança Social, uma IPSS/Misericórdia não calcula a comparticipação pelos rendimentos
+  const porRendimentos = social && lar.acordoSS
   const unidade = dados.centroDia ? 'lugares' : 'camas'
 
   return (
@@ -17,9 +19,11 @@ export function PrecosSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
       rotulo="Preços"
       titulo="Quanto custa, sem letra pequena"
       intro={
-        social
+        porRendimentos
           ? 'A mensalidade depende dos rendimentos. Estes são os intervalos indicados pela instituição.'
-          : 'Mensalidade por pessoa, tal como indicada pela instituição.'
+          : social
+            ? 'Intervalos indicados pela instituição. O valor de cada pessoa segue o regulamento interno.'
+            : 'Mensalidade por pessoa, tal como indicada pela instituição.'
       }
     >
       {/* tabela de preços como lista de linhas: no telemóvel empilha (tipo → preço → vagas), sem colunas apertadas */}
@@ -85,10 +89,13 @@ export function PrecosSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
       <Bloco className="mt-16 max-w-[65ch]">
         <Subtitulo>{social ? `Como se calcula numa ${NATUREZA_LABEL[lar.natureza]}` : 'Preço fixo'}</Subtitulo>
         <p className="mt-3 text-lg leading-relaxed text-ink-soft">
-          {social
-            ? 'A comparticipação familiar é uma percentagem dos rendimentos de quem vai entrar, até ao máximo da tabela. Leve o IRS e os comprovativos de pensão à primeira reunião — a instituição faz a simulação consigo.'
-            : 'A mensalidade é igual para todas as famílias, conforme o quarto e o nível de cuidados. Parte da despesa pode ser deduzida no IRS.'}{' '}
-          {lar.acordoSS ? 'Tem vagas com acordo da Segurança Social.' : 'Não tem vagas comparticipadas pela Segurança Social.'}
+          {porRendimentos
+            ? 'Tem vagas com acordo da Segurança Social: a comparticipação familiar é uma percentagem dos rendimentos de quem vai entrar, até ao máximo da tabela. Leve o IRS e os comprovativos de pensão à primeira reunião — a instituição faz a simulação consigo.'
+            : social
+              ? 'Sem acordo com a Segurança Social: o preço é definido pela instituição. Peça o regulamento interno para saber como se calcula.'
+              : lar.acordoSS
+                ? 'Nas vagas privadas, a mensalidade é igual para todas as famílias, conforme o quarto e o nível de cuidados. Também tem vagas com acordo da Segurança Social, em que a comparticipação depende dos rendimentos.'
+                : 'A mensalidade é igual para todas as famílias, conforme o quarto e o nível de cuidados. Parte da despesa pode ser deduzida no IRS. Não tem vagas comparticipadas pela Segurança Social.'}
         </p>
         <Link to="/guia#apoios" className="mt-3 inline-flex min-h-12 items-center gap-0.5 text-lg text-terra-600 hover:underline">
           Apoios e comparticipações

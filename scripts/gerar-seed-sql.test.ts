@@ -1,19 +1,20 @@
 /**
  * Gera (GERAR_SEED=1) ou verifica os ficheiros SQL de demonstração derivados de src/data/seed.ts.
- *   npm run db:seed-sql      → escreve supabase/seed.sql e supabase/demo/utilizadores-demo.sql
+ *   npm run db:seed-sql      → escreve supabase/seed.sql, supabase/demo/utilizadores-demo.sql e contas-demo.json
  *   npx vitest run           → falha se os ficheiros commitados estiverem desatualizados
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { gerarDemoSql, gerarSeedSql } from './gerar-seed-sql'
+import { gerarContasDemoJson, gerarDemoSql, gerarSeedSql } from './gerar-seed-sql'
 
 const RAIZ = fileURLToPath(new URL('..', import.meta.url))
 
 const FICHEIROS: Record<string, () => string> = {
   'supabase/seed.sql': () => gerarSeedSql(),
   'supabase/demo/utilizadores-demo.sql': () => gerarDemoSql(),
+  'supabase/demo/contas-demo.json': () => gerarContasDemoJson(),
 }
 
 describe('SQL de demonstração gerado a partir de src/data/seed.ts', () => {

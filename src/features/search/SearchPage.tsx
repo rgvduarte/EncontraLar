@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { flushSync } from 'react-dom'
+import { useLocation, useNavigationType } from 'react-router'
 import { Reveal } from '@/components/motion/Reveal'
 import { useLenis } from '@/components/motion/SmoothScroll'
 import { prefersReducedMotion } from '@/lib/motion'
@@ -18,6 +19,29 @@ import { useGeolocation } from './useGeolocation'
 import { useSearch } from './useSearch'
 import './search.css'
 
+/** Última pesquisa (caminho + query do hash): o cabeçalho e a barra de abas voltam a ela a partir de outras páginas. */
+const CHAVE_ULTIMA = 'encontralar:ultima-pesquisa'
+/** Quantos resultados estavam à vista ("Mostrar mais"), para os repor ao voltar de uma ficha. */
+const CHAVE_PAGINAS = 'encontralar:pesquisa-n'
+
+function lerPaginas(chave: string): number {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(CHAVE_PAGINAS) ?? 'null') as { chave?: string; n?: number } | null
+    if (v && v.chave === chave && typeof v.n === 'number' && v.n > PAGINA) return Math.ceil(v.n / PAGINA) * PAGINA
+  } catch {
+    /* armazenamento indisponível */
+  }
+  return PAGINA
+}
+
+function guardar(chave: string, valor: string) {
+  try {
+    sessionStorage.setItem(chave, valor)
+  } catch {
+    /* armazenamento indisponível (modo privado, bloqueado): a pesquisa funciona na mesma */
+  }
+}
+
 /**
  * /pesquisa — mapa de vagas.
  * Desktop: barra fixa (pesquisa + filtros) · lista à esquerda · mapa fixo à direita, sincronizados.
@@ -35,17 +59,29 @@ export default function SearchPage() {
   const titulo = tituloPesquisa(state)
   useDocumentTitle(titulo)
 
+  // a última pesquisa fica guardada sempre que o URL muda (para o cabeçalho e a barra de abas)
+  const { pathname, search } = useLocation()
+  useEffect(() => guardar(CHAVE_ULTIMA, pathname + search), [pathname, search])
+
+  // chave dos filtros (sem ordenação nem vista): reenquadra o mapa e repõe a paginação
+  const fitKey = useMemo(() => toSearchParams({ ...state, ordem: 'relevancia', vista: 'lista' }).toString(), [state])
+
   // ——— realces lista ↔ mapa
   const [listHoverId, setListHoverId] = useState<string | null>(null)
   const [mapHoverId, setMapHoverId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [visiveis, setVisiveis] = useState(PAGINA)
+  // ao voltar atrás (ou recarregar) a lista reabre com as páginas de "Mostrar mais" que já tinha
+  const navegacao = useNavigationType()
+  const [visiveis, setVisiveis] = useState(() => (navegacao === 'POP' ? lerPaginas(fitKey) : PAGINA))
   const scrollPendente = useRef<string | null>(null)
   const lenis = useLenis()
 
-  // chave dos filtros (sem ordenação nem vista): reenquadra o mapa e repõe a paginação
-  const fitKey = useMemo(() => toSearchParams({ ...state, ordem: 'relevancia', vista: 'lista' }).toString(), [state])
+  useEffect(() => guardar(CHAVE_PAGINAS, JSON.stringify({ chave: fitKey, n: visiveis })), [fitKey, visiveis])
+  // só quando os filtros mudam de facto (não ao abrir a página, senão a paginação reposta perdia-se)
+  const fitAnterior = useRef(fitKey)
   useEffect(() => {
+    if (fitAnterior.current === fitKey) return
+    fitAnterior.current = fitKey
     setVisiveis(PAGINA)
     setSelectedId(null)
   }, [fitKey])
@@ -157,7 +193,7 @@ export default function SearchPage() {
   const lista = (
     <>
       {state.lugarDesconhecido && (
-        <p role="status" className="el-in-up mx-5 mt-6 rounded-[1.25rem] bg-sand px-5 py-4 text-sm text-ink-soft sm:mx-6 lg:mx-8">
+        <p role="status" className="el-in-up mx-5 mt-6 rounded-[1.25rem] bg-sand px-5 py-4 text-sm text-ink-soft sm:mx-6 xl:mx-8">
           Não encontrámos «{state.lugarDesconhecido}». A mostrar todo o país — escreva o concelho ou o código postal na pesquisa.
         </p>
       )}
@@ -208,7 +244,8 @@ export default function SearchPage() {
         <div className="flex flex-1 items-stretch">
           <div className="w-[54%] shrink-0 xl:w-[44rem]">{lista}</div>
           <div className="relative min-w-0 flex-1">
-            <div className="sticky top-[calc(4rem+var(--barra))] h-[calc(100dvh-4rem-var(--barra))] py-4 pr-4">
+            {/* margem direita = a da barra de filtros e do cabeçalho (px-6 / xl:px-8): tudo alinhado à direita */}
+            <div className="sticky top-[calc(4rem+var(--barra))] h-[calc(100dvh-4rem-var(--barra))] py-4 pr-6 xl:pr-8">
               {mapa('relative h-full w-full rounded-[1.75rem]')}
             </div>
           </div>
@@ -228,7 +265,7 @@ export default function SearchPage() {
 
   return (
     <div className={cn('flex flex-1 flex-col', !vistaMapa && 'pb-24')} style={estilo}>
-      <MobileBar ref={barRef} model={model} geo={geo} onFiltros={() => setModal('todos')} />
+      <MobileBar ref={barRef} model={model} geo={geo} onFiltros={() => setModal('todos')} recolhivel={!vistaMapa} />
       {vistaMapa ? (
         <>
           <h1 className="sr-only">{titulo}</h1>

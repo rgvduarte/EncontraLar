@@ -24,6 +24,8 @@ import { LOCALIDADES, LUGARES } from '@/data/localidades'
 import { hashPassword } from './hash'
 import { uid } from './random'
 import { ESTADO_CANDIDATURA_LABEL } from './labels'
+import { diaPorExtenso, horaPt } from './format'
+import { aoLar, doLar, larPlural, maiuscula, noLar, oLar } from './artigos'
 
 const DB_KEY = 'encontralar:db'
 const SESSION_KEY = 'encontralar:sessao'
@@ -46,19 +48,72 @@ function safeSet(storage: () => Storage, key: string, value: string | null) {
   }
 }
 
-function load(): DB {
-  const raw = safeGet(() => localStorage, DB_KEY)
+/** Os dados de demonstração "envelhecem": vagas atualizadas "há 10 dias", visitas no passado. */
+const IDADE_MAX_SEED_MS = 12 * 3_600_000
+
+/** Confirma a forma dos dados guardados (um campo em falta faria a app rebentar logo no cabeçalho). */
+function dbValida(d: unknown): d is DB {
+  const x = d as Partial<DB> | null
+  return (
+    !!x &&
+    x.version === SEED_VERSION &&
+    Array.isArray(x.users) &&
+    Array.isArray(x.lares) &&
+    Array.isArray(x.perfis) &&
+    Array.isArray(x.candidaturas) &&
+    Array.isArray(x.favoritos) &&
+    Array.isArray(x.notificacoes) &&
+    x.lares.every((l) => !!l && Array.isArray(l.quartos) && Array.isArray(l.historicoSaidas))
+  )
+}
+
+/**
+ * Junta a um seed acabado de gerar os registos criados neste navegador (contas, instituições,
+ * perfis, pedidos, notificações e favoritos que não fazem parte do seed). As alterações feitas a
+ * registos do seed perdem-se, como em "Repor dados"; os ids do seed são estáveis (gerador determinístico).
+ */
+export function rebaseDemo(antigo: DB, fresco: DB = createSeed()): DB {
+  const juntar = <T extends { id: string }>(velhos: T[], novos: T[]) => {
+    const ids = new Set(novos.map((x) => x.id))
+    return [...novos, ...velhos.filter((x) => x && !ids.has(x.id))]
+  }
+  const chave = (f: Favorito) => `${f.userId}|${f.larId}`
+  const favSeed = new Set(fresco.favoritos.map(chave))
+  return {
+    ...fresco,
+    users: juntar(antigo.users, fresco.users),
+    lares: juntar(antigo.lares, fresco.lares),
+    perfis: juntar(antigo.perfis, fresco.perfis),
+    candidaturas: juntar(antigo.candidaturas, fresco.candidaturas),
+    notificacoes: juntar(antigo.notificacoes, fresco.notificacoes),
+    favoritos: [...fresco.favoritos, ...antigo.favoritos.filter((f) => f && !favSeed.has(chave(f)))],
+  }
+}
+
+/**
+ * Lê a base de dados guardada. Devolve um seed novo se não houver dados válidos, e "refresca" o seed
+ * (mantendo o que o visitante criou) quando tem mais de 12 horas.
+ */
+export function lerDB(raw: string | null, agora = Date.now()): { db: DB; mudou: boolean } {
   if (raw) {
     try {
-      const parsed = JSON.parse(raw) as DB
-      if (parsed.version === SEED_VERSION && Array.isArray(parsed.lares)) return parsed
+      const parsed: unknown = JSON.parse(raw)
+      if (dbValida(parsed)) {
+        const idade = agora - Date.parse(parsed.seededAt)
+        if (idade >= 0 && idade <= IDADE_MAX_SEED_MS) return { db: parsed, mudou: false }
+        return { db: rebaseDemo(parsed, createSeed(agora)), mudou: true }
+      }
     } catch {
       /* dados corrompidos → novo seed */
     }
   }
-  const seed = createSeed()
-  safeSet(() => localStorage, DB_KEY, JSON.stringify(seed))
-  return seed
+  return { db: createSeed(agora), mudou: true }
+}
+
+function load(): DB {
+  const { db: lido, mudou } = lerDB(safeGet(() => localStorage, DB_KEY))
+  if (mudou) safeSet(() => localStorage, DB_KEY, JSON.stringify(lido))
+  return lido
 }
 
 let db: DB = load()
@@ -84,8 +139,8 @@ if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key === DB_KEY && e.newValue) {
       try {
-        const parsed = JSON.parse(e.newValue) as DB
-        if (parsed.version === SEED_VERSION) {
+        const parsed: unknown = JSON.parse(e.newValue)
+        if (dbValida(parsed)) {
           db = parsed
           emit()
         }
@@ -97,6 +152,9 @@ if (typeof window !== 'undefined') {
 }
 
 const nowIso = () => new Date().toISOString()
+
+/** Notificações da instituição abrem o pedido em causa, não o resumo genérico. */
+const linkPedido = (candidaturaId: string) => `/gestao/pedidos?pedido=${encodeURIComponent(candidaturaId)}`
 
 // ————————————————————————————————————————— hooks de leitura
 
@@ -292,7 +350,8 @@ export function register(input: RegisterInput): AuthResult {
       avaliacao: 0,
       numAvaliacoes: 0,
       reviews: [],
-      fundacao: new Date().getFullYear(),
+      // o registo não pergunta o ano de fundação: 0 = por indicar (a ficha esconde-o)
+      fundacao: 0,
       atualizadoEm: nowIso(),
       capa: { hue: Math.floor(Math.random() * 360), variante: Math.floor(Math.random() * 4) },
       ownerId: user.id,
@@ -464,7 +523,7 @@ export function candidatar(input: CandidatarInput): Candidatura | null {
         texto: `${user.nome} enviou um pedido para ${perfil.nome} (${perfil.idade} anos).${input.visita ? ' Pediu também uma visita.' : ''}`,
         candidaturaId: c.id,
         larId: lar.id,
-        link: '/gestao',
+        link: linkPedido(c.id),
       }),
     )
   }
@@ -482,10 +541,10 @@ export function pedirVisita(candidaturaId: string, data: string, hora: string) {
           userId: lar.ownerId,
           tipo: 'visita',
           titulo: 'Pedido de visita',
-          texto: `${c.contacto.nome} pediu uma visita para ${new Date(data).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}, às ${hora}.`,
+          texto: `${c.contacto.nome} pediu uma visita para ${diaPorExtenso(data)}, às ${horaPt(hora)}.`,
           candidaturaId: c.id,
           larId: c.larId,
-          link: '/gestao',
+          link: linkPedido(c.id),
         }),
       ]
     : []
@@ -522,7 +581,7 @@ export function cancelarCandidatura(id: string) {
         texto: `${c.contacto.nome} cancelou o pedido para ${c.perfil.nome}.`,
         candidaturaId: c.id,
         larId: c.larId,
-        link: '/gestao',
+        link: linkPedido(c.id),
       }),
     ]
   }
@@ -577,7 +636,7 @@ export function responderVaga(id: string, aceitar: boolean) {
           : `${c.contacto.nome} recusou a vaga proposta para ${c.perfil.nome}. Pode propô-la à próxima pessoa da lista.`,
         candidaturaId: c.id,
         larId: c.larId,
-        link: '/gestao',
+        link: linkPedido(c.id),
       }),
     ]
   }
@@ -613,6 +672,7 @@ export function confirmarVagasAtualizadas(larId: string) {
 /** Notifica famílias que seguem a instituição e as que estão em lista de espera. Devolve nº de famílias avisadas. */
 function avisarNovaVaga(state: DB, lar: Lar, tipo: TipoQuarto): { state: DB; avisadas: number } {
   const destinatarios = new Map<string, Notificacao>()
+  const quarto = `quarto ${tipo === 'casal' ? 'de casal' : tipo}`
   for (const c of state.candidaturas) {
     if (c.larId === lar.id && c.estado === 'lista_espera') {
       destinatarios.set(
@@ -621,7 +681,7 @@ function avisarNovaVaga(state: DB, lar: Lar, tipo: TipoQuarto): { state: DB; avi
           userId: c.userId,
           tipo: 'vaga',
           titulo: 'Abriu uma vaga onde está inscrito(a)',
-          texto: `${lar.nome} tem uma nova vaga (quarto ${tipo === 'casal' ? 'de casal' : tipo}). A instituição contacta as famílias pela ordem da lista — está na posição ${c.posicao ?? '—'}.`,
+          texto: `Abriu uma vaga ${noLar(lar.nome)} (${quarto}). A instituição contacta as famílias pela ordem da lista${c.posicao != null ? `: ${c.perfil.nome} está na posição ${c.posicao}` : ''}.`,
           larId: lar.id,
           candidaturaId: c.id,
           link: '/familia',
@@ -637,7 +697,7 @@ function avisarNovaVaga(state: DB, lar: Lar, tipo: TipoQuarto): { state: DB; avi
           userId: f.userId,
           tipo: 'vaga',
           titulo: 'Nova vaga disponível',
-          texto: `${lar.nome} indicou que tem uma vaga livre (quarto ${tipo === 'casal' ? 'de casal' : tipo}). Contacte a instituição se ainda tiver interesse.`,
+          texto: `Há uma vaga livre ${noLar(lar.nome)} (${quarto}). Contacte a instituição se ainda tiver interesse.`,
           larId: lar.id,
           link: `/lar/${lar.id}`,
         }),
@@ -738,12 +798,14 @@ export function atualizarCandidatura(id: string, estado: EstadoCandidatura, nota
     ),
   }
 
+  const nome = c.perfil.nome
+  const inscrito = c.perfil.genero === 'F' ? 'inscrita' : c.perfil.genero === 'M' ? 'inscrito' : 'inscrito(a)'
   const textos: Partial<Record<EstadoCandidatura, string>> = {
-    em_analise: `${lar.nome} está a analisar o pedido para ${c.perfil.nome}.`,
-    lista_espera: `${lar.nome} inscreveu ${c.perfil.nome} na lista de espera (posição ${posicao}).`,
-    vaga_proposta: `${lar.nome} tem uma vaga para ${c.perfil.nome}! Responda nas próximas 48 horas.`,
-    aceite: `A entrada de ${c.perfil.nome} em ${lar.nome} está confirmada.`,
-    recusada: `${lar.nome} não tem, neste momento, condições para receber ${c.perfil.nome}.`,
+    em_analise: `O pedido para ${nome} está em análise ${noLar(lar.nome)}.`,
+    lista_espera: `${nome} ficou ${inscrito} na lista de espera ${doLar(lar.nome)}${posicao != null ? ` (posição ${posicao})` : ''}.`,
+    vaga_proposta: `Há uma vaga ${noLar(lar.nome)} para ${nome}. Responda nas próximas 48 horas.`,
+    aceite: `A entrada de ${nome} ${noLar(lar.nome)} está confirmada.`,
+    recusada: `${maiuscula(oLar(lar.nome))} não ${larPlural(lar.nome) ? 'têm' : 'tem'}, neste momento, condições para receber ${nome}.`,
   }
   state = {
     ...state,
@@ -778,7 +840,7 @@ export function confirmarVisita(id: string) {
         userId: c.userId,
         tipo: 'visita',
         titulo: 'Visita confirmada',
-        texto: `A visita a ${lar?.nome ?? 'instituição'} ficou confirmada para ${new Date(c.visita.data).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}, às ${c.visita.hora}.`,
+        texto: `A visita ${lar ? aoLar(lar.nome) : 'à instituição'} ficou confirmada para ${diaPorExtenso(c.visita.data)}, às ${horaPt(c.visita.hora)}.`,
         larId: c.larId,
         candidaturaId: c.id,
         link: '/familia',
@@ -787,9 +849,14 @@ export function confirmarVisita(id: string) {
   })
 }
 
-/** Repõe os dados de demonstração (mantém a sessão se o utilizador ainda existir). */
-export function resetDemo() {
+/**
+ * Repõe os dados de demonstração (mantém a sessão se o utilizador ainda existir).
+ * `contaRemovida` = a conta com sessão iniciada não fazia parte do exemplo e foi apagada.
+ */
+export function resetDemo(): { contaRemovida: boolean } {
   const seed = createSeed()
   commit(seed)
-  if (sessionUserId && !seed.users.some((u) => u.id === sessionUserId)) setSession(null)
+  const contaRemovida = !!sessionUserId && !seed.users.some((u) => u.id === sessionUserId)
+  if (contaRemovida) setSession(null)
+  return { contaRemovida }
 }

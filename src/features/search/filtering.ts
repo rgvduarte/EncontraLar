@@ -2,7 +2,7 @@
  * Filtragem, ordenação, divisão da lista e sugestões de "alívio" de filtros — funções puras.
  */
 import type { Disponibilidade, Lar } from '@/types'
-import type { EstimativaEspera } from '@/lib/forecast'
+import { vagaParaNovos, type EstimativaEspera } from '@/lib/forecast'
 import { distanceKm, type LatLng } from '@/lib/geo'
 import { CUIDADO_LABEL, GRAU_LABEL, NATUREZA_LABEL } from '@/lib/labels'
 import { euro } from '@/lib/format'
@@ -15,17 +15,39 @@ import {
   type Local,
   type Ordem,
   type SearchState,
+  VAGA_LABEL,
 } from './searchState'
 
 export interface Entrada {
   lar: Lar
   est: EstimativaEspera
+  /** estado indicado pela instituição (cor do marcador e do cartão) */
   disp: Disponibilidade
+  /**
+   * Estado para quem pede hoje: um lugar livre que deverá ir para a lista de espera não é "vaga agora"
+   * (conta como em breve ou lista de espera, conforme a previsão). Usado nos filtros, grupos e contagens.
+   */
+  novos: Disponibilidade
   /** distância ao centro da pesquisa (quando há centro) */
   distanciaKm?: number
 }
 
 export const DISP_ORDEM: Record<Disponibilidade, number> = { disponivel: 0, breve: 1, espera: 2 }
+
+/** Disponibilidade para um pedido feito hoje (ver `Entrada.novos`). */
+export function dispParaNovos(lar: Lar, est: EstimativaEspera): Disponibilidade {
+  if (vagaParaNovos(lar, est)) return 'disponivel'
+  return est.p90 >= 0.5 ? 'breve' : 'espera'
+}
+
+/** Tem vaga para quem pede hoje ("Com vaga agora"). */
+export const comVagaAgora = (e: Pick<Entrada, 'novos'>) => e.novos === 'disponivel'
+
+/** Lugar livre, mas já prometido a quem está na lista de espera. */
+export const livreComLista = (e: Pick<Entrada, 'disp' | 'novos'>) => e.disp === 'disponivel' && e.novos !== 'disponivel'
+
+/** Cor a mostrar no mapa — a mesma do cartão: lugar livre com lista à frente aparece a laranja ("em breve"). */
+export const dispVisivel = (e: Pick<Entrada, 'disp' | 'novos'>): Disponibilidade => (livreComLista(e) ? 'breve' : e.disp)
 
 export function construirEntradas(
   lares: Lar[],
@@ -34,7 +56,7 @@ export function construirEntradas(
 ): Entrada[] {
   return lares.map((lar) => {
     const p = previsoes.get(lar.id)!
-    return { lar, est: p.est, disp: p.disp, distanciaKm: centro ? distanceKm(centro, lar) : undefined }
+    return { lar, est: p.est, disp: p.disp, novos: dispParaNovos(lar, p.est), distanciaKm: centro ? distanceKm(centro, lar) : undefined }
   })
 }
 
@@ -56,8 +78,8 @@ export function noLocal(e: Entrada, local: Local, raio: number): boolean {
 export function passaFiltros(e: Entrada, f: Filtros): boolean {
   const { lar } = e
   if (f.tipos.length && !f.tipos.includes(lar.tipo)) return false
-  if (f.vaga === 'agora' && e.disp !== 'disponivel') return false
-  if (f.vaga === 'breve' && e.disp === 'espera') return false
+  if (f.vaga === 'agora' && e.novos !== 'disponivel') return false
+  if (f.vaga === 'breve' && e.novos === 'espera') return false
   if (f.max != null && lar.mensalidadeMin > f.max) return false
   if (f.grau && !lar.graus.includes(f.grau)) return false
   if (f.cuidados.length && !f.cuidados.every((c) => lar.cuidados.includes(c))) return false
@@ -80,7 +102,7 @@ const espera = (e: Entrada) => (e.est.imediata ? 0 : (e.est.diasMediana ?? 10_00
 export function ordenar(lista: Entrada[], ordem: Ordem): Entrada[] {
   const arr = [...lista]
   const relevancia = (a: Entrada, b: Entrada) =>
-    DISP_ORDEM[a.disp] - DISP_ORDEM[b.disp] ||
+    DISP_ORDEM[a.novos] - DISP_ORDEM[b.novos] ||
     b.lar.avaliacao - a.lar.avaliacao ||
     b.lar.atualizadoEm.localeCompare(a.lar.atualizadoEm)
   switch (ordem) {
@@ -113,10 +135,10 @@ export interface Grupo {
  */
 export function dividir(visiveis: Entrada[], todos: Entrada[], ordem: Ordem): Grupo[] | null {
   if (ordem !== 'relevancia') return null
-  const nAgora = todos.filter((e) => e.disp === 'disponivel').length
+  const nAgora = todos.filter(comVagaAgora).length
   if (nAgora === 0 || nAgora === todos.length) return null
-  const agora = visiveis.filter((e) => e.disp === 'disponivel')
-  const resto = visiveis.filter((e) => e.disp !== 'disponivel')
+  const agora = visiveis.filter(comVagaAgora)
+  const resto = visiveis.filter((e) => !comVagaAgora(e))
   const grupos: Grupo[] = [{ id: 'agora', titulo: 'Com vaga agora', itens: agora, total: nAgora }]
   if (resto.length) grupos.push({ id: 'resto', titulo: 'Sem vaga hoje', itens: resto, total: todos.length - nAgora })
   return grupos
@@ -150,7 +172,7 @@ export function calcularAlivios(entradas: Entrada[], s: SearchState): Alivio[] {
     if (maior) add('raio', `Alargar o raio para ${maior} km`, { raio: maior })
   }
   if (s.vaga === 'agora') add('vaga-breve', 'Incluir vagas previstas em breve', { vaga: 'breve' })
-  if (s.vaga) add('vaga', `Retirar «${s.vaga === 'agora' ? 'Com vaga agora' : 'Vaga em breve'}»`, { vaga: null })
+  if (s.vaga) add('vaga', `Retirar «${VAGA_LABEL[s.vaga]}»`, { vaga: null })
   if (s.max != null) {
     const degraus = [800, 1000, 1200, 1500, 1800, 2000, 2500, 3000, 4000].filter((v) => v > s.max!)
     const sobe = degraus.find((v) => conta({ max: v }) > 0)

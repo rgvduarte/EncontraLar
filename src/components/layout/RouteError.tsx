@@ -6,6 +6,23 @@ import { Button, ButtonLink } from '@/components/ui/Button'
 const CHAVE = 'encontralar:recarregado'
 
 /**
+ * Último recurso quando são os dados guardados neste navegador que fazem a página falhar:
+ * apaga tudo o que é do EncontraLar (dados de demonstração, sessão, rascunhos) e recarrega.
+ */
+function reporDados() {
+  for (const armazem of [() => localStorage, () => sessionStorage]) {
+    try {
+      const s = armazem()
+      const chaves = Array.from({ length: s.length }, (_, i) => s.key(i)).filter((k): k is string => !!k && k.startsWith('encontralar:'))
+      chaves.forEach((k) => s.removeItem(k))
+    } catch {
+      /* armazenamento bloqueado: nada a apagar */
+    }
+  }
+  location.reload()
+}
+
+/**
  * Erro dentro de uma página (mantém cabeçalho e navegação).
  * Se for um módulo de página que já não existe (nova versão publicada), recarrega uma vez automaticamente.
  */
@@ -41,6 +58,14 @@ export function RouteError() {
           Ir para o início
         </ButtonLink>
       </div>
+      {!versaoNova && (
+        <div className="mt-10 flex max-w-md flex-col items-center gap-2">
+          <p className="text-sm text-ink-mute">Se o erro se repetir, repor os dados de demonstração resolve-o. Apaga as alterações feitas neste navegador.</p>
+          <Button variant="ghost" onClick={reporDados}>
+            Repor dados de demonstração
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

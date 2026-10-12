@@ -11,9 +11,13 @@ import { PerfilRapidoForm } from './PerfilRapidoForm'
 import { CompatibilidadeStep } from './CompatibilidadeStep'
 import { MensagemStep, type DadosEnvio } from './MensagemStep'
 import { SucessoStep } from './SucessoStep'
+import { OLar, oLar } from '../helpers'
 
 type Passo = 'perfil' | 'compat' | 'mensagem' | 'sucesso'
-const ETAPAS: Exclude<Passo, 'sucesso'>[] = ['perfil', 'compat', 'mensagem']
+type Etapa = Exclude<Passo, 'sucesso'>
+const ETAPAS: Etapa[] = ['perfil', 'compat', 'mensagem']
+/** Quem já tem perfil salta esse passo: vê "Passo 1 de 2", não "Passo 2 de 3". */
+const ETAPAS_SEM_PERFIL: Etapa[] = ['compat', 'mensagem']
 const ATIVOS: Candidatura['estado'][] = ['enviada', 'em_analise', 'lista_espera', 'vaga_proposta', 'aceite']
 /** Botões do rodapé maiores na folha inferior do telemóvel (alvo confortável para o polegar). */
 const GRANDE = 'max-sm:min-h-14 max-sm:text-lg'
@@ -22,14 +26,14 @@ const GRANDE = 'max-sm:min-h-14 max-sm:text-lg'
 type Vista = Passo | 'entrar' | 'so-familias'
 const ORDEM: Record<Vista, number> = { entrar: -1, 'so-familias': -1, perfil: 0, compat: 1, mensagem: 2, sucesso: 3 }
 
-/** Progresso discreto: três traços finos que enchem (só transform) + "Passo 2 de 3". */
-function Etapas({ atual }: { atual: Passo }) {
-  const idx = ETAPAS.indexOf(atual as (typeof ETAPAS)[number])
+/** Progresso discreto: traços finos que enchem (só transform) + "Passo 1 de 2". */
+function Etapas({ atual, etapas }: { atual: Passo; etapas: Etapa[] }) {
+  const idx = etapas.indexOf(atual as Etapa)
   if (idx < 0) return null
   return (
     <div className="mb-7">
       <div aria-hidden className="flex gap-1.5">
-        {ETAPAS.map((e, i) => (
+        {etapas.map((e, i) => (
           <span key={e} className="h-1 flex-1 overflow-hidden rounded-full bg-sand-deep">
             <span
               className={cn(
@@ -41,7 +45,7 @@ function Etapas({ atual }: { atual: Passo }) {
         ))}
       </div>
       <p className="mt-2 text-sm text-ink-mute">
-        Passo {idx + 1} de {ETAPAS.length}
+        Passo {idx + 1} de {etapas.length}
       </p>
     </div>
   )
@@ -74,6 +78,12 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
   const passo: Passo = escolhido ?? (perfis.length ? 'compat' : 'perfil')
   const corpo = useRef<HTMLDivElement>(null)
 
+  // número de passos fixado quando a família chega ao pedido (a sessão pode começar dentro do modal):
+  // com perfil já criado são dois passos; criar um perfil novo a meio volta a mostrar três
+  const [comPerfil, setComPerfil] = useState<boolean | null>(null)
+  if (user?.role === 'familia' && comPerfil === null) setComPerfil(perfis.length === 0)
+  const etapas = comPerfil || passo === 'perfil' ? ETAPAS : ETAPAS_SEM_PERFIL
+
   // transição entre passos: desliza para a esquerda ao avançar e para a direita ao voltar
   const vista: Vista = !user ? 'entrar' : user.role === 'lar' ? 'so-familias' : passo === 'perfil' || !perfil ? 'perfil' : passo
   const [vistaAnterior, setVistaAnterior] = useState(vista)
@@ -88,7 +98,8 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
     corpo.current?.closest('.overflow-y-auto')?.scrollTo({ top: 0 })
   }, [passo])
 
-  const voltar = encodeURIComponent(location.pathname)
+  // depois de entrar ou criar conta, a ficha reabre este pedido (LarPage lê ?acao=)
+  const voltar = encodeURIComponent(`${location.pathname}?acao=${comVisita ? 'visita' : 'pedir'}`)
   const primeiro = perfil?.nome.split(' ')[0]
 
   const enviar = (d: DadosEnvio) => {
@@ -100,7 +111,7 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
     }
     setEnviada(c)
     setPasso('sucesso')
-    toast.success('Pedido enviado', `${lar.nome} recebeu o pedido para ${primeiro}.`)
+    toast.success('Pedido enviado', `${OLar(lar.nome)} recebeu o pedido para ${primeiro}.`)
   }
 
   let titulo: ReactNode
@@ -111,7 +122,7 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
   if (!user) {
     titulo = comVisita ? 'Entre para marcar visita' : 'Entre para pedir vaga'
     descricao = 'É gratuito e demora um minuto.'
-    conteudo = <AuthGate lar={lar} />
+    conteudo = <AuthGate lar={lar} comVisita={comVisita} />
     rodape = (
       <>
         <ButtonLink className={GRANDE} to={`/registar?voltar=${voltar}`} variant="subtle">
@@ -158,7 +169,7 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
   } else if (passo === 'compat') {
     const ja = ativas.get(perfil.id)
     titulo = comVisita ? 'Marcar visita' : 'Pedir vaga'
-    descricao = `Veja se ${lar.nome} responde ao que ${primeiro} precisa.`
+    descricao = `Veja se ${oLar(lar.nome)} responde ao que ${primeiro} precisa.`
     conteudo = (
       <CompatibilidadeStep
         lar={lar}
@@ -222,7 +233,7 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
       size="lg"
     >
       <div ref={corpo}>
-        {(vista === 'perfil' || vista === 'compat' || vista === 'mensagem') && <Etapas atual={vista} />}
+        {(vista === 'perfil' || vista === 'compat' || vista === 'mensagem') && <Etapas atual={vista} etapas={etapas} />}
         {/* a margem negativa deixa ver os anéis de foco; o recorte horizontal evita barra de scroll durante o deslize */}
         <div className="-mx-2 overflow-x-clip px-2">
           <div key={vista} data-dir={direcao ?? undefined} className={cn(animar && 'ficha-passo')}>

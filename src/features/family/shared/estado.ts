@@ -94,9 +94,20 @@ export function estimativaPessoal(lar: Lar, posicao?: number): EstimativaPessoal
   return { est, texto, pessoal: posicao != null }
 }
 
-/** Contração "em" + artigo para nomes de instituições: "na Casa…", "no Lar…", "nas Residências…". */
-export function emLar(nome: string): string {
-  if (/^Residências\b/.test(nome)) return `nas ${nome}`
-  if (/^(Casa|Residência|Quinta|Santa Casa)\b/.test(nome)) return `na ${nome}`
-  return `no ${nome}`
+/** Género e número do nome de uma instituição: "as Residências…", "a Casa…", "o Lar…" (masculino por omissão). */
+function generoLar(nome: string): 'f' | 'fp' | 'm' {
+  if (/^Residências\b/.test(nome)) return 'fp'
+  if (/^(Casa|Residência|Quinta|Santa Casa|Fundação|Associação|Instituição|Misericórdia|Unidade|Vila)\b/.test(nome)) return 'f'
+  return 'm'
 }
+
+const contrair = (formas: Record<'f' | 'fp' | 'm', string>) => (nome: string) => `${formas[generoLar(nome)]} ${nome}`
+
+/** Contração "em" + artigo para nomes de instituições: "na Casa…", "no Lar…", "nas Residências…". */
+export const emLar = contrair({ fp: 'nas', f: 'na', m: 'no' })
+/** "a" + artigo: "ao Lar…", "à Casa…", "às Residências…". */
+export const aoLar = contrair({ fp: 'às', f: 'à', m: 'ao' })
+/** "de" + artigo: "do Lar…", "da Casa…", "das Residências…". */
+export const doLar = contrair({ fp: 'das', f: 'da', m: 'do' })
+/** Só o artigo: "o Lar…", "a Casa…", "as Residências…". */
+export const oLar = contrair({ fp: 'as', f: 'a', m: 'o' })

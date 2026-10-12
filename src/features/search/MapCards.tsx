@@ -8,7 +8,7 @@ import { resumoPrevisao } from '@/lib/forecast'
 import { TIPO_LABEL } from '@/lib/labels'
 import { euro, km } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import type { Entrada } from './filtering'
+import { comVagaAgora, type Entrada } from './filtering'
 
 function Preco({ e }: { e: Entrada }) {
   const { lar } = e
@@ -42,8 +42,9 @@ export function MapPopupContent({ e }: { e: Entrada }) {
         <p className="mt-1 text-lg leading-snug font-semibold tracking-[-0.015em]">{lar.nome}</p>
       </div>
       <div className="flex flex-col items-start gap-1.5">
-        <AvailabilityBadge lar={lar} estado={e.disp} />
-        {e.disp !== 'disponivel' && lar.tipo !== 'centro_dia' && <p className="text-sm text-ink-mute">{resumoPrevisao(lar, e.est)}</p>}
+        <AvailabilityBadge lar={lar} estado={e.disp} est={e.est} />
+        {/* sem vaga para quem pede hoje (inclui lugar livre com lista à frente): mostrar a espera estimada */}
+        {!comVagaAgora(e) && lar.tipo !== 'centro_dia' && <p className="text-sm text-ink-mute">{resumoPrevisao(lar, e.est)}</p>}
       </div>
       <div className="flex items-end justify-between gap-3">
         <Preco e={e} />
@@ -135,7 +136,7 @@ export function MapPeekCard({ e, saindo, onClose }: { e: Entrada; saindo?: boole
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-1 pr-11">
           <p className="text-lg leading-snug font-semibold tracking-[-0.015em] text-ink">{lar.nome}</p>
           <Linha e={e} />
-          <AvailabilityBadge lar={lar} estado={e.disp} className="self-start" />
+          <AvailabilityBadge lar={lar} estado={e.disp} est={e.est} className="self-start" />
           <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
             <Preco e={e} />
             <Link to={`/lar/${lar.id}`} className={buttonClasses('primary', 'sm', 'min-h-12 px-5 transition-[background-color,scale] active:scale-[0.97]')}>

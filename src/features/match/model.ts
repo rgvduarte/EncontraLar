@@ -30,7 +30,7 @@ export interface Rascunho {
   semNecessidades: boolean
   local: Local | null
   raioKm: number
-  /** null = ainda não visitou o passo do orçamento */
+  /** null = ainda não respondeu; ORCAMENTO_MAX = "Ainda não sei" (sem limite) */
   orcamentoMax: number | null
   precisaAcordoSS: boolean
   quarto: Quarto
@@ -73,6 +73,8 @@ export const RAIO_MAX = 50
 export const ORCAMENTO_MIN = 300
 export const ORCAMENTO_MAX = 5000
 export const ORCAMENTO_PASSO = 50
+/** "Ainda não sei / depende dos rendimentos": sem limite de preço. */
+export const semLimiteOrcamento = (v: number | null) => v != null && v >= ORCAMENTO_MAX
 export const IDADE_MIN = 40
 export const IDADE_MAX = 115
 
@@ -98,7 +100,7 @@ export function idadeNum(r: Pick<Rascunho, 'idade'>): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-export type Erros = Partial<Record<'relacao' | 'idade' | 'grau' | 'necessidades' | 'local' | 'urgencia', string>>
+export type Erros = Partial<Record<'relacao' | 'idade' | 'grau' | 'necessidades' | 'local' | 'orcamento' | 'urgencia', string>>
 
 export function validarPasso(passo: number, r: Rascunho): Erros {
   const e: Erros = {}
@@ -119,6 +121,10 @@ export function validarPasso(passo: number, r: Rascunho): Erros {
     case 3:
       if (!r.local) e.local = 'Escolha uma localidade da lista, ou toque em "Perto de mim".'
       break
+    case 4:
+      // nunca vem pré-respondido: a mediana da zona é só uma referência
+      if (r.orcamentoMax == null) e.orcamento = 'Ajuste o valor ou escolha «Ainda não sei».'
+      break
     case 5:
       if (!r.urgencia) e.urgencia = 'Escolha para quando precisa de vaga.'
       break
@@ -126,8 +132,7 @@ export function validarPasso(passo: number, r: Rascunho): Erros {
   return e
 }
 
-export const passoValido = (passo: number, r: Rascunho) =>
-  Object.keys(validarPasso(passo, r)).length === 0 && (passo !== 4 || r.orcamentoMax != null)
+export const passoValido = (passo: number, r: Rascunho) => Object.keys(validarPasso(passo, r)).length === 0
 
 /** Índice do primeiro passo por completar (ou -1 se estiver tudo respondido). */
 export function primeiroIncompleto(r: Rascunho): number {

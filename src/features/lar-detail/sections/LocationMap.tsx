@@ -5,6 +5,7 @@ import { Hand } from 'lucide-react'
 import { useMediaQuery } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
 import { Basemap } from '@/components/map/Basemap'
+import { doLar } from '../helpers'
 
 /** Alfinete minimalista: círculo preto com anel branco e sombra suave. */
 const PIN_HTML = `<span style="display:block;width:22px;height:22px;border-radius:9999px;background:var(--color-ink);border:4px solid #fff;box-shadow:0 2px 10px rgb(0 0 0 / 0.28)"></span>`
@@ -46,7 +47,7 @@ export default function LocationMap({ lat, lng, nome }: { lat: number; lng: numb
   }, [desbloqueado])
 
   return (
-    <div ref={raiz} className="relative isolate h-full w-full" role="region" aria-label={`Mapa com a localização de ${nome}`}>
+    <div ref={raiz} className="relative isolate h-full w-full" role="region" aria-label={`Mapa com a localização ${doLar(nome)}`}>
       <MapContainer center={[lat, lng]} zoom={15} maxZoom={18} scrollWheelZoom={false} dragging={!toque} touchZoom={!toque} className="h-full w-full">
         <Basemap />
         <Marker position={[lat, lng]} icon={icon} title={nome} alt={nome} keyboard={false} />

@@ -209,12 +209,28 @@ export function previsaoMensal(
   })
 }
 
-/** Frase curta para cartões: "Vaga disponível agora", "Vaga provável em ~2 meses", … */
+/**
+ * Há lugar para quem pede hoje? Pode haver lugares livres que já estão prometidos a quem está
+ * na lista de espera (a lista efetiva é maior do que os lugares livres): nesse caso, a vaga
+ * livre não serve a um novo pedido e não se deve dizer "com vaga agora" a quem tem pressa.
+ */
+export function vagaParaNovos(
+  lar: Parameters<typeof estimarEspera>[0],
+  est: EstimativaEspera = estimarEspera(lar),
+): boolean {
+  return est.imediata
+}
+
+/**
+ * Frase curta para cartões: "1 vaga disponível agora", "Espera estimada: ~2 meses", …
+ * Usa o mesmo rótulo da ficha ("Espera estimada") porque se baseia na mediana (50%): dizer
+ * "vaga provável" ao lado de uma previsão que chama "Possível" a esse mês seria contraditório.
+ */
 export function resumoPrevisao(lar: Parameters<typeof estimarEspera>[0], est = estimarEspera(lar)): string {
   const livres = vagasLivres(lar)
-  if (livres > 0) return livres === 1 ? '1 vaga disponível agora' : `${livres} vagas disponíveis agora`
-  if (est.diasMediana == null) return 'Espera prevista superior a 2 anos'
+  if (livres > 0 && est.imediata) return livres === 1 ? '1 vaga disponível agora' : `${livres} vagas disponíveis agora`
+  if (est.diasMediana == null) return 'Espera estimada: mais de 2 anos'
+  if (est.diasMediana <= 21) return 'Espera estimada: poucas semanas'
   const meses = Math.max(1, Math.round(est.diasMediana / 30))
-  if (est.diasMediana <= 21) return 'Vaga provável nas próximas semanas'
-  return `Vaga provável em ~${meses} ${meses === 1 ? 'mês' : 'meses'}`
+  return `Espera estimada: ~${meses} ${meses === 1 ? 'mês' : 'meses'}`
 }

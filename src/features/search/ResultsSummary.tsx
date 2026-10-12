@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { X } from 'lucide-react'
 import type { TipoResposta } from '@/types'
 import { CUIDADO_LABEL, GRAU_LABEL, NATUREZA_LABEL } from '@/lib/labels'
@@ -10,9 +11,12 @@ import {
   centroDe,
   contarTodosFiltros,
   FILTROS_VAZIOS,
+  noDistrito,
   ORDEM_LABEL,
   ORDENS,
+  pertoDe,
   TIPO_CURTO,
+  VAGA_LABEL,
   type SearchState,
 } from './searchState'
 
@@ -27,11 +31,11 @@ export function tituloPesquisa(s: SearchState): string {
   const quem = s.tipos.length === 1 ? NOME_TIPO[s.tipos[0]!] : 'Lares e residências'
   switch (s.local.tipo) {
     case 'lugar':
-      return `${quem} perto de ${s.local.lugar.label}`
+      return `${quem} ${pertoDe(s.local.lugar.label)}`
     case 'coords':
       return `${quem} perto de si`
     case 'distrito':
-      return `${quem} no distrito de ${s.local.distrito}`
+      return `${quem} ${noDistrito(s.local.distrito)}`
     case 'zona':
       return `${quem} nesta zona do mapa`
     default:
@@ -51,7 +55,7 @@ interface Pilula {
 
 export function pilulasAtivas(s: SearchState): Pilula[] {
   const out: Pilula[] = []
-  if (s.vaga) out.push({ id: 'vaga', grupo: 'vaga', texto: s.vaga === 'agora' ? 'Com vaga agora' : 'Vaga em breve', patch: { vaga: null } })
+  if (s.vaga) out.push({ id: 'vaga', grupo: 'vaga', texto: VAGA_LABEL[s.vaga], patch: { vaga: null } })
   for (const t of s.tipos) out.push({ id: `t-${t}`, grupo: 'tipo', texto: TIPO_CURTO[t], patch: { tipos: s.tipos.filter((x) => x !== t) } })
   if (s.max != null) out.push({ id: 'max', grupo: 'max', texto: `Até ${euro(s.max)}`, patch: { max: null } })
   if (s.grau) out.push({ id: 'grau', grupo: 'mais', texto: GRAU_LABEL[s.grau], patch: { grau: null } })
@@ -89,7 +93,7 @@ export function ResultsSummary({ model, desktop }: Props) {
   const resumo = `${num(n)} ${n === 1 ? 'instituição' : 'instituições'}${n > 0 ? `, ${num(comVaga)} com vaga agora` : ''}`
 
   return (
-    <header className="px-5 pt-6 sm:px-6 lg:px-8 lg:pt-8">
+    <header className="px-5 pt-6 sm:px-6 lg:pt-8 xl:px-8">
       {/* o título muda com a zona/tipo: troca suave (chave = texto) */}
       <h1 key={titulo} className="el-swap text-[1.75rem] leading-tight font-semibold tracking-tight text-ink sm:text-2xl">
         {titulo}
@@ -113,18 +117,21 @@ export function ResultsSummary({ model, desktop }: Props) {
           {resumo}
         </p>
         {n > 1 && (
-          <QuietSelect
-            label="Ordenar"
-            value={state.ordem}
-            onChange={(e) => update({ ordem: e.target.value as SearchState['ordem'] })}
-            wrapperClassName="-mx-3 sm:mx-0 sm:-mr-3"
-          >
-            {ORDENS.filter((o) => o !== 'distancia' || centro).map((o) => (
-              <option key={o} value={o}>
-                {ORDEM_LABEL[o]}
-              </option>
-            ))}
-          </QuietSelect>
+          <div className="-mx-3 flex items-center gap-x-1 sm:mx-0 sm:-mr-3">
+            <QuietSelect label="Ordenar" value={state.ordem} onChange={(e) => update({ ordem: e.target.value as SearchState['ordem'] })}>
+              {ORDENS.filter((o) => o !== 'distancia' || centro).map((o) => (
+                <option key={o} value={o}>
+                  {ORDEM_LABEL[o]}
+                </option>
+              ))}
+            </QuietSelect>
+            <Link
+              to="/como-ordenamos"
+              className="inline-flex min-h-12 shrink-0 items-center rounded-full px-3 text-sm whitespace-nowrap text-terra-600 transition-colors hover:bg-sand hover:underline"
+            >
+              Como ordenamos?
+            </Link>
+          </div>
         )}
       </div>
 

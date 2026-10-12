@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { ChevronRight, Star } from 'lucide-react'
 import type { Lar } from '@/types'
@@ -10,21 +11,37 @@ import { cn } from '@/lib/cn'
 import { dividirNome, frescura } from './helpers'
 import { useIrParaSecao } from './hooks'
 
+/** Chave escrita pela página de pesquisa com a rota atual (caminho + filtros). */
+const ULTIMA_PESQUISA = 'encontralar:ultima-pesquisa'
+
+/** A última pesquisa da sessão (ex.: "/pesquisa?lugar=Porto&vaga=agora"), para o "Mapa de vagas" não perder os filtros. */
+function ultimaPesquisa(): string {
+  try {
+    const v = sessionStorage.getItem(ULTIMA_PESQUISA)
+    if (v && /^\/pesquisa(\?|$)/.test(v)) return v
+  } catch {
+    /* sem armazenamento: usa a pesquisa vazia */
+  }
+  return '/pesquisa'
+}
+
 export function Breadcrumbs({ lar }: { lar: Lar }) {
+  const [mapa] = useState(ultimaPesquisa)
   const itens = [
     { to: '/', label: 'Início' },
-    { to: '/pesquisa', label: 'Mapa de vagas' },
+    { to: mapa, label: 'Mapa de vagas' },
     { to: `/pesquisa?distrito=${encodeURIComponent(lar.distrito)}`, label: lar.distrito },
   ]
   return (
     <nav aria-label="Caminho" className="text-sm text-ink-mute">
       <ol className="flex flex-wrap items-center gap-x-1">
-        {itens.map((i) => (
-          <li key={i.to} className="flex items-center gap-1">
+        {itens.map((i, idx) => (
+          <li key={i.label} className="flex items-center gap-1">
             <Link to={i.to} className="inline-flex min-h-12 items-center rounded-md transition-colors hover:text-ink">
               {i.label}
             </Link>
-            <ChevronRight aria-hidden className="size-3.5 text-ink-mute/70" />
+            {/* no telemóvel o nome da instituição não aparece: sem "›" pendurado no fim */}
+            <ChevronRight aria-hidden className={cn('size-3.5 text-ink-mute/70', idx === itens.length - 1 && 'max-sm:hidden')} />
           </li>
         ))}
         <li aria-current="page" className="hidden max-w-full truncate text-ink-soft sm:block">

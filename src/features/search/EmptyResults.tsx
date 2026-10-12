@@ -14,7 +14,7 @@ export function EmptyResults({ model }: { model: SearchModel }) {
   const naZona = useMemo(() => entradas.filter((e) => noLocal(e, state.local, state.raio)).length, [entradas, state.local, state.raio])
 
   return (
-    <section aria-labelledby="vazio-titulo" className="animate-fade-in px-5 pt-10 sm:px-6 lg:px-8">
+    <section aria-labelledby="vazio-titulo" className="animate-fade-in px-5 pt-10 sm:px-6 xl:px-8">
       <h2 id="vazio-titulo" className="text-2xl font-semibold tracking-tight text-ink">
         {temFiltros ? 'Nenhum resultado com estes filtros' : 'Nenhuma instituição nesta zona'}
       </h2>
@@ -58,7 +58,8 @@ export function EmptyResults({ model }: { model: SearchModel }) {
       )}
 
       <p className="mt-10 max-w-[32rem] text-sm text-ink-mute">
-        Alta hospitalar à porta e sem vaga perto? Peça à assistente social do hospital a referenciação para a Rede de Cuidados Continuados.{' '}
+        Alta hospitalar à porta e sem vaga perto? Peça à assistente social do hospital que avalie a referenciação para a Rede Nacional de
+        Cuidados Continuados Integrados.{' '}
         <Link to="/guia#apoios" className="inline-flex items-center font-medium text-terra-600 hover:underline">
           Ver alternativas
           <ChevronRight aria-hidden className="size-4" />

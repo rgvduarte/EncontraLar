@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { disponibilidade, estimarEspera, poissonAtLeast, poissonQuantile, previsaoMensal, SAZONALIDADE } from './forecast'
+import {
+  disponibilidade,
+  estimarEspera,
+  poissonAtLeast,
+  poissonQuantile,
+  previsaoMensal,
+  resumoPrevisao,
+  SAZONALIDADE,
+  vagaParaNovos,
+} from './forecast'
 
 const base = {
   capacidade: 40,
@@ -71,5 +80,22 @@ describe('previsaoMensal', () => {
     const jan = p.find((m) => m.mes === 0)!
     const jun = p.find((m) => m.mes === 5)!
     expect(jan.esperado).toBeGreaterThan(jun.esperado)
+  })
+})
+
+describe('vaga para quem pede hoje', () => {
+  it('um lugar livre já prometido à lista de espera não é vaga para novos pedidos', () => {
+    const lar = { ...base, listaEspera: 14, quartos: [{ ...base.quartos[0]!, livres: 1 }] }
+    expect(disponibilidade(lar)).toBe('disponivel')
+    expect(vagaParaNovos(lar)).toBe(false)
+    expect(resumoPrevisao(lar)).toMatch(/^Espera estimada/)
+  })
+  it('com lista curta, há vaga agora', () => {
+    const lar = { ...base, listaEspera: 1, quartos: [{ ...base.quartos[0]!, livres: 2 }] }
+    expect(vagaParaNovos(lar)).toBe(true)
+    expect(resumoPrevisao(lar)).toBe('2 vagas disponíveis agora')
+  })
+  it('a frase de resumo usa "Espera estimada", não "vaga provável"', () => {
+    expect(resumoPrevisao(base)).toMatch(/^Espera estimada: (~\d+ (mês|meses)|poucas semanas|mais de 2 anos)$/)
   })
 })

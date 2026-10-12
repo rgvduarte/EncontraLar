@@ -1,4 +1,4 @@
-import { Component, lazy, Suspense, type ReactNode } from 'react'
+import { Component, lazy, Suspense, useRef, type ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import type { Lar } from '@/types'
 import { Spinner } from '@/components/ui/misc'
@@ -6,6 +6,7 @@ import { Reveal } from '@/components/motion'
 import { Secao } from '../Secao'
 import { Cascata } from '../motion'
 import { telHref } from '../helpers'
+import { useJaPerto } from '../hooks'
 
 const LocationMap = lazy(() => import('./LocationMap'))
 
@@ -25,24 +26,33 @@ const ligacao = 'inline-flex min-h-12 items-center gap-0.5 text-lg text-terra-60
 export function LocalizacaoSection({ lar }: { lar: Lar }) {
   const destino = `https://www.google.com/maps/dir/?api=1&destination=${lar.lat},${lar.lng}`
   const zona = [...new Set([lar.concelho, lar.distrito])].join(', ')
+  // o mapa (Leaflet + mosaicos) só se carrega quando a secção está a ~1 ecrã de distância: fica no fim da ficha
+  const caixa = useRef<HTMLDivElement>(null)
+  const perto = useJaPerto(caixa)
+  const aCarregar = (
+    <div className="flex h-full items-center justify-center">
+      <Spinner />
+    </div>
+  )
 
   return (
     <Secao id="ficha-localizacao" rotulo="Localização" titulo="Onde fica">
       <Reveal variant="scale" duration={1100}>
-        <div className="relative h-72 overflow-hidden rounded-[1.75rem] bg-sand sm:h-96 [&_.leaflet-bar]:overflow-hidden [&_.leaflet-bar]:rounded-xl! [&_.leaflet-bar]:border-0! [&_.leaflet-control-attribution]:mr-5! [&_.leaflet-control-attribution]:mb-2! [&_.leaflet-control-attribution]:rounded-full [&_.leaflet-control-attribution]:px-2! [&_.leaflet-control-zoom]:mt-4! [&_.leaflet-control-zoom]:ml-4!">
-          <MapaSeguro
-            fallback={<p className="flex h-full items-center justify-center p-6 text-center text-ink-mute">Não foi possível carregar o mapa.</p>}
-          >
-            <Suspense
-              fallback={
-                <div className="flex h-full items-center justify-center">
-                  <Spinner />
-                </div>
-              }
+        <div
+          ref={caixa}
+          className="relative h-72 overflow-hidden rounded-[1.75rem] bg-sand sm:h-96 [&_.leaflet-bar]:overflow-hidden [&_.leaflet-bar]:rounded-xl! [&_.leaflet-bar]:border-0! [&_.leaflet-control-attribution]:mr-5! [&_.leaflet-control-attribution]:mb-2! [&_.leaflet-control-attribution]:rounded-full [&_.leaflet-control-attribution]:px-2! [&_.leaflet-control-zoom]:mt-4! [&_.leaflet-control-zoom]:ml-4!"
+        >
+          {perto ? (
+            <MapaSeguro
+              fallback={<p className="flex h-full items-center justify-center p-6 text-center text-ink-mute">Não foi possível carregar o mapa.</p>}
             >
-              <LocationMap lat={lar.lat} lng={lar.lng} nome={lar.nome} />
-            </Suspense>
-          </MapaSeguro>
+              <Suspense fallback={aCarregar}>
+                <LocationMap lat={lar.lat} lng={lar.lng} nome={lar.nome} />
+              </Suspense>
+            </MapaSeguro>
+          ) : (
+            aCarregar
+          )}
         </div>
       </Reveal>
 

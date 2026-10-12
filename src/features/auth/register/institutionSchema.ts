@@ -91,6 +91,6 @@ export const INST_RULES: Rules<InstValues> = {
       vazio: 'Indique a mensalidade mais baixa.',
       foraIntervalo: 'A mensalidade deve estar entre 100 € e 10 000 €.',
     }),
-  termos: (v) => (v ? undefined : 'Confirme que representa a instituição e aceita os termos.'),
+  termos: (v) => (v ? undefined : 'Confirme que representa a instituição e aceita as condições deste protótipo.'),
   privacidade: (v) => (v ? undefined : 'Confirme que leu a política de privacidade.'),
 }

@@ -77,7 +77,7 @@ export default function PrivacyPage() {
 
           <Bloco titulo="Para quê">
             <p>
-              Para sugerir instituições compatíveis, enviar os pedidos que decidir fazer e avisá-lo quando abrir uma vaga. Não vendemos dados, nem os
+              Para sugerir instituições compatíveis, enviar os pedidos que decidir fazer e avisar quando abrir uma vaga. Não vendemos dados, nem os
               usamos para publicidade.
             </p>
           </Bloco>

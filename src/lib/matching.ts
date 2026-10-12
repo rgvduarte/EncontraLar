@@ -2,10 +2,10 @@
  * Motor de compatibilidade entre o perfil da pessoa idosa e cada instituição.
  * Pontuação 0–100 com pesos explícitos e razões legíveis (para transparência perante a família).
  */
-import type { Lar, PerfilIdoso, TipoQuarto } from '@/types'
-import { CUIDADOS_CRITICOS, CUIDADO_LABEL, COMODIDADE_LABEL, GRAU_LABEL, QUARTO_CURTO } from './labels'
+import type { Disponibilidade, Lar, PerfilIdoso, TipoQuarto } from '@/types'
+import { CUIDADOS_CRITICOS, CUIDADO_FRASE, CUIDADO_LABEL, COMODIDADE_FALTA, COMODIDADE_LABEL, GRAU_PESSOAS } from './labels'
 import { distanceKm } from './geo'
-import { disponibilidade, estimarEspera, type EstimativaEspera } from './forecast'
+import { estimarEspera, vagaParaNovos, vagasLivres, type EstimativaEspera } from './forecast'
 import { euro, km } from './format'
 
 export const PESOS = {
@@ -15,6 +15,12 @@ export const PESOS = {
   disponibilidade: 15,
   preferencias: 10,
 } as const
+
+const QUARTO_FRASE: Record<TipoQuarto, string> = {
+  individual: 'quarto individual',
+  duplo: 'quarto duplo',
+  casal: 'quarto de casal',
+}
 
 export type TipoRazao = 'ok' | 'parcial' | 'falta'
 export interface Razao {
@@ -55,7 +61,7 @@ export function avaliarLar(lar: Lar, perfil: PerfilMatch): MatchResult {
   // 1. Grau de dependência (eliminatório)
   if (!lar.graus.includes(perfil.grau)) {
     compativel = false
-    razoes.push({ tipo: 'falta', texto: `Não admite pessoas com ${GRAU_LABEL[perfil.grau].toLowerCase()}` })
+    razoes.push({ tipo: 'falta', texto: `Não admite ${GRAU_PESSOAS[perfil.grau]}` })
   }
 
   // 2. Cuidados de saúde (críticos valem o dobro)
@@ -72,7 +78,7 @@ export function avaliarLar(lar: Lar, perfil: PerfilMatch): MatchResult {
         razoes.push({ tipo: 'ok', texto: CUIDADO_LABEL[n] })
       } else {
         if (critico) compativel = false
-        razoes.push({ tipo: 'falta', texto: `Sem ${CUIDADO_LABEL[n].toLowerCase()}` })
+        razoes.push({ tipo: 'falta', texto: `Sem ${CUIDADO_FRASE[n]}` })
       }
     }
     cuidadosScore = ganho / peso
@@ -115,18 +121,22 @@ export function avaliarLar(lar: Lar, perfil: PerfilMatch): MatchResult {
     razoes.push({ tipo: distanciaKm <= raio * 1.5 ? 'parcial' : 'falta', texto: `A ${km(distanciaKm)} (fora do raio de ${raio} km)` })
   }
 
-  // 5. Disponibilidade vs. urgência
+  // 5. Disponibilidade vs. urgência — conta a vaga para quem pede hoje, não só os lugares livres:
+  // um lugar livre que a lista de espera vai ocupar não serve a quem tem alta hospitalar amanhã.
   const espera = estimarEspera(lar)
-  const disp = disponibilidade(lar, espera)
-  const tabela: Record<typeof disp, Record<PerfilIdoso['urgencia'], number>> = {
+  const imediata = vagaParaNovos(lar, espera)
+  const dispEf: Disponibilidade = imediata ? 'disponivel' : espera.p90 >= 0.5 ? 'breve' : 'espera'
+  const tabela: Record<Disponibilidade, Record<PerfilIdoso['urgencia'], number>> = {
     disponivel: { imediata: 1, '1-3meses': 1, '3-6meses': 1, planeamento: 1 },
     breve: { imediata: 0.45, '1-3meses': 0.8, '3-6meses': 0.95, planeamento: 1 },
     espera: { imediata: 0.1, '1-3meses': 0.3, '3-6meses': 0.55, planeamento: 0.85 },
   }
-  const dispScore = tabela[disp][perfil.urgencia]
-  if (disp === 'disponivel') razoes.push({ tipo: 'ok', texto: 'Tem vaga disponível agora' })
-  else if (disp === 'breve') razoes.push({ tipo: 'parcial', texto: 'Vaga prevista nos próximos meses' })
-  else razoes.push({ tipo: perfil.urgencia === 'planeamento' ? 'parcial' : 'falta', texto: 'Lista de espera longa' })
+  const dispScore = tabela[dispEf][perfil.urgencia]
+  const tipoEspera: TipoRazao = dispEf === 'breve' || perfil.urgencia === 'planeamento' ? 'parcial' : 'falta'
+  if (imediata) razoes.push({ tipo: 'ok', texto: 'Tem vaga disponível agora' })
+  else if (vagasLivres(lar) > 0) razoes.push({ tipo: tipoEspera, texto: 'Tem lugar livre, mas a lista de espera tem prioridade' })
+  else if (dispEf === 'breve') razoes.push({ tipo: 'parcial', texto: 'Vaga prevista nos próximos meses' })
+  else razoes.push({ tipo: tipoEspera, texto: 'Lista de espera longa' })
 
   // 6. Preferências (comodidades + tipo de quarto)
   let prefScore = 1
@@ -140,16 +150,16 @@ export function avaliarLar(lar: Lar, perfil: PerfilMatch): MatchResult {
         ok++
         razoes.push({ tipo: 'ok', texto: COMODIDADE_LABEL[c] })
       } else {
-        razoes.push({ tipo: 'parcial', texto: `Sem ${COMODIDADE_LABEL[c].toLowerCase()}` })
+        razoes.push({ tipo: 'parcial', texto: COMODIDADE_FALTA[c] })
       }
     }
     if (querQuarto) {
       const q = perfil.quarto as TipoQuarto
       if (lar.quartos.some((r) => r.tipo === q)) {
         ok++
-        razoes.push({ tipo: 'ok', texto: `Tem quarto ${QUARTO_CURTO[q].toLowerCase()}` })
+        razoes.push({ tipo: 'ok', texto: `Tem ${QUARTO_FRASE[q]}` })
       } else {
-        razoes.push({ tipo: 'parcial', texto: `Sem quarto ${QUARTO_CURTO[q].toLowerCase()}` })
+        razoes.push({ tipo: 'parcial', texto: `Sem ${QUARTO_FRASE[q]}` })
       }
     }
     prefScore = ok / total

@@ -11,7 +11,7 @@ import { setAlerta, useCurrentUser, useFavorito } from '@/lib/store'
 import { pct, plural } from '@/lib/format'
 import { QUARTO_CURTO } from '@/lib/labels'
 import { cn } from '@/lib/cn'
-import { esperaEstimada, precoResumo, precoSocial, telHref, type DadosLar } from './helpers'
+import { ctaPedido, esperaEstimada, oLar, precoResumo, precoSocial, telHref, type DadosLar } from './helpers'
 import { CandidaturaAtiva } from './CandidaturaAtiva'
 import { useIrParaSecao } from './hooks'
 
@@ -112,17 +112,28 @@ export function VagasCard({
   const estadoAlerta = user ? (alerta ? 'on' : 'off') : 'anon'
   const [estado0] = useState(estado)
   const [estadoAlerta0] = useState(estadoAlerta)
-  const ctaLabel = dados.livres > 0 ? (dados.centroDia ? 'Pedir lugar' : 'Pedir vaga') : 'Entrar na lista de espera'
+  const ctaLabel = ctaPedido(dados)
+
+  // sem sessão: vai entrar e volta com a intenção no URL, que a ficha aplica (LarPage lê ?acao= e ?guardar=)
+  const entrarEVoltar = (intencao: string) => navigate(`/entrar?voltar=${encodeURIComponent(`${location.pathname}?${intencao}`)}`)
 
   const alternarAlerta = (v: boolean) => {
     if (!user) {
       toast.info('Entre para receber alertas', 'Com uma conta gratuita avisamos assim que abrir uma vaga.')
-      navigate(`/entrar?voltar=${encodeURIComponent(location.pathname)}`)
+      entrarEVoltar('acao=alerta')
       return
     }
     setAlerta(lar.id, v)
-    if (v) toast.success('Alerta de vaga ativado', `Avisamos assim que ${lar.nome} indicar um lugar livre.`)
+    if (v) toast.success('Alerta de vaga ativado', `Avisamos assim que ${oLar(lar.nome)} indicar um lugar livre.`)
     else toast.info('Alerta desativado', 'Deixa de receber avisos de vaga desta instituição.')
+  }
+
+  // o coração (componente partilhado) é intercetado antes do clique sem sessão, para guardar depois de entrar
+  const guardarSemSessao = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    toast.info('Entre para guardar', 'Crie uma conta gratuita para guardar instituições e receber alertas de vaga.')
+    entrarEVoltar(`guardar=${encodeURIComponent(lar.id)}`)
   }
 
   return (
@@ -179,7 +190,7 @@ export function VagasCard({
             }
           />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <span className="ficha-fav">
+            <span className="ficha-fav" onClickCapture={user ? undefined : guardarSemSessao}>
               <FavoriteButton larId={lar.id} larNome={lar.nome} variant="inline" />
             </span>
             {lar.telefone && (

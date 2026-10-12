@@ -23,6 +23,7 @@ import { guardarCargo } from '../shared/cargo'
 import { errorNode, pausa, useForm } from '../shared/useForm'
 import { MSG_EMAIL_EXISTE, formatarTelefone } from '../shared/validators'
 import { ConsentFields } from './ConsentFields'
+import { CondicoesPrototipo } from './CondicoesPrototipo'
 import { InstituicaoFields } from './InstituicaoFields'
 import { lugarCanonico } from './LugarCombobox'
 import { INST_INITIAL, INST_ORDER, INST_RULES, type InstValues } from './institutionSchema'
@@ -341,7 +342,12 @@ export function InstitutionForm({ onPending }: { onPending?: (pending: boolean) 
                         key: 'termos',
                         props: form.checkbox('termos'),
                         error: form.errorOf('termos'),
-                        label: 'Represento esta instituição e aceito os termos de utilização',
+                        label: (
+                          <>
+                            Represento esta instituição e aceito as{' '}
+                            <CondicoesPrototipo onAceitar={() => form.setValue('termos', true)} />
+                          </>
+                        ),
                       },
                       {
                         key: 'privacidade',

@@ -35,7 +35,7 @@ export function ForecastStrip({
     const d = new Date(inicio.getFullYear(), inicio.getMonth() + i, 1)
     return { p, mes: d.getMonth(), ano: d.getFullYear() }
   })
-  const resumo = dados.map((d) => `${MESES_LONGOS[d.mes]}: ${pct(d.p)}`).join(', ')
+  const resumo = dados.map((d, i) => `${MESES_LONGOS[d.mes]}${d.mes === 0 && i > 0 ? ` de ${d.ano}` : ''}: ${pct(d.p)}`).join(', ')
 
   if (variant === 'mini') {
     return (
@@ -60,9 +60,10 @@ export function ForecastStrip({
           <li key={i} className="flex flex-col gap-2">
             <span className="text-sm text-ink-mute capitalize">
               {MESES_CURTOS[d.mes]}
-              {d.mes === 0 && ` ${String(d.ano).slice(2)}`}
+              {/* ano por extenso: "Jan 27" lia-se como 27 de janeiro */}
+              {d.mes === 0 && ` ${d.ano}`}
             </span>
-            <span className={cn('text-3xl font-semibold tracking-tight tabular', d.p >= 0.33 ? 'text-ink' : 'text-ink-mute')}>{pct(d.p)}</span>
+            <span className={cn('text-2xl font-semibold tracking-tight tabular sm:text-3xl', d.p >= 0.33 ? 'text-ink' : 'text-ink-mute')}>{pct(d.p)}</span>
             <span className="h-1 overflow-hidden rounded-full bg-sand-deep">
               <span
                 className={cn('block h-full origin-left rounded-full transition-[scale] duration-[900ms] ease-[cubic-bezier(.16,1,.3,1)]', c.barra)}

@@ -4,7 +4,7 @@ import { Building2, Globe2, Hash, Landmark, LoaderCircle, MapPin, Navigation, Se
 import { cn } from '@/lib/cn'
 import type { Entrada } from './filtering'
 import { construirOpcoes, type Opcao } from './placeOptions'
-import { rotuloLocal, type Local } from './searchState'
+import { nomeDistrito, rotuloLocal, type Local } from './searchState'
 import { DispDot } from './Chips'
 import type { GeoEstado } from './useGeolocation'
 
@@ -99,7 +99,7 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
         onLocal({ tipo: 'lugar', lugar: op.lugar })
         break
       case 'distrito':
-        setTexto(`Distrito de ${op.distrito}`)
+        setTexto(nomeDistrito(op.distrito))
         onLocal({ tipo: 'distrito', distrito: op.distrito })
         break
       case 'lar':
@@ -190,7 +190,7 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
           inputMode="search"
           spellCheck={false}
           enterKeyHint="search"
-          placeholder={geoAtivo ? 'A localizar…' : 'Localidade, distrito ou código postal'}
+          placeholder={geoAtivo ? 'A localizar…' : 'Cidade ou código postal'}
           value={texto}
           onChange={(e) => {
             setTexto(e.target.value)
@@ -232,7 +232,9 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
       >
         {open && planas.length === 0 && (
           <p className="px-3 py-4 text-sm text-ink-mute">
-            Não encontrámos «{texto.trim()}». Experimente o concelho (ex.: Sintra), o distrito ou os 4 primeiros dígitos do código postal.
+            {/^\d/.test(texto.trim())
+              ? `Não temos o código «${texto.trim()}». Escreva a localidade (ex.: Porto).`
+              : `Não encontrámos «${texto.trim()}». Experimente o concelho (ex.: Sintra), o distrito ou o código postal.`}
           </p>
         )}
         {grupos.map((g) => (
@@ -306,7 +308,7 @@ function OpcaoTexto({ op }: { op: Opcao }) {
     case 'distrito':
       return (
         <>
-          <span className="font-medium text-ink">Distrito de {op.distrito}</span>
+          <span className="font-medium text-ink">{nomeDistrito(op.distrito)}</span>
           <span className={sub}>
             <Meta n={op.n} vagas={op.vagas} />
           </span>

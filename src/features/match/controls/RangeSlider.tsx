@@ -6,6 +6,8 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onC
   min: number
   max: number
   onValue: (v: number) => void
+  /** ainda sem resposta: o cursor marca só uma referência (sem preenchimento) até ser mexido */
+  vazio?: boolean
 }
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
@@ -16,7 +18,7 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
  * (input nativo). No telemóvel um toque no trilho também escolhe o valor — o Safari do iOS só deixa arrastar o cursor.
  */
 export const RangeSlider = forwardRef<HTMLInputElement, Props>(function RangeSlider(
-  { value, min, max, onValue, className, step, onPointerDown, onPointerUp, onPointerCancel, ...rest },
+  { value, min, max, onValue, vazio, className, step, onPointerDown, onPointerUp, onPointerCancel, ...rest },
   ref,
 ) {
   const frac = clamp01((value - min) / (max - min))
@@ -30,7 +32,11 @@ export const RangeSlider = forwardRef<HTMLInputElement, Props>(function RangeSli
     const r = el.getBoundingClientRect()
     const thumb = parseFloat(getComputedStyle(el).getPropertyValue('--thumb')) || 28
     const xCursor = r.left + thumb / 2 + (r.width - thumb) * frac
-    if (Math.abs(e.clientX - xCursor) <= thumb / 2 + 4) return // tocou no próprio cursor
+    if (Math.abs(e.clientX - xCursor) <= thumb / 2 + 4) {
+      // tocou no próprio cursor: sem resposta ainda, um toque aceita o valor de referência
+      if (vazio) onValue(value)
+      return
+    }
     const f = clamp01((e.clientX - r.left - thumb / 2) / (r.width - thumb))
     const s = Number(step) || 1
     const v = Math.min(max, Math.max(min, min + Math.round((f * (max - min)) / s) * s))
@@ -45,7 +51,10 @@ export const RangeSlider = forwardRef<HTMLInputElement, Props>(function RangeSli
       <div aria-hidden className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-sand-deep" />
       <div
         aria-hidden
-        className="absolute top-1/2 left-0 h-1.5 w-[calc(var(--thumb)/2_+_(100%_-_var(--thumb))_*_var(--f))] -translate-y-1/2 rounded-full bg-terra-600"
+        className={cn(
+          'absolute top-1/2 left-0 h-1.5 w-[calc(var(--thumb)/2_+_(100%_-_var(--thumb))_*_var(--f))] -translate-y-1/2 rounded-full bg-terra-600 transition-opacity duration-300',
+          vazio && 'opacity-0',
+        )}
       />
       <input
         ref={ref}

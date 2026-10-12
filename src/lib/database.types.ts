@@ -9,6 +9,13 @@
  * Convenções iguais às do gerador: numeric → number, timestamptz/date/time → string,
  * colunas de vistas → anuláveis, identity "generated always" → `?: never` no Insert/Update.
  * Os domínios lista_cuidados/lista_comodidades/distrito/regiao aparecem como o tipo base (string/string[]).
+ *
+ * Atenção (como no ficheiro gerado, os tipos não refletem privilégios por coluna):
+ *   * instituicoes.owner_id e visualizacoes_30d NÃO são legíveis por anon/authenticated — selecione
+ *     colunas explícitas; o dono obtém-nas pela RPC painel_instituicao();
+ *   * candidatura_eventos.autor_id e avaliacoes.user_id também não são legíveis;
+ *   * publicado, demonstracao, lista_espera_offline e os campos de verificação não são graváveis
+ *     pelos clientes (só pelo administrador).
  */
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
@@ -204,6 +211,7 @@ export type Database = {
           id: string
           owner_id: string | null
           publicado: boolean
+          demonstracao: boolean
           nome: string
           tipo: Database['public']['Enums']['tipo_resposta']
           natureza: Database['public']['Enums']['natureza']
@@ -250,6 +258,7 @@ export type Database = {
           id?: string
           owner_id?: string | null
           publicado?: boolean
+          demonstracao?: boolean
           nome: string
           tipo: Database['public']['Enums']['tipo_resposta']
           natureza: Database['public']['Enums']['natureza']
@@ -296,6 +305,7 @@ export type Database = {
           id?: string
           owner_id?: string | null
           publicado?: boolean
+          demonstracao?: boolean
           nome?: string
           tipo?: Database['public']['Enums']['tipo_resposta']
           natureza?: Database['public']['Enums']['natureza']
@@ -459,6 +469,7 @@ export type Database = {
           role: Database['public']['Enums']['role_utilizador']
           nome: string
           telefone: string | null
+          demonstracao: boolean
           created_at: string
           updated_at: string
         }
@@ -467,6 +478,7 @@ export type Database = {
           role?: Database['public']['Enums']['role_utilizador']
           nome?: string
           telefone?: string | null
+          demonstracao?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -475,6 +487,7 @@ export type Database = {
           role?: Database['public']['Enums']['role_utilizador']
           nome?: string
           telefone?: string | null
+          demonstracao?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -569,7 +582,6 @@ export type Database = {
           website: string | null
           capacidade: number | null
           lista_espera: number | null
-          lista_espera_offline: number | null
           estadia_media_meses: number | null
           acordo_ss: boolean | null
           incluido: string[] | null
@@ -589,16 +601,15 @@ export type Database = {
           fundacao: number | null
           atualizado_em: string | null
           capa: Json | null
-          owner_id: string | null
           publicado: boolean | null
-          visualizacoes_30d: number | null
+          demonstracao: boolean | null
           vagas_livres: number | null
           mensalidade_min: number | null
           mensalidade_max: number | null
           quartos: Json | null
           historico_saidas: number[] | null
         }
-        Relationships: [FK<'instituicoes_owner_id_fkey', 'owner_id', 'perfis_utilizador'>]
+        Relationships: []
       }
     }
     Functions: {
@@ -640,6 +651,17 @@ export type Database = {
           p_livres: number
         }
         Returns: number
+      }
+      painel_instituicao: {
+        Args: never
+        Returns: {
+          id: string
+          publicado: boolean
+          verificacao_estado: Database['public']['Enums']['estado_verificacao']
+          visualizacoes_30d: number
+          lista_espera_offline: number
+          lista_espera_online: number
+        }[]
       }
       pedir_visita: {
         Args: { p_candidatura_id: string; p_data: string; p_hora: string }

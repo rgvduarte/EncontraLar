@@ -9,6 +9,7 @@
 import type { Cuidado, Distrito, GrauDependencia, Natureza, TipoResposta } from '@/types'
 import { DISTRITOS, LUGARES, type LugarPesquisa } from '@/data/localidades'
 import { CUIDADOS_ORDEM, GRAUS_ORDEM } from '@/lib/labels'
+import { deLugar, emLugar } from '@/lib/format'
 import type { LatLng } from '@/lib/geo'
 
 export type Ordem = 'relevancia' | 'distancia' | 'preco' | 'disponibilidade' | 'avaliacao'
@@ -62,6 +63,12 @@ export const ORDEM_LABEL: Record<Ordem, string> = {
   disponibilidade: 'Vaga mais cedo',
   preco: 'Preço mais baixo',
   avaliacao: 'Mais bem avaliados',
+}
+
+/** O mesmo nome em todo o lado (pílula, folha de filtros, filtro ativo): «breve» inclui quem tem vaga agora. */
+export const VAGA_LABEL: Record<VagaFiltro, string> = {
+  agora: 'Com vaga agora',
+  breve: 'Agora ou em breve',
 }
 
 /** Rótulos curtos dos tipos para os botões de filtro. */
@@ -277,6 +284,31 @@ export function filtrosDe(s: SearchState): Filtros {
   }
 }
 
+// ————————————————————————————————————————— nomes de sítios (português de Portugal)
+
+const REGIAO_AUTONOMA: Partial<Record<Distrito, string>> = {
+  Madeira: 'Região Autónoma da Madeira',
+  Açores: 'Região Autónoma dos Açores',
+}
+
+/** "Distrito do Porto", "Distrito de Braga", "Região Autónoma dos Açores". */
+export function nomeDistrito(d: Distrito): string {
+  return REGIAO_AUTONOMA[d] ?? `Distrito ${deLugar(d)}`
+}
+
+/** "no distrito do Porto", "no distrito da Guarda", "na Região Autónoma da Madeira". */
+export function noDistrito(d: Distrito): string {
+  const ra = REGIAO_AUTONOMA[d]
+  return ra ? `na ${ra}` : `no distrito ${deLugar(d)}`
+}
+
+/** "perto do Porto", "perto de Braga", "perto do Parque das Nações, em Lisboa" (rótulos "Cidade — Zona"). */
+export function pertoDe(label: string): string {
+  const [cidade, zona] = label.split(' — ')
+  if (cidade && zona) return `perto ${deLugar(zona)}, ${emLugar(cidade)}`
+  return `perto ${deLugar(label)}`
+}
+
 /** Texto do campo de lugar para o local atual. */
 export function rotuloLocal(local: Local): string {
   switch (local.tipo) {
@@ -285,7 +317,7 @@ export function rotuloLocal(local: Local): string {
     case 'coords':
       return 'A minha localização'
     case 'distrito':
-      return `Distrito de ${local.distrito}`
+      return nomeDistrito(local.distrito)
     case 'zona':
       return 'Zona escolhida no mapa'
     default:

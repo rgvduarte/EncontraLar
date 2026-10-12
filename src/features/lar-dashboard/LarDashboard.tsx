@@ -1,12 +1,12 @@
 import { useMemo } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router'
-import { BedDouble, Building2, ChartLine, FileText, Inbox, LayoutGrid } from 'lucide-react'
+import { BarChart3, Building2, FileText, Inbox, LayoutGrid, SlidersHorizontal } from 'lucide-react'
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell'
 import { ButtonLink } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/misc'
 import { useCandidaturasDoLar, useCurrentUser, useMeuLar } from '@/lib/store'
 import { useDocumentTitle } from '@/lib/hooks'
-import { assuntosPendentes, numerosResumo, passosArranque } from './lib/derive'
+import { assuntosPendentes, numerosResumo, passosArranque, pedidosPorTratar } from './lib/derive'
 import { useAgora } from './lib/hooks'
 import { cabecalho, seccaoDoCaminho } from './shell/cabecalhos'
 import { PublicStatus, SidebarIdentity } from './shell/Identity'
@@ -30,6 +30,8 @@ export default function LarDashboard() {
   const seccao = seccaoDoCaminho(pathname)
   const n = useMemo(() => (lar ? numerosResumo(lar, cands) : null), [lar, cands])
   const assuntos = useMemo(() => (lar ? assuntosPendentes(lar, cands, agora) : null), [lar, cands, agora])
+  // o mesmo número na barra lateral e na barra de abas: pedidos novos + visitas por confirmar, sem contar duas vezes
+  const porTratar = useMemo(() => pedidosPorTratar(cands), [cands])
   const emFalta = lar ? passosArranque(lar, user).filter((p) => !p.feito).length : 0
   const cab = lar && assuntos ? cabecalho(seccao, lar, user, assuntos, emFalta, new Date(agora)) : null
   useDocumentTitle(cab?.doc ?? 'Painel da instituição')
@@ -50,11 +52,12 @@ export default function LarDashboard() {
     )
   }
 
+  // os mesmos ícones da barra de abas do telemóvel
   const nav: DashboardNavItem[] = [
     { to: '/gestao', label: 'Resumo', icon: LayoutGrid, end: true },
-    { to: '/gestao/vagas', label: 'Vagas', icon: BedDouble },
-    { to: '/gestao/pedidos', label: 'Pedidos', icon: Inbox, badge: n.novos + n.visitas },
-    { to: '/gestao/previsao', label: 'Previsão', icon: ChartLine },
+    { to: '/gestao/vagas', label: 'Vagas', icon: SlidersHorizontal },
+    { to: '/gestao/pedidos', label: 'Pedidos', icon: Inbox, badge: porTratar },
+    { to: '/gestao/previsao', label: 'Previsão', icon: BarChart3 },
     { to: '/gestao/ficha', label: 'Ficha pública', icon: FileText },
   ]
 

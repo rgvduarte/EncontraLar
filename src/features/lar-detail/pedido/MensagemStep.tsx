@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Lar, PerfilIdoso, User } from '@/types'
 import { Checkbox, Switch, TextareaField } from '@/components/ui/Field'
-import { mensagemSugerida } from '../helpers'
+import { mensagemSugerida, oLar } from '../helpers'
 import { VisitFields, validarVisita, type VisitaEscolha } from './VisitFields'
 
 export interface DadosEnvio {
@@ -58,7 +58,7 @@ export function MensagemStep({
   return (
     <form id={formId} onSubmit={submeter} noValidate className="flex flex-col gap-8">
       <TextareaField
-        label={`Mensagem para ${lar.nome}`}
+        label={`Mensagem para ${oLar(lar.nome)}`}
         hint="Escrevemos um rascunho a partir do perfil. Acrescente o que a equipa deve saber, como uma alta hospitalar."
         rows={8}
         value={mensagem}

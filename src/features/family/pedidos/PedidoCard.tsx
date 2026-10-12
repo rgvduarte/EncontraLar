@@ -9,7 +9,7 @@ import { cancelarCandidatura } from '@/lib/store'
 import { ESTADO_CANDIDATURA_DESCRICAO } from '@/lib/labels'
 import { dataLonga } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { estimativaPessoal, isAtiva } from '../shared/estado'
+import { estimativaPessoal, isAtiva, oLar } from '../shared/estado'
 import { VagaProposta } from '../shared/VagaProposta'
 import { AnimatedForecast } from '../shared/Forecast'
 import { enterCls, sairEDepois, useChangeAnimation, useSeen } from '../shared/motion'
@@ -171,7 +171,7 @@ export function PedidoCard({
             {lar.telefone && (
               <a
                 href={telHref(lar.telefone)}
-                aria-label={`Ligar para ${lar.nome}: ${lar.telefone}`}
+                aria-label={`Ligar para ${oLar(lar.nome)}: ${lar.telefone}`}
                 className={cn(
                   'inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-sand px-5 font-medium text-ink transition-[background-color,scale] duration-200 active:scale-[0.98] active:bg-sand-deep',
                   'sm:justify-start sm:rounded-none sm:bg-transparent sm:px-0 sm:text-terra-600 sm:hover:underline sm:active:scale-100 sm:active:bg-transparent',

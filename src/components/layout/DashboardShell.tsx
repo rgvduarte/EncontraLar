@@ -56,7 +56,8 @@ export function DashboardShell({
         <div className="container-page py-5 sm:py-10">
           {eyebrow && <p className="eyebrow mb-1.5">{eyebrow}</p>}
           <h1 className="text-3xl font-semibold sm:text-4xl">{title}</h1>
-          {subtitle ? <p className="mt-2 max-w-2xl text-lg text-ink-mute">{subtitle}</p> : null}
+          {/* 3xl: os subtítulos dos painéis cabem numa linha (a barra lateral não salta ao mudar de secção) */}
+          {subtitle ? <p className="mt-2 max-w-3xl text-lg text-ink-mute">{subtitle}</p> : null}
         </div>
       </div>
 

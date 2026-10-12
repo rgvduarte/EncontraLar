@@ -4,7 +4,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
 import { pedirVisita } from '@/lib/store'
-import { diaPorExtenso } from '../helpers'
+import { OLar, diaPorExtenso } from '../helpers'
 import { VisitFields, validarVisita, type VisitaEscolha } from './VisitFields'
 
 /** Marcar visita num pedido que já existe (não cria um pedido novo). */
@@ -20,7 +20,7 @@ export function VisitaModal({ lar, c, open, onClose }: { lar: Lar; c: Candidatur
     setErro(err)
     if (err) return
     pedirVisita(c.id, visita.data, visita.hora)
-    toast.success('Visita pedida', `${lar.nome} vai confirmar a visita de ${diaPorExtenso(visita.data)}, às ${visita.hora}.`)
+    toast.success('Visita pedida', `${OLar(lar.nome)} vai confirmar a visita de ${diaPorExtenso(visita.data)}, às ${visita.hora}.`)
     onClose()
   }
 

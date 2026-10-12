@@ -139,7 +139,7 @@ function Exemplo({ lar }: { lar: Lar }) {
                 meses: <CountUp value={est.p90} format={pct} className="font-semibold text-ink tabular" />.
               </p>
               <p className="mt-1 text-xl font-semibold text-ink">
-                {est.diasMediana == null ? 'Espera prevista superior a 2 anos.' : `Vaga provável em ${duracaoHumana(est.diasMediana)}.`}
+                {est.diasMediana == null ? 'Espera prevista superior a 2 anos.' : `Espera estimada: ${duracaoHumana(est.diasMediana)}.`}
               </p>
             </>
           )}

@@ -12,7 +12,7 @@ import { SignedInNotice } from './shared/SignedInNotice'
 import { PrototypeNote } from './shared/PrototypeNote'
 import { Appear, cascade } from './shared/Appear'
 import { primeiroNome } from './shared/EmailExisteErro'
-import { descreverDestino, destinoAposEntrar, isInternalPath } from './shared/redirect'
+import { destinoAposEntrar, isInternalPath, motivoDoDestino } from './shared/redirect'
 
 export default function LoginPage() {
   useDocumentTitle('Entrar')
@@ -26,7 +26,8 @@ export default function LoginPage() {
 
   if (user && !aEntrar) return <SignedInNotice user={user} destino={destinoAposEntrar(voltar, user.role)} contexto="entrar" />
 
-  const destino = descreverDestino(voltar, lares)
+  // "Inicie sessão para pedir vaga na Casa X." — o voltar segue inteiro (com ?acao=…) para o registo e para o destino
+  const motivo = motivoDoDestino(voltar, lares)
   const registar = isInternalPath(voltar) ? `/registar?voltar=${encodeURIComponent(voltar)}` : '/registar'
 
   const concluir = (u: User) => {
@@ -35,7 +36,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell title="Entrar no EncontraLar" subtitle={destino ? `Inicie sessão para abrir ${destino}.` : undefined}>
+    <AuthShell title="Entrar no EncontraLar" subtitle={motivo ? `Inicie sessão para ${motivo}.` : undefined}>
       <LoginForm defaultEmail={params.get('email') ?? ''} onPending={setAEntrar} onSuccess={concluir} />
 
       <Appear delay={cascade(3)} variant="fade" className="mt-5 flex flex-col items-center gap-2 text-center">

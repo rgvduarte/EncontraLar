@@ -1,0 +1,58 @@
+[
+  {
+    "email": "familia@exemplo.pt",
+    "role": "familia",
+    "nome": "Ana Ferreira",
+    "telefone": "912 000 101",
+    "palavraPasse": "demo1234"
+  },
+  {
+    "email": "lar@exemplo.pt",
+    "role": "lar",
+    "nome": "Helena Marques",
+    "telefone": "220 000 042",
+    "palavraPasse": "demo1234"
+  },
+  {
+    "email": "rui.sousa@exemplo.pt",
+    "role": "familia",
+    "nome": "Rui Sousa",
+    "telefone": "936 000 214",
+    "palavraPasse": null
+  },
+  {
+    "email": "sandra.lopes@exemplo.pt",
+    "role": "familia",
+    "nome": "Sandra Lopes",
+    "telefone": "917 000 388",
+    "palavraPasse": null
+  },
+  {
+    "email": "carlos.pinto@exemplo.pt",
+    "role": "familia",
+    "nome": "Carlos Pinto",
+    "telefone": "965 000 127",
+    "palavraPasse": null
+  },
+  {
+    "email": "patricia.costa@exemplo.pt",
+    "role": "familia",
+    "nome": "Patrícia Costa",
+    "telefone": "914 000 950",
+    "palavraPasse": null
+  },
+  {
+    "email": "nuno.ribeiro@exemplo.pt",
+    "role": "familia",
+    "nome": "Nuno Ribeiro",
+    "telefone": "926 000 433",
+    "palavraPasse": null
+  },
+  {
+    "email": "joana.nogueira@exemplo.pt",
+    "role": "familia",
+    "nome": "Joana Nogueira",
+    "telefone": "938 000 612",
+    "palavraPasse": null
+  }
+]

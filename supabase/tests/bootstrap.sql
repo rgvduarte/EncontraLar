@@ -16,12 +16,15 @@ create role service_role nologin noinherit bypassrls;
 create schema auth;
 grant usage on schema auth to anon, authenticated, service_role;
 
--- subconjunto das colunas de auth.users usadas pelos triggers do EncontraLar
+-- subconjunto das colunas de auth.users usadas pelos triggers e scripts do EncontraLar
+-- (is_anonymous e email_confirmed_at existem no auth.users real do Supabase)
 create table auth.users (
   id uuid primary key default gen_random_uuid(),
   email text unique,
   raw_app_meta_data jsonb not null default '{}'::jsonb,
   raw_user_meta_data jsonb not null default '{}'::jsonb,
+  is_anonymous boolean not null default false,
+  email_confirmed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -72,3 +75,24 @@ alter default privileges in schema public grant all on sequences to anon, authen
 
 -- Publicação do Realtime (vazia, como num projeto novo)
 create publication supabase_realtime;
+
+-- Imitação mínima do pg_cron (o PGlite não o tem): cron.schedule(nome, agenda, comando) regista
+-- o trabalho em cron.job, com a mesma semântica de "voltar a agendar com o mesmo nome substitui".
+-- Os testes leem cron.job e executam o comando para provar que o trabalho agendado funciona.
+create schema cron;
+create table cron.job (
+  jobid bigint generated always as identity primary key,
+  jobname text unique,
+  schedule text not null,
+  command text not null,
+  username text not null default current_user,
+  active boolean not null default true
+);
+create function cron.schedule(job_name text, schedule text, command text)
+returns bigint
+language sql
+as $$
+  insert into cron.job (jobname, schedule, command) values (job_name, schedule, command)
+  on conflict (jobname) do update set schedule = excluded.schedule, command = excluded.command
+  returning jobid;
+$$;

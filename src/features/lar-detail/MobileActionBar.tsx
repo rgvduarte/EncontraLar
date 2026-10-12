@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { Candidatura, Lar } from '@/types'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { ESTADO_CANDIDATURA_LABEL } from '@/lib/labels'
+import { disponibilidadeTexto } from '@/components/lar/badges'
 import { cn } from '@/lib/cn'
-import { precoResumo, type DadosLar } from './helpers'
+import { ctaPedido, precoResumo, type DadosLar } from './helpers'
 
 const PONTO = { disponivel: 'bg-leaf-500', breve: 'bg-sun-500', espera: 'bg-dusk-500' } as const
 
@@ -38,11 +39,23 @@ export function MobileActionBar({
   const ref = useRef<HTMLDivElement>(null)
   const preco = precoResumo(lar)
   const { livres, unidade, disp } = dados
-  const estado = ativa
-    ? ESTADO_CANDIDATURA_LABEL[ativa.estado]
-    : livres > 0
-      ? `${livres} ${livres === 1 ? `${unidade.um} livre` : `${unidade.varios} livres`}`
-      : 'Lista de espera'
+  // o mesmo estado (e a mesma cor do ponto) que o cartão de vagas: lugar livre mas já prometido à lista de espera
+  // (laranja, "lista à frente"), "Vaga em breve" ou "Lista de espera"
+  const listaAFrente = livres > 0 && !dados.est.imediata
+  const ponto = ativa ? 'bg-terra-600' : PONTO[listaAFrente ? 'breve' : disp]
+  const estado: ReactNode = ativa ? (
+    ESTADO_CANDIDATURA_LABEL[ativa.estado]
+  ) : listaAFrente ? (
+    <>
+      {/* no telemóvel a linha é curta (o preço vem ao lado): só o essencial */}
+      <span className="sm:hidden">Lista à frente</span>
+      <span className="max-sm:hidden">{livres === 1 ? '1 lugar livre' : `${livres} lugares livres`} · lista à frente</span>
+    </>
+  ) : livres > 0 ? (
+    `${livres} ${livres === 1 ? `${unidade.um} livre` : `${unidade.varios} livres`}`
+  ) : (
+    disponibilidadeTexto(lar, disp, true, true)
+  )
 
   // troca de ações (pedir → pedido enviado) anima, mas não à entrada
   const chave = ativa ? `ativa-${ativa.id}` : minhaFicha ? 'gestor' : 'livre'
@@ -68,7 +81,7 @@ export function MobileActionBar({
     <div
       ref={ref}
       className={cn(
-        'fixed inset-x-0 bottom-0 z-[950] border-t border-black/[0.06] bg-white/85 backdrop-blur-xl backdrop-saturate-150 lg:hidden',
+        'fixed inset-x-0 bottom-0 z-[999] border-t border-black/[0.06] bg-white/85 backdrop-blur-xl backdrop-saturate-150 lg:hidden',
         'transition-[transform,translate,scale,opacity] duration-500 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
         visivel ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-full opacity-0',
       )}
@@ -90,7 +103,7 @@ export function MobileActionBar({
             )}
           </p>
           <p className="flex shrink-0 items-center gap-1.5 text-sm text-ink-soft">
-            <span aria-hidden className={cn('size-2 shrink-0 rounded-full', ativa ? 'bg-terra-600' : PONTO[disp])} />
+            <span aria-hidden className={cn('size-2 shrink-0 rounded-full', ponto)} />
             {estado}
           </p>
         </div>
@@ -110,7 +123,7 @@ export function MobileActionBar({
                 Marcar visita
               </Button>
               <Button onClick={onPedir} className={botao}>
-                {livres > 0 ? (dados.centroDia ? 'Pedir lugar' : 'Pedir vaga') : 'Entrar na lista'}
+                {ctaPedido(dados, true)}
               </Button>
             </>
           )}

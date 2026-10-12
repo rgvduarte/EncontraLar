@@ -17,8 +17,11 @@ export function FavoriteButton({ larId, larNome, variant = 'overlay', className 
     e.preventDefault()
     e.stopPropagation()
     if (!user) {
+      // o regresso leva a intenção (?guardar=<id>): depois de entrar, a instituição fica mesmo guardada (Layout)
+      const params = new URLSearchParams(location.search)
+      params.set('guardar', larId)
       toast.info('Entre para guardar', 'Crie uma conta gratuita para guardar instituições e receber alertas de vaga.')
-      navigate(`/entrar?voltar=${encodeURIComponent(location.pathname + location.search)}`)
+      navigate(`/entrar?voltar=${encodeURIComponent(`${location.pathname}?${params.toString()}`)}`)
       return
     }
     const now = toggleFavorito(larId)

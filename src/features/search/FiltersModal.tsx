@@ -3,12 +3,12 @@ import type { Cuidado, Natureza, TipoResposta } from '@/types'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Checkbox, Switch } from '@/components/ui/Field'
-import { CUIDADO_LABEL, CUIDADOS_ORDEM, GRAU_DESCRICAO, GRAU_LABEL, GRAUS_ORDEM, NATUREZA_LABEL, TIPO_LABEL } from '@/lib/labels'
+import { CUIDADO_LABEL, CUIDADOS_ORDEM, GRAU_DESCRICAO, GRAU_LABEL, GRAUS_ORDEM, NATUREZA_LABEL, TIPO_LABEL, TIPO_RESUMO } from '@/lib/labels'
 import { cn } from '@/lib/cn'
 import { BudgetSlider } from './BudgetControl'
 import { TogglePill } from './Chips'
 import { useNumeroAnimado } from './motion'
-import { centroDe, FILTROS_VAZIOS, filtrosDe, NATUREZAS, opcoesRaio, TIPOS, type Filtros, type SearchState } from './searchState'
+import { centroDe, FILTROS_VAZIOS, filtrosDe, NATUREZAS, opcoesRaio, TIPOS, VAGA_LABEL, type Filtros, type SearchState } from './searchState'
 
 export type ModoFiltros = 'mais' | 'todos'
 export type Rascunho = Filtros & { raio: number }
@@ -31,7 +31,7 @@ function Secao({ titulo, ajuda, children }: { titulo: string; ajuda?: ReactNode;
   return (
     <fieldset className="el-secao">
       <legend className="text-lg font-semibold tracking-tight text-ink">{titulo}</legend>
-      {ajuda && <p className="mt-0.5 text-sm text-ink-mute">{ajuda}</p>}
+      {ajuda && <div className="mt-0.5 text-sm text-ink-mute">{ajuda}</div>}
       <div className="mt-4">{children}</div>
     </fieldset>
   )
@@ -68,6 +68,24 @@ function RadioPills<T extends string | number | null>({
 }
 
 const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
+
+const minuscula = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
+
+/** O que é cada tipo, em linguagem simples: só o escolhido, ou os três (um por linha). */
+function AjudaTipo({ tipos }: { tipos: TipoResposta[] }) {
+  const lista = tipos.length === 1 ? tipos : TIPOS
+  return (
+    <span className="flex flex-col">
+      {lista.map((t) => (
+        <span key={t}>
+          <span className="font-medium text-ink-soft">{TIPO_LABEL[t]}:</span> {minuscula(TIPO_RESUMO[t])}
+        </span>
+      ))}
+    </span>
+  )
+}
+
+const AJUDA_NATUREZA = 'IPSS e Misericórdia: sem fins lucrativos, mensalidade conforme os rendimentos. Privado: preço fixo por tipo de quarto.'
 
 /** "Mais filtros" (desktop) ou todos os filtros (telemóvel, folha inferior), com contagem ao vivo. */
 export function FiltersModal({ open, onClose, modo, state, contar, precos, onApply }: Props) {
@@ -126,8 +144,8 @@ export function FiltersModal({ open, onClose, modo, state, contar, precos, onApp
               onChange={(vaga) => set({ vaga })}
               opcoes={[
                 { v: null, label: 'Todas' },
-                { v: 'agora', label: 'Com vaga agora' },
-                { v: 'breve', label: 'Agora ou em breve' },
+                { v: 'agora', label: VAGA_LABEL.agora },
+                { v: 'breve', label: VAGA_LABEL.breve },
               ]}
             />
           </Secao>
@@ -140,7 +158,7 @@ export function FiltersModal({ open, onClose, modo, state, contar, precos, onApp
         )}
 
         {todos && (
-          <Secao titulo="Tipo">
+          <Secao titulo="Tipo" ajuda={<AjudaTipo tipos={r.tipos} />}>
             <div className="flex flex-wrap gap-2">
               {TIPOS.map((t: TipoResposta) => (
                 <TogglePill key={t} pressed={r.tipos.includes(t)} onClick={() => set({ tipos: toggle(r.tipos, t) })}>
@@ -182,7 +200,7 @@ export function FiltersModal({ open, onClose, modo, state, contar, precos, onApp
           />
         </Secao>
 
-        <Secao titulo="Natureza">
+        <Secao titulo="Natureza" ajuda={AJUDA_NATUREZA}>
           <div className="flex flex-wrap gap-2">
             {NATUREZAS.map((nat: Natureza) => (
               <TogglePill key={nat} pressed={r.naturezas.includes(nat)} onClick={() => set({ naturezas: toggle(r.naturezas, nat) })}>

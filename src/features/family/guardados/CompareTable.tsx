@@ -7,7 +7,7 @@ import { precoReferencia } from '@/lib/matching'
 import { estimarEspera, vagasLivres } from '@/lib/forecast'
 import { distanceKm } from '@/lib/geo'
 import { CUIDADO_LABEL, CUIDADOS_ORDEM, QUARTO_CURTO } from '@/lib/labels'
-import { euro, km, pct } from '@/lib/format'
+import { deLocal, euro, km, pct } from '@/lib/format'
 import { prefersReducedMotion } from '@/lib/motion'
 import { cn } from '@/lib/cn'
 import { isAtiva } from '../shared/estado'
@@ -85,7 +85,8 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
   const [atual, setAtual] = useState(0)
   const faixa = useRef<HTMLUListElement>(null)
   const dados = lares.map((lar) => {
-    const pedido = pedidos.find((c) => c.larId === lar.id && isAtiva(c) && c.posicao != null)
+    const ativos = pedidos.filter((c) => c.larId === lar.id && isAtiva(c))
+    const pedido = ativos.find((c) => c.posicao != null) ?? ativos[0]
     return {
       lar,
       pedido,
@@ -95,11 +96,13 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
     }
   })
   const chave = perfil?.necessidades.length ? perfil.necessidades : null
-  // a previsão usa o lugar na lista de quem já pediu; nas outras, a de quem pedir hoje (como na ficha)
-  const algumNaLista = dados.some((d) => d.pedido?.posicao != null)
-  const hintPrevisao = algumNaLista ? 'com o seu lugar, se já pediu' : 'se pedir hoje'
-  const lugarNaLista = (pedido: Candidatura | undefined) =>
-    pedido?.posicao != null ? `em ${ordinal(pedido.posicao)} na lista` : algumNaLista ? 'se pedir hoje' : undefined
+  // a previsão usa o lugar na lista de quem já pediu; nas outras é a de quem pedir hoje (como na ficha).
+  // Se as bases forem diferentes entre colunas, cada célula diz de onde parte.
+  const base = (pedido: Candidatura | undefined) =>
+    pedido?.posicao != null ? `em ${ordinal(pedido.posicao)} na lista` : pedido ? 'se entrar na lista hoje' : 'se pedir hoje'
+  const algumPedido = dados.some((d) => d.pedido)
+  const hintPrevisao = algumPedido ? 'com o seu lugar, se já pediu' : 'se pedir hoje'
+  const lugarNaLista = (pedido: Candidatura | undefined) => (algumPedido ? base(pedido) : undefined)
 
   // telemóvel: ao acrescentar uma instituição, a faixa desliza até ao cartão novo (que entra a deslizar)
   const ids = lares.map((l) => l.id).join(',')
@@ -220,7 +223,7 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
     linhas.push({
       id: 'distancia',
       label: 'Distância',
-      hint: `a ${perfil.local.label}`,
+      hint: `a partir ${deLocal(perfil.local.label)}`,
       cells: dados.map((d) => <Num v={km(d.dist!)} />),
       valores: dados.map((d) => Math.round(d.dist! * 10)),
       melhor: 'min',

@@ -4,6 +4,7 @@ import type { Lar } from '@/types'
 import { Reveal, useLenis } from '@/components/motion'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
+import { useAvisoAlteracoes } from '@/components/ui/useAvisoAlteracoes'
 import { cn } from '@/lib/cn'
 import { MoreLink } from '../shared/ui'
 import { Apresentacao, Comodidades, Contactos, Cuidados, Equipa, Mensalidade, QuemRecebe } from './Campos'
@@ -18,6 +19,8 @@ import { Verificacao } from './Verificacao'
  */
 export default function FichaPage({ lar }: { lar: Lar }) {
   const form = useFichaForm(lar)
+  // sair para outra secção (barra lateral, barra de abas) ou fechar o separador com alterações por guardar pede confirmação
+  useAvisoAlteracoes(form.sujo)
   const { hash } = useLocation()
   const lenis = useLenis()
   const preview: Lar = { ...lar, ...paraLar(form.r) }

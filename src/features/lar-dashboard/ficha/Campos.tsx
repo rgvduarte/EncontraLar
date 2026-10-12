@@ -4,6 +4,7 @@ import { Reveal } from '@/components/motion'
 import { Button } from '@/components/ui/Button'
 import { Checkbox, InputField, Switch, TextareaField } from '@/components/ui/Field'
 import { COMODIDADE_LABEL, COMODIDADES_ORDEM, CUIDADO_LABEL, CUIDADOS_ORDEM, GRAU_LABEL, GRAUS_ORDEM } from '@/lib/labels'
+import { cn } from '@/lib/cn'
 import { MAX_RESUMO, type Erros, type Rascunho } from './useFichaForm'
 
 type Form = {
@@ -51,16 +52,19 @@ function Grelha({ legenda, erro, children }: { legenda: string; erro?: string; c
 export function Apresentacao({ r, erros, set }: Form) {
   return (
     <Bloco id="f-apresentacao" titulo="Apresentação" texto="A primeira coisa que as famílias leem.">
-      <InputField
+      {/* a frase lê-se inteira (a caixa cresce com o texto); é uma só frase, por isso as mudanças de linha passam a espaço */}
+      <TextareaField
         label="Numa frase"
         hint="Aparece nos cartões da pesquisa."
+        rows={Math.max(2, Math.ceil(r.resumo.length / 55))}
         value={r.resumo}
         maxLength={MAX_RESUMO + 40}
-        onChange={(e) => set('resumo', e.target.value)}
+        onChange={(e) => set('resumo', e.target.value.replace(/\s*\n\s*/g, ' '))}
         error={erros.resumo}
         placeholder="Ex.: Casa acolhedora com enfermagem 24 horas e jardim, no centro de Braga."
+        className="resize-none [field-sizing:content]"
       />
-      <p className="-mt-3 text-right text-xs text-ink-mute tabular">
+      <p className={cn('-mt-3 text-right text-xs tabular', r.resumo.length > MAX_RESUMO ? 'font-medium text-alert-700' : 'text-ink-mute')}>
         {r.resumo.length}/{MAX_RESUMO}
       </p>
       <TextareaField
@@ -77,7 +81,8 @@ export function Apresentacao({ r, erros, set }: Form) {
 export function Contactos({ r, erros, set }: Form) {
   return (
     <Bloco id="f-contactos" titulo="Contactos e morada">
-      <div className="grid gap-5 sm:grid-cols-2">
+      {/* o email é mais comprido do que o telefone: fica com mais largura para se ler inteiro */}
+      <div className="grid gap-5 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <InputField label="Telefone" type="tel" inputMode="tel" autoComplete="tel" value={r.telefone} onChange={(e) => set('telefone', e.target.value)} error={erros.telefone} />
         <InputField
           label="Email"

@@ -6,7 +6,7 @@ import { RotateCw } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Basemap } from '@/components/map/Basemap'
 import { DispDot } from './Chips'
-import type { Entrada } from './filtering'
+import { dispVisivel, livreComLista, type Entrada } from './filtering'
 import { MapController, REGIOES_MAPA } from './MapController'
 import { MapPeekCard, MapPopupContent } from './MapCards'
 import { clusterIcon, descricaoMarcador, pinIcon, type ClusterLike } from './mapIcons'
@@ -48,7 +48,10 @@ const PinMarker = memo(function PinMarker({ e, ativo, popup, onHover, onSelect, 
   const { lat, lng } = e.lar
   // posição estável: um array novo a cada render faz o agrupamento retirar e repor o marcador (e fecha o popup)
   const position = useMemo<[number, number]>(() => [lat, lng], [lat, lng])
-  const icon = useMemo(() => pinIcon(e.lar, e.disp), [e.lar, e.disp])
+  // a cor segue o cartão: um lugar livre já prometido à lista de espera aparece a laranja
+  const disp = dispVisivel(e)
+  const listaAFrente = livreComLista(e)
+  const icon = useMemo(() => pinIcon(e.lar, disp, listaAFrente), [e.lar, disp, listaAFrente])
 
   // realce por classe no elemento existente → a pílula transita para preto (sem trocar o ícone)
   const markerRef = useRef<L.Marker | null>(null)
@@ -91,11 +94,11 @@ const PinMarker = memo(function PinMarker({ e, ativo, popup, onHover, onSelect, 
       ref={ref}
       position={position}
       icon={icon}
-      title={descricaoMarcador(e.lar, e.disp)}
+      title={descricaoMarcador(e.lar, disp, listaAFrente)}
       alt={e.lar.nome}
       keyboard
       riseOnHover
-      zIndexOffset={ativo ? 2000 : e.disp === 'disponivel' ? 300 : e.disp === 'breve' ? 150 : 0}
+      zIndexOffset={ativo ? 2000 : disp === 'disponivel' ? 300 : disp === 'breve' ? 150 : 0}
       eventHandlers={handlers}
     >
       {popup && (
@@ -113,11 +116,18 @@ const ATALHOS: { id: keyof typeof REGIOES_MAPA; label: string }[] = [
   { id: 'acores', label: 'Açores' },
 ]
 
+// os mesmos nomes da legenda do mapa da página inicial
 const LEGENDA = [
-  { d: 'disponivel', t: 'Vaga agora' },
-  { d: 'breve', t: 'Em breve' },
+  { d: 'disponivel', t: 'Vaga disponível' },
+  { d: 'breve', t: 'Vaga em breve' },
   { d: 'espera', t: 'Lista de espera' },
 ] as const
+
+/**
+ * Raio de agrupamento ≈ largura de uma pílula de preço (84–110px): marcadores mais próximos do que isto
+ * juntam-se num agrupamento em vez de se taparem uns aos outros. Mais perto (zoom ≥ 12) separa-os mais cedo.
+ */
+const raioAgrupamento = (zoom: number) => (zoom >= 12 ? 64 : 80)
 
 const vidro = 'bg-white/90 shadow-card ring-1 ring-black/5 backdrop-blur-xl'
 
@@ -162,6 +172,13 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
   const zona = local.tipo === 'zona' ? local.bounds : null
   const zonaLL = useMemo<[[number, number], [number, number]] | null>(() => (zona ? [[zona.s, zona.w], [zona.n, zona.e]] : null), [zona])
   const selecionado = mobile && selectedId ? resultados.find((e) => e.lar.id === selectedId) : undefined
+  // telemóvel: o marcador escolhido fica à vista, acima da folha que sobe do fundo
+  const fLat = selecionado?.lar.lat
+  const fLng = selecionado?.lar.lng
+  const foco = useMemo<[number, number] | null>(() => (fLat != null && fLng != null ? [fLat, fLng] : null), [fLat, fLng])
+  const folhaRef = useRef<HTMLDivElement>(null)
+  // altura da folha + a sua distância ao fundo (bottom-20) + meia pílula do marcador + folga
+  const margemFundo = useCallback(() => (folhaRef.current?.offsetHeight ?? 260) + 80 + 17 + 16, [])
   const porRegiao = useMemo(() => {
     const c = { continente: 0, madeira: 0, acores: 0 }
     for (const e of resultados) {
@@ -197,6 +214,8 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
           padding={mobile ? [32, 32] : [64, 64]}
           onUserMove={() => setMexeu(true)}
           onBackgroundClick={() => mobile && onSelect(null)}
+          foco={foco}
+          margemFundo={margemFundo}
         />
 
         {centroLL && (
@@ -229,7 +248,7 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
           chunkedLoading
           showCoverageOnHover={false}
           spiderfyOnMaxZoom
-          maxClusterRadius={48}
+          maxClusterRadius={raioAgrupamento}
           disableClusteringAtZoom={13}
           iconCreateFunction={(c: ClusterLike) => clusterIcon(c)}
         >
@@ -248,7 +267,7 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
       </MapContainer>
 
       {/* sobreposições (fora do contentor Leaflet para não arrastarem o mapa) */}
-      <div className="pointer-events-none absolute top-3 left-3 z-[1000] flex flex-col items-start gap-2 sm:top-4 sm:left-4">
+      <div className="pointer-events-none absolute top-3 right-3 left-3 z-[1000] flex flex-col items-start gap-2 sm:top-4 sm:right-auto sm:left-4">
         <nav aria-label="Ir para região" className={cn('pointer-events-auto flex rounded-full p-0.5', vidro)}>
           {ATALHOS.map((a) => (
             <button
@@ -262,9 +281,19 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
             </button>
           ))}
         </nav>
-        <ul aria-label="Legenda" className={cn('pointer-events-auto flex gap-3 rounded-full px-3.5 py-2 text-xs text-ink-soft', vidro)}>
+        {/* no telemóvel a legenda ocupa duas linhas (grelha que se ajusta ao texto); cada estado fica inteiro */}
+        <ul
+          aria-label="Legenda"
+          className={cn(
+            'pointer-events-auto grid grid-cols-[auto_auto] gap-x-3 gap-y-1 rounded-[1.125rem] px-3.5 py-2 text-xs text-ink-soft sm:flex sm:rounded-full',
+            'transition-[opacity,visibility] duration-200',
+            // com a folha do marcador aberta (telemóvel) o estado já está escrito no cartão: a legenda sai e o marcador tem espaço
+            selecionado && 'invisible opacity-0',
+            vidro,
+          )}
+        >
           {LEGENDA.map((l) => (
-            <li key={l.d} className="inline-flex items-center gap-1.5">
+            <li key={l.d} className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <DispDot disp={l.d} className="size-2.5" />
               {l.t}
             </li>
@@ -294,7 +323,7 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
       )}
 
       {folha.item && (
-        <div className="pointer-events-none absolute inset-x-3 bottom-20 z-[1001]">
+        <div ref={folhaRef} className="pointer-events-none absolute inset-x-3 bottom-20 z-[1001]">
           <MapPeekCard e={folha.item} saindo={folha.saindo} onClose={() => onSelect(null)} />
         </div>
       )}

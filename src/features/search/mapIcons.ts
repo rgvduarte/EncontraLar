@@ -16,9 +16,11 @@ export function rotuloMarcador(lar: Lar): string {
   return euro(lar.mensalidadeMin)
 }
 
-export function descricaoMarcador(lar: Lar, disp: Disponibilidade): string {
+/** `listaAFrente`: há lugar livre, mas já prometido a quem está na lista de espera. */
+export function descricaoMarcador(lar: Lar, disp: Disponibilidade, listaAFrente = false): string {
   const preco = lar.natureza === 'privado' ? `desde ${euro(lar.mensalidadeMin)} por mês` : 'mensalidade conforme os rendimentos'
-  return `${lar.nome}, ${lar.localidade}. ${DISPONIBILIDADE_LABEL[disp]}, ${preco}.`
+  const estado = listaAFrente ? 'Lugar livre, com lista de espera à frente' : DISPONIBILIDADE_LABEL[disp]
+  return `${lar.nome}, ${lar.localidade}. ${estado}, ${preco}.`
 }
 
 const cache = new Map<string, L.DivIcon>()
@@ -35,16 +37,16 @@ function atraso(id: string): number {
  * aplicada ao elemento existente (ver PinMarker) — assim a pílula transita suavemente para preto
  * em vez de ser substituída (e a animação de entrada não se repete ao passar o rato).
  */
-export function pinIcon(lar: Lar, disp: Disponibilidade): L.DivIcon {
+export function pinIcon(lar: Lar, disp: Disponibilidade, listaAFrente = false): L.DivIcon {
   const rotulo = rotuloMarcador(lar)
-  const key = `${lar.id}|${rotulo}|${disp}`
+  const key = `${lar.id}|${rotulo}|${disp}|${listaAFrente ? 1 : 0}`
   const hit = cache.get(key)
   if (hit) return hit
   const html =
     `<span class="el-pin el-pin--${disp}" style="animation-delay:${atraso(lar.id)}ms">` +
     `<span class="el-pin__dot" aria-hidden="true"></span>` +
     `<span aria-hidden="true">${esc(rotulo)}</span>` +
-    `<span class="el-sr">${esc(descricaoMarcador(lar, disp))}</span>` +
+    `<span class="el-sr">${esc(descricaoMarcador(lar, disp, listaAFrente))}</span>` +
     `</span>`
   const icon = L.divIcon({ html, className: `el-marker el-marker--${disp}`, iconSize: [0, 0], iconAnchor: [0, 0] })
   cache.set(key, icon)

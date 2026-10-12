@@ -37,8 +37,14 @@ export function cabecalho(seccao: Seccao, lar: Lar, user: User | null, a: Assunt
 }
 
 function textos(seccao: Seccao, lar: Lar, user: User | null, a: Assuntos, passosEmFalta: number, agora: Date): Cabecalho {
-  // no telemóvel não há barra lateral: o nome da casa aparece por cima do título
-  const eyebrow = <span className="lg:hidden">{lar.nome}</span>
+  // no telemóvel não há barra lateral: o nome da casa aparece por cima do título;
+  // no desktop (o nome já está na barra lateral) fica "Painel da instituição", como o "Painel da família"
+  const eyebrow = (
+    <>
+      <span className="lg:hidden">{lar.nome}</span>
+      <span className="max-lg:hidden">Painel da instituição</span>
+    </>
+  )
   switch (seccao) {
     case 'resumo': {
       const nome = user?.nome.split(' ')[0]

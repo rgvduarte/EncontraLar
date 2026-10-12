@@ -1,7 +1,8 @@
-import { forwardRef, useEffect, useRef } from 'react'
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { List, Map as MapIcon, SlidersHorizontal } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { subscribeScroll } from '@/lib/motion'
 import { Count, pillClasses } from './Chips'
 import { VagaPills, type Geo } from './FilterBar'
 import { PlaceCombobox } from './PlaceCombobox'
@@ -12,12 +13,87 @@ interface Props {
   model: SearchModel
   geo: Geo
   onFiltros: () => void
+  /** lista: o campo de pesquisa recolhe ao descer (o mapa não tem scroll) */
+  recolhivel?: boolean
+}
+
+/** a partir daqui (px de scroll) a descer, o campo recolhe; qualquer subida volta a mostrá-lo */
+const RECOLHER_DEPOIS = 150
+/** px de movimento contínuo no mesmo sentido antes de mudar (evita tremer com o dedo parado) */
+const LIMIAR = 8
+
+/**
+ * Barra recolhível (ao estilo do Safari): a descer, o campo de pesquisa sobe para trás do cabeçalho e
+ * só a linha de filtros fica presa; a subir, o campo volta. Nunca recolhe com o campo em uso.
+ */
+function useRecolher(ativo: boolean, barra: RefObject<HTMLDivElement | null>) {
+  const [recolhida, setRecolhida] = useState(false)
+  const estado = useRef(false)
+  const acumulado = useRef(0)
+  const definir = useCallback((v: boolean) => {
+    if (v === estado.current) return
+    estado.current = v
+    setRecolhida(v)
+  }, [])
+  useEffect(() => {
+    if (!ativo) {
+      definir(false)
+      return
+    }
+    let ultimo = window.scrollY
+    return subscribeScroll(() => {
+      const y = window.scrollY
+      const dy = y - ultimo
+      ultimo = y
+      const emUso = Boolean(barra.current?.querySelector('[data-el-combo-aberto]')) || Boolean(barra.current?.contains(document.activeElement))
+      if (y < RECOLHER_DEPOIS || emUso) {
+        acumulado.current = 0
+        definir(false)
+        return
+      }
+      // acumula enquanto o sentido se mantém; uma inversão recomeça a contagem
+      const a = acumulado.current
+      acumulado.current = a === 0 || Math.sign(dy) === Math.sign(a) ? a + dy : dy
+      if (acumulado.current > LIMIAR) definir(true)
+      else if (acumulado.current < -LIMIAR) definir(false)
+    })
+  }, [ativo, barra, definir])
+  // o campo recebeu o foco (Tab, lupa do cabeçalho): volta a aparecer de imediato
+  const mostrar = useCallback(() => {
+    acumulado.current = 0
+    definir(false)
+  }, [definir])
+  return { recolhida, mostrar }
 }
 
 /** Barra do telemóvel: pílula de pesquisa + linha de pílulas (desliza na horizontal). */
-export const MobileBar = forwardRef<HTMLDivElement, Props>(function MobileBar({ model, geo, onFiltros }, ref) {
+export const MobileBar = forwardRef<HTMLDivElement, Props>(function MobileBar({ model, geo, onFiltros, recolhivel = false }, ref) {
   const { state, entradas, update } = model
   const n = contarTodosFiltros({ ...state, vaga: null })
+
+  // ——— recolher o campo ao descer a lista
+  const barra = useRef<HTMLDivElement | null>(null)
+  const setRefs = useCallback(
+    (el: HTMLDivElement | null) => {
+      barra.current = el
+      if (typeof ref === 'function') ref(el)
+      else if (ref) ref.current = el
+    },
+    [ref],
+  )
+  const campoRef = useRef<HTMLDivElement>(null)
+  const [campoH, setCampoH] = useState(58)
+  useLayoutEffect(() => {
+    const el = campoRef.current
+    if (!el) return
+    // o campo e o espaço acima dele (a barra é o offsetParent: sticky)
+    const medir = () => setCampoH(el.offsetTop + el.offsetHeight)
+    medir()
+    const ro = new ResizeObserver(medir)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const { recolhida, mostrar } = useRecolher(recolhivel, barra)
 
   // a pílula ativa nunca fica escondida fora da linha deslizante
   const rowRef = useRef<HTMLDivElement>(null)
@@ -31,8 +107,24 @@ export const MobileBar = forwardRef<HTMLDivElement, Props>(function MobileBar({ 
   }, [state.vaga])
 
   return (
-    <div ref={ref} className="sticky top-16 z-[900] border-b border-black/[0.06] bg-white/95 pt-2.5 backdrop-blur-xl backdrop-saturate-150">
-      <div className="px-4 sm:px-6">
+    <div
+      ref={setRefs}
+      data-recolhida={recolhida || undefined}
+      style={{ '--campo-h': `${campoH}px` } as CSSProperties}
+      className={cn(
+        'sticky top-16 z-[900] border-b border-black/[0.06] bg-white/95 pt-2.5 backdrop-blur-xl backdrop-saturate-150',
+        'transition-[translate] duration-300 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
+        recolhida && '-translate-y-(--campo-h)',
+      )}
+    >
+      <div
+        ref={campoRef}
+        onFocus={mostrar}
+        className={cn(
+          'px-4 transition-opacity duration-200 motion-reduce:transition-none sm:px-6',
+          recolhida && 'pointer-events-none opacity-0',
+        )}
+      >
         <PlaceCombobox
           compact
           local={state.local}

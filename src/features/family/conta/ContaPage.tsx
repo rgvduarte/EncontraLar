@@ -3,10 +3,10 @@ import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/Button'
 import { InputField, Switch } from '@/components/ui/Field'
 import { toast } from '@/components/ui/Toast'
+import { terminarSessao } from '@/components/layout/RequireAuth'
+import { useReporDemo } from '@/components/layout/useReporDemo'
 import {
   getDB,
-  logout,
-  resetDemo,
   updateUser,
   useCurrentUser,
   useFavoritos,
@@ -17,7 +17,6 @@ import {
 import { useDocumentTitle } from '@/lib/hooks'
 import { dataLonga } from '@/lib/format'
 import { descarregarFicheiro } from '../shared/ics'
-import { ConfirmModal } from '../shared/ui'
 import { Tween, enterCls, stagger, useSeen } from '../shared/motion'
 import { cn } from '@/lib/cn'
 
@@ -63,7 +62,8 @@ export default function ContaPage() {
   const [erroNome, setErroNome] = useState<string | null>(null)
   const [erroTel, setErroTel] = useState<string | null>(null)
   const [avisos, setAvisos] = useState<Record<string, boolean>>(() => Object.fromEntries(AVISOS.map((a) => [a.id, a.on])))
-  const [repor, setRepor] = useState(false)
+  // a mesma confirmação do rodapé: se a conta não for de exemplo, sai para o início e só depois repõe
+  const repor = useReporDemo()
   const alterado = nome.trim() !== user.nome || telefone.trim() !== (user.telefone ?? '')
 
   const guardar = (e: FormEvent) => {
@@ -91,19 +91,6 @@ export default function ContaPage() {
     }
     descarregarFicheiro('encontralar-os-meus-dados.json', JSON.stringify(dados, null, 2), 'application/json;charset=utf-8')
     toast.success('Ficheiro descarregado', 'Contém todos os dados da sua conta.')
-  }
-
-  const confirmarRepor = () => {
-    const id = user.id
-    setRepor(false)
-    resetDemo()
-    if (!getDB().users.some((u) => u.id === id)) {
-      toast.info('Dados de demonstração repostos', 'A sua conta não fazia parte do exemplo e foi removida.')
-      navigate('/')
-    } else {
-      toast.success('Dados de demonstração repostos')
-      navigate('/familia')
-    }
   }
 
   return (
@@ -198,37 +185,19 @@ export default function ContaPage() {
 
       <Bloco id="conta-demo" ordem={3} titulo="Demonstração" texto="Afeta apenas este navegador.">
         <p className="text-ink-soft">Volta ao exemplo inicial: perfis, pedidos, guardados e notificações.</p>
-        <Button variant="subtle" className="mt-5 w-full sm:w-auto" onClick={() => setRepor(true)}>
+        <Button variant="subtle" className="mt-5 w-full sm:w-auto" onClick={repor.pedir}>
           Repor dados de demonstração
         </Button>
       </Bloco>
 
       <Bloco id="conta-sessao" ordem={4} titulo="Sessão">
         <p className="text-ink-soft">Num computador partilhado, termine sempre a sessão.</p>
-        <Button
-          className="mt-5 w-full sm:w-auto"
-          onClick={() => {
-            logout()
-            navigate('/')
-          }}
-        >
+        <Button className="mt-5 w-full sm:w-auto" onClick={() => void terminarSessao(navigate)}>
           Terminar sessão
         </Button>
       </Bloco>
 
-      <ConfirmModal
-        open={repor}
-        onClose={() => setRepor(false)}
-        onConfirm={confirmarRepor}
-        title="Repor os dados de demonstração?"
-        description="Afeta apenas este navegador."
-        confirmLabel="Repor"
-        cancelLabel="Cancelar"
-        confirmVariant="danger"
-      >
-        <p>Todas as alterações feitas neste protótipo, incluindo as do painel das instituições, são substituídas pelo exemplo inicial.</p>
-        {!user.demo && <p className="mt-3">A sua conta ({user.email}) não faz parte do exemplo: será apagada e a sessão termina.</p>}
-      </ConfirmModal>
+      {repor.modal}
     </div>
   )
 }

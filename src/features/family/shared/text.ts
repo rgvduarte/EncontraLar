@@ -2,6 +2,7 @@
  * Pequenas ajudas de linguagem para o painel da família (PT-PT): nomes, artigos, datas locais.
  */
 import type { PerfilIdoso } from '@/types'
+import { dataLocal, isoDia } from '@/lib/format'
 
 const PARTICULAS = new Set(['de', 'do', 'da', 'dos', 'das'])
 
@@ -38,19 +39,8 @@ export function saudacao(d = new Date()): string {
   return 'Boa noite'
 }
 
-const pad = (n: number) => String(n).padStart(2, '0')
-
-/** "2026-10-17" (+ "11:00") → Date no fuso local, sem o desvio de meia-noite UTC. */
-export function dataLocal(iso: string, hora?: string): Date {
-  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
-  const [hh, mm] = (hora ?? '00:00').split(':').map(Number)
-  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1, hh || 0, mm || 0)
-}
-
-/** Data local em formato ISO curto (para inputs type=date). */
-export function isoDia(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
+// datas "AAAA-MM-DD" das visitas: sempre no fuso local (a mesma função das notificações)
+export { dataLocal, isoDia }
 
 export function amanhaISO(): string {
   const d = new Date()
