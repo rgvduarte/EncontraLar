@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
@@ -26,6 +26,9 @@ export function Modal({ open, onClose, title, description, children, footer, siz
   const [mounted, setMounted] = useState(open)
   const onClosedRef = useRef(onClosed)
   onClosedRef.current = onClosed
+  // nome e descrição acessíveis do diálogo (o leitor de ecrã anuncia o título, não só "diálogo")
+  const titleId = useId()
+  const descId = useId()
 
   useEffect(() => {
     const d = ref.current
@@ -60,6 +63,8 @@ export function Modal({ open, onClose, title, description, children, footer, siz
   return (
     <dialog
       ref={ref}
+      aria-labelledby={titleId}
+      aria-describedby={description ? descId : undefined}
       onCancel={(e) => {
         e.preventDefault()
         onClose()
@@ -85,8 +90,14 @@ export function Modal({ open, onClose, title, description, children, footer, siz
           <div aria-hidden className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-sand-deep sm:hidden" />
           <div className="flex items-start justify-between gap-4 px-6 pt-4 pb-2 sm:px-7 sm:pt-7">
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
-              {description && <p className="mt-1 text-sm text-ink-mute">{description}</p>}
+              <h2 id={titleId} className="text-2xl font-semibold tracking-tight">
+                {title}
+              </h2>
+              {description && (
+                <p id={descId} className="mt-1 text-sm text-ink-mute">
+                  {description}
+                </p>
+              )}
             </div>
             <button
               type="button"
@@ -94,7 +105,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
               className="-mt-1 -mr-2 flex size-11 shrink-0 items-center justify-center rounded-full bg-sand text-ink-soft transition-colors hover:bg-sand-deep hover:text-ink"
               aria-label="Fechar"
             >
-              <X className="size-5" />
+              <X aria-hidden className="size-5" />
             </button>
           </div>
           <div className="overflow-y-auto overscroll-contain px-6 py-4 sm:px-7 sm:py-5">{children}</div>

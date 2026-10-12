@@ -108,6 +108,8 @@ export function PerfilForm({
     }
     const p = savePerfil({ ...form, nome: form.nome.trim(), notas: form.notas?.trim() || undefined })
     if (!p) return
+    // o formulário fica igual ao que ficou guardado (sem espaços a mais): já não há nada por guardar
+    setForm(perfilParaInput(p))
     toast.success(perfil ? 'Perfil atualizado' : 'Perfil criado', 'As sugestões e a compatibilidade já usam estes dados.')
     onSaved(p)
   }

@@ -32,18 +32,21 @@ export function EmptyState({
   title,
   text,
   action,
+  as: As = 'h3',
   className,
 }: {
   icon?: ReactNode
   title: ReactNode
   text?: ReactNode
   action?: ReactNode
+  /** nível do título (h1 quando o estado vazio é a própria página) */
+  as?: 'h1' | 'h2' | 'h3'
   className?: string
 }) {
   return (
     <div className={cn('flex flex-col items-center gap-3 rounded-[1.75rem] bg-sand px-6 py-14 text-center', className)}>
       {icon && <div className="flex size-14 items-center justify-center rounded-full bg-white text-ink-soft [&_svg]:size-7">{icon}</div>}
-      <h3 className="text-xl font-semibold">{title}</h3>
+      <As className="text-xl font-semibold">{title}</As>
       {text && <p className="max-w-md text-ink-soft">{text}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
