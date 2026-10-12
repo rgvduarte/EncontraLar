@@ -1,9 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Circle, CircleMarker, MapContainer, Marker, Popup, Rectangle, TileLayer, ZoomControl } from 'react-leaflet'
+import { Circle, CircleMarker, MapContainer, Marker, Popup, Rectangle, ZoomControl } from 'react-leaflet'
 import MarkerClusterGroup from 'react-leaflet-cluster'
 import type L from 'leaflet'
 import { RotateCw } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { Basemap } from '@/components/map/Basemap'
 import { DispDot } from './Chips'
 import type { Entrada } from './filtering'
 import { MapController, REGIOES_MAPA } from './MapController'
@@ -12,9 +13,6 @@ import { clusterIcon, descricaoMarcador, pinIcon, type ClusterLike } from './map
 import { useSaida } from './motion'
 import { centroDe, type Bounds, type Local } from './searchState'
 
-const TILES = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-const ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
 
 interface Props {
   resultados: Entrada[]
@@ -188,8 +186,8 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
   return (
     <div className={cn('el-map isolate overflow-hidden bg-sand', selecionado && 'el-map--peek', className)} role="region" aria-label="Mapa das instituições">
       <p className="sr-only">O mapa repete a informação da lista. Cada marcador pode ser escolhido com a tecla Tab e aberto com Enter.</p>
-      <MapContainer ref={setMap} center={[39.6, -8.0]} zoom={7} minZoom={5} zoomControl={false} className="h-full w-full bg-sand" attributionControl>
-        <TileLayer url={TILES} subdomains="abcd" maxZoom={19} attribution={ATTRIBUTION} />
+      <MapContainer ref={setMap} center={[39.6, -8.0]} zoom={7} minZoom={5} maxZoom={18} zoomControl={false} className="h-full w-full bg-sand" attributionControl>
+        <Basemap />
         <ZoomControl position={mobile ? 'bottomright' : 'topright'} zoomInTitle="Aproximar" zoomOutTitle="Afastar" />
         <MapController
           fitKey={fitKey}

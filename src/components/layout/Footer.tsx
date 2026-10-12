@@ -57,7 +57,7 @@ export function Footer() {
         </div>
         <div className="mt-10 flex flex-col gap-3 border-t border-line-strong/60 pt-6 text-xs leading-relaxed md:flex-row md:items-center md:justify-between">
           <p className="max-w-3xl">
-            Protótipo de demonstração. Instituições, pessoas, avaliações e vagas são fictícias. Mapas © OpenStreetMap, © CARTO.
+            Protótipo de demonstração. Instituições, pessoas, avaliações e vagas são fictícias. Mapas © OpenFreeMap, © OpenMapTiles, dados © OpenStreetMap.
           </p>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
             <button

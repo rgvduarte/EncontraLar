@@ -25,7 +25,7 @@ Dica: abra o painel da família e o da instituição em **dois separadores** —
 ## O que tem
 
 **Para famílias**
-- **Mapa de vagas** (`/pesquisa`): mapa interativo (Leaflet + OpenStreetMap/CARTO) com agrupamento, filtros por
+- **Mapa de vagas** (`/pesquisa`): mapa interativo (Leaflet + MapLibre, mapa OpenFreeMap sem chave de API) com agrupamento, filtros por
   localidade/raio, disponibilidade, tipo, orçamento, grau de dependência, cuidados de saúde e acordo com a Segurança Social.
 - **Ficha da instituição** (`/lar/:id`): preços por tipo de quarto, o que está incluído, rácio de cuidadores,
   licença, verificação, avaliações, **previsão de vagas** e pedido de vaga/visita com verificação de compatibilidade.
