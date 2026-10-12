@@ -149,11 +149,11 @@ export function Verificacao({ lar }: { lar: Lar }) {
         </ol>
 
         {/* o produto é a imagem: os mesmos três níveis, como aparecem na ficha */}
-        <Reveal variant="fade" delay={150} className="mx-auto mt-16 flex max-w-xl flex-col items-center sm:mt-24">
+        <Reveal variant="fade" delay={150} className="mx-auto mt-16 flex max-w-3xl flex-col items-center sm:mt-24">
           <figure className="w-full rounded-[1.75rem] bg-white p-6 shadow-soft sm:p-8">
             <figcaption className="text-sm text-ink-mute">Na ficha da instituição</figcaption>
             <p className="mt-1 text-xl font-semibold text-ink">{lar.nome}</p>
-            <SeloNiveis lar={lar} className="mt-4 text-base sm:flex-row sm:flex-wrap sm:gap-x-6" />
+            <SeloNiveis lar={lar} className="mt-4 text-base sm:flex-row sm:flex-wrap sm:gap-x-8" />
           </figure>
           <p className="mt-4 max-w-[46ch] text-center text-base text-ink-mute">
             Cada nível tem um visto quando está cumprido. O que ainda falta também se vê.

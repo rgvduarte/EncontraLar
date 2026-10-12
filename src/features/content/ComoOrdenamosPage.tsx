@@ -180,7 +180,7 @@ export default function ComoOrdenamosPage() {
               primeiro na <strong>lista de pedidos da instituição</strong> que o recebe, para ser visto a tempo.
             </p>
             <p>
-              É só isso: acontece dentro do painel de cada instituição e nunca mexe na ordem pública dos resultados que as famílias veem.
+              Acontece só dentro do painel de cada instituição. Nunca mexe na ordem pública dos resultados que as famílias veem.
             </p>
           </Bloco>
 

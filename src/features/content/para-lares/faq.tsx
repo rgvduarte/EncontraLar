@@ -65,7 +65,7 @@ export const LARES_FAQ: FaqItem[] = [
     a: (
       <p>
         Poucos minutos: dados da instituição, número da licença de funcionamento e mensalidade de partida. A ficha fica logo disponível para
-        completar; o selo chega depois da visita presencial.
+        completar. Depois confirmamos a licença e combinamos consigo a visita presencial.
       </p>
     ),
   },

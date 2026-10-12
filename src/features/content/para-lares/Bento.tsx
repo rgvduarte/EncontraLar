@@ -58,7 +58,8 @@ function Tile({
         <p className="mt-3 max-w-[40ch] text-lg text-ink-mute">{text}</p>
         {extra}
       </div>
-      <Reveal variant="scale" delay={delay + 220} duration={1100} className={cn('mt-8 flex flex-1 flex-col justify-end', lado && 'lg:mt-0')}>
+      {/* telemóvel (faixa deslizável, cartões da mesma altura): a interface logo a seguir ao texto; em grelha, alinhada ao fundo */}
+      <Reveal variant="scale" delay={delay + 220} duration={1100} className={cn('mt-8 flex flex-1 flex-col justify-start md:justify-end', lado && 'lg:mt-0')}>
         {children}
       </Reveal>
     </Reveal>
@@ -155,7 +156,7 @@ function PedidoDuasFases({ lar }: { lar: Lar }) {
         ) : (
           <>
             <p className="mt-2 text-xl font-semibold text-ink">
-              Pessoa de <span className="tabular">{faixaEtaria(p.idade)}</span> anos
+              Pessoa de <span className="tabular whitespace-nowrap">{faixaEtaria(p.idade)} anos</span>
             </p>
             <p className="text-sm text-ink-mute">
               {p.local.label} · {URGENCIA_LABEL[p.urgencia]}
@@ -236,7 +237,7 @@ function Encaminhamentos({ lar }: { lar: Lar }) {
   if (!lista.some((c) => origemDe(c) === 'profissional')) return null
   return (
     <div className="rounded-[1.25rem] bg-white p-5 shadow-soft sm:p-6">
-      <p className="flex items-baseline justify-between gap-3 text-sm">
+      <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
         <span className="font-semibold text-ink">Pedidos por responder</span>
         <span className="text-ink-mute">por prioridade</span>
       </p>
@@ -247,9 +248,9 @@ function Encaminhamentos({ lar }: { lar: Lar }) {
           return (
             // no telemóvel e no tablet bastam duas linhas (o cartão vive numa faixa estreita)
             <li key={c.id} className={cn('border-t border-line py-3.5', i > 1 && 'hidden lg:block')}>
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <p className="font-medium text-ink">
-                  Pessoa de <span className="tabular">{faixaEtaria(c.perfil.idade)}</span> anos
+                  Pessoa de <span className="tabular whitespace-nowrap">{faixaEtaria(c.perfil.idade)} anos</span>
                 </p>
                 {dias != null && dias >= 0 ? (
                   <Badge tone={dias <= 7 ? 'alert' : 'neutral'} icon={<Clock aria-hidden strokeWidth={2} />}>
@@ -371,7 +372,7 @@ export function Bento({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
           text="Hospitais e centros de saúde enviam-lhe pedidos com a data prevista de alta."
           extra={
             <MoreLink to="/profissionais" tone="sand" className="mt-2 text-lg">
-              Para profissionais de saúde
+              Profissionais de saúde
             </MoreLink>
           }
           className="lg:col-span-7"

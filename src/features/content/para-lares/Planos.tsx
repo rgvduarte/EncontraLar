@@ -18,7 +18,7 @@ const INCLUIDO = [
   'Vagas em tempo real no mapa',
   'Lista de espera digital',
   'Pedidos com perfil de cuidados',
-  'Encaminhamentos de hospitais e centros de saúde, com a data prevista de alta',
+  'Encaminhamentos de hospitais e centros de saúde',
   'Previsão de vagas',
 ] as const
 

@@ -45,7 +45,7 @@ function Conteudo({ lar }: { lar: Lar }) {
           'Menos telefonemas.',
           <em key="em">Mais vagas preenchidas.</em>,
         ]}
-        subtitle="Atualize as vagas num toque. Receba pedidos de famílias e de hospitais, com o perfil de cuidados já preenchido."
+        subtitle="Atualize as vagas num toque e receba pedidos de famílias e hospitais, já com o perfil de cuidados."
         className="max-w-[72rem]"
         titleWidth="max-w-none"
       >
