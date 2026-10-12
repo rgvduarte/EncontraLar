@@ -97,6 +97,10 @@
   animation: hm-halo 2.8s ease-out infinite;
 }
 
+.hm-paused .hm-halo {
+  animation-play-state: paused;
+}
+
 .hm-in {
   animation-name: var(--hm-a, hm-blur-up);
   animation-duration: var(--hm-t, 900ms);

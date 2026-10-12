@@ -76,6 +76,12 @@ export function SearchPill({ lares }: { lares: Lar[] }) {
 
   const submeter = (e: FormEvent) => {
     e.preventDefault()
+    // o botão "Procurar" segue a sugestão realçada (lugar ou distrito), tal como a tecla Enter
+    const o = !vazio && active >= 0 ? opcoes[active] : undefined
+    if (o && o.kind !== 'lar') {
+      escolher(o)
+      return
+    }
     const destino = resolverTexto(texto)
     navigate(urlPesquisa(destino, destino ? undefined : texto))
   }

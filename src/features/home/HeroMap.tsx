@@ -25,7 +25,7 @@ const VARRIMENTO = 900
  * (no compositor). O PortugalMap tem a sua própria pulsação em SMIL (<animate>), mas essa obriga a recalcular
  * e repintar o SVG inteiro (~2000 nós) em cada frame, mesmo parado — por isso aqui usa-se pulse={false}.
  */
-function Pulsos({ lares, atraso }: { lares: Lar[]; atraso: number }) {
+function Pulsos({ lares, atraso, pausado }: { lares: Lar[]; atraso: number; pausado: boolean }) {
   const pontos = useMemo(
     () =>
       lares
@@ -37,7 +37,7 @@ function Pulsos({ lares, atraso }: { lares: Lar[]; atraso: number }) {
     [lares],
   )
   return (
-    <div aria-hidden className="hm-in pointer-events-none absolute inset-0" style={entrada(atraso, 'hm-fade', 900)}>
+    <div aria-hidden className={cn('hm-in pointer-events-none absolute inset-0', pausado && 'hm-paused')} style={entrada(atraso, 'hm-fade', 900)}>
       {pontos.map((p) => (
         <span
           key={p.id}
@@ -97,6 +97,18 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
   useProfundidade(camadaMapa, figRef, largo ? -18 : 0)
   useProfundidade(camadaEtiquetas, figRef, largo ? 42 : 0)
 
+  // as pulsações são infinitas: param quando o mapa sai do ecrã (poupa CPU e bateria no resto da página)
+  const [aVista, setAVista] = useState(true)
+  useEffect(() => {
+    const el = figRef.current
+    if (!el || !('IntersectionObserver' in window)) return
+    const io = new IntersectionObserver(([e]) => setAVista(!!e?.isIntersecting), { threshold: 0 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [figRef])
+  // toque: pontos de 4–6px não são alvos tocáveis; aí o mapa é só imagem (as fichas abrem-se pelas etiquetas)
+  const ponteiroFino = useMediaQuery('(hover: hover) and (pointer: fine)')
+
   // O PortugalMap declara role="img" mas, com onSelect, contém ligações focáveis (um "img" não pode ter
   // controlos lá dentro). Até o componente partilhado tratar disto, expomo-lo como grupo de ligações.
   useEffect(() => {
@@ -117,10 +129,10 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
             lares={lares}
             pulse={false}
             highlightId={destaque}
-            onSelect={(l) => navigate(`/lar/${l.id}`)}
-            title={`Mapa de Portugal com ${lares.length} instituições, ${comVaga} com vaga agora. Cada ponto abre a ficha da instituição.`}
+            onSelect={ponteiroFino ? (l) => navigate(`/lar/${l.id}`) : undefined}
+            title={`Mapa de Portugal com ${lares.length} instituições, ${comVaga} com vaga agora.`}
           />
-          {visto && <Pulsos lares={lares} atraso={base + VARRIMENTO + 150} />}
+          {visto && <Pulsos lares={lares} atraso={base + VARRIMENTO + 150} pausado={!aVista} />}
           {/* "acender" de norte para sul: uma cortina branca com a orla esbatida desce e destapa o mapa.
               Um só elemento animado com transform (compositor) — animar os ~2000 pontos um a um obrigava a
               recalcular o estilo e repintar o SVG inteiro em cada frame. */}

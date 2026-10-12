@@ -164,7 +164,7 @@ export function ComVagaSection({ lares }: { lares: Lar[] }) {
           <span className="text-3xl leading-tight font-semibold tracking-[-0.025em] text-ink">
             {todas.length > lista.length ? (
               <>
-                Mais {num(todas.length - lista.length)} {todas.length - lista.length === 1 ? 'instituição' : 'instituições'} com vaga hoje.
+                Mais {num(todas.length - lista.length)} {todas.length - lista.length === 1 ? 'lar ou residência' : 'lares e residências'} com vaga hoje.
               </>
             ) : (
               <>Veja-as no mapa, perto de quem precisa.</>

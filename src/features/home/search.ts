@@ -3,7 +3,7 @@
  * (contrato em docs/DESIGN.md).
  */
 import type { Distrito, Lar } from '@/types'
-import { DISTRITOS, LUGARES, type LugarPesquisa } from '@/data/localidades'
+import { DISTRITOS, LOCALIDADES, LUGARES, type LugarPesquisa } from '@/data/localidades'
 import { distanceKm } from '@/lib/geo'
 import { temVaga } from './homeData'
 
@@ -87,6 +87,9 @@ export function sugerir(texto: string, lares: Lar[], limite = 7): Opcao[] {
       .map(lugarOpcao)
   }
 
+  // código postal: "4200" → Porto — Paranhos; sem correspondência exata, os códigos mais próximos do mesmo distrito postal
+  if (/^\d{2,4}(-\d{0,3})?$/.test(q)) return porCodigoPostal(q).slice(0, limite).map(lugarOpcao)
+
   // mais relevantes primeiro; em empate, onde há mais instituições ("por" → Porto antes de Portalegre)
   const lugares = LUGARES.map((l) => ({ l, r: relevancia(l.label, q) }))
     .filter((x) => x.r >= 0)
@@ -126,6 +129,33 @@ export function sugerir(texto: string, lares: Lar[], limite = 7): Opcao[] {
       : []
 
   return [...lugares, ...distritos, ...instituicoes].slice(0, limite)
+}
+
+const lugarPorNome = (nome: string) => {
+  const n = normalizar(nome)
+  return LUGARES.find((l) => normalizar(l.label) === n)
+}
+
+/** Lugares cujo código postal começa pelo prefixo; senão, os numericamente mais próximos com os mesmos 2 dígitos. */
+export function porCodigoPostal(q: string): LugarPesquisa[] {
+  const prefixo = q.slice(0, 4)
+  let candidatas = LOCALIDADES.filter((loc) => loc.cp.startsWith(prefixo))
+  if (!candidatas.length) {
+    const alvo = Number(prefixo.padEnd(4, '0'))
+    candidatas = LOCALIDADES.filter((loc) => loc.cp.startsWith(prefixo.slice(0, 2))).sort(
+      (a, b) => Math.abs(Number(a.cp.slice(0, 4)) - alvo) - Math.abs(Number(b.cp.slice(0, 4)) - alvo),
+    )
+  }
+  const vistos = new Set<string>()
+  const lugares: LugarPesquisa[] = []
+  for (const loc of candidatas) {
+    const lugar = lugarPorNome(loc.nome) ?? lugarPorNome(loc.concelho)
+    if (!lugar || vistos.has(lugar.label)) continue
+    vistos.add(lugar.label)
+    lugares.push(lugar)
+    if (lugares.length >= 3) break
+  }
+  return lugares
 }
 
 /** Tenta transformar texto escrito à mão num destino (correspondência exata, sem acentos). */

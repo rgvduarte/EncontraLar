@@ -17,7 +17,7 @@ export function Contexto({ stats }: { stats: HomeStats }) {
   const itens = [
     { valor: stats.total, rotulo: 'instituições', vivo: false },
     { valor: stats.comVaga, rotulo: 'com vaga agora', vivo: true },
-    { valor: stats.distritos, rotulo: 'distritos e ilhas', vivo: false },
+    { valor: stats.distritos, rotulo: 'distritos, Açores e Madeira', vivo: false },
   ]
   return (
     <section aria-labelledby="contexto-titulo" className="overflow-x-clip">
