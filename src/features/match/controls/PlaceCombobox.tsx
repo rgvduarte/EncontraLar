@@ -1,0 +1,221 @@
+import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { MapPin, Search, X } from 'lucide-react'
+import type { Lar } from '@/types'
+import { LUGARES, type LugarPesquisa } from '@/data/localidades'
+import { distanceKm } from '@/lib/geo'
+import { plural } from '@/lib/format'
+import { cn } from '@/lib/cn'
+import type { Local } from '../model'
+import { residenciais } from '../area'
+import { deTerra } from '../language'
+
+const norm = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+
+const LIMITE = 8
+
+/** Pesquisa de localidade (combobox ARIA 1.2 com lista): setas, Enter para escolher, Esc para fechar. */
+export function PlaceCombobox({
+  value,
+  onChange,
+  lares,
+  error,
+  label,
+  hint,
+}: {
+  value: Local | null
+  onChange: (l: Local | null) => void
+  lares: Lar[]
+  error?: string
+  label: string
+  hint?: string
+}) {
+  const id = useId()
+  const listId = `${id}-lista`
+  const hintId = `${id}-hint`
+  const errId = `${id}-err`
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [query, setQuery] = useState(value?.label ?? '')
+  const [open, setOpen] = useState(false)
+  const [ativo, setAtivo] = useState(0)
+
+  // se o valor mudar por fora (ex.: "perto de mim", atalho), o texto acompanha
+  const [ultimoValor, setUltimoValor] = useState(value?.label)
+  if (value?.label !== ultimoValor) {
+    setUltimoValor(value?.label)
+    if (value) setQuery(value.label)
+  }
+
+  const res = useMemo(() => residenciais(lares), [lares])
+
+  const opcoes = useMemo(() => {
+    const q = norm(query)
+    if (!q) return [] as LugarPesquisa[]
+    const comeca: LugarPesquisa[] = []
+    const contem: LugarPesquisa[] = []
+    for (const l of LUGARES) {
+      const n = norm(l.label)
+      const d = norm(l.distrito)
+      if (n.startsWith(q) || n.split(/[\s—-]+/).some((p) => p.startsWith(q))) comeca.push(l)
+      else if (n.includes(q) || d.startsWith(q)) contem.push(l)
+    }
+    return [...comeca, ...contem].slice(0, LIMITE)
+  }, [query])
+
+  const contagens = useMemo(
+    () => new Map(opcoes.map((o) => [o.label, res.filter((l) => distanceKm(o, l) <= o.raio + 5).length])),
+    [opcoes, res],
+  )
+
+  const mostrar = open && opcoes.length > 0
+  const semResultados = open && query.trim().length > 1 && opcoes.length === 0 && value?.label !== query
+
+  const escolher = (l: LugarPesquisa) => {
+    onChange({ label: l.label, lat: l.lat, lng: l.lng })
+    setQuery(l.label)
+    setOpen(false)
+  }
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (!open) setOpen(true)
+      setAtivo((a) => (opcoes.length ? (a + 1) % opcoes.length : 0))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setAtivo((a) => (opcoes.length ? (a - 1 + opcoes.length) % opcoes.length : 0))
+    } else if (e.key === 'Enter') {
+      if (mostrar && opcoes[ativo]) {
+        e.preventDefault()
+        escolher(opcoes[ativo])
+      }
+    } else if (e.key === 'Escape') {
+      if (open) {
+        e.preventDefault()
+        setOpen(false)
+      } else if (query) {
+        e.preventDefault()
+        setQuery('')
+        onChange(null)
+      }
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor={id} className="text-lg font-bold text-ink">
+        {label}
+      </label>
+      {hint && (
+        <p id={hintId} className="-mt-1 text-sm text-ink-soft">
+          {hint}
+        </p>
+      )}
+      <div className="relative">
+        <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-6 -translate-y-1/2 text-ink-mute" />
+        <input
+          ref={inputRef}
+          id={id}
+          type="text"
+          role="combobox"
+          autoComplete="off"
+          spellCheck={false}
+          aria-autocomplete="list"
+          aria-expanded={mostrar}
+          aria-controls={listId}
+          aria-activedescendant={mostrar && opcoes[ativo] ? `${listId}-${ativo}` : undefined}
+          aria-describedby={[hint ? hintId : '', error ? errId : ''].filter(Boolean).join(' ') || undefined}
+          aria-invalid={error ? true : undefined}
+          placeholder="Ex.: Porto, Almada, Viseu…"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setOpen(true)
+            setAtivo(0)
+            if (value && e.target.value !== value.label) onChange(null)
+          }}
+          onFocus={() => query && !value && setOpen(true)}
+          onBlur={() => setOpen(false)}
+          onKeyDown={onKeyDown}
+          className={cn(
+            'min-h-15 w-full rounded-2xl border-2 bg-white py-3 pr-14 pl-13 text-lg text-ink placeholder:text-ink-mute/80',
+            'transition-colors hover:border-pine-400 focus:border-pine-600 focus:outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500',
+            error ? 'border-alert-600' : value ? 'border-pine-600' : 'border-line-strong',
+          )}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery('')
+              onChange(null)
+              inputRef.current?.focus()
+            }}
+            aria-label="Limpar localidade"
+            className="absolute top-1/2 right-2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-ink-soft hover:bg-sand"
+          >
+            <X aria-hidden className="size-5" />
+          </button>
+        )}
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label="Localidades sugeridas"
+          className={cn(
+            'absolute inset-x-0 top-full z-30 mt-2 max-h-96 overflow-y-auto rounded-2xl border border-line bg-white p-1.5 shadow-lift',
+            !mostrar && 'hidden',
+          )}
+        >
+          {opcoes.map((o, i) => {
+            const n = contagens.get(o.label) ?? 0
+            return (
+              <li
+                key={o.label}
+                id={`${listId}-${i}`}
+                role="option"
+                aria-selected={i === ativo}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => escolher(o)}
+                onMouseMove={() => setAtivo(i)}
+                className={cn(
+                  'flex min-h-13 cursor-pointer items-center gap-3 rounded-xl px-3.5 py-2',
+                  i === ativo ? 'bg-pine-50 text-pine-900' : 'text-ink',
+                )}
+              >
+                <MapPin aria-hidden className={cn('size-5 shrink-0', i === ativo ? 'text-pine-700' : 'text-ink-mute')} />
+                <span className="flex-1">
+                  <span className="block font-bold">{o.label}</span>
+                  <span className="block text-sm text-ink-soft">
+                    {o.distrito === 'Açores'
+                      ? 'Região Autónoma dos Açores'
+                      : o.distrito === 'Madeira'
+                        ? 'Região Autónoma da Madeira'
+                        : `Distrito ${deTerra(o.distrito)}`}
+                  </span>
+                </span>
+                <span className="text-sm whitespace-nowrap text-ink-soft tabular">{plural(n, 'instituição', 'instituições')}</span>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+      <p className="sr-only" aria-live="polite">
+        {mostrar ? `${plural(opcoes.length, 'localidade sugerida', 'localidades sugeridas')}. Use as setas para escolher.` : ''}
+      </p>
+      {semResultados && (
+        <p className="text-sm text-ink-soft">
+          Não encontrámos "{query}". Experimente o nome do concelho mais próximo, ou use a sua localização.
+        </p>
+      )}
+      {error && (
+        <p id={errId} role="alert" className="text-sm font-bold text-alert-700">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}

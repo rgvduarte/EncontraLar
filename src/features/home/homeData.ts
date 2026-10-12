@@ -22,8 +22,8 @@ export interface HomeStats {
   distritos: number
   /** ISO da atualização de vagas mais recente */
   ultima: string | null
-  /** fichas com vagas confirmadas nas últimas 48 horas */
-  atualizadas48h: number
+  /** fichas com vagas confirmadas nos últimos 7 dias */
+  atualizadasSemana: number
   verificadas: number
   /** pessoas inscritas em listas de espera (soma) */
   listaEspera: number
@@ -35,7 +35,7 @@ export interface HomeStats {
 
 export function calcularStats(lares: Lar[], agora = Date.now()): HomeStats {
   let comVaga = 0
-  let atualizadas48h = 0
+  let atualizadasSemana = 0
   let verificadas = 0
   let listaEspera = 0
   let visualizacoes = 0
@@ -45,7 +45,7 @@ export function calcularStats(lares: Lar[], agora = Date.now()): HomeStats {
   const distritos = new Set<Distrito>()
   for (const l of lares) {
     if (temVaga(l)) comVaga++
-    if (agora - new Date(l.atualizadoEm).getTime() <= 48 * HORA) atualizadas48h++
+    if (agora - new Date(l.atualizadoEm).getTime() <= 7 * 24 * HORA) atualizadasSemana++
     if (l.verificacao.estado === 'verificado') verificadas++
     listaEspera += l.listaEspera
     visualizacoes += l.visualizacoes30d
@@ -63,7 +63,7 @@ export function calcularStats(lares: Lar[], agora = Date.now()): HomeStats {
     comVaga,
     distritos: distritos.size,
     ultima,
-    atualizadas48h,
+    atualizadasSemana,
     verificadas,
     listaEspera,
     visualizacoes,
@@ -87,13 +87,13 @@ export function tempoCurto(iso: string | null, agora = Date.now()): string {
 
 export type RegiaoTabId = 'norte' | 'centro' | 'lvt' | 'alentejo' | 'algarve' | 'ilhas'
 
-export const REGIAO_TABS: { id: RegiaoTabId; label: string; curto: string; regioes: Regiao[] }[] = [
-  { id: 'norte', label: 'Norte', curto: 'Norte', regioes: ['Norte'] },
-  { id: 'centro', label: 'Centro', curto: 'Centro', regioes: ['Centro'] },
-  { id: 'lvt', label: 'Lisboa e Vale do Tejo', curto: 'Lisboa e V. Tejo', regioes: ['Lisboa e Vale do Tejo'] },
-  { id: 'alentejo', label: 'Alentejo', curto: 'Alentejo', regioes: ['Alentejo'] },
-  { id: 'algarve', label: 'Algarve', curto: 'Algarve', regioes: ['Algarve'] },
-  { id: 'ilhas', label: 'Ilhas', curto: 'Ilhas', regioes: ['Madeira', 'Açores'] },
+export const REGIAO_TABS: { id: RegiaoTabId; label: string; /** "no Norte", "na Madeira e nos Açores" */ em: string; regioes: Regiao[] }[] = [
+  { id: 'norte', label: 'Norte', em: 'no Norte', regioes: ['Norte'] },
+  { id: 'centro', label: 'Centro', em: 'no Centro', regioes: ['Centro'] },
+  { id: 'lvt', label: 'Lisboa e Vale do Tejo', em: 'em Lisboa e Vale do Tejo', regioes: ['Lisboa e Vale do Tejo'] },
+  { id: 'alentejo', label: 'Alentejo', em: 'no Alentejo', regioes: ['Alentejo'] },
+  { id: 'algarve', label: 'Algarve', em: 'no Algarve', regioes: ['Algarve'] },
+  { id: 'ilhas', label: 'Ilhas', em: 'na Madeira e nos Açores', regioes: ['Madeira', 'Açores'] },
 ]
 
 /** Agrupamento de apresentação dos distritos (de norte para sul, ilhas no fim). */
@@ -223,18 +223,19 @@ export function perfilExemplo(lugar: LugarPesquisa) {
 /** Melhor correspondência compatível para o perfil de exemplo (com razões legíveis). */
 export function exemploCompatibilidade(lares: Lar[], lugar: LugarPesquisa): { lar: Lar; match: MatchResult } | null {
   const perfil = perfilExemplo(lugar)
-  let melhor: { lar: Lar; match: MatchResult } | null = null
+  const candidatos: { lar: Lar; match: MatchResult }[] = []
   for (const lar of lares) {
     if (lar.tipo === 'centro_dia') continue
     if (distanceKm(lugar, lar) > perfil.raioKm * 1.5) continue
     const match = avaliarLar(lar, perfil)
-    if (!match.compativel) continue
-    // queremos um exemplo honesto: bom, mas com pelo menos uma ressalva
-    const temRessalva = match.razoes.some((r) => r.tipo !== 'ok')
-    const score = match.score + (temRessalva ? 6 : 0)
-    if (!melhor || score > melhor.match.score + (melhor.match.razoes.some((r) => r.tipo !== 'ok') ? 6 : 0)) {
-      melhor = { lar, match }
-    }
+    if (match.compativel) candidatos.push({ lar, match })
   }
-  return melhor
+  // um exemplo honesto: boa compatibilidade, mas com pelo menos uma ressalva visível
+  const ressalvas = (m: MatchResult) => m.razoes.filter((r) => r.tipo !== 'ok').length
+  const porScore = (a: { match: MatchResult }, b: { match: MatchResult }) => b.match.score - a.match.score
+  return (
+    candidatos.filter((c) => c.match.score >= 70 && ressalvas(c.match) >= 1).sort(porScore)[0] ??
+    candidatos.sort(porScore)[0] ??
+    null
+  )
 }

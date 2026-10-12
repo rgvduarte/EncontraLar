@@ -12,7 +12,7 @@ function Realce({ texto, q }: { texto: string; q: string }) {
   return (
     <>
       {texto.slice(0, i)}
-      <mark className="rounded-sm bg-sun-100 px-0.5 text-ink">{texto.slice(i, i + n.length)}</mark>
+      <mark className="rounded-[3px] bg-sun-100 text-ink">{texto.slice(i, i + n.length)}</mark>
       {texto.slice(i + n.length)}
     </>
   )
@@ -114,7 +114,7 @@ export function PlaceCombobox({
         autoCorrect="off"
         spellCheck={false}
         enterKeyHint="search"
-        placeholder="Concelho, cidade ou bairro"
+        placeholder="Concelho ou cidade"
         value={value}
         onChange={(e) => {
           onValueChange(e.target.value)
@@ -136,7 +136,7 @@ export function PlaceCombobox({
         ref={listRef}
         id={listId}
         role="listbox"
-        aria-label={vazio ? 'Lugares mais procurados' : 'Sugestões'}
+        aria-label={vazio ? 'Localidades com mais instituições' : 'Sugestões'}
         hidden={!mostrar}
         // impede que o campo perca o foco ao clicar numa sugestão
         onMouseDown={(e) => e.preventDefault()}
@@ -144,7 +144,7 @@ export function PlaceCombobox({
       >
         {vazio && (
           <li role="presentation" className="px-3 pt-2 pb-1 text-xs font-bold tracking-[0.12em] text-ink-mute uppercase">
-            Mais procurados
+            Onde há mais instituições
           </li>
         )}
         {opcoes.map((o, i) => {

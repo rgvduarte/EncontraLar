@@ -39,8 +39,6 @@ export interface Opcao {
   larId?: string
 }
 
-const POPULARES = ['Lisboa', 'Porto', 'Braga', 'Coimbra', 'Faro', 'Évora']
-
 function contarLugar(lares: Lar[], lugar: LugarPesquisa) {
   let total = 0
   let comVaga = 0
@@ -93,9 +91,11 @@ export function sugerir(texto: string, lares: Lar[], limite = 8): Opcao[] {
   })
 
   if (!q) {
-    return POPULARES.map((p) => LUGARES.find((l) => l.label === p))
-      .filter((l): l is LugarPesquisa => Boolean(l))
+    // sem texto: as localidades com mais instituições (calculado, não escolhido à mão)
+    return LUGARES.filter((l) => !l.label.includes(' — '))
       .map(lugarOpcao)
+      .sort((a, b) => b.total - a.total || b.comVaga - a.comVaga)
+      .slice(0, 6)
   }
 
   const lugares = LUGARES.map((l) => ({ l, r: relevancia(l.label, q) }))
