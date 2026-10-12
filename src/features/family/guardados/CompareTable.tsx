@@ -35,6 +35,14 @@ function Prob({ p }: { p: number }) {
   )
 }
 
+/** Probabilidade de vaga + de onde parte a previsão ("em 3.º na lista" / "se pedir hoje"). */
+const Previsao = ({ p, lugar }: { p: number; lugar?: string }) => (
+  <span className="flex flex-col">
+    <Prob p={p} />
+    {lugar && <span className="text-sm text-ink-mute">{lugar}</span>}
+  </span>
+)
+
 const Num = ({ v, sub }: { v: ReactNode; sub?: ReactNode }) => (
   <span className="flex flex-col">
     <span className="text-2xl leading-none font-semibold tabular">{v}</span>
@@ -87,6 +95,11 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
     }
   })
   const chave = perfil?.necessidades.length ? perfil.necessidades : null
+  // a previsão usa o lugar na lista de quem já pediu; nas outras, a de quem pedir hoje (como na ficha)
+  const algumNaLista = dados.some((d) => d.pedido?.posicao != null)
+  const hintPrevisao = algumNaLista ? 'com o seu lugar, se já pediu' : 'se pedir hoje'
+  const lugarNaLista = (pedido: Candidatura | undefined) =>
+    pedido?.posicao != null ? `em ${ordinal(pedido.posicao)} na lista` : algumNaLista ? 'se pedir hoje' : undefined
 
   // telemóvel: ao acrescentar uma instituição, a faixa desliza até ao cartão novo (que entra a deslizar)
   const ids = lares.map((l) => l.id).join(',')
@@ -116,37 +129,37 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
       cells: dados.map((d) => {
         const n = vagasLivres(d.lar)
         const q = d.lar.quartos.find((x) => x.livres > 0)
-        return n > 0 ? (
+        if (n === 0) return <span className="text-ink-mute">Não</span>
+        // lugar livre que a lista de espera vai ocupar primeiro: laranja, como a previsão ao lado
+        const paraSi = d.est.imediata
+        return (
           <span className="flex flex-col">
-            <span className="inline-flex items-center gap-2 font-semibold text-leaf-700">
-              <span aria-hidden className="size-2 rounded-full bg-leaf-500" />
-              Sim, {n === 1 ? '1 vaga' : `${n} vagas`}
+            <span className={cn('inline-flex items-center gap-2 font-semibold', paraSi ? 'text-leaf-700' : 'text-sun-800')}>
+              <span aria-hidden className={cn('size-2 shrink-0 rounded-full', paraSi ? 'bg-leaf-500' : 'bg-sun-500')} />
+              {paraSi ? `Sim, ${n === 1 ? '1 vaga' : `${n} vagas`}` : n === 1 ? '1 lugar livre' : `${n} lugares livres`}
             </span>
-            {q && <span className="mt-1 text-sm text-ink-mute">quarto {QUARTO_CURTO[q.tipo].toLowerCase()}</span>}
+            {paraSi ? (
+              q && <span className="mt-1 text-sm text-ink-mute">quarto {QUARTO_CURTO[q.tipo].toLowerCase()}</span>
+            ) : (
+              <span className="mt-1 text-sm text-ink-mute">a lista de espera tem prioridade</span>
+            )}
           </span>
-        ) : (
-          <span className="text-ink-mute">Não</span>
         )
       }),
     },
     {
       id: 'p3',
       label: 'Previsão a 3 meses',
-      hint: 'probabilidade de vaga',
-      cells: dados.map((d) => <Prob p={d.est.p90} />),
+      hint: hintPrevisao,
+      cells: dados.map((d) => <Previsao p={d.est.p90} lugar={lugarNaLista(d.pedido)} />),
       valores: dados.map((d) => Math.round(d.est.p90 * 100)),
       melhor: 'max',
     },
     {
       id: 'p6',
       label: 'Previsão a 6 meses',
-      hint: 'com o seu lugar, se já pediu',
-      cells: dados.map((d) => (
-        <span className="flex flex-col">
-          <Prob p={d.est.p180} />
-          {d.pedido?.posicao != null && <span className="text-sm text-ink-mute">em {ordinal(d.pedido.posicao)} na lista</span>}
-        </span>
-      )),
+      hint: hintPrevisao,
+      cells: dados.map((d) => <Previsao p={d.est.p180} lugar={lugarNaLista(d.pedido)} />),
       valores: dados.map((d) => Math.round(d.est.p180 * 100)),
       melhor: 'max',
     },

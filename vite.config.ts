@@ -17,6 +17,7 @@ export default defineConfig({
   build: { chunkSizeWarningLimit: 900 },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    // supabase/tests: migrações + RLS + RPC em PGlite (Postgres em WASM); scripts: seed SQL gerado
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts', 'supabase/tests/**/*.test.ts'],
   },
 })
