@@ -3,10 +3,11 @@ import { ChevronRight, RotateCcw } from 'lucide-react'
 import type { Lar, PerfilIdoso } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { CountUp, Reveal } from '@/components/motion'
-import { vagasLivres } from '@/lib/forecast'
+import { vagaParaNovos } from '@/lib/forecast'
 import { num } from '@/lib/format'
-import { PASSOS } from '../model'
+import { PASSOS, primeiroIncompleto } from '../model'
 import { residenciais } from '../area'
+import { NotaFinal } from '../NotaFinal'
 import type { AcoesSessao, Sessao } from '../useMatchSession'
 
 /**
@@ -27,8 +28,11 @@ export function StartScreen({
   emCurso: boolean
 }) {
   const h1 = useRef<HTMLHeadingElement>(null)
+  // o questionário só sugere respostas residenciais (lares e residências; sem centros de dia)
   const res = useMemo(() => residenciais(lares), [lares])
-  const comVaga = useMemo(() => res.filter((l) => vagasLivres(l) > 0).length, [res])
+  // "com vaga agora" = vaga para quem pede hoje (lugares livres já prometidos à lista de espera não contam)
+  const comVaga = useMemo(() => res.filter((l) => vagaParaNovos(l)).length, [res])
+  const completo = emCurso && primeiroIncompleto(sessao.r) === -1
 
   useEffect(() => {
     h1.current?.focus({ preventScroll: true })
@@ -36,7 +40,7 @@ export function StartScreen({
 
   return (
     <div className="flex min-h-[calc(100dvh-4rem)] flex-1 flex-col">
-      <section className="container-page flex flex-1 flex-col items-center justify-center pt-16 pb-[calc(2.5rem+env(safe-area-inset-bottom))] text-center sm:py-28">
+      <section className="container-page flex flex-1 flex-col items-center justify-center pt-16 pb-10 text-center sm:py-28">
         <Reveal variant="blur" duration={1100}>
           <p className="eyebrow">Ajuda-me a escolher</p>
           <h1
@@ -64,14 +68,20 @@ export function StartScreen({
         >
           {emCurso ? (
             <>
-              <Button
-                size="lg"
-                onClick={() => acoes.irPara(sessao.passo)}
-                iconRight={<ChevronRight aria-hidden />}
-                className="px-8"
-              >
-                Continuar no passo {sessao.passo + 1}
-              </Button>
+              {completo ? (
+                <Button size="lg" onClick={acoes.verResultados} iconRight={<ChevronRight aria-hidden />} className="px-8">
+                  Ver as sugestões
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  onClick={() => acoes.irPara(sessao.passo)}
+                  iconRight={<ChevronRight aria-hidden />}
+                  className="px-8"
+                >
+                  Continuar no passo {sessao.passo + 1}
+                </Button>
+              )}
               <Button variant="subtle" size="lg" onClick={acoes.recomecar} icon={<RotateCcw aria-hidden />}>
                 Recomeçar
               </Button>
@@ -84,7 +94,9 @@ export function StartScreen({
         </Reveal>
         <Reveal variant="fade" delay={380}>
           <p className="mt-4 text-sm text-ink-mute">
-            {emCurso
+            {completo
+              ? 'Já respondeu a tudo. As respostas estão guardadas neste separador.'
+              : emCurso
               ? `Ficou em «${PASSOS[sessao.passo]!.nome}». As respostas estão guardadas neste separador.`
               : 'As respostas ficam só neste separador até decidir guardá-las.'}
           </p>
@@ -112,16 +124,17 @@ export function StartScreen({
 
         <Reveal variant="fade" delay={560} className="mt-14 sm:mt-16">
           <p className="inline-flex items-center gap-2 text-sm text-ink-mute">
-            <span aria-hidden className="size-2 shrink-0 animate-pulse-ring rounded-full bg-leaf-500" />
+            <span aria-hidden className="pulse-dot size-2 shrink-0 rounded-full bg-leaf-500" />
             <span>
               <span aria-hidden>
                 <CountUp value={comVaga} duration={1200} className="font-medium text-ink tabular" />
               </span>
-              <span className="sr-only">{num(comVaga)}</span> com vaga agora, entre {num(res.length)} instituições
+              <span className="sr-only">{num(comVaga)}</span> com vaga agora, entre {num(res.length)} lares e residências
             </span>
           </p>
         </Reveal>
       </section>
+      <NotaFinal className="container-page pb-[calc(0.25rem+env(safe-area-inset-bottom))]" />
     </div>
   )
 }

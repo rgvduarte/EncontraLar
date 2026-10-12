@@ -4,6 +4,7 @@
  */
 import type { PGlite } from '@electric-sql/pglite'
 import { beforeAll, describe, expect, it } from 'vitest'
+import { larParaInsercao, quartoInicial } from '@/lib/supabase-mappers'
 import { admin, cenarioBase, criarBase, criarUtilizador, erro, q } from './helpers'
 
 let db: PGlite
@@ -261,5 +262,23 @@ describe('saídas no calendário português', () => {
       "select mes = date_trunc('month', now() at time zone 'Europe/Lisbon')::date as ok from public.saidas_mensais where instituicao_id = $1", [b.instituicao],
     )
     expect(r!.ok).toBe(true)
+  })
+})
+
+describe('registo de uma instituição (mappers → PostgREST)', () => {
+  /** Como o PostgREST insere: INSERT … SELECT colunas FROM json_populate_recordset(null::tabela, corpo). */
+  const inserirComoPostgrest = (quem: string, tabela: string, corpo: Record<string, unknown>) => {
+    const cols = Object.keys(corpo).join(', ')
+    return q<{ id: string }>(db, quem, `insert into public.${tabela} (${cols}) select ${cols} from json_populate_recordset(null::public.${tabela}, $1::json) returning id`, [JSON.stringify([corpo])])
+  }
+
+  it('a ficha e o primeiro quarto gerados por larParaInsercao/quartoInicial são aceites e nascem por publicar', async () => {
+    const lar = await criarUtilizador(db, { email: 'registo@lar.pt', roleRegisto: 'lar' })
+    const inst = { nome: 'Lar Registo', tipo: 'erpi' as const, natureza: 'ipss' as const, lugar: 'Lisboa — Alvalade', capacidade: 30, licenca: '1/2026', precoDesde: 1200 }
+    const [f] = await inserirComoPostgrest(lar, 'instituicoes', { ...larParaInsercao(inst, { email: 'registo@lar.pt', telefone: '210 000 000' }) })
+    expect(f!.id).toBe('lar-lar-registo')
+    await inserirComoPostgrest(lar, 'quartos', { ...quartoInicial(f!.id, inst) })
+    const [r] = await q<Record<string, unknown>>(db, lar, 'select publicado, verificacao_estado, capacidade, codigo_postal, regiao from public.instituicoes where id = $1', [f!.id])
+    expect(r).toEqual({ publicado: false, verificacao_estado: 'pendente', capacidade: 30, codigo_postal: '1700-000', regiao: 'Lisboa e Vale do Tejo' })
   })
 })

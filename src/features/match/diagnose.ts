@@ -3,9 +3,9 @@
  * explicado com números reais da zona, e ajustes de um clique.
  */
 import type { Cuidado, Lar } from '@/types'
-import { CUIDADO_LABEL, CUIDADOS_CRITICOS, GRAU_LABEL } from '@/lib/labels'
+import { CUIDADO_FRASE, CUIDADOS_CRITICOS, GRAU_PESSOAS } from '@/lib/labels'
 import { precoReferencia, type MatchResult } from '@/lib/matching'
-import { vagasLivres } from '@/lib/forecast'
+import { vagaParaNovos } from '@/lib/forecast'
 import { euro, km } from '@/lib/format'
 import { comDistancia, mediana, residenciais, type LarPerto } from './area'
 import { deLocal, listaE, type Pessoa } from './language'
@@ -77,8 +77,8 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
       titulo: `O grau de dependência é o que mais limita`,
       texto:
         (area.length === 1
-          ? `A única instituição a menos de ${r.raioKm}\u00a0km ${onde} não admite pessoas com ${GRAU_LABEL[grau].toLowerCase()}.`
-          : `Nenhuma das ${area.length} instituições a menos de ${r.raioKm}\u00a0km ${onde} admite pessoas com ${GRAU_LABEL[grau].toLowerCase()}.`) +
+          ? `A única instituição a menos de ${r.raioKm}\u00a0km ${onde} não admite ${GRAU_PESSOAS[grau]}.`
+          : `Nenhuma das ${area.length} instituições a menos de ${r.raioKm}\u00a0km ${onde} admite ${GRAU_PESSOAS[grau]}.`) +
         (grau === 'grave'
           ? ' Para dependência grave é preciso um lar preparado para pessoas acamadas, com enfermagem permanente — e são menos.'
           : ''),
@@ -96,7 +96,7 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
   if (criticos.length && !compat.length) {
     const porCuidado = criticos.map((c) => ({ c, n: admitem.filter((x) => x.lar.cuidados.includes(c)).length }))
     const pior = [...porCuidado].sort((a, b) => a.n - b.n)[0]!
-    const nomes = (cs: Cuidado[]) => listaE(cs.map((c) => CUIDADO_LABEL[c].toLowerCase()))
+    const nomes = (cs: Cuidado[]) => listaE(cs.map((c) => CUIDADO_FRASE[c]))
     const alt = raioAte(perto, r.raioKm, serve)
     return {
       chave: 'cuidados',
@@ -104,15 +104,15 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
       texto:
         pior.n === 0
           ? admitem.length === 1
-            ? `A única instituição da zona que admite ${GRAU_LABEL[grau].toLowerCase()} não assegura ${CUIDADO_LABEL[pior.c].toLowerCase()}.`
-            : `Das ${admitem.length} instituições da zona que admitem ${GRAU_LABEL[grau].toLowerCase()}, nenhuma assegura ${CUIDADO_LABEL[pior.c].toLowerCase()}.`
+            ? `A única instituição da zona que admite ${GRAU_PESSOAS[grau]} não assegura ${CUIDADO_FRASE[pior.c]}.`
+            : `Das ${admitem.length} instituições da zona que admitem ${GRAU_PESSOAS[grau]}, nenhuma assegura ${CUIDADO_FRASE[pior.c]}.`
           : `Há instituições na zona com cada um destes cuidados, mas nenhuma assegura ao mesmo tempo ${nomes(criticos)}.`,
       ajustes: [
         ...(alt
           ? [{ label: `Alargar o raio para ${alt.raio} km (a mais próxima fica a ${km(alt.d)})`, patch: { raioKm: alt.raio } }]
           : []),
         {
-          label: `Procurar sem exigir ${CUIDADO_LABEL[pior.c].toLowerCase()}`,
+          label: `Procurar sem exigir ${CUIDADO_FRASE[pior.c]}`,
           patch: { necessidades: r.necessidades.filter((n) => n !== pior.c) },
         },
       ],
@@ -164,13 +164,13 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
     }
   }
 
-  // 6. urgência imediata sem vagas
-  if (r.urgencia === 'imediata' && !compat.some((x) => vagasLivres(x.lar) > 0)) {
-    const alt = raioAte(perto, r.raioKm, (l) => serve(l) && vagasLivres(l) > 0)
+  // 6. urgência imediata sem vagas (lugares livres já prometidos à lista de espera não contam)
+  if (r.urgencia === 'imediata' && !compat.some((x) => vagaParaNovos(x.lar))) {
+    const alt = raioAte(perto, r.raioKm, (l) => serve(l) && vagaParaNovos(l))
     return {
       chave: 'urgencia',
-      titulo: 'Não há vaga livre hoje tão perto',
-      texto: `Há ${compat.length} ${compat.length === 1 ? 'instituição compatível' : 'instituições compatíveis'} na zona, mas nenhuma tem lugar livre neste momento.`,
+      titulo: 'Não há vaga hoje tão perto',
+      texto: `Há ${compat.length} ${compat.length === 1 ? 'instituição compatível' : 'instituições compatíveis'} na zona, mas nenhuma tem vaga para um novo pedido neste momento.`,
       ajustes: [
         ...(alt ? [{ label: `Alargar para ${alt.raio} km (há vaga a ${km(alt.d)})`, patch: { raioKm: alt.raio } }] : []),
         { label: 'Incluir lares com vaga prevista em breve', patch: { urgencia: '1-3meses' as const } },
@@ -200,7 +200,7 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
     }
   }
   if (chave === 'disponibilidade') {
-    const alt = raioAte(perto, r.raioKm, (l) => serve(l) && vagasLivres(l) > 0)
+    const alt = raioAte(perto, r.raioKm, (l) => serve(l) && vagaParaNovos(l))
     return {
       chave: 'urgencia',
       titulo: 'A urgência pesa contra as listas de espera',

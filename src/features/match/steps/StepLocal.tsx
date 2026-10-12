@@ -1,7 +1,7 @@
 import { useId, useMemo, useState } from 'react'
 import { Check, LoaderCircle, LocateFixed } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { vagasLivres } from '@/lib/forecast'
+import { vagaParaNovos } from '@/lib/forecast'
 import { km } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { PlaceCombobox } from '../controls/PlaceCombobox'
@@ -21,7 +21,7 @@ export function StepLocal({ r, patch, erros, lares }: StepProps) {
 
   const perto = useMemo(() => (r.local ? comDistancia(residenciais(lares), r.local) : []), [lares, r.local])
   const noRaio = perto.filter((x) => x.d <= r.raioKm)
-  const comVaga = noRaio.filter((x) => vagasLivres(x.lar) > 0).length
+  const comVaga = noRaio.filter((x) => vagaParaNovos(x.lar)).length
   const maisProxima = perto[0]
   // raio (múltiplo de 5) que já inclui a instituição mais próxima
   const raioSugerido = maisProxima ? Math.min(RAIO_MAX, Math.ceil((maisProxima.d + 0.5) / 5) * 5) : null
@@ -70,6 +70,7 @@ export function StepLocal({ r, patch, erros, lares }: StepProps) {
             if (local || !usaGps) patch({ local })
           }}
           lares={lares}
+          raioKm={r.raioKm}
           error={erros.local}
         />
         <div className="flex flex-wrap items-center gap-3">

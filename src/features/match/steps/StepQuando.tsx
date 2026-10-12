@@ -48,8 +48,8 @@ export function StepQuando({ r, patch, erros, p }: StepProps) {
         {r.urgencia === 'imediata' && (
           <p className="mt-5 animate-fade-in text-base text-ink-soft">
             Se {p.proprio ? '' : `${p.pronome} `}está {flex(p.fem, 'internado', 'internada')}, fale já com a assistente social do
-            hospital: pode pedir a referenciação para a Rede Nacional de Cuidados Continuados, que faz a ponte até haver vaga num
-            lar.
+            hospital: pode avaliar se há critérios para a Rede Nacional de Cuidados Continuados Integrados (RNCCI). Em paralelo,
+            procure vaga num lar.
           </p>
         )}
       </fieldset>

@@ -27,7 +27,7 @@ export function ProfileSentence({
       {partes.map((pt, i) => (
         <Fragment key={pt.passo}>
           <a
-            href="#/encontrar"
+            href={`#/encontrar?passo=${pt.passo + 1}`}
             onClick={(e) => {
               e.preventDefault()
               onAlterar(pt.passo)

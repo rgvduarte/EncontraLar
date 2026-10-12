@@ -11,6 +11,7 @@ import { pessoa } from '../language'
 import type { AcoesSessao, Sessao } from '../useMatchSession'
 import { abanar, abreTeclado, EASE_IN, EASE_OUT, mostrarCampo, scrollAte, scrollPara, useKeyboardInset } from '../motion'
 import { ledePasso, tituloPasso } from './copy'
+import { NotaFinal } from '../NotaFinal'
 import { StepPessoa } from '../steps/StepPessoa'
 import { StepAutonomia } from '../steps/StepAutonomia'
 import { StepSaude } from '../steps/StepSaude'
@@ -285,7 +286,7 @@ export function Wizard({
           <div className="container-narrow">
             <div
               className={cn(
-                'mx-auto flex max-w-2xl items-center gap-3 pt-3 lg:pt-0 lg:pb-24',
+                'mx-auto flex max-w-2xl items-center gap-3 pt-3 lg:pt-0 lg:pb-16',
                 tecladoAberto ? 'pb-3' : 'pb-[calc(0.75rem+env(safe-area-inset-bottom))]',
               )}
             >
@@ -315,6 +316,8 @@ export function Wizard({
           </div>
         </div>
       </form>
+      {/* sem rodapé em /encontrar: aviso de protótipo discreto (no telemóvel, o fundo é da barra Voltar/Continuar) */}
+      <NotaFinal className="container-narrow pb-2 max-lg:hidden" />
     </div>
   )
 }

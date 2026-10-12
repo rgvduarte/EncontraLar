@@ -2,9 +2,10 @@
  * Português de Portugal "à medida": como nos referimos à pessoa (a sua mãe, o seu pai, si),
  * artigos dos nomes de terras (do Porto, da Maia, de Braga) e as frases do resumo do perfil.
  */
-import type { Cuidado, GrauDependencia, TipoQuarto, Urgencia } from '@/types'
-import { euro } from '@/lib/format'
-import { eProprio, generoEfetivo, idadeNum, type Rascunho } from './model'
+import type { GrauDependencia, TipoQuarto, Urgencia } from '@/types'
+import { deLugar, emLugar, euro } from '@/lib/format'
+import { CUIDADO_FRASE } from '@/lib/labels'
+import { eProprio, generoEfetivo, idadeNum, semLimiteOrcamento, type Rascunho } from './model'
 
 // ————————————————————————————————————————— a pessoa
 
@@ -67,47 +68,9 @@ export function pessoa(r: Pick<Rascunho, 'relacao' | 'genero' | 'nome'>): Pessoa
 
 // ————————————————————————————————————————— terras
 
-/** Artigo usado com o nome da terra (a maioria não leva artigo). */
-const ARTIGO_TERRA: Record<string, 'o' | 'a' | 'as' | 'os'> = {
-  Porto: 'o',
-  Barreiro: 'o',
-  Montijo: 'o',
-  Seixal: 'o',
-  Estoril: 'o',
-  Funchal: 'o',
-  Lumiar: 'o',
-  Areeiro: 'o',
-  Bonfim: 'o',
-  'Peso da Régua': 'o',
-  'Parque das Nações': 'o',
-  Maia: 'a',
-  'Póvoa de Varzim': 'a',
-  'Figueira da Foz': 'a',
-  Lousã: 'a',
-  'Marinha Grande': 'a',
-  Covilhã: 'a',
-  Guarda: 'a',
-  Amadora: 'a',
-  'Ribeira Grande': 'a',
-  Boavista: 'a',
-  'Foz do Douro': 'a',
-  Estrela: 'a',
-  'Caldas da Rainha': 'as',
-}
-
-const DE = { o: 'do', a: 'da', as: 'das', os: 'dos' } as const
-const EM = { o: 'no', a: 'na', as: 'nas', os: 'nos' } as const
-
-/** "do Porto", "de Braga", "da Maia" */
-export function deTerra(nome: string): string {
-  const art = ARTIGO_TERRA[nome]
-  return art ? `${DE[art]} ${nome}` : `de ${nome}`
-}
-/** "no Porto", "em Braga", "na Maia" */
-export function emTerra(nome: string): string {
-  const art = ARTIGO_TERRA[nome]
-  return art ? `${EM[art]} ${nome}` : `em ${nome}`
-}
+// Os artigos das terras ("do Porto", "na Maia") vivem em src/lib (partilhados com a pesquisa e as contas);
+// reexportados aqui com os nomes de sempre.
+export { deLugar as deTerra, emLugar as emTerra } from '@/lib/format'
 
 export const LABEL_GPS = 'A sua localização'
 
@@ -115,15 +78,15 @@ export const LABEL_GPS = 'A sua localização'
 export function deLocal(label: string): string {
   if (label === LABEL_GPS) return 'da sua localização'
   const [cidade, zona] = label.split(' — ')
-  return deTerra(zona ?? cidade ?? label)
+  return deLugar(zona ?? cidade ?? label)
 }
 
 /** "perto do Porto", "perto de Alvalade, em Lisboa", "perto da sua localização" */
 export function pertoDe(label: string): string {
   if (label === LABEL_GPS) return 'perto da sua localização'
   const [cidade, zona] = label.split(' — ')
-  if (zona && cidade) return `perto ${deTerra(zona)}, ${emTerra(cidade)}`
-  return `perto ${deTerra(label)}`
+  if (zona && cidade) return `perto ${deLugar(zona)}, ${emLugar(cidade)}`
+  return `perto ${deLugar(label)}`
 }
 
 // ————————————————————————————————————————— frases curtas
@@ -133,21 +96,8 @@ export function grauFrase(grau: GrauDependencia, fem: boolean | undefined): stri
   return { ligeira: 'com dependência ligeira', moderada: 'com dependência moderada', grave: 'com dependência grave' }[grau]
 }
 
-/** Necessidades como complemento de "precisa de …". */
-export const CUIDADO_FRASE: Record<Cuidado, string> = {
-  enfermagem24h: 'enfermagem 24 horas',
-  medico: 'acompanhamento médico',
-  fisioterapia: 'fisioterapia',
-  demencia: 'cuidados na demência',
-  paliativos: 'cuidados paliativos',
-  acamados: 'cuidados de pessoa acamada',
-  diabetes: 'controlo da diabetes',
-  oxigenio: 'oxigénio',
-  terapia_ocupacional: 'terapia ocupacional',
-  psicologia: 'apoio psicológico',
-  nutricao: 'dieta acompanhada',
-  terapia_fala: 'terapia da fala',
-}
+/** Necessidades como complemento de "precisa de …" (partilhado em src/lib/labels). */
+export { CUIDADO_FRASE }
 
 /** "a, b e c" — com "e mais N" quando a lista é longa. */
 export function listaE(itens: string[], max = 3): string {
@@ -203,8 +153,8 @@ export function partesResumo(r: Rascunho): ParteResumo[] {
     })
   if (r.local) partes.push({ passo: 3, texto: `${pertoDe(r.local.label)} (até ${r.raioKm} km)`, oQue: 'a zona e a distância' })
   if (r.orcamentoMax != null) {
-    let t = `até ${euro(r.orcamentoMax)} por mês`
-    if (r.quarto !== 'indiferente') t += ` ${QUARTO_FRASE[r.quarto]}`
+    let t = semLimiteOrcamento(r.orcamentoMax) ? 'com orçamento ainda por definir' : `até ${euro(r.orcamentoMax)} por mês`
+    if (r.quarto !== 'indiferente') t += `${semLimiteOrcamento(r.orcamentoMax) ? ',' : ''} ${QUARTO_FRASE[r.quarto]}`
     if (r.precisaAcordoSS) t += ', com comparticipação da Segurança Social'
     partes.push({ passo: 4, texto: t, oQue: 'o orçamento e o quarto' })
   }

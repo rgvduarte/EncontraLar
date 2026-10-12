@@ -28,6 +28,7 @@ export function PlaceCombobox({
   error,
   label,
   hint,
+  raioKm,
 }: {
   value: Local | null
   onChange: (l: Local | null) => void
@@ -35,6 +36,8 @@ export function PlaceCombobox({
   error?: string
   label: string
   hint?: string
+  /** raio escolhido: a contagem de cada opção usa-o, para bater com a contagem do passo depois de escolher */
+  raioKm?: number
 }) {
   const id = useId()
   const listId = `${id}-lista`
@@ -54,7 +57,7 @@ export function PlaceCombobox({
 
   const res = useMemo(() => residenciais(lares), [lares])
 
-  // peso de cada lugar = nº de instituições à volta (Porto antes de Portalegre ao escrever "Por")
+  // peso de cada lugar = nº de instituições à volta (Porto antes de Portalegre ao escrever "Por") — só para ordenar
   const peso = useMemo(
     () => new Map(LUGARES.map((l) => [l.label, res.filter((x) => distanceKm(l, x) <= l.raio + 5).length])),
     [res],
@@ -204,7 +207,8 @@ export function PlaceCombobox({
           )}
         >
           {opcoes.map((o, i) => {
-            const n = peso.get(o.label) ?? 0
+            // o número mostrado conta no raio escolhido (o mesmo que o passo mostra depois de escolher)
+            const n = raioKm != null ? res.filter((x) => distanceKm(o, x) <= raioKm).length : (peso.get(o.label) ?? 0)
             return (
               <li
                 key={o.label}

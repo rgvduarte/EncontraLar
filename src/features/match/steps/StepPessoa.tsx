@@ -53,7 +53,7 @@ export function StepPessoa({ r, patch, erros, p }: StepProps) {
                   aria-describedby={describedBy}
                   aria-invalid={invalid || undefined}
                   aria-required="true"
-                  placeholder="84"
+                  placeholder="Ex.: 84"
                   className={cn(
                     'min-h-13 w-full rounded-2xl border bg-white py-3 pr-16 pl-4 text-base text-ink tabular placeholder:text-ink-mute',
                     'transition-[border-color,box-shadow] duration-200 hover:border-pine-400 focus:border-terra-500 focus:ring-4 focus:ring-terra-100 focus:outline-none',

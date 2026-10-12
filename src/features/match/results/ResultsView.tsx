@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/misc'
 import { toast } from '@/components/ui/Toast'
 import { Reveal, useLenis } from '@/components/motion'
 import { PESOS, recomendar, type MatchResult } from '@/lib/matching'
-import { vagasLivres } from '@/lib/forecast'
+import { vagaParaNovos } from '@/lib/forecast'
 import { plural } from '@/lib/format'
 import { paraPerfilInput, paraPerfilMatch } from '../model'
 import { deLocal, pessoa } from '../language'
@@ -23,6 +23,8 @@ import { ResultsStats } from './ResultsStats'
 import { SaveBar } from './SaveBar'
 import { urlPesquisa } from './searchLink'
 import { scrollPara } from '../motion'
+import { cn } from '@/lib/cn'
+import { NotaFinal } from '../NotaFinal'
 
 const PAGINA = 8
 
@@ -56,9 +58,14 @@ export function ResultsView({
     [lares, perfil],
   )
   const larPorId = useMemo(() => new Map(lares.map((l) => [l.id, l])), [lares])
-  const boas = useMemo(() => matches.filter((m) => m.compativel && m.score >= 50), [matches])
+  const compativeis = useMemo(() => matches.filter((m) => m.compativel && m.score >= 50), [matches])
   const outras = useMemo(() => matches.filter((m) => !(m.compativel && m.score >= 50)), [matches])
-  const comVaga = boas.filter((m) => vagasLivres(larPorId.get(m.larId)!) > 0).length
+  // as sugestões contam só dentro da distância escolhida; as compatíveis mais longe ficam num grupo à parte
+  const raio = perfil?.raioKm ?? 0
+  const boas = useMemo(() => compativeis.filter((m) => m.distanciaKm <= raio), [compativeis, raio])
+  const longe = useMemo(() => compativeis.filter((m) => m.distanciaKm > raio), [compativeis, raio])
+  // "com vaga agora" = vaga para quem pede hoje (um lugar livre prometido à lista de espera não conta)
+  const comVaga = boas.filter((m) => vagaParaNovos(larPorId.get(m.larId)!, m.espera)).length
   // nenhuma sugestão cabe no orçamento: também vale a pena explicar o que limita
   const semNenhumaNoOrcamento = boas.length > 0 && perfil != null && !boas.some((m) => m.precoRef <= perfil.orcamentoMax)
   const diag = useMemo(
@@ -69,7 +76,11 @@ export function ResultsView({
   const diagAntes = diag != null && boas.length >= 3
 
   const [verOutras, setVerOutras] = useState(false)
+  // as mais longe abrem-se sozinhas quando há poucas sugestões no raio (até a pessoa decidir)
+  const [verLongeEscolha, setVerLonge] = useState<boolean | null>(null)
+  const verLonge = verLongeEscolha ?? boas.length < 3
   const [limite, setLimite] = useState(PAGINA)
+  const [limiteLonge, setLimiteLonge] = useState(PAGINA)
   const [confirmar, setConfirmar] = useState(false)
   const h1 = useRef<HTMLHeadingElement>(null)
   const resumoRef = useRef<HTMLDivElement>(null)
@@ -89,11 +100,6 @@ export function ResultsView({
     escreverSessao(KEY_PERFIL_RASCUNHO, input ? { ...input, nome: r.nome.trim() } : null)
   }, [user, r])
 
-  // perfil incompleto (não devia acontecer): volta ao passo em falta
-  useEffect(() => {
-    if (!perfil) acoes.verResultados()
-  }, [perfil, acoes])
-
   if (!perfil) return null
 
   const n = boas.length
@@ -103,6 +109,7 @@ export function ResultsView({
     if (a.patch) {
       acoes.patch(a.patch)
       setLimite(PAGINA)
+      setLimiteLonge(PAGINA)
       toast.info('Pesquisa ajustada', a.label)
     }
   }
@@ -221,6 +228,47 @@ export function ResultsView({
           </Reveal>
         )}
 
+        {longe.length > 0 && (
+          <Switch
+            checked={verLonge}
+            onChange={setVerLonge}
+            label={`Mostrar também as que ficam a mais de ${raio} km`}
+            description={`${plural(longe.length, 'instituição compatível', 'instituições compatíveis')} fora da distância que escolheu.`}
+            className={cn('border-t border-line pt-6', n > 0 ? 'mt-12' : 'mt-0')}
+          />
+        )}
+
+        {verLonge && longe.length > 0 && (
+          <section
+            aria-labelledby="longe-t"
+            className="mt-16 transition-[opacity,translate] duration-700 ease-[cubic-bezier(.16,1,.3,1)] starting:translate-y-4 starting:opacity-0"
+          >
+            <h2 id="longe-t" className="text-2xl font-semibold text-ink sm:text-3xl">
+              Mais longe, fora dos {raio} km
+            </h2>
+            <p className="mt-2 max-w-2xl text-base text-ink-mute">
+              Compatíveis, mas a mais de {raio} km {deLocal(perfil.local.label)}. Por ordem de compatibilidade.
+            </p>
+            <ol aria-label={`Sugestões a mais de ${raio} km`} className="mt-4 divide-y divide-line">
+              {longe.slice(0, limiteLonge).map((m) => (
+                <RankedItem key={m.larId} lar={larPorId.get(m.larId)!} m={m} />
+              ))}
+            </ol>
+            {longe.length > limiteLonge && (
+              <div className="mt-6 text-center">
+                <Button
+                  variant="subtle"
+                  size="lg"
+                  onClick={() => setLimiteLonge((l) => l + PAGINA)}
+                  className="w-full sm:w-auto"
+                >
+                  Mostrar mais {Math.min(PAGINA, longe.length - limiteLonge)}
+                </Button>
+              </div>
+            )}
+          </section>
+        )}
+
         {outras.length > 0 && (
           <Switch
             checked={verOutras}
@@ -249,7 +297,7 @@ export function ResultsView({
         )}
       </section>
 
-      <div className="container-narrow pb-16 sm:pb-24">
+      <div className="container-narrow pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:pb-6">
         <Reveal variant="scale" duration={1100}>
           <SavePanel key={JSON.stringify({ ...r, id: undefined })} r={r} user={user} onGuardado={guardado} />
         </Reveal>
@@ -257,11 +305,17 @@ export function ResultsView({
           Ordenamos por cuidados de saúde ({PESOS.cuidados} pontos), orçamento ({PESOS.orcamento}), distância ({PESOS.distancia}),
           vaga para o prazo ({PESOS.disponibilidade}) e preferências ({PESOS.preferencias}). A previsão de vagas é uma estimativa,
           não uma garantia.{' '}
+          <Link to="/como-ordenamos" className="link inline-flex items-center">
+            Como ordenamos
+            <ChevronRight aria-hidden className="size-3.5" />
+          </Link>
+          {' · '}
           <Link to="/sobre#previsao" className="link inline-flex items-center">
-            Como calculamos
+            Como calculamos a previsão
             <ChevronRight aria-hidden className="size-3.5" />
           </Link>
         </p>
+        <NotaFinal className="mt-8" />
       </div>
 
       <SaveBar r={r} user={user} n={n} onGuardado={guardado} depoisDe={resumoRef} />
