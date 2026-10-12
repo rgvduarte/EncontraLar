@@ -106,6 +106,7 @@ export function MobileTabBar() {
   return (
     <nav
       aria-label="Navegação principal"
+      data-fundo-do-menu
       className="fixed inset-x-0 bottom-0 z-[1000] border-t border-black/[0.08] bg-white/88 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 lg:hidden"
     >
       <ul className="mx-auto grid h-[4.25rem] max-w-xl grid-cols-5">

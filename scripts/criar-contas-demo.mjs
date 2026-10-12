@@ -22,24 +22,31 @@ import { fileURLToPath } from 'node:url'
 export const REF_PROJETO_PRINCIPAL = 'kdyvsxzputvuyauddmwg'
 const CONTAS = fileURLToPath(new URL('../supabase/demo/contas-demo.json', import.meta.url))
 
-/** @typedef {{ email: string, role: 'familia' | 'lar', nome: string, telefone: string | null, palavraPasse: string | null }} ContaDemo */
+/** @typedef {{ nome: string, tipo: 'hospital' | 'centro_saude' | 'autarquia' | 'outro', servico?: string }} Organizacao */
+/** @typedef {{ email: string, role: 'familia' | 'lar' | 'profissional', nome: string, telefone: string | null, palavraPasse: string | null, organizacao?: Organizacao }} ContaDemo */
+
+const PAPEIS = ['familia', 'lar', 'profissional']
 
 /** @returns {ContaDemo[]} */
 export function lerContas(caminho = CONTAS) {
   const contas = JSON.parse(readFileSync(caminho, 'utf8'))
-  if (!Array.isArray(contas) || contas.some((c) => !c.email || !['familia', 'lar'].includes(c.role))) {
+  if (!Array.isArray(contas) || contas.some((c) => !c.email || !PAPEIS.includes(c.role) || (c.role === 'profissional') !== !!c.organizacao)) {
     throw new Error(`${caminho}: formato inválido`)
   }
   return contas
 }
 
-/** Corpo do pedido auth.admin.createUser. As contas sem palavra-passe pública recebem uma aleatória. */
+/**
+ * Corpo do pedido auth.admin.createUser. As contas sem palavra-passe pública recebem uma aleatória.
+ * O papel e a organização (contas 'profissional') vão em app_metadata — definidos pelo administrador,
+ * não editáveis pelo utilizador (o trigger de registo copia-os para perfis_utilizador).
+ */
 export function pedidoCriacao(/** @type {ContaDemo} */ c) {
   return {
     email: c.email,
     password: c.palavraPasse ?? randomBytes(24).toString('base64url'),
     email_confirm: true,
-    app_metadata: { role: c.role },
+    app_metadata: { role: c.role, ...(c.organizacao ? { organizacao: c.organizacao } : {}) },
     user_metadata: { nome: c.nome, ...(c.telefone ? { telefone: c.telefone } : {}) },
   }
 }

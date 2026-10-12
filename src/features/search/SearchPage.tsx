@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn'
 import { EmptyResults } from './EmptyResults'
 import { FilterBar } from './FilterBar'
 import { FiltersModal, type ModoFiltros, type Rascunho } from './FiltersModal'
+import { refTitulo } from './focoTitulo'
 import { filtrar, noLocal, passaFiltros } from './filtering'
 import { MobileBar, ViewToggle } from './MobileBar'
 import { cardDomId, NotaFinal, PAGINA, ResultsList } from './ResultsList'
@@ -268,7 +269,9 @@ export default function SearchPage() {
       <MobileBar ref={barRef} model={model} geo={geo} onFiltros={() => setModal('todos')} recolhivel={!vistaMapa} />
       {vistaMapa ? (
         <>
-          <h1 className="sr-only">{titulo}</h1>
+          <h1 ref={refTitulo} tabIndex={-1} data-titulo-pesquisa className="sr-only">
+            {titulo}
+          </h1>
           <p className="sr-only" aria-live="polite">
             {resultados.length} instituições, {comVaga} com vaga agora
           </p>

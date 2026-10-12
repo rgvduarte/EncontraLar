@@ -53,8 +53,9 @@ describe('registo e papéis', () => {
     expect((await adm<{ role: string }>('select role from public.perfis_utilizador where id = $1', [anonima]))[0]!.role).toBe('familia')
     const sessao = { sub: anonima, claims: { is_anonymous: true } }
     expect(await erro(db, sessao, `insert into public.perfis_cuidados (nome, idade, grau, local_lat, local_lng) values ('X', 80, 'ligeira', 41, -8)`)).toMatch(/row-level security/)
+    // avaliações: nunca diretamente na tabela (só avaliar_lar, que exige um pedido com entrada confirmada)
     expect(await erro(db, sessao, `insert into public.avaliacoes (instituicao_id, autor, nota, aspeto_cuidados, aspeto_alimentacao, aspeto_instalacoes, aspeto_comunicacao, texto)
-      values ($1, 'Anónimo', 1, 1, 1, 1, 1, 'Texto da avaliação anónima')`, [base.instituicao])).toMatch(/row-level security/)
+      values ($1, 'Anónimo', 1, 1, 1, 1, 1, 'Texto da avaliação anónima')`, [base.instituicao])).toMatch(/permission denied/)
     // uma conta 'lar' com sessão anónima (ex.: papel dado por app_metadata) também não cria fichas
     const larAnonimo = await criarUtilizador(db, { email: null, anonimo: true, roleAdmin: 'lar' })
     expect(await erro(db, { sub: larAnonimo, claims: { is_anonymous: true } }, NOVA_FICHA, ['Lar Anónimo'])).toMatch(/row-level security/)
@@ -148,30 +149,42 @@ describe('sequências', () => {
   it('anon não consegue setval/nextval; inserções com identity continuam a funcionar', async () => {
     expect(await erro(db, 'anon', "select setval('public.notificacoes_id_seq', 1)")).toMatch(/permission denied/)
     expect(await erro(db, base.familia, "select nextval('public.avaliacoes_id_seq')")).toMatch(/permission denied/)
-    expect(await afetadas(db, base.familia, `insert into public.avaliacoes (instituicao_id, autor, nota, aspeto_cuidados, aspeto_alimentacao, aspeto_instalacoes, aspeto_comunicacao, texto)
-      values ($1, 'Família', 4, 4, 4, 4, 4, 'Muito bom acolhimento e equipa atenta.')`, [base.instituicao])).toBe(1)
+    expect(await afetadas(db, base.lar, `insert into public.quartos (instituicao_id, tipo, total, preco_min, preco_max) values ($1, 'casal', 2, 2000, 2200)`, [base.instituicao])).toBe(1)
     // e o registo continua a funcionar (o trigger cria a notificação de boas-vindas)
     await expect(criarUtilizador(db, { email: 'depois-do-setval@x.pt' })).resolves.toMatch(/-/)
   })
 })
 
 describe('avaliações', () => {
+  /** pedido com a vaga aceite e a entrada confirmada pelos dois lados (única via para avaliar) */
+  async function entradaConfirmada(b: Awaited<ReturnType<typeof cenarioBase>>) {
+    const [c] = await q<{ id: string }>(db, b.familia, 'select id from public.candidatar($1, $2, true)', [b.instituicao, b.perfil])
+    await q(db, b.lar, 'select public.aceitar_candidatura($1)', [c!.id])
+    await q(db, b.lar, "select public.atualizar_estado_candidatura($1, 'vaga_proposta')", [c!.id])
+    await q(db, b.familia, 'select public.responder_vaga($1, true)', [c!.id])
+    await q(db, b.lar, 'select public.marcar_entrada($1, current_date)', [c!.id])
+    await q(db, b.familia, 'select public.confirmar_entrada_familia($1, current_date)', [c!.id])
+    return c!.id
+  }
+
   it('o autor apaga a sua avaliação (e os agregados acompanham); outra família não', async () => {
-    const { instituicao, familia } = await cenarioBase(db, { sufixo: 'a' })
+    const b = await cenarioBase(db, { sufixo: 'a' })
     const outra = await criarUtilizador(db, { email: 'outra-av@x.pt', roleAdmin: 'familia' })
-    const [av] = await q<{ id: number }>(db, familia, `insert into public.avaliacoes (instituicao_id, autor, nota, aspeto_cuidados, aspeto_alimentacao, aspeto_instalacoes, aspeto_comunicacao, texto)
-      values ($1, 'Família', 2, 2, 2, 2, 2, 'Pouca comunicação com as famílias.') returning id`, [instituicao])
-    expect((await adm<{ n: number }>('select num_avaliacoes n from public.instituicoes where id = $1', [instituicao]))[0]!.n).toBe(1)
+    const c = await entradaConfirmada(b)
+    const [av] = await q<{ id: number }>(db, b.familia, `select id from public.avaliar_lar($1, 2, 'Pouca comunicação com as famílias.', '{"cuidados":2,"alimentacao":2,"instalacoes":2,"comunicacao":2}')`, [c])
+    expect((await adm<{ n: number }>('select num_avaliacoes n from public.instituicoes where id = $1', [b.instituicao]))[0]!.n).toBe(1)
     expect(await afetadas(db, outra, 'delete from public.avaliacoes where id = $1', [av!.id])).toBe(0)
-    expect(await afetadas(db, familia, 'delete from public.avaliacoes where id = $1', [av!.id])).toBe(1)
-    expect((await adm<{ n: number; m: string }>('select num_avaliacoes n, avaliacao_media::text m from public.instituicoes where id = $1', [instituicao]))[0]).toEqual({ n: 0, m: '0.00' })
+    expect(await afetadas(db, b.familia, 'delete from public.avaliacoes where id = $1', [av!.id])).toBe(1)
+    expect((await adm<{ n: number; m: string }>('select num_avaliacoes n, avaliacao_media::text m from public.instituicoes where id = $1', [b.instituicao]))[0]).toEqual({ n: 0, m: '0.00' })
   })
 
-  it('contas de demonstração não avaliam fichas reais', async () => {
+  it('contas de demonstração não avaliam fichas reais (nem diretamente, nem sem um pedido com entrada confirmada)', async () => {
     const demo = await criarUtilizador(db, { email: 'demo-av@x.pt', roleAdmin: 'familia' })
     await adm('update public.perfis_utilizador set demonstracao = true where id = $1', [demo])
     expect(await erro(db, demo, `insert into public.avaliacoes (instituicao_id, autor, nota, aspeto_cuidados, aspeto_alimentacao, aspeto_instalacoes, aspeto_comunicacao, texto)
-      values ($1, 'Demo', 1, 1, 1, 1, 1, 'Avaliação vinda da conta pública')`, [base.instituicao])).toMatch(/row-level security/)
+      values ($1, 'Demo', 1, 1, 1, 1, 1, 'Avaliação vinda da conta pública')`, [base.instituicao])).toMatch(/permission denied/)
+    const [p] = await q<{ id: string }>(db, demo, `insert into public.perfis_cuidados (nome, idade, grau, local_lat, local_lng) values ('X', 80, 'ligeira', 41, -8) returning id`)
+    expect(await erro(db, demo, 'select public.candidatar($1, $2, true)', [base.instituicao, p!.id])).toMatch(/contas de demonstração não enviam/)
   })
 })
 

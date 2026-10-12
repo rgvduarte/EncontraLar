@@ -14,6 +14,18 @@
     "palavraPasse": "demo1234"
   },
   {
+    "email": "social@exemplo.pt",
+    "role": "profissional",
+    "nome": "Marta Correia",
+    "telefone": "225 000 310",
+    "palavraPasse": "demo1234",
+    "organizacao": {
+      "nome": "Hospital de Vale Formoso",
+      "tipo": "hospital",
+      "servico": "Serviço Social"
+    }
+  },
+  {
     "email": "rui.sousa@exemplo.pt",
     "role": "familia",
     "nome": "Rui Sousa",
@@ -53,6 +65,20 @@
     "role": "familia",
     "nome": "Joana Nogueira",
     "telefone": "938 000 612",
+    "palavraPasse": null
+  },
+  {
+    "email": "teresa.matos@exemplo.pt",
+    "role": "familia",
+    "nome": "Teresa Matos",
+    "telefone": "916 000 274",
+    "palavraPasse": null
+  },
+  {
+    "email": "luis.barros@exemplo.pt",
+    "role": "familia",
+    "nome": "Luís Barros",
+    "telefone": "927 000 851",
     "palavraPasse": null
   }
 ]

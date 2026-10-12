@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router'
 import {
   Bell,
@@ -21,7 +21,7 @@ import { Avatar } from '@/components/ui/misc'
 import { toast } from '@/components/ui/Toast'
 import { useLenis } from '@/components/motion/SmoothScroll'
 import { loginDemo, marcarNotificacaoLida, marcarTodasLidas, useCurrentUser, useLares, useNotificacoes } from '@/lib/store'
-import { useDismiss } from '@/lib/hooks'
+import { useDismiss, useMediaQuery } from '@/lib/hooks'
 import { tempoRelativo } from '@/lib/format'
 import { vagaParaNovos } from '@/lib/forecast'
 import { prefersReducedMotion } from '@/lib/motion'
@@ -190,7 +190,8 @@ function NotificationBell() {
   const unread = notifs.filter((n) => !n.lida).length
 
   return (
-    <div ref={ref} className="relative">
+    // Esc dentro do painel: o foco volta ao sino (o painel desaparece e o foco ia parar ao <body>)
+    <div ref={ref} className="relative" onKeyDown={(e) => e.key === 'Escape' && open && ref.current?.querySelector('button')?.focus()}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -265,7 +266,8 @@ function UserMenu() {
   const close = useCallback(() => setOpen(false), [])
   useDismiss(open, ref, close)
   return (
-    <div ref={ref} className="relative">
+    // Esc dentro do menu: o foco volta ao botão da conta
+    <div ref={ref} className="relative" onKeyDown={(e) => e.key === 'Escape' && open && ref.current?.querySelector('button')?.focus()}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -307,6 +309,49 @@ function UserMenu() {
 
 // ————————————————————————————————————————— cabeçalho
 
+/** Primeiro elemento focável e visível dentro de `raiz` (ignora os escondidos por breakpoint, ex.: xl:hidden). */
+function primeiroFocavel(raiz: Element | null | undefined): HTMLElement | null {
+  if (!raiz) return null
+  const lista = raiz.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')
+  for (const el of lista) if (el.getClientRects().length > 0) return el
+  return null
+}
+
+/** Ligação (ou botão, para a ação de demonstração) de um menu: ligações a sério (abrir noutro separador, leitores de ecrã). */
+function EntradaMenu({
+  l,
+  className,
+  metaClassName = 'text-xs font-normal',
+  onSeguir,
+  onAcao,
+}: {
+  l: MenuLink
+  className: string
+  metaClassName?: string
+  onSeguir: (e: React.MouseEvent<HTMLAnchorElement>, l: MenuLink) => void
+  onAcao: (l: MenuLink) => void
+}) {
+  const conteudo = (
+    <>
+      {l.label}
+      {/* o espaço separa o número no nome acessível ("Porto 28" e não "Porto28"); num contentor flex não se vê */}
+      {l.meta && ' '}
+      {l.meta && <span className={cn('text-ink-mute tabular', metaClassName)}>{l.meta}</span>}
+    </>
+  )
+  if (l.action)
+    return (
+      <button type="button" onClick={() => onAcao(l)} className={className}>
+        {conteudo}
+      </button>
+    )
+  return (
+    <Link to={l.to} onClick={(e) => onSeguir(e, l)} className={className}>
+      {conteudo}
+    </Link>
+  )
+}
+
 export function Header() {
   const user = useCurrentUser()
   const menus = useMenus()
@@ -314,10 +359,19 @@ export function Header() {
   const navigate = useNavigate()
   const lenis = useLenis()
   const [aberto, setAberto] = useState<string | null>(null)
+  // o último menu aberto continua desenhado enquanto o painel encolhe (senão o fecho era um corte seco)
+  const [ultimo, setUltimo] = useState<string | null>(null)
+  const [altura, setAltura] = useState(0)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [sub, setSub] = useState<string | null>(null)
   const timer = useRef<number | undefined>(undefined)
   const headerRef = useRef<HTMLElement>(null)
+  const chevrons = useRef<Record<string, HTMLButtonElement | null>>({})
+  const paineis = useRef<Record<string, HTMLDivElement | null>>({})
+  const hamburguer = useRef<HTMLButtonElement>(null)
+  const topoMovel = useRef<Record<string, HTMLButtonElement | null>>({})
+  const voltarMovel = useRef<Record<string, HTMLButtonElement | null>>({})
+  const xl = useMediaQuery('(min-width: 1280px)')
   // limite inferior real do cabeçalho (a faixa de protótipo pode estar por cima)
   const [topo, setTopo] = useState(64)
   useEffect(() => {
@@ -339,26 +393,72 @@ export function Header() {
     setSub(null)
   }, [location.pathname, location.search, location.hash])
 
+  // o menu de ecrã inteiro só existe abaixo de 1280px: ao alargar a janela, fecha (e devolve o scroll à página)
   useEffect(() => {
+    if (xl) setMobileOpen(false)
+  }, [xl])
+
+  // menu suspenso: altura explícita (medida) para animar a abertura, o fecho e a troca entre menus de alturas diferentes
+  useEffect(() => {
+    if (aberto) setUltimo(aberto)
+  }, [aberto])
+  useLayoutEffect(() => {
+    if (!aberto) return
+    const el = paineis.current[aberto]
+    if (!el) return
+    const medir = () => setAltura(el.offsetHeight)
+    medir()
+    const ro = new ResizeObserver(medir)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [aberto])
+  // rede de segurança: se o fim da transição não chegar (ex.: fechou antes de abrir), o conteúdo sai na mesma
+  useEffect(() => {
+    if (aberto || !ultimo) return
+    const t = window.setTimeout(() => setUltimo(null), 600)
+    return () => window.clearTimeout(t)
+  }, [aberto, ultimo])
+
+  // Esc: fecha e devolve o foco a quem abriu (botão do menu suspenso ou botão do menu móvel), nunca ao <body>
+  useEffect(() => {
+    if (!aberto && !mobileOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setAberto(null)
+      if (e.key !== 'Escape') return
+      if (mobileOpen) {
         setMobileOpen(false)
+        setSub(null)
+        hamburguer.current?.focus()
+        return
+      }
+      if (aberto) {
+        const ativo = document.activeElement
+        const naZona = ativo && (paineis.current[aberto]?.contains(ativo) || chevrons.current[aberto]?.closest('li')?.contains(ativo))
+        if (naZona) chevrons.current[aberto]?.focus()
+        setAberto(null)
       }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [])
+  }, [aberto, mobileOpen])
 
-  // bloquear o scroll do fundo com o menu móvel aberto
+  // menu móvel aberto: a página por trás não se mexe (Lenis parado, não só overflow no body) nem recebe o foco (inert)
   useEffect(() => {
     if (!mobileOpen) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    lenis?.stop()
+    const fundo = Array.from(document.querySelectorAll<HTMLElement>('[data-fundo-do-menu]'))
+    for (const el of fundo) el.inert = true
+    // o foco entra no menu (primeira entrada)
+    const raf = requestAnimationFrame(() => topoMovel.current[menus[0]?.id ?? '']?.focus({ preventScroll: true }))
     return () => {
+      cancelAnimationFrame(raf)
+      for (const el of fundo) el.inert = false
+      lenis?.start()
       document.body.style.overflow = prev
     }
-  }, [mobileOpen])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao abrir/fechar (menus muda com as vagas)
+  }, [mobileOpen, lenis])
 
   const abrirComAtraso = (id: string | null, ms = 110) => {
     window.clearTimeout(timer.current)
@@ -366,7 +466,8 @@ export function Header() {
   }
 
   const paraOTopo = () => {
-    if (lenis) lenis.scrollTo(0)
+    // force: o Lenis pode ainda estar parado (menu móvel a fechar no mesmo clique)
+    if (lenis) lenis.scrollTo(0, { force: true })
     else window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
   }
 
@@ -374,6 +475,14 @@ export function Header() {
     setMobileOpen(false)
     setSub(null)
     setAberto(null)
+  }
+
+  /** Depois de fechar um menu sem mudar de página, o foco volta a quem o abriu (a entrada fica inerte e o foco perdia-se). */
+  const devolverFoco = () => {
+    const ativo = document.activeElement
+    if (mobileOpen) {
+      if (ativo && document.getElementById('menu-movel')?.contains(ativo)) hamburguer.current?.focus()
+    } else if (aberto && ativo && paineis.current[aberto]?.contains(ativo)) chevrons.current[aberto]?.focus()
   }
 
   const go = (l: MenuLink) => {
@@ -393,12 +502,66 @@ export function Header() {
       }
       return
     }
+    navigate(l.to)
+  }
+
+  /** Clique numa ligação de menu: fecha o menu; para a própria página (sem âncora) só sobe ao topo. */
+  const seguir = (e: React.MouseEvent<HTMLAnchorElement>, l: MenuLink) => {
+    // abrir noutro separador/janela: deixar o browser tratar
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
     const aqui = location.pathname + location.search + location.hash
     if (l.to === aqui && !location.hash) {
+      e.preventDefault()
+      devolverFoco()
+      fecharMenus()
       paraOTopo()
       return
     }
-    navigate(l.to)
+    fecharMenus()
+  }
+
+  // menu suspenso (desktop) e teclado: o painel está no fim do <header>, por isso a ordem do Tab é feita à mão —
+  // botão do menu → entradas do painel → menu seguinte (e Shift+Tab na primeira entrada volta ao botão)
+  const entradas = (id: string) => Array.from(paineis.current[id]?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? [])
+  const tabNoBotao = (e: React.KeyboardEvent, id: string) => {
+    if (e.key !== 'Tab' || e.shiftKey || aberto !== id) return
+    const primeira = entradas(id)[0]
+    if (!primeira) return
+    e.preventDefault()
+    primeira.focus({ preventScroll: true })
+  }
+  const tabNoPainel = (e: React.KeyboardEvent, id: string) => {
+    if (e.key !== 'Tab') return
+    const lista = entradas(id)
+    const i = lista.indexOf(document.activeElement as HTMLElement)
+    if (e.shiftKey && i === 0) {
+      e.preventDefault()
+      chevrons.current[id]?.focus()
+    } else if (!e.shiftKey && i === lista.length - 1) {
+      const li = chevrons.current[id]?.closest('li')
+      const seguinte = primeiroFocavel(li?.nextElementSibling) ?? primeiroFocavel(headerRef.current?.querySelector('[data-depois-do-menu]'))
+      if (!seguinte) return
+      e.preventDefault()
+      setAberto(null)
+      seguinte.focus()
+    }
+  }
+  // o foco saiu do botão e do painel (Tab, Shift+Tab, clique noutro controlo): o menu fecha
+  const aoPerderFoco = (e: React.FocusEvent) => {
+    if (!aberto) return
+    const para = e.relatedTarget as Node | null
+    if (!para) return
+    if (paineis.current[aberto]?.contains(para) || chevrons.current[aberto]?.closest('li')?.contains(para)) return
+    setAberto(null)
+  }
+
+  const abrirSub = (id: string) => {
+    setSub(id)
+    requestAnimationFrame(() => voltarMovel.current[id]?.focus({ preventScroll: true }))
+  }
+  const fecharSub = (id: string) => {
+    setSub(null)
+    requestAnimationFrame(() => topoMovel.current[id]?.focus({ preventScroll: true }))
   }
 
   // lupa: na pesquisa, sobe e põe o cursor no campo (sem perder os filtros); fora dela, reabre a última pesquisa
@@ -413,6 +576,7 @@ export function Header() {
   }
 
   const menuAtivo = menus.find((m) => m.id === aberto)
+  const visivel = aberto ?? ultimo
 
   return (
     <>
@@ -430,15 +594,18 @@ export function Header() {
       <header
         ref={headerRef}
         onMouseLeave={() => abrirComAtraso(null, 160)}
+        onBlur={aoPerderFoco}
         className={cn(
           'sticky top-0 z-[1000] transition-colors duration-300',
           menuAtivo || mobileOpen ? 'bg-white' : 'border-b border-black/[0.06] bg-white/90 backdrop-blur-xl backdrop-saturate-150',
         )}
       >
-        {/* na pesquisa (ecrã inteiro) o cabeçalho alinha com a barra de filtros e a lista, de margem a margem */}
-        <div className={cn('container-page flex h-16 items-center justify-between gap-4', naPesquisa && 'lg:max-w-none lg:px-6 xl:px-8')}>
+        {/* na pesquisa (ecrã inteiro) o cabeçalho alinha com a barra de filtros e a lista, de margem a margem.
+            gap-2 a 320px: com sessão iniciada (logótipo, lupa, sino, menu) o cabeçalho cabe sem scroll lateral */}
+        <div className={cn('container-page flex h-16 items-center justify-between gap-2 min-[360px]:gap-4', naPesquisa && 'lg:max-w-none lg:px-6 xl:px-8')}>
           <Link to="/" className="rounded-xl" aria-label="EncontraLar — página inicial" onMouseEnter={() => abrirComAtraso(null)}>
-            <Logo />
+            {/* < 360px (ex.: 320px, zoom a 400%): nome um pouco menor, para os botões manterem 44px e 8px entre eles */}
+            <Logo className="max-[359px]:gap-1.5 max-[359px]:[&>span]:text-[1.25rem]" />
           </Link>
 
           <nav aria-label="Principal" className="hidden xl:block">
@@ -459,10 +626,20 @@ export function Header() {
                     {m.label}
                   </NavLink>
                   <button
+                    ref={(el) => {
+                      chevrons.current[m.id] = el
+                    }}
                     type="button"
                     aria-expanded={aberto === m.id}
                     aria-controls={`menu-${m.id}`}
-                    onClick={() => setAberto((a) => (a === m.id ? null : m.id))}
+                    onClick={(e) => {
+                      window.clearTimeout(timer.current)
+                      const abrir = aberto !== m.id
+                      setAberto(abrir ? m.id : null)
+                      // com o teclado (Enter/Espaço: detail 0), o foco entra no painel
+                      if (abrir && e.detail === 0) requestAnimationFrame(() => entradas(m.id)[0]?.focus({ preventScroll: true }))
+                    }}
+                    onKeyDown={(e) => tabNoBotao(e, m.id)}
                     className="-ml-2.5 flex size-7 items-center justify-center rounded-full text-ink-mute opacity-0 focus-visible:opacity-100"
                   >
                     <ChevronDown aria-hidden className="size-3.5" />
@@ -473,7 +650,7 @@ export function Header() {
             </ul>
           </nav>
 
-          <div className="flex items-center gap-2" onMouseEnter={() => abrirComAtraso(null)}>
+          <div className="flex items-center gap-2" onMouseEnter={() => abrirComAtraso(null)} data-depois-do-menu>
             <Link
               to={destinoPesquisa}
               onClick={abrirPesquisa}
@@ -501,6 +678,7 @@ export function Header() {
               </div>
             )}
             <button
+              ref={hamburguer}
               type="button"
               className="flex size-11 items-center justify-center rounded-full text-ink hover:bg-sand xl:hidden"
               aria-expanded={mobileOpen}
@@ -519,61 +697,74 @@ export function Header() {
           </div>
         </div>
 
-        {/* painel do menu suspenso (desktop): expande em altura, conteúdo entra escalonado */}
+        {/* painel do menu suspenso (desktop): a altura (medida) anima ao abrir, ao fechar e entre menus; conteúdo escalonado */}
         <div
+          inert={!menuAtivo}
+          style={{ height: menuAtivo ? altura : 0 }}
+          onTransitionEnd={(e) => {
+            if (e.target === e.currentTarget && e.propertyName === 'height' && !aberto) setUltimo(null)
+          }}
           className={cn(
-            'absolute inset-x-0 top-full hidden overflow-hidden bg-white transition-[grid-template-rows,box-shadow] duration-500 ease-[cubic-bezier(.32,.72,0,1)] xl:grid',
-            menuAtivo ? 'grid-rows-[1fr] shadow-[0_30px_40px_-30px_rgba(0,0,0,0.12)]' : 'grid-rows-[0fr]',
+            'absolute inset-x-0 top-full hidden overflow-hidden bg-white transition-[height,box-shadow] duration-500 ease-[cubic-bezier(.32,.72,0,1)] xl:block',
+            menuAtivo && 'shadow-[0_30px_40px_-30px_rgba(0,0,0,0.12)]',
           )}
         >
-          <div className="min-h-0">
-            {menus.map((m) => (
-              <div
-                key={m.id}
-                id={`menu-${m.id}`}
-                hidden={aberto !== m.id}
-                onMouseEnter={() => abrirComAtraso(m.id, 0)}
-                className="container-page flex gap-16 pt-8 pb-14"
-              >
-                {m.columns.map((c, ci) => (
-                  <div key={c.titulo} className={cn(c.big ? 'min-w-64' : 'min-w-48')}>
-                    <p className="mb-3 text-xs text-ink-mute">{c.titulo}</p>
-                    <ul className="flex flex-col">
-                      {c.links.map((l, li) => (
-                        <li key={l.label} className="animate-pop-in" style={{ animationDelay: `${60 + ci * 70 + li * 28}ms` }}>
-                          <button
-                            type="button"
-                            onClick={() => go(l)}
-                            className={cn(
-                              'flex w-full items-baseline gap-2 py-1 text-left transition-colors',
-                              c.big ? 'text-2xl font-semibold tracking-tight text-ink hover:text-terra-600' : 'text-[0.9375rem] font-medium text-ink-soft hover:text-ink',
-                            )}
-                          >
-                            {l.label}
-                            {l.meta && <span className="text-xs font-normal text-ink-mute tabular">{l.meta}</span>}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
+          {menus.map((m) => (
+            <div
+              key={m.id}
+              ref={(el) => {
+                paineis.current[m.id] = el
+              }}
+              id={`menu-${m.id}`}
+              hidden={visivel !== m.id}
+              onMouseEnter={() => abrirComAtraso(m.id, 0)}
+              onKeyDown={(e) => tabNoPainel(e, m.id)}
+              className="container-page flex gap-16 pt-8 pb-14"
+            >
+              {m.columns.map((c, ci) => (
+                <div key={c.titulo} className={cn(c.big ? 'min-w-64' : 'min-w-48')}>
+                  <p className="mb-3 text-xs text-ink-mute">{c.titulo}</p>
+                  <ul className="flex flex-col">
+                    {c.links.map((l, li) => (
+                      <li key={l.label} className="animate-pop-in" style={{ animationDelay: `${60 + ci * 70 + li * 28}ms` }}>
+                        <EntradaMenu
+                          l={l}
+                          onSeguir={seguir}
+                          onAcao={go}
+                          className={cn(
+                            'flex w-full items-baseline gap-2 py-1 text-left transition-colors',
+                            c.big ? 'text-2xl font-semibold tracking-tight text-ink hover:text-terra-600' : 'text-[0.9375rem] font-medium text-ink-soft hover:text-ink',
+                          )}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </header>
 
-      {/* menu móvel: ecrã inteiro, entradas escalonadas, subpainéis que deslizam da direita */}
+      {/* menu móvel: ecrã inteiro, entradas escalonadas, subpainéis que deslizam da direita.
+          Diálogo sem aria-modal: o botão que o fecha fica no cabeçalho, fora dele (com aria-modal, o VoiceOver escondia-o);
+          a página por trás fica inerte enquanto está aberto. */}
       <div
         id="menu-movel"
+        role="dialog"
+        aria-label="Menu"
+        inert={!mobileOpen}
         style={{ top: topo }}
+        data-lenis-prevent
         className={cn(
-          'fixed inset-x-0 bottom-0 z-[1001] overflow-hidden bg-white transition-[opacity,visibility] duration-300 xl:hidden',
-          mobileOpen ? 'visible opacity-100' : 'invisible opacity-0',
+          'fixed inset-x-0 bottom-0 z-[1001] overflow-hidden bg-white duration-300 xl:hidden',
+          // ao abrir, fica visível logo (para receber o foco no primeiro frame); ao fechar, só no fim do fade
+          mobileOpen ? 'visible opacity-100 transition-opacity' : 'invisible opacity-0 transition-[opacity,visibility]',
         )}
       >
         <nav
           aria-label="Principal (móvel)"
+          inert={!!sub}
           className={cn(
             'absolute inset-0 flex flex-col overflow-y-auto px-6 pt-4 pb-[calc(2rem+env(safe-area-inset-bottom))] transition-[transform,translate,scale,opacity] duration-500 ease-[cubic-bezier(.32,.72,0,1)]',
             sub ? '-translate-x-1/4 opacity-0' : 'translate-x-0 opacity-100',
@@ -584,9 +775,13 @@ export function Header() {
             {menus.map((m, i) => (
               <li key={m.id} className={mobileOpen ? 'animate-pop-in' : ''} style={{ animationDelay: `${40 + i * 45}ms` }}>
                 <button
+                  ref={(el) => {
+                    topoMovel.current[m.id] = el
+                  }}
                   type="button"
-                  tabIndex={sub ? -1 : 0}
-                  onClick={() => setSub(m.id)}
+                  aria-expanded={sub === m.id}
+                  aria-controls={`submenu-${m.id}`}
+                  onClick={() => abrirSub(m.id)}
                   className="flex min-h-16 w-full items-center justify-between text-left text-[1.75rem] font-semibold tracking-tight"
                 >
                   {m.label}
@@ -632,14 +827,24 @@ export function Header() {
         {menus.map((m) => (
           <div
             key={m.id}
+            id={`submenu-${m.id}`}
+            role="group"
+            aria-label={m.label}
+            inert={sub !== m.id}
             className={cn(
               'absolute inset-0 overflow-y-auto bg-white px-6 pt-2 pb-10 transition-transform duration-500 ease-[cubic-bezier(.32,.72,0,1)]',
               sub === m.id ? 'translate-x-0' : 'pointer-events-none translate-x-full',
             )}
-            aria-hidden={sub !== m.id}
             data-lenis-prevent
           >
-            <button type="button" tabIndex={sub === m.id ? 0 : -1} onClick={() => setSub(null)} className="-ml-2 flex min-h-12 items-center gap-1 text-ink-mute">
+            <button
+              ref={(el) => {
+                voltarMovel.current[m.id] = el
+              }}
+              type="button"
+              onClick={() => fecharSub(m.id)}
+              className="-ml-2 flex min-h-12 items-center gap-1 text-ink-mute"
+            >
               <ChevronLeft aria-hidden className="size-5" /> Voltar
             </button>
             {m.columns.map((c, ci) => (
@@ -648,15 +853,13 @@ export function Header() {
                 <ul>
                   {c.links.map((l, li) => (
                     <li key={l.label} className={sub === m.id ? 'animate-pop-in' : ''} style={{ animationDelay: `${80 + ci * 60 + li * 35}ms` }}>
-                      <button
-                        type="button"
-                        tabIndex={sub === m.id ? 0 : -1}
-                        onClick={() => go(l)}
+                      <EntradaMenu
+                        l={l}
+                        onSeguir={seguir}
+                        onAcao={go}
+                        metaClassName="text-sm"
                         className={cn('flex min-h-12 w-full items-baseline gap-2 text-left', c.big ? 'text-2xl font-semibold tracking-tight' : 'text-lg text-ink-soft')}
-                      >
-                        {l.label}
-                        {l.meta && <span className="text-sm text-ink-mute tabular">{l.meta}</span>}
-                      </button>
+                      />
                     </li>
                   ))}
                 </ul>

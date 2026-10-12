@@ -5,6 +5,7 @@ import { CUIDADO_LABEL, GRAU_LABEL, NATUREZA_LABEL } from '@/lib/labels'
 import { euro, num } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { DispDot, QuietSelect } from './Chips'
+import { refTitulo } from './focoTitulo'
 import { useNumeroAnimado, usePresenca } from './motion'
 import type { SearchModel } from './useSearch'
 import {
@@ -95,7 +96,14 @@ export function ResultsSummary({ model, desktop }: Props) {
   return (
     <header className="px-5 pt-6 sm:px-6 lg:pt-8 xl:px-8">
       {/* o título muda com a zona/tipo: troca suave (chave = texto) */}
-      <h1 key={titulo} className="el-swap text-[1.75rem] leading-tight font-semibold tracking-tight text-ink sm:text-2xl">
+      {/* tabIndex -1: recebe o foco depois de escolher um lugar num ecrã tátil (focoTitulo) */}
+      <h1
+        key={titulo}
+        ref={refTitulo}
+        tabIndex={-1}
+        data-titulo-pesquisa
+        className="el-swap text-[1.75rem] leading-tight font-semibold tracking-tight text-ink sm:text-2xl"
+      >
         {titulo}
       </h1>
       <div className="mt-1 flex flex-wrap items-center justify-between gap-x-4">

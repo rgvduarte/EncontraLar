@@ -56,8 +56,7 @@ export function DashboardShell({
     row.scrollTo({ left: ativo.offsetLeft - row.clientWidth / 2 + ativo.clientWidth / 2, behavior: 'smooth' })
   }, [pathname])
   return (
-    // --barra-fixa: as pílulas ficam presas por baixo do cabeçalho no telemóvel — o foco (Tab) para acima delas (index.css)
-    <div className={cn('flex flex-1 flex-col bg-white', pilulasMoveis && '[--barra-fixa:4.25rem] lg:[--barra-fixa:0px]')}>
+    <div className="flex flex-1 flex-col bg-white">
       <div className="border-b border-line">
         <div className="container-page py-5 sm:py-10">
           {eyebrow && <p className="eyebrow mb-1.5">{eyebrow}</p>}

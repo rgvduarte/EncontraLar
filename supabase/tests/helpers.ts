@@ -47,9 +47,13 @@ export interface NovoUtilizador {
   nome?: string
   telefone?: string
   /** papel definido por um administrador (app_metadata) */
-  roleAdmin?: 'familia' | 'lar' | string
+  roleAdmin?: 'familia' | 'lar' | 'profissional' | string
   /** papel escolhido no formulário de registo (user_metadata) */
-  roleRegisto?: 'familia' | 'lar' | string
+  roleRegisto?: 'familia' | 'lar' | 'profissional' | string
+  /** outros campos de app_metadata (definidos pelo administrador, ex.: organizacao) */
+  appExtra?: Record<string, unknown>
+  /** outros campos de user_metadata (enviados no registo, ex.: organizacao) */
+  metadados?: Record<string, unknown>
   /** conta anónima (signInAnonymously) */
   anonimo?: boolean
   /** e-mail confirmado (por omissão: sim, exceto contas anónimas) */
@@ -57,8 +61,8 @@ export interface NovoUtilizador {
 }
 
 export async function criarUtilizador(db: PGlite, u: NovoUtilizador): Promise<string> {
-  const app = { provider: u.anonimo ? 'anonymous' : 'email', providers: [u.anonimo ? 'anonymous' : 'email'], ...(u.roleAdmin ? { role: u.roleAdmin } : {}) }
-  const meta = { ...(u.nome ? { nome: u.nome } : {}), ...(u.telefone ? { telefone: u.telefone } : {}), ...(u.roleRegisto ? { role: u.roleRegisto } : {}) }
+  const app = { provider: u.anonimo ? 'anonymous' : 'email', providers: [u.anonimo ? 'anonymous' : 'email'], ...(u.roleAdmin ? { role: u.roleAdmin } : {}), ...u.appExtra }
+  const meta = { ...(u.nome ? { nome: u.nome } : {}), ...(u.telefone ? { telefone: u.telefone } : {}), ...(u.roleRegisto ? { role: u.roleRegisto } : {}), ...u.metadados }
   const confirmado = u.confirmado ?? !u.anonimo
   const r = await db.query<{ id: string }>(
     `insert into auth.users (email, raw_app_meta_data, raw_user_meta_data, is_anonymous, email_confirmed_at)
@@ -161,7 +165,7 @@ export interface Cenario {
  */
 export async function cenarioBase(
   db: PGlite,
-  opcoes: { sufixo?: string; livres?: { individual?: number; duplo?: number } } = {},
+  opcoes: { sufixo?: string; livres?: { individual?: number; duplo?: number }; natureza?: 'ipss' | 'misericordia' | 'privado' } = {},
 ): Promise<Cenario & { instituicao: string }> {
   const s = opcoes.sufixo ?? ''
   const lar = await criarUtilizador(db, { email: `lar${s}@teste.pt`, nome: `Gestora${s}`, roleAdmin: 'lar' })
@@ -171,8 +175,8 @@ export async function cenarioBase(
     db,
     lar,
     `insert into public.instituicoes (nome, tipo, natureza, localidade, concelho, distrito, regiao, lat, lng, capacidade, licenca, graus)
-     values ($1, 'erpi', 'privado', 'Porto', 'Porto', 'Porto', 'Norte', 41.15, -8.61, 40, 'ALV-1', '{ligeira,moderada,grave}') returning id`,
-    [`Real${s ? ` ${s.toUpperCase()}` : ''}`],
+     values ($1, 'erpi', $2, 'Porto', 'Porto', 'Porto', 'Norte', 41.15, -8.61, 40, 'ALV-1', '{ligeira,moderada,grave}') returning id`,
+    [`Real${s ? ` ${s.toUpperCase()}` : ''}`, opcoes.natureza ?? 'privado'],
   )
   const instituicao = ins!.id
   await como(db, lar, () =>

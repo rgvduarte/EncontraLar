@@ -14,7 +14,8 @@ export function PrototypeBanner() {
   })
   if (closed) return null
   return (
-    <div className="bg-sand text-ink-soft">
+    // data-fundo-do-menu: inerte com o menu móvel aberto (com a página descida, o Tab ia parar aqui, fora do ecrã)
+    <div className="bg-sand text-ink-soft" data-fundo-do-menu>
       <div className="container-page relative flex min-h-9 items-center justify-center py-1 pr-12 text-center text-xs sm:min-h-10 sm:text-sm">
         <p>
           <span className="sm:hidden">Protótipo · dados fictícios.</span>

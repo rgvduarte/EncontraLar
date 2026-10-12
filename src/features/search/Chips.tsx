@@ -71,7 +71,15 @@ type QuietSelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'id'> & {
 export function QuietSelect({ label, onSand, wrapperClassName, className, children, ...rest }: QuietSelectProps) {
   const id = useId()
   return (
-    <div className={cn('relative inline-flex min-h-12 shrink-0 items-center rounded-full transition-colors', onSand ? 'hover:bg-white' : 'hover:bg-sand', wrapperClassName)}>
+    // anel de foco na pílula inteira (etiqueta + valor), não só no <select>, que começa a meio da etiqueta
+    <div
+      className={cn(
+        'relative inline-flex min-h-12 shrink-0 items-center rounded-full transition-[background-color] duration-150',
+        'has-[select:focus-visible]:outline-3 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-terra-500',
+        onSand ? 'hover:bg-white' : 'hover:bg-sand',
+        wrapperClassName,
+      )}
+    >
       <label htmlFor={id} className="shrink-0 pl-3 text-sm text-ink-mute">
         {label}
       </label>
@@ -79,7 +87,7 @@ export function QuietSelect({ label, onSand, wrapperClassName, className, childr
         id={id}
         className={cn(
           'min-h-12 cursor-pointer appearance-none rounded-full bg-transparent py-2 pr-9 pl-1.5 text-sm font-medium text-ink [field-sizing:content]',
-          'focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500',
+          'focus-visible:outline-none',
           className,
         )}
         {...rest}

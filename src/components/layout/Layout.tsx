@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useRef } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router'
 import { Header } from './Header'
 import { Footer } from './Footer'
@@ -33,6 +33,73 @@ function ScrollParaOTopo() {
     else window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
   }, [pathname, hash, lenis])
   return null
+}
+
+/**
+ * Ao mudar de página (só o caminho: ?passo= do questionário, filtros da pesquisa e #âncoras não contam), o foco vai
+ * para o título (h1) da nova página — ou para o <main> — e o título do separador é anunciado aos leitores de ecrã.
+ * Sem isto o foco ficava no <body> ou preso na ligação do rodapé/cabeçalho que se carregou (e o Tab continuava lá).
+ * Não acontece no primeiro carregamento, nem quando a própria página já pôs o foco num sítio seu (autoFocus,
+ * diálogo aberto ao entrar, campo do formulário). Tem de ficar ANTES do <main>: os efeitos correm por ordem.
+ */
+function FocoAoMudarDePagina() {
+  const { pathname } = useLocation()
+  const anterior = useRef<string | null>(null)
+  const paginaFocou = useRef(false)
+  const anuncio = useRef<HTMLParagraphElement>(null)
+
+  // focos dentro do <main> a partir do momento em que a nova página entra = a página tratou do foco
+  useLayoutEffect(() => {
+    paginaFocou.current = false
+  }, [pathname])
+  useEffect(() => {
+    const onFocusIn = (e: FocusEvent) => {
+      if (e.target instanceof Element && e.target.closest('#conteudo')) paginaFocou.current = true
+    }
+    document.addEventListener('focusin', onFocusIn)
+    return () => document.removeEventListener('focusin', onFocusIn)
+  }, [])
+
+  useEffect(() => {
+    if (anterior.current === pathname) return
+    const primeira = anterior.current === null
+    anterior.current = pathname
+    if (primeira) return
+    let anunciar: number | undefined
+    const raf = requestAnimationFrame(() => {
+      const main = document.getElementById('conteudo')
+      const ativo = document.activeElement
+      const jaTratado = paginaFocou.current && ativo && ativo !== document.body && main?.contains(ativo)
+      if (main && !jaTratado) {
+        const h1 = main.querySelector<HTMLElement>('h1')
+        if (h1) {
+          if (!h1.hasAttribute('tabindex')) {
+            h1.setAttribute('tabindex', '-1')
+            h1.dataset.focoPagina = ''
+            h1.addEventListener(
+              'blur',
+              () => {
+                h1.removeAttribute('tabindex')
+                delete h1.dataset.focoPagina
+              },
+              { once: true },
+            )
+          }
+          h1.focus({ preventScroll: true })
+        } else main.focus({ preventScroll: true })
+      }
+      // anúncio educado depois do foco (o título já foi atualizado pelo useDocumentTitle da página)
+      anunciar = window.setTimeout(() => {
+        if (anuncio.current) anuncio.current.textContent = document.title
+      }, 150)
+    })
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(anunciar)
+    }
+  }, [pathname])
+
+  return <p ref={anuncio} aria-live="polite" aria-atomic="true" className="sr-only" />
 }
 
 /**
@@ -79,6 +146,7 @@ export function Layout() {
       <div className="flex min-h-dvh flex-col">
         <a
           href="#conteudo"
+          data-fundo-do-menu
           className="sr-only-focusable fixed top-3 left-3 z-[3000] rounded-full bg-ink px-5 py-3 font-medium text-white shadow-lift"
           onClick={(e) => {
             e.preventDefault()
@@ -88,11 +156,13 @@ export function Layout() {
           Saltar para o conteúdo
         </a>
         <ScrollParaOTopo />
+        <FocoAoMudarDePagina />
         <RetomarIntencao />
         <PrototypeBanner />
         <Header />
         {/* o espaço da barra de abas reserva-se uma só vez: no rodapé, ou aqui nas páginas sem rodapé */}
-        <main id="conteudo" tabIndex={-1} className={cn('flex flex-1 flex-col outline-none', !comRodape && 'pb-[var(--tabbar-h)]')}>
+        {/* data-fundo-do-menu: fica inerte com o menu móvel aberto (Header) */}
+        <main id="conteudo" tabIndex={-1} data-fundo-do-menu className={cn('flex flex-1 flex-col outline-none', !comRodape && 'pb-[var(--tabbar-h)]')}>
           <Suspense
             fallback={
               // ocupa o ecrã: o rodapé não aparece por baixo do indicador e depois salta (CLS)
@@ -108,7 +178,7 @@ export function Layout() {
           </Suspense>
         </main>
         {comRodape && (
-          <div className="pb-[var(--tabbar-h)] lg:pb-0">
+          <div className="pb-[var(--tabbar-h)] lg:pb-0" data-fundo-do-menu>
             <Footer />
           </div>
         )}

@@ -125,7 +125,8 @@ export function Verificacao() {
                 >
                   {ultimo && selo && <span className="absolute inset-0 animate-ping rounded-full bg-terra-600/40 [animation-iteration-count:2] motion-reduce:hidden" />}
                 </span>
-                <div className={cn('transition-[opacity,translate] duration-700 ease-[cubic-bezier(.16,1,.3,1)]', ok ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-60')}>
+                {/* o passo por chegar só desce um pouco (sem esbater): o texto mantém o contraste AA; o ponto e a linha marcam o progresso */}
+                <div className={cn('transition-[translate] duration-700 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none', ok ? 'translate-y-0' : 'translate-y-2')}>
                   <h3 className="text-xl font-semibold text-ink">
                     <span className="sr-only">Passo {i + 1}: </span>
                     {p.t}

@@ -121,6 +121,14 @@
   }
 }
 
+/* altura das barras presas por baixo do cabeçalho (SmoothScroll, modo teclado); não herdada: mudar no <html> não
+   obriga a recalcular o estilo da página toda */
+@property --barra-fixa {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
 /* altura da barra de navegação inferior (telemóvel) — usar em offsets: bottom-[var(--tabbar-h)] */
 :root { --tabbar-h: 0px; }
 @media (max-width: 1023.98px) {
@@ -133,9 +141,15 @@
     text-rendering: optimizeLegibility;
     scroll-behavior: smooth;
     font-feature-settings: 'cv11', 'ss01', 'ss03';
-    /* o foco (Tab) nunca fica por baixo da barra de abas nem de uma barra de ação fixa no fundo (WCAG 2.4.11).
-       Só em baixo: o Lenis soma scroll-padding-top a cada scrollTo(elemento), e as secções já têm scroll-mt-*. */
+    /* o foco (Tab) nunca fica por baixo da barra de abas nem de uma barra de ação fixa no fundo (WCAG 2.4.11) */
     scroll-padding-bottom: calc(var(--tabbar-h) + var(--actionbar-h, 0px) + 1rem);
+  }
+  /* …nem por baixo do cabeçalho fixo (h-16) e das barras presas por baixo dele (--barra-fixa: as `sticky top-16 z-[900]`
+     ou com data-barra-fixa, medidas pelo SmoothScroll). Só enquanto se navega com o teclado (data-teclado, SmoothScroll): as âncoras das páginas (scroll-mt-*)
+     já contam com o cabeçalho e, sem Lenis (movimento reduzido), o scrollIntoView somava as duas coisas.
+     O scrollTo do Lenis desconta este valor (SmoothScroll), por isso as âncoras ficam iguais com ou sem teclado. */
+  html[data-teclado] {
+    scroll-padding-top: calc(4rem + var(--barra-fixa, 0px) + 0.75rem);
   }
   body {
     @apply bg-cream font-sans text-base text-ink antialiased;
@@ -159,11 +173,9 @@
     outline: 3px solid var(--color-terra-500);
     outline-offset: 3px;
     border-radius: 8px;
-    /* e nunca escondido por baixo do cabeçalho fixo (h-16) nem de barras fixas da página (--barra-fixa, ex.: pílulas
-       do painel). Margem no próprio elemento focado e não scroll-padding-top no html: este somava-se às âncoras
-       (scroll-mt-* das secções) e ao scrollTo do Lenis. Os scroll-mt-* (utilities) continuam a ganhar. */
-    scroll-margin-top: calc(4rem + var(--barra-fixa, 0px) + 1rem);
   }
+  /* título que recebe o foco ao mudar de página (Layout): não é um controlo, o anel só confundia */
+  [data-foco-pagina]:focus { outline: none; }
   button, [role='button'], a, input, select, textarea, label { -webkit-tap-highlight-color: transparent; }
   button:not(:disabled), [role='button'] { cursor: pointer; }
 

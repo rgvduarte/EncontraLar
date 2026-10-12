@@ -6,6 +6,7 @@ import type { Entrada } from './filtering'
 import { construirOpcoes, type Opcao } from './placeOptions'
 import { nomeDistrito, rotuloLocal, type Local } from './searchState'
 import { DispDot } from './Chips'
+import { pedirFocoNoTitulo } from './focoTitulo'
 import type { GeoEstado } from './useGeolocation'
 
 interface Props {

@@ -93,6 +93,22 @@ HashRouter: âncoras dentro da página fazem-se com `scrollIntoView`, nunca com 
 
 Um `h1` por página (páginas que são só um estado vazio: `<EmptyState as="h1">` + `useDocumentTitle`); hierarquia de títulos; etiquetas em todos os campos; foco visível; contraste AA (atenção a texto cinza claro: usar `text-ink-mute` no mínimo); nada só por cor; `aria-live` em resultados que mudam; alvos ≥ 48px; o mapa é complementar à lista.
 
+- **Mudança de página**: o `Layout` põe o foco no `h1` da nova página (ou no `<main>`) e anuncia o título do separador
+  (`aria-live`). Só quando muda o caminho (não `?passo=`, filtros nem `#âncora`), nunca no primeiro carregamento, e não
+  mexe se a própria página já focou algo seu ao entrar (autoFocus, diálogo, campo). Por isso cada página precisa de `h1`.
+- **Foco nunca tapado** (WCAG 2.4.11): `scroll-padding-bottom` no `<html>` desconta a barra de abas e `--actionbar-h`.
+  Com o teclado (`html[data-teclado]`, posto pelo `SmoothScroll` ao carregar em Tab) há também `scroll-padding-top`
+  = cabeçalho + barras presas por baixo dele: as `sticky top-16 z-[900]` contam sozinhas; outra barra presa no topo leva
+  `data-barra-fixa`. O `lenis.scrollTo(elemento)` desconta esse padding, por isso os `scroll-mt-*` das secções ficam iguais.
+  Não acrescentar `scroll-padding-top` noutros sítios.
+- **Contornos de controlos** (WCAG 1.4.11): campos, caixas e indicadores com `border-pine-400` (≈3.3:1), nunca `border-line-strong`
+  (1.5:1) quando a borda é o único limite; interruptor `bg-leaf-600` / `bg-pine-400`.
+- **Cartões com ligação esticada** (`after:absolute after:inset-0`): o anel de foco desenha-se no `::after`
+  (`focus-visible:after:outline-3 …`), como no `LarCard`.
+- **Menus do cabeçalho**: entradas são `<Link>` (botão só para ações). Desktop: Enter no botão do menu leva o foco ao
+  painel, Tab no fim passa ao menu seguinte, Esc devolve o foco ao botão. Menu móvel: `role="dialog"`, foco na primeira
+  entrada, Esc fecha e volta ao botão; a página por trás fica `inert` (elementos com `data-fundo-do-menu`) e o Lenis parado.
+
 ## 7. Movimento e scroll (estilo Apple)
 
 Objetivo: a página deve parecer uma sequência de **cenas**, não um PDF contínuo. Narrativa em 5 tempos nas páginas de
@@ -110,6 +126,8 @@ Primitivas em `src/components/motion/` (importar de `@/components/motion`):
 - `ScrollProgressBar` — progresso de leitura em páginas longas (guia).
 - `SmoothScroll`/`useLenis` — scroll suave global (Lenis) já ativo no Layout; para scroll programático usar `useLenis()?.scrollTo(el, { offset: -80 })`
   com fallback `el.scrollIntoView({ behavior: 'smooth' })`. Contentores com scroll próprio: `data-lenis-prevent`.
+  Mapas Leaflet não são excluídos do Lenis: com `scrollWheelZoom` o Leaflet trava a roda sozinho; sem ele (ficha do lar)
+  a roda move a página com o mesmo scroll suave.
 - Hooks em `src/lib/motion.ts`: `useScrollProgress`, `useScrollVar`, `useInView`, `range`, `mix`, `easeOut`.
 
 Regras: animar só `transform`/`opacity`/`filter`; durações 200–900ms com `cubic-bezier(.16,1,.3,1)`; **nunca sequestrar o scroll**
@@ -154,7 +172,12 @@ Não inventar valores intermédios (ex.: 1050) — usar esta escala.
 
 - **Tailwind 4 anima `translate`/`scale`/`rotate` como propriedades próprias.** Em transições arbitrárias usar
   `transition-[opacity,transform,translate,scale]` (ou `transition-transform`, que já as inclui); só `transform` não anima `translate-y-*`/`scale-*`.
-- **Scroll suave (Lenis):** filas horizontais usam `data-lenis-prevent-horizontal` (a roda vertical continua a mover a página);
+- **Scroll suave (Lenis):** filas horizontais usam `data-lenis-prevent-horizontal` (a roda vertical continua a mover a página)
+  **e `overflow-y-hidden`** — uns px de scroll vertical na fila (Reveal, hover, sombras) chegam para ela "agarrar" o dedo e a
+  roda e a página ficar presa. O `overscroll-behavior-y` destas filas volta a `auto` numa regra global sem camada (index.css),
+  porque o `lenis.css` lhes dá `contain` nos dois eixos; não é preciso `overscroll-y-auto!` em cada uma. Nunca usar
+  `data-lenis-prevent` numa fila horizontal. A faixa do `HorizontalScroll` (< 1024px) é focável (`tabIndex 0`, `role="group"`
+  com nome) para se percorrer com as setas;
   `data-lenis-prevent` só em contentores com scroll vertical próprio. Scroll programático: `useScrollTo()` de `@/components/motion`
   (recalcula a altura antes de deslocar — necessário após páginas carregadas de forma diferida).
 - **Elementos `position: fixed` dentro de páginas** devem ir por portal para `document.body`.

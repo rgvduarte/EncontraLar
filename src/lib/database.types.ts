@@ -13,7 +13,12 @@
  * Atenção (como no ficheiro gerado, os tipos não refletem privilégios por coluna):
  *   * instituicoes.owner_id e visualizacoes_30d NÃO são legíveis por anon/authenticated — selecione
  *     colunas explícitas; o dono obtém-nas pela RPC painel_instituicao();
- *   * candidatura_eventos.autor_id e avaliacoes.user_id também não são legíveis;
+ *   * candidatura_eventos.autor_id, avaliacoes.user_id e avaliacoes.candidatura_id também não são legíveis
+ *     (o autor obtém as suas avaliações com minhas_avaliacoes());
+ *   * instituicoes.confirmacao_token_hash/confirmacao_token_expira_em não são legíveis (só o hash do link);
+ *   * candidaturas: o LAR só lê as linhas que aceitou (desbloqueada_em); antes disso usa a RPC
+ *     pedidos_recebidos(), que devolve o resumo sem identificação;
+ *   * procuras_anonimas não é legível nem gravável pelos clientes (registar_procura / procura_na_zona);
  *   * publicado, demonstracao, lista_espera_offline e os campos de verificação não são graváveis
  *     pelos clientes (só pelo administrador).
  */
@@ -26,6 +31,51 @@ type FK<Nome extends string, Coluna extends string, Destino extends string, Colu
   isOneToOne: false
   referencedRelation: Destino
   referencedColumns: [ColunaDestino]
+}
+
+/** Linha de pedidos_recebidos(): resumo sempre; user_id…historico só depois de o lar aceitar (null antes). */
+type PedidoRecebido = {
+  id: string
+  instituicao_id: string
+  estado: Database['public']['Enums']['estado_candidatura']
+  posicao: number | null
+  origem: Database['public']['Enums']['origem_pedido']
+  organizacao: string | null
+  alta_prevista: string | null
+  faixa_etaria: string | null
+  grau: Database['public']['Enums']['grau_dependencia'] | null
+  necessidades: string[]
+  zona: string | null
+  orcamento_max: number | null
+  urgencia: Database['public']['Enums']['urgencia'] | null
+  quarto: string | null
+  precisa_acordo_ss: boolean | null
+  visita_data: string | null
+  visita_hora: string | null
+  visita_estado: Database['public']['Enums']['estado_visita'] | null
+  prazo_resposta: string | null
+  desbloqueada_em: string | null
+  entrada_data: string | null
+  entrada_confirmada_lar_em: string | null
+  entrada_confirmada_familia_em: string | null
+  entrada_taxa: Database['public']['Enums']['taxa_entrada'] | null
+  created_at: string
+  updated_at: string
+  user_id: string | null
+  perfil_id: string | null
+  contacto: Json | null
+  perfil_snapshot: Json | null
+  mensagem: string | null
+  historico: Json | null
+}
+
+/** Linha de vagas_por_token() / confirmar_vagas_por_token(): só a instituição do link. */
+type VagasPorToken = {
+  instituicao_id: string
+  nome: string
+  quartos: Json
+  vagas_livres: number
+  atualizado_em: string
 }
 
 export type Database = {
@@ -49,11 +99,13 @@ export type Database = {
           texto: string
           verificada: boolean
           created_at: string
+          candidatura_id: string | null
         }
         Insert: {
           id?: never
           instituicao_id: string
           user_id?: string | null
+          candidatura_id?: string | null
           autor: string
           relacao?: string
           nota: number
@@ -69,6 +121,7 @@ export type Database = {
           id?: never
           instituicao_id?: string
           user_id?: string | null
+          candidatura_id?: string | null
           autor?: string
           relacao?: string
           nota?: number
@@ -84,6 +137,7 @@ export type Database = {
           FK<'avaliacoes_instituicao_id_fkey', 'instituicao_id', 'instituicoes'>,
           FK<'avaliacoes_instituicao_id_fkey', 'instituicao_id', 'instituicoes_publicas'>,
           FK<'avaliacoes_user_id_fkey', 'user_id', 'perfis_utilizador'>,
+          FK<'avaliacoes_candidatura_id_fkey', 'candidatura_id', 'candidaturas'>,
         ]
       }
       candidatura_eventos: {
@@ -137,6 +191,15 @@ export type Database = {
           consentimento_em: string
           created_at: string
           updated_at: string
+          origem: Database['public']['Enums']['origem_pedido']
+          caso_id: string | null
+          organizacao: string | null
+          alta_prevista: string | null
+          desbloqueada_em: string | null
+          entrada_data: string | null
+          entrada_confirmada_lar_em: string | null
+          entrada_confirmada_familia_em: string | null
+          entrada_taxa: Database['public']['Enums']['taxa_entrada'] | null
         }
         Insert: {
           id?: string
@@ -155,6 +218,15 @@ export type Database = {
           consentimento_em: string
           created_at?: string
           updated_at?: string
+          origem?: Database['public']['Enums']['origem_pedido']
+          caso_id?: string | null
+          organizacao?: string | null
+          alta_prevista?: string | null
+          desbloqueada_em?: string | null
+          entrada_data?: string | null
+          entrada_confirmada_lar_em?: string | null
+          entrada_confirmada_familia_em?: string | null
+          entrada_taxa?: Database['public']['Enums']['taxa_entrada'] | null
         }
         Update: {
           id?: string
@@ -173,12 +245,61 @@ export type Database = {
           consentimento_em?: string
           created_at?: string
           updated_at?: string
+          origem?: Database['public']['Enums']['origem_pedido']
+          caso_id?: string | null
+          organizacao?: string | null
+          alta_prevista?: string | null
+          desbloqueada_em?: string | null
+          entrada_data?: string | null
+          entrada_confirmada_lar_em?: string | null
+          entrada_confirmada_familia_em?: string | null
+          entrada_taxa?: Database['public']['Enums']['taxa_entrada'] | null
         }
         Relationships: [
           FK<'candidaturas_instituicao_id_fkey', 'instituicao_id', 'instituicoes'>,
           FK<'candidaturas_instituicao_id_fkey', 'instituicao_id', 'instituicoes_publicas'>,
           FK<'candidaturas_user_id_fkey', 'user_id', 'perfis_utilizador'>,
           FK<'candidaturas_perfil_id_fkey', 'perfil_id', 'perfis_cuidados'>,
+          FK<'candidaturas_caso_id_fkey', 'caso_id', 'casos'>,
+        ]
+      }
+      casos: {
+        Row: {
+          id: string
+          profissional_id: string
+          perfil_id: string
+          referencia: string | null
+          alta_prevista: string | null
+          consentimento_em: string
+          estado: Database['public']['Enums']['estado_caso']
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          profissional_id: string
+          perfil_id: string
+          referencia?: string | null
+          alta_prevista?: string | null
+          consentimento_em: string
+          estado?: Database['public']['Enums']['estado_caso']
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          profissional_id?: string
+          perfil_id?: string
+          referencia?: string | null
+          alta_prevista?: string | null
+          consentimento_em?: string
+          estado?: Database['public']['Enums']['estado_caso']
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          FK<'casos_profissional_id_fkey', 'profissional_id', 'perfis_utilizador'>,
+          FK<'casos_perfil_id_fkey', 'perfil_id', 'perfis_cuidados'>,
         ]
       }
       favoritos: {
@@ -251,6 +372,8 @@ export type Database = {
           atualizado_em: string
           capa: Json
           visualizacoes_30d: number
+          confirmacao_token_hash: string | null
+          confirmacao_token_expira_em: string | null
           created_at: string
           updated_at: string
         }
@@ -298,6 +421,8 @@ export type Database = {
           atualizado_em?: string
           capa?: Json
           visualizacoes_30d?: number
+          confirmacao_token_hash?: string | null
+          confirmacao_token_expira_em?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -345,6 +470,8 @@ export type Database = {
           atualizado_em?: string
           capa?: Json
           visualizacoes_30d?: number
+          confirmacao_token_hash?: string | null
+          confirmacao_token_expira_em?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -470,6 +597,7 @@ export type Database = {
           nome: string
           telefone: string | null
           demonstracao: boolean
+          organizacao: Json | null
           created_at: string
           updated_at: string
         }
@@ -479,6 +607,7 @@ export type Database = {
           nome?: string
           telefone?: string | null
           demonstracao?: boolean
+          organizacao?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -488,8 +617,45 @@ export type Database = {
           nome?: string
           telefone?: string | null
           demonstracao?: boolean
+          organizacao?: Json | null
           created_at?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      procuras_anonimas: {
+        Row: {
+          id: number
+          distrito: string | null
+          lugar: string | null
+          grau: Database['public']['Enums']['grau_dependencia'] | null
+          cuidados: string[]
+          orcamento_max: number | null
+          resultados: number
+          com_vaga: number
+          created_at: string
+        }
+        Insert: {
+          id?: never
+          distrito?: string | null
+          lugar?: string | null
+          grau?: Database['public']['Enums']['grau_dependencia'] | null
+          cuidados?: string[]
+          orcamento_max?: number | null
+          resultados?: number
+          com_vaga?: number
+          created_at?: string
+        }
+        Update: {
+          id?: never
+          distrito?: string | null
+          lugar?: string | null
+          grau?: Database['public']['Enums']['grau_dependencia'] | null
+          cuidados?: string[]
+          orcamento_max?: number | null
+          resultados?: number
+          com_vaga?: number
+          created_at?: string
         }
         Relationships: []
       }
@@ -613,6 +779,14 @@ export type Database = {
       }
     }
     Functions: {
+      aceitar_candidatura: {
+        Args: { p_candidatura_id: string }
+        Returns: Database['public']['Tables']['candidaturas']['Row']
+      }
+      atualizar_caso: {
+        Args: { p_caso_id: string; p_alteracoes: Json }
+        Returns: Database['public']['Tables']['casos']['Row']
+      }
       atualizar_estado_candidatura: {
         Args: {
           p_candidatura_id: string
@@ -636,13 +810,29 @@ export type Database = {
         }
         Returns: Database['public']['Tables']['candidaturas']['Row']
       }
+      avaliar_lar: {
+        Args: { p_candidatura_id: string; p_nota: number; p_texto: string; p_aspetos: Json }
+        Returns: Database['public']['Tables']['avaliacoes']['Row']
+      }
+      confirmar_entrada_familia: {
+        Args: { p_candidatura_id: string; p_data: string }
+        Returns: Database['public']['Tables']['candidaturas']['Row']
+      }
       confirmar_vagas_atualizadas: {
         Args: { p_instituicao_id: string }
         Returns: string
       }
+      confirmar_vagas_por_token: {
+        Args: { p_token: string; p_ainda_tem: boolean }
+        Returns: VagasPorToken[]
+      }
       confirmar_visita: {
         Args: { p_candidatura_id: string }
         Returns: Database['public']['Tables']['candidaturas']['Row']
+      }
+      criar_caso: {
+        Args: { p_perfil: Json; p_referencia?: string; p_alta_prevista?: string; p_consentimento?: boolean }
+        Returns: Database['public']['Tables']['casos']['Row']
       }
       definir_vagas: {
         Args: {
@@ -651,6 +841,25 @@ export type Database = {
           p_livres: number
         }
         Returns: number
+      }
+      enviar_caso: {
+        Args: { p_caso_id: string; p_instituicao_ids: string[]; p_mensagem?: string }
+        Returns: Database['public']['Tables']['candidaturas']['Row'][]
+      }
+      marcar_entrada: {
+        Args: { p_candidatura_id: string; p_data: string }
+        Returns: Database['public']['Tables']['candidaturas']['Row']
+      }
+      minhas_avaliacoes: {
+        Args: never
+        Returns: {
+          avaliacao_id: number
+          candidatura_id: string | null
+          instituicao_id: string
+          nota: number
+          verificada: boolean
+          created_at: string
+        }[]
       }
       painel_instituicao: {
         Args: never
@@ -663,30 +872,68 @@ export type Database = {
           lista_espera_online: number
         }[]
       }
+      pedidos_recebidos: {
+        Args: never
+        Returns: PedidoRecebido[]
+      }
       pedir_visita: {
         Args: { p_candidatura_id: string; p_data: string; p_hora: string }
         Returns: Database['public']['Tables']['candidaturas']['Row']
+      }
+      procura_na_zona: {
+        Args: { p_dias?: number }
+        Returns: {
+          distrito: string
+          dias: number
+          total: number
+          cuidados: Json
+          graus: Json
+          orcamento_mediano: number | null
+        }[]
       }
       registar_entrada: {
         Args: { p_instituicao_id: string; p_tipo: Database['public']['Enums']['tipo_quarto'] }
         Returns: number
       }
+      registar_procura: {
+        Args: {
+          p_distrito?: string
+          p_lugar?: string
+          p_grau?: Database['public']['Enums']['grau_dependencia']
+          p_cuidados?: string[]
+          p_orcamento_max?: number
+          p_resultados?: number
+          p_com_vaga?: number
+        }
+        Returns: boolean
+      }
       registar_vaga_libertada: {
         Args: { p_instituicao_id: string; p_tipo: Database['public']['Enums']['tipo_quarto'] }
         Returns: number
+      }
+      renovar_token_confirmacao: {
+        Args: never
+        Returns: string
       }
       responder_vaga: {
         Args: { p_candidatura_id: string; p_aceitar: boolean }
         Returns: Database['public']['Tables']['candidaturas']['Row']
       }
+      vagas_por_token: {
+        Args: { p_token: string }
+        Returns: VagasPorToken[]
+      }
     }
     Enums: {
-      estado_candidatura: 'enviada' | 'em_analise' | 'lista_espera' | 'vaga_proposta' | 'aceite' | 'recusada' | 'cancelada'
+      estado_candidatura: 'enviada' | 'em_analise' | 'lista_espera' | 'vaga_proposta' | 'aceite' | 'admitida' | 'recusada' | 'cancelada'
+      estado_caso: 'aberto' | 'colocado' | 'fechado'
       estado_verificacao: 'verificado' | 'pendente' | 'nao_verificado'
       estado_visita: 'pedida' | 'confirmada' | 'realizada'
       grau_dependencia: 'autonomo' | 'ligeira' | 'moderada' | 'grave'
       natureza: 'ipss' | 'misericordia' | 'privado'
-      role_utilizador: 'familia' | 'lar'
+      origem_pedido: 'familia' | 'profissional'
+      role_utilizador: 'familia' | 'lar' | 'profissional'
+      taxa_entrada: 'aplicavel' | 'isenta'
       tipo_notificacao: 'vaga' | 'candidatura' | 'visita' | 'sistema'
       tipo_quarto: 'individual' | 'duplo' | 'casal'
       tipo_resposta: 'erpi' | 'residencia' | 'centro_dia'
@@ -714,12 +961,15 @@ export type Enums<T extends keyof PublicSchema['Enums']> = PublicSchema['Enums']
 export const Constants = {
   public: {
     Enums: {
-      estado_candidatura: ['enviada', 'em_analise', 'lista_espera', 'vaga_proposta', 'aceite', 'recusada', 'cancelada'],
+      estado_candidatura: ['enviada', 'em_analise', 'lista_espera', 'vaga_proposta', 'aceite', 'admitida', 'recusada', 'cancelada'],
+      estado_caso: ['aberto', 'colocado', 'fechado'],
       estado_verificacao: ['verificado', 'pendente', 'nao_verificado'],
       estado_visita: ['pedida', 'confirmada', 'realizada'],
       grau_dependencia: ['autonomo', 'ligeira', 'moderada', 'grave'],
       natureza: ['ipss', 'misericordia', 'privado'],
-      role_utilizador: ['familia', 'lar'],
+      origem_pedido: ['familia', 'profissional'],
+      role_utilizador: ['familia', 'lar', 'profissional'],
+      taxa_entrada: ['aplicavel', 'isenta'],
       tipo_notificacao: ['vaga', 'candidatura', 'visita', 'sistema'],
       tipo_quarto: ['individual', 'duplo', 'casal'],
       tipo_resposta: ['erpi', 'residencia', 'centro_dia'],

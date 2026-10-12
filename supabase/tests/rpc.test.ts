@@ -59,6 +59,9 @@ describe('candidatar: quem pode receber dados de saúde', () => {
   it('a cópia enviada tem só os campos necessários (sem coordenadas exatas, raio, id nem datas)', async () => {
     const b = await cenarioBase(db, { sufixo: 'c4' })
     const c = await candidatar(b.familia, b.instituicao, b.perfil)
+    // (duas fases: antes de aceitar o lar nem a linha vê — ver negocio.test.ts)
+    expect(await q(db, b.lar, 'select id from public.candidaturas where id = $1', [c.id])).toEqual([])
+    await q(db, b.lar, 'select public.aceitar_candidatura($1)', [c.id])
     const [r] = await q<{ chaves: string[] }>(db, b.lar, 'select array(select jsonb_object_keys(perfil_snapshot) order by 1) as chaves from public.candidaturas where id = $1', [c.id])
     expect(r!.chaves).toEqual([
       'genero', 'grau', 'idade', 'local_label', 'necessidades', 'nome', 'notas', 'orcamento_max', 'precisa_acordo_ss',
@@ -105,8 +108,10 @@ describe('minimização (RGPD)', () => {
     const b = await cenarioBase(db, { sufixo: 'm2' })
     const outra = await cenarioBase(db, { sufixo: 'm3' })
     const ativa = await candidatar(b.familia, b.instituicao, b.perfil)
-    // pedido a outra instituição, recusado por ela
+    await mudarEstado(b.lar, ativa.id, 'em_analise')
+    // pedido a outra instituição, analisado e recusado por ela
     const recusada = await candidatar(b.familia, outra.instituicao, b.perfil)
+    await mudarEstado(outra.lar, recusada.id, 'em_analise')
     await mudarEstado(outra.lar, recusada.id, 'recusada', 'Sem resposta para demência avançada')
 
     expect(await q(db, b.familia, 'delete from public.perfis_cuidados where id = $1 returning id', [b.perfil])).toHaveLength(1)
@@ -124,6 +129,7 @@ describe('minimização (RGPD)', () => {
     const p2 = await novoPerfil(b.familia, 'Albertina')
     const velha = await candidatar(b.familia, b.instituicao, b.perfil)
     const recente = await candidatar(b.familia, b.instituicao, p2)
+    for (const c of [velha, recente]) await mudarEstado(b.lar, c.id, 'em_analise')
     await mudarEstado(b.lar, velha.id, 'recusada', 'Grau de dependência grave')
     await mudarEstado(b.lar, recente.id, 'recusada')
     await adm('alter table public.candidaturas disable trigger candidaturas_updated_at')

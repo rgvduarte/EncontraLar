@@ -10,10 +10,15 @@
  *     perfis_cuidados (sem coordenadas, raio, id nem datas — ver private.snapshot_perfil) e pode
  *     estar minimizada ({nome, idade, minimizado_em}) depois de o pedido ser cancelado/recusado:
  *     nesse caso devolvemos PerfilMinimizado em vez de inventar grau/necessidades;
- *   * owner_id e visualizacoes_30d não são legíveis pelos clientes: vêm de painel_instituicao().
+ *   * owner_id e visualizacoes_30d não são legíveis pelos clientes: vêm de painel_instituicao();
+ *   * DUAS FASES (RGPD art. 9.º): o lar só lê na tabela os pedidos que aceitou; a lista completa do
+ *     painel vem de pedidos_recebidos() → pedidoRecebidoDeLinha (pedidos por aceitar só com o resumo
+ *     sem identificação: nome, contacto, notas e mensagem nunca chegam ao navegador do lar).
+ *     Na BD o contacto fica visível só com desbloqueada_em (recusar ou cancelar sem aceitar não o revela).
  */
 import type {
   Candidatura,
+  Caso,
   Comodidade,
   Cuidado,
   Distrito,
@@ -22,15 +27,19 @@ import type {
   GrauDependencia,
   Lar,
   Notificacao,
+  Organizacao,
   PerfilIdoso,
+  ProcuraAnonima,
   Regiao,
   Review,
   RoomOffer,
+  TaxaEntrada,
+  TipoOrganizacao,
   TipoQuarto,
   User,
 } from '@/types'
 import type { Database, Json, Tables, TablesInsert, TablesUpdate } from './database.types'
-import type { RegisterInput } from './store'
+import type { atualizarCaso, AvaliacaoInput, CasoInput, PerfilInput, RegisterInput } from './store'
 import { LOCALIDADES, LUGARES } from '@/data/localidades'
 
 export type InstituicaoPublicaRow = Tables<'instituicoes_publicas'>
@@ -42,6 +51,14 @@ export type NotificacaoRow = Tables<'notificacoes'>
 export type FavoritoRow = Tables<'favoritos'>
 export type PerfilUtilizadorRow = Tables<'perfis_utilizador'>
 export type PainelInstituicaoRow = Database['public']['Functions']['painel_instituicao']['Returns'][number]
+export type CasoRow = Tables<'casos'>
+type Rpc = Database['public']['Functions']
+export type PedidoRecebidoRow = Rpc['pedidos_recebidos']['Returns'][number]
+export type ProcuraNaZonaRow = Rpc['procura_na_zona']['Returns'][number]
+export type VagasPorTokenRow = Rpc['vagas_por_token']['Returns'][number]
+export type MinhaAvaliacaoRow = Rpc['minhas_avaliacoes']['Returns'][number]
+/** Argumentos de uma RPC, para supabase.rpc(nome, args). */
+export type ArgsRpc<N extends keyof Rpc> = Rpc[N]['Args']
 
 /** Colunas públicas de avaliacoes (user_id não é legível por anon/authenticated: usar sempre esta lista). */
 export const COLUNAS_AVALIACAO =
@@ -388,17 +405,22 @@ export function eCandidaturaMinimizada(c: Candidatura | CandidaturaMinimizada): 
  * Linha de candidaturas (com candidatura_eventos embutidos) → Candidatura, ou CandidaturaMinimizada
  * se a cópia do perfil já tiver sido minimizada (use eCandidaturaMinimizada para distinguir).
  */
-export function candidaturaDeLinha(
-  r: CandidaturaRow & { candidatura_eventos?: EventoMinimo[] | null },
-): Candidatura | CandidaturaMinimizada {
-  const contacto = obj(r.contacto)
-  const historico = [...(r.candidatura_eventos ?? [])]
+/** Colunas de candidaturas comuns à tabela e a pedidos_recebidos(). */
+type CamposPedido = Pick<
+  CandidaturaRow,
+  | 'id' | 'instituicao_id' | 'estado' | 'posicao' | 'mensagem' | 'visita_data' | 'visita_hora' | 'visita_estado'
+  | 'prazo_resposta' | 'created_at' | 'updated_at' | 'origem' | 'organizacao' | 'alta_prevista' | 'desbloqueada_em'
+  | 'entrada_data' | 'entrada_confirmada_lar_em' | 'entrada_confirmada_familia_em' | 'entrada_taxa'
+> & { user_id: string | null; caso_id?: string | null }
+
+function camposComuns(r: CamposPedido, eventos: EventoMinimo[]) {
+  const historico = [...eventos]
     .sort((a, b) => porData(a.created_at, b.created_at))
     .map((e) => ({ data: isoObrigatorio(e.created_at), estado: e.estado as EstadoCandidatura, nota: opcional(e.nota) }))
-  const comum = {
+  return {
     id: r.id,
     larId: r.instituicao_id,
-    userId: r.user_id,
+    userId: r.user_id ?? '',
     estado: r.estado,
     posicao: opcional(r.posicao),
     mensagem: opcional(r.mensagem),
@@ -410,7 +432,35 @@ export function candidaturaDeLinha(
     criadaEm: isoObrigatorio(r.created_at),
     atualizadaEm: isoObrigatorio(r.updated_at),
     historico,
+    // ausente = 'familia' (como no protótipo)
+    origem: r.origem === 'profissional' ? ('profissional' as const) : undefined,
+    encaminhamento:
+      r.origem === 'profissional'
+        ? {
+            casoId: r.caso_id ?? '',
+            profissionalId: r.user_id ?? '',
+            organizacao: r.organizacao ?? '',
+            altaPrevista: opcional(r.alta_prevista),
+          }
+        : undefined,
+    desbloqueadaEm: iso(r.desbloqueada_em),
+    entrada:
+      r.entrada_data && r.entrada_taxa
+        ? {
+            data: r.entrada_data,
+            confirmadaLarEm: iso(r.entrada_confirmada_lar_em),
+            confirmadaFamiliaEm: iso(r.entrada_confirmada_familia_em),
+            taxa: r.entrada_taxa as TaxaEntrada,
+          }
+        : undefined,
   }
+}
+
+export function candidaturaDeLinha(
+  r: CandidaturaRow & { candidatura_eventos?: EventoMinimo[] | null },
+): Candidatura | CandidaturaMinimizada {
+  const contacto = obj(r.contacto)
+  const comum = camposComuns(r, r.candidatura_eventos ?? [])
   if (snapshotMinimizado(r.perfil_snapshot)) {
     const o = obj(r.perfil_snapshot)
     return {
@@ -431,6 +481,203 @@ export function candidaturaDeLinha(
       email: texto(contacto.email),
       telefone: typeof contacto.telefone === 'string' ? contacto.telefone : undefined,
     },
+  }
+}
+
+/** '80–84' → 80, 'menos de 65' → 64, '95 ou mais' → 95: uma idade com a mesma faixa (faixaEtaria), nunca a real. */
+export function idadeDaFaixa(faixa: string | null | undefined): number {
+  if (!faixa) return 0
+  if (faixa.startsWith('menos')) return 64
+  const n = Number.parseInt(/\d+/.exec(faixa)?.[0] ?? '', 10)
+  return Number.isNaN(n) ? 0 : n
+}
+
+/**
+ * Linha de pedidos_recebidos() (painel do lar) → Candidatura.
+ *   * pedido aceite (desbloqueada_em): igual a candidaturaDeLinha, com o histórico;
+ *   * pedido por aceitar: só o resumo sem identificação. O perfil é reconstruído a partir dele, com
+ *     nome, contacto, notas e mensagem VAZIOS (a BD não os envia) e uma idade da mesma faixa etária,
+ *     para que resumoAnonimo(c) dê exatamente o que o protótipo mostra. Decida o que mostrar com
+ *     `!!c.desbloqueadaEm` (a regra da BD), não com o estado;
+ *   * pedido por aceitar já minimizado (cancelado/recusado): CandidaturaMinimizada sem nome.
+ */
+export function pedidoRecebidoDeLinha(r: PedidoRecebidoRow): Candidatura | CandidaturaMinimizada {
+  const historico = lista(r.historico).map((e) => {
+    const o = obj(e)
+    return { estado: texto(o.estado) as EstadoCandidatura, nota: typeof o.nota === 'string' ? o.nota : null, created_at: texto(o.created_at) }
+  })
+  if (r.desbloqueada_em && r.perfil_snapshot != null && r.contacto != null) {
+    return candidaturaDeLinha({
+      ...r,
+      user_id: r.user_id ?? '',
+      perfil_id: r.perfil_id,
+      perfil_snapshot: r.perfil_snapshot,
+      contacto: r.contacto,
+      caso_id: null,
+      consentimento_em: r.created_at,
+      candidatura_eventos: historico,
+    })
+  }
+  const comum = camposComuns({ ...r, mensagem: null }, [])
+  if (r.grau == null) {
+    return {
+      ...comum,
+      perfilId: '',
+      perfil: { minimizado: true, nome: '', idade: idadeDaFaixa(r.faixa_etaria), minimizadoEm: isoObrigatorio(r.updated_at) },
+      contacto: { nome: '' },
+    }
+  }
+  const quarto = r.quarto ?? 'indiferente'
+  return {
+    ...comum,
+    perfilId: '',
+    perfil: {
+      id: '',
+      userId: '',
+      nome: '',
+      idade: idadeDaFaixa(r.faixa_etaria),
+      relacao: '',
+      grau: r.grau,
+      necessidades: (r.necessidades ?? []) as Cuidado[],
+      preferencias: [],
+      quarto: (['individual', 'duplo', 'casal'].includes(quarto) ? quarto : 'indiferente') as PerfilIdoso['quarto'],
+      local: { label: r.zona ?? '', lat: Number.NaN, lng: Number.NaN },
+      raioKm: 15,
+      orcamentoMax: num(r.orcamento_max),
+      urgencia: r.urgencia ?? '1-3meses',
+      precisaAcordoSS: r.precisa_acordo_ss === true,
+      notas: undefined,
+      criadoEm: isoObrigatorio(r.created_at),
+      atualizadoEm: isoObrigatorio(r.updated_at),
+    },
+    contacto: { nome: '', email: '' },
+  }
+}
+
+// ————————————————————————————————————————— casos (profissionais)
+
+export function casoDeLinha(r: CasoRow): Caso {
+  return {
+    id: r.id,
+    profissionalId: r.profissional_id,
+    perfilId: r.perfil_id,
+    referencia: opcional(r.referencia),
+    altaPrevista: opcional(r.alta_prevista),
+    consentimento: !!r.consentimento_em,
+    estado: r.estado,
+    criadoEm: isoObrigatorio(r.created_at),
+    atualizadoEm: isoObrigatorio(r.updated_at),
+  }
+}
+
+/** criarCaso(input) → argumentos de criar_caso (o perfil vai como as colunas de perfis_cuidados). */
+export function casoParaCriacao(input: CasoInput): ArgsRpc<'criar_caso'> {
+  return {
+    p_perfil: perfilParaLinha(input.perfil) as unknown as Json,
+    p_referencia: input.referencia?.trim() || undefined,
+    p_alta_prevista: input.altaPrevista || undefined,
+    p_consentimento: input.consentimento,
+  }
+}
+
+/** Partes de um PerfilInput → colunas de perfis_cuidados (só as indicadas). */
+export function perfilParcialParaLinha(p: Partial<PerfilInput>): TablesUpdate<'perfis_cuidados'> {
+  const u: TablesUpdate<'perfis_cuidados'> = {}
+  if (p.nome !== undefined) u.nome = p.nome
+  if (p.idade !== undefined) u.idade = p.idade
+  if (p.relacao !== undefined) u.relacao = p.relacao
+  if ('genero' in p) u.genero = p.genero ?? null
+  if (p.grau !== undefined) u.grau = p.grau
+  if (p.necessidades !== undefined) u.necessidades = p.necessidades
+  if (p.preferencias !== undefined) u.preferencias = p.preferencias
+  if (p.quarto !== undefined) u.quarto = p.quarto
+  if (p.local !== undefined) {
+    u.local_label = p.local.label
+    u.local_lat = p.local.lat
+    u.local_lng = p.local.lng
+  }
+  if (p.raioKm !== undefined) u.raio_km = p.raioKm
+  if (p.orcamentoMax !== undefined) u.orcamento_max = p.orcamentoMax
+  if (p.urgencia !== undefined) u.urgencia = p.urgencia
+  if (p.precisaAcordoSS !== undefined) u.precisa_acordo_ss = p.precisaAcordoSS
+  if ('notas' in p) u.notas = p.notas?.trim() || null
+  return u
+}
+
+/** atualizarCaso(id, patch) → argumentos de atualizar_caso (só as chaves presentes mudam, como no protótipo). */
+export function casoParaAtualizacao(casoId: string, patch: Parameters<typeof atualizarCaso>[1]): ArgsRpc<'atualizar_caso'> {
+  const a: { [k: string]: Json } = {}
+  if ('referencia' in patch) a.referencia = patch.referencia?.trim() || null
+  if ('altaPrevista' in patch) a.alta_prevista = patch.altaPrevista || null
+  if (patch.estado !== undefined) a.estado = patch.estado
+  if (patch.perfil) a.perfil = perfilParcialParaLinha(patch.perfil) as unknown as Json
+  return { p_caso_id: casoId, p_alteracoes: a }
+}
+
+// ————————————————————————————————————————— avaliação verificada
+
+/** avaliarLar(candidaturaId, input) → argumentos de avaliar_lar (a BD exige notas inteiras de 1 a 5). */
+export function avaliacaoParaRpc(candidaturaId: string, input: AvaliacaoInput): ArgsRpc<'avaliar_lar'> {
+  return {
+    p_candidatura_id: candidaturaId,
+    p_nota: Math.round(input.nota),
+    p_texto: input.texto.trim(),
+    p_aspetos: {
+      cuidados: Math.round(input.aspetos.cuidados),
+      alimentacao: Math.round(input.aspetos.alimentacao),
+      instalacoes: Math.round(input.aspetos.instalacoes),
+      comunicacao: Math.round(input.aspetos.comunicacao),
+    },
+  }
+}
+
+// ————————————————————————————————————————— procura sem resposta (anónima)
+
+/** registarProcura(p) → argumentos de registar_procura. */
+export function procuraParaRpc(p: Omit<ProcuraAnonima, 'id' | 'criadaEm'>): ArgsRpc<'registar_procura'> {
+  return {
+    p_distrito: p.distrito,
+    p_lugar: p.lugar,
+    p_grau: p.grau,
+    p_cuidados: [...new Set(p.cuidados)],
+    p_orcamento_max: p.orcamentoMax,
+    p_resultados: p.resultados,
+    p_com_vaga: p.comVaga,
+  }
+}
+
+/** Igual ao que resumirProcuras (src/lib/negocio.ts) devolve no protótipo. */
+export interface ResumoProcuras {
+  total: number
+  cuidados: [Cuidado, number][]
+  graus: [GrauDependencia, number][]
+  orcamentoMediano: number | null
+}
+
+/** Linha de procura_na_zona() → resumo (o mesmo formato de resumirProcuras). Sem linha (não gere uma ficha): vazio. */
+export function procuraNaZonaDeLinha(r: ProcuraNaZonaRow | undefined): ResumoProcuras {
+  if (!r) return { total: 0, cuidados: [], graus: [], orcamentoMediano: null }
+  return {
+    total: num(r.total),
+    cuidados: lista(r.cuidados).map((x) => [texto(obj(x).cuidado) as Cuidado, num(obj(x).total as number)]),
+    graus: lista(r.graus).map((x) => [texto(obj(x).grau) as GrauDependencia, num(obj(x).total as number)]),
+    orcamentoMediano: r.orcamento_mediano == null ? null : num(r.orcamento_mediano),
+  }
+}
+
+// ————————————————————————————————————————— link de confirmação das vagas (sem sessão)
+
+/** Linha de vagas_por_token / confirmar_vagas_por_token → o que a página /confirmar/:token mostra. */
+export function vagasPorTokenDeLinha(r: VagasPorTokenRow) {
+  return {
+    larId: r.instituicao_id,
+    nome: r.nome,
+    quartos: lista(r.quartos).map((q) => {
+      const o = obj(q)
+      return { tipo: texto(o.tipo, 'individual') as TipoQuarto, total: num(o.total as number), livres: num(o.livres as number) }
+    }),
+    vagasLivres: num(r.vagas_livres),
+    atualizadoEm: isoObrigatorio(r.atualizado_em),
   }
 }
 
@@ -459,7 +706,11 @@ export function favoritoDeLinha(r: FavoritoRow): Favorito {
  * perfis_utilizador + email da sessão (supabase.auth) → User. A palavra-passe é gerida pelo
  * Supabase Auth: passwordHash fica vazio (o campo só existe no modo demonstração).
  */
-export function utilizadorDeLinha(r: Omit<PerfilUtilizadorRow, 'demonstracao'> & { demonstracao?: boolean }, email: string, larId?: string): User {
+export function utilizadorDeLinha(
+  r: Omit<PerfilUtilizadorRow, 'demonstracao' | 'organizacao'> & { demonstracao?: boolean; organizacao?: Json | null },
+  email: string,
+  larId?: string,
+): User {
   return {
     id: r.id,
     role: r.role,
@@ -469,6 +720,35 @@ export function utilizadorDeLinha(r: Omit<PerfilUtilizadorRow, 'demonstracao'> &
     telefone: opcional(r.telefone),
     criadoEm: isoObrigatorio(r.created_at),
     larId,
+    organizacao: r.role === 'profissional' ? organizacaoDeJson(r.organizacao) : undefined,
     demo: r.demonstracao || undefined,
+  }
+}
+
+const TIPOS_ORGANIZACAO: TipoOrganizacao[] = ['hospital', 'centro_saude', 'autarquia', 'outro']
+
+/** perfis_utilizador.organizacao → Organizacao (undefined se não houver). */
+export function organizacaoDeJson(v: Json | null | undefined): Organizacao | undefined {
+  const o = obj(v)
+  const nome = texto(o.nome).trim()
+  if (!nome) return undefined
+  const tipo = TIPOS_ORGANIZACAO.find((t) => t === o.tipo) ?? 'outro'
+  return { nome, tipo, servico: typeof o.servico === 'string' && o.servico.trim() ? o.servico.trim() : undefined }
+}
+
+/**
+ * Registo (store.register) → user_metadata de supabase.auth.signUp({ options: { data } }). O trigger
+ * de registo lê o papel ('familia' | 'lar' | 'profissional') e a organização UMA vez; depois só o
+ * administrador os muda (app_metadata). A organização é validada no servidor.
+ */
+export function dadosRegisto(input: Pick<RegisterInput, 'role' | 'nome' | 'telefone' | 'organizacao'>): { [k: string]: Json } {
+  const org = input.role === 'profissional' ? input.organizacao : undefined
+  return {
+    role: input.role,
+    nome: input.nome.trim(),
+    ...(input.telefone?.trim() ? { telefone: input.telefone.trim() } : {}),
+    ...(org?.nome.trim()
+      ? { organizacao: { nome: org.nome.trim(), tipo: org.tipo, ...(org.servico?.trim() ? { servico: org.servico.trim() } : {}) } }
+      : {}),
   }
 }
