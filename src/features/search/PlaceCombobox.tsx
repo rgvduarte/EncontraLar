@@ -111,9 +111,12 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
         onTexto(op.q)
         break
     }
-    // ecrã tátil: tira o foco para fechar o teclado do telemóvel; com teclado/rato o foco fica no campo
-    // (nunca cai no <body>: quem usa teclado ou leitor de ecrã continua onde estava)
-    if (window.matchMedia('(pointer: coarse)').matches) inputRef.current?.blur()
+    // com teclado/rato o foco fica no campo. Ecrã tátil: tira-o para fechar o teclado do telemóvel e passa-o
+    // para o título dos resultados (nunca para o <body>); ao abrir uma ficha, a página nova trata do foco
+    if (window.matchMedia('(pointer: coarse)').matches) {
+      inputRef.current?.blur()
+      if (op.kind !== 'lar') pedirFocoNoTitulo()
+    }
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
