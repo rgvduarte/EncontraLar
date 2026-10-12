@@ -159,7 +159,7 @@ const ESCONDIDO: Record<EnterVariant, string> = {
 /** Classes de entrada para quem controla o "inView" (listas em que cada <li> entra com atraso). */
 export function enterCls(on: boolean, variant: EnterVariant = 'up') {
   return cn(
-    'transition-[opacity,transform] duration-700 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
+    'transition-[opacity,translate,scale] duration-700 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
     on ? 'translate-x-0 translate-y-0 scale-100 opacity-100' : ESCONDIDO[variant],
   )
 }

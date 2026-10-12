@@ -241,7 +241,7 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
           ref={faixa}
           onScroll={onScroll}
           aria-label="Instituições em comparação"
-          data-lenis-prevent
+          data-lenis-prevent-horizontal
           className="relative -mx-5 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto overscroll-x-contain overscroll-y-auto! px-5 pb-2 [scrollbar-width:none]"
         >
           {dados.map(({ lar }, i) => (
@@ -293,7 +293,7 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
               {dados.map(({ lar }, i) => (
                 <span
                   key={lar.id}
-                  className={cn('size-2 rounded-full transition-[background-color,transform] duration-300', i === atual ? 'scale-110 bg-ink' : 'bg-line-strong')}
+                  className={cn('size-2 rounded-full transition-[background-color,scale] duration-300', i === atual ? 'scale-110 bg-ink' : 'bg-line-strong')}
                 />
               ))}
             </span>
@@ -303,7 +303,7 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
       </div>
 
       {/* ecrãs largos: tabela; as colunas novas entram a deslizar */}
-      <div className="relative hidden overflow-x-auto overscroll-x-contain overscroll-y-auto! [scrollbar-width:thin] sm:block" data-lenis-prevent>
+      <div className="relative hidden overflow-x-auto overscroll-x-contain overscroll-y-auto! [scrollbar-width:thin] sm:block" data-lenis-prevent-horizontal>
         <table className="w-full min-w-[36rem] border-collapse text-left">
           <caption className="sr-only">
             Comparação de {lares.length} instituições guardadas. “Melhor” assinala o valor mais favorável de cada linha.

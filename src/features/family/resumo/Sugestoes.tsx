@@ -60,7 +60,7 @@ export function Sugestoes({ perfil, excluir }: { perfil: PerfilIdoso | undefined
       ) : (
         <ul
           ref={ul}
-          data-lenis-prevent
+          data-lenis-prevent-horizontal
           className="relative -mx-5 mt-8 flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto overscroll-x-contain overscroll-y-auto! px-5 pb-2 [scrollbar-width:none] sm:-mx-8 sm:gap-5 sm:scroll-px-8 sm:px-8 lg:mx-0 lg:px-0 xl:grid xl:grid-cols-3 xl:overflow-visible xl:pb-0"
         >
           {top.map(({ m, lar }, i) => (

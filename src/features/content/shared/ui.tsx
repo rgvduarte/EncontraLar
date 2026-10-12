@@ -124,25 +124,39 @@ export function PageHero({
   )
 }
 
-/** Classes de cada cartão de uma faixa deslizável (ver SwipeRow). */
+/** Classes de cada cartão de uma faixa deslizável (ver SwipeRow; `SWIPE_ITEM_LG` com `ate="lg"`). */
 export const SWIPE_ITEM = 'w-[84%] max-w-[24rem] shrink-0 snap-start md:w-auto md:max-w-none'
+export const SWIPE_ITEM_LG = 'w-[84%] max-w-[24rem] shrink-0 snap-start lg:w-auto lg:max-w-none'
+
+const SWIPE_BASE =
+  '-mx-5 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto overscroll-x-contain px-5 pt-1 pb-6 [scrollbar-width:none] sm:-mx-8 sm:scroll-px-8 sm:px-8 [&::-webkit-scrollbar]:hidden'
+const SWIPE_FIM = {
+  md: 'md:mx-0 md:overflow-visible md:px-0 md:pt-0 md:pb-0',
+  lg: 'lg:mx-0 lg:overflow-visible lg:px-0 lg:pt-0 lg:pb-0',
+} as const
 
 /**
- * Telemóvel: faixa deslizável com o dedo (scroll-snap nativo, o cartão seguinte espreita).
- * A partir de md: as classes de `className` (normalmente uma grelha). Os filhos usam SWIPE_ITEM.
+ * Telemóvel (e tablet, com `ate="lg"`): faixa deslizável com o dedo (scroll-snap nativo, o cartão seguinte
+ * espreita). A partir do ponto de quebra: as classes de `className` (normalmente uma grelha).
+ * Os filhos usam SWIPE_ITEM / SWIPE_ITEM_LG.
  */
-export function SwipeRow({ children, className, as: As = 'div', label }: { children: ReactNode; className?: string; as?: 'div' | 'ul'; label?: string }) {
-  const mobile = useMediaQuery('(max-width: 767.98px)')
+export function SwipeRow({
+  children,
+  className,
+  as: As = 'div',
+  label,
+  ate = 'md',
+}: {
+  children: ReactNode
+  className?: string
+  as?: 'div' | 'ul'
+  label?: string
+  /** até que ponto de quebra é faixa deslizável */
+  ate?: 'md' | 'lg'
+}) {
+  const faixa = useMediaQuery(ate === 'md' ? '(max-width: 767.98px)' : '(max-width: 1023.98px)')
   return (
-    <As
-      aria-label={label}
-      data-lenis-prevent={mobile ? '' : undefined}
-      className={cn(
-        '-mx-5 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto overscroll-x-contain px-5 pt-1 pb-6 [scrollbar-width:none] sm:-mx-8 sm:scroll-px-8 sm:px-8 [&::-webkit-scrollbar]:hidden',
-        'md:mx-0 md:overflow-visible md:px-0 md:pt-0 md:pb-0',
-        className,
-      )}
-    >
+    <As aria-label={label} data-lenis-prevent={faixa ? '' : undefined} className={cn(SWIPE_BASE, SWIPE_FIM[ate], className)}>
       {children}
     </As>
   )

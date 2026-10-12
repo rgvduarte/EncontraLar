@@ -129,7 +129,7 @@ export default function GuardadosPage() {
           {/* escolher o que comparar, junto da comparação (faixa deslizável no telemóvel) */}
           <ul
             aria-label="Escolher instituições para comparar"
-            data-lenis-prevent
+            data-lenis-prevent-horizontal
             className="relative -mx-5 mt-5 flex snap-x scroll-px-5 gap-2 overflow-x-auto overscroll-x-contain overscroll-y-auto! px-5 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
           >
             {itens.map(({ lar }) => {
@@ -143,7 +143,7 @@ export default function GuardadosPage() {
                     disabled={bloqueado}
                     onClick={() => alternar(lar.id, !escolhido)}
                     className={cn(
-                      'inline-flex min-h-12 max-w-[17rem] items-center gap-2 rounded-full px-5 font-medium transition-[background-color,color,transform] duration-200 active:scale-[0.97]',
+                      'inline-flex min-h-12 max-w-[17rem] items-center gap-2 rounded-full px-5 font-medium transition-[background-color,color,scale] duration-200 active:scale-[0.97]',
                       escolhido ? 'bg-ink text-white' : 'bg-sand text-ink hover:bg-sand-deep',
                       bloqueado && 'cursor-not-allowed opacity-45 active:scale-100',
                     )}

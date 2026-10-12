@@ -8,7 +8,7 @@ import { QUARTO_LABEL } from '@/lib/labels'
 import { ButtonLink } from '@/components/ui/Button'
 import { Reveal } from '@/components/motion'
 import { cn } from '@/lib/cn'
-import { SectionTitle, SWIPE_ITEM, SwipeRow } from '../shared/ui'
+import { SectionTitle, SWIPE_ITEM_LG, SwipeRow } from '../shared/ui'
 
 const PRECO_PROFISSIONAL = 39
 
@@ -75,7 +75,7 @@ export function Planos({ lar }: { lar: Lar }) {
       </Reveal>
 
       {/* telemóvel: faixa deslizável (o plano seguinte espreita); desktop: três colunas que entram em cascata */}
-      <SwipeRow as="ul" label="Planos" className="mt-12 max-w-5xl sm:mt-20 md:mx-auto md:grid md:grid-cols-3 md:gap-4">
+      <SwipeRow as="ul" label="Planos" ate="lg" className="mt-12 max-w-5xl sm:mt-20 lg:mx-auto lg:grid lg:grid-cols-3 lg:gap-4">
         {PLANOS.map((p, i) => {
           const destaque = p.id === 'profissional'
           return (
@@ -83,7 +83,7 @@ export function Planos({ lar }: { lar: Lar }) {
               as="li"
               key={p.id}
               delay={i * 120}
-              className={cn(SWIPE_ITEM, 'flex flex-col rounded-[1.75rem] p-6 sm:p-8', destaque ? 'bg-sand' : 'bg-white ring-1 ring-line ring-inset')}
+              className={cn(SWIPE_ITEM_LG, 'flex flex-col rounded-[1.75rem] p-6 sm:p-8', destaque ? 'bg-sand' : 'bg-white ring-1 ring-line ring-inset')}
             >
               <p className="flex items-center justify-between gap-3">
                 <span className="text-xl font-semibold text-ink">{p.nome}</span>

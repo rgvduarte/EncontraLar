@@ -185,7 +185,7 @@ export function Bento({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
         <SectionTitle id="pl-funcoes" title="Feito para quem não tem tempo." subtitle="Quatro coisas. Bem feitas." />
       </Reveal>
       <SwipeRow as="ul" label="Funcionalidades" className="mt-12 sm:mt-20 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-12">
-        <Tile title="Vagas num toque." text="Mais uma, menos uma. O cartão que as famílias veem muda no mesmo instante." className="lg:col-span-7">
+        <Tile title="Vagas num toque." text="Mais uma, menos uma. O cartão que as famílias veem muda no mesmo instante." className="md:col-span-2 lg:col-span-7">
           <VistaFamilia ensaio={ensaio} />
         </Tile>
         <Tile title="Pedidos com perfil clínico." text="Grau de dependência, cuidados e urgência, já comparados com a sua casa." className="lg:col-span-5" delay={100}>
@@ -198,7 +198,7 @@ export function Bento({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
           title="Previsão de ocupação."
           text="Saiba quantos lugares deverão libertar-se e prepare as entradas com tempo."
           plano="Plano Profissional"
-          className="lg:col-span-7"
+          className="md:col-span-2 lg:col-span-7"
           delay={100}
         >
           <Ocupacao lar={base} />

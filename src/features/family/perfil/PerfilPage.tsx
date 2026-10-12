@@ -46,7 +46,7 @@ export default function PerfilPage() {
           <nav aria-label="Pessoas de quem cuida">
             {/* telemóvel: faixa deslizável (sem quebrar linha); desktop: pílulas em linha */}
             <ul
-              data-lenis-prevent
+              data-lenis-prevent-horizontal
               className="relative -mx-5 flex snap-x scroll-px-5 gap-2 overflow-x-auto overscroll-x-contain overscroll-y-auto! px-5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
             >
               {perfis.map((p) => {

@@ -47,7 +47,7 @@ export function Novidades({ notifs, limite = 4 }: { notifs: Notificacao[]; limit
                 <span
                   aria-hidden
                   className={cn(
-                    'mt-2.5 size-2 rounded-full bg-terra-600 transition-[transform,opacity] duration-300 ease-[cubic-bezier(.16,1,.3,1)]',
+                    'mt-2.5 size-2 rounded-full bg-terra-600 transition-[scale,opacity] duration-300 ease-[cubic-bezier(.16,1,.3,1)]',
                     n.lida && 'scale-0 opacity-0',
                   )}
                 />

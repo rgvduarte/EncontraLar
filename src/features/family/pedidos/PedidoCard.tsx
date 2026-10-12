@@ -173,7 +173,7 @@ export function PedidoCard({
                 href={telHref(lar.telefone)}
                 aria-label={`Ligar para ${lar.nome}: ${lar.telefone}`}
                 className={cn(
-                  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-sand px-5 font-medium text-ink transition-[background-color,transform] duration-200 active:scale-[0.98] active:bg-sand-deep',
+                  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-sand px-5 font-medium text-ink transition-[background-color,scale] duration-200 active:scale-[0.98] active:bg-sand-deep',
                   'sm:justify-start sm:rounded-none sm:bg-transparent sm:px-0 sm:text-terra-600 sm:hover:underline sm:active:scale-100 sm:active:bg-transparent',
                   contactos === 1 && 'col-span-2',
                 )}
@@ -187,7 +187,7 @@ export function PedidoCard({
               <a
                 href={`mailto:${lar.email}?subject=${encodeURIComponent(`Pedido de vaga — ${c.perfil.nome}`)}`}
                 className={cn(
-                  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-sand px-5 font-medium text-ink transition-[background-color,transform] duration-200 active:scale-[0.98] active:bg-sand-deep',
+                  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-sand px-5 font-medium text-ink transition-[background-color,scale] duration-200 active:scale-[0.98] active:bg-sand-deep',
                   'sm:justify-start sm:rounded-none sm:bg-transparent sm:px-0 sm:text-terra-600 sm:hover:underline sm:active:scale-100 sm:active:bg-transparent',
                   contactos === 1 && 'col-span-2',
                 )}

@@ -143,7 +143,7 @@ function BarraPolegar({
       <div
         className={cn(
           'mx-auto max-w-lg rounded-[1.5rem] bg-white/90 p-3 shadow-lift ring-1 ring-black/[0.06] backdrop-blur-xl backdrop-saturate-150',
-          'transition-[transform,opacity] duration-500 ease-[cubic-bezier(.16,1,.3,1)]',
+          'transition-[translate,opacity] duration-500 ease-[cubic-bezier(.16,1,.3,1)]',
           visivel ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-[calc(100%+var(--tabbar-h)+1rem)] opacity-0',
         )}
       >

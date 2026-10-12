@@ -23,7 +23,7 @@ export function Pill({
     <label
       className={cn(
         'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-5 font-medium select-none',
-        'transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(.25,.1,.25,1)] active:scale-[0.97]',
+        'transition-[background-color,color,scale] duration-200 ease-[cubic-bezier(.25,.1,.25,1)] active:scale-[0.97]',
         'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
         checked ? 'bg-ink text-white' : 'bg-sand text-ink hover:bg-sand-deep',
         className,

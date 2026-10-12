@@ -283,7 +283,8 @@ function camada(i: number, p: number): CSSProperties {
 }
 
 function Cena({ d, p }: { d: Dados; p: number }) {
-  const desktop = useMediaQuery('(min-width: 1024px)')
+  // texto ao lado da interface a partir do tablet; empilhado no telemóvel
+  const lado = useMediaQuery('(min-width: 768px)')
   const atual = Math.min(N - 1, Math.floor(p * N))
 
   const interface_ = (
@@ -298,15 +299,15 @@ function Cena({ d, p }: { d: Dados; p: number }) {
     </Painel>
   )
 
-  if (desktop)
+  if (lado)
     return (
-      <div className="container-page grid h-full grid-cols-[minmax(0,5fr)_minmax(0,6fr)] items-center gap-20">
+      <div className="container-page grid h-full grid-cols-[minmax(0,5fr)_minmax(0,6fr)] items-center gap-10 lg:gap-20">
         <div className="relative pl-8">
           {/* calha de progresso */}
           <span aria-hidden className="absolute top-1 bottom-1 left-0 w-0.5 overflow-hidden rounded-full bg-white/15">
             <span className="block h-full origin-top rounded-full bg-white" style={{ transform: `scaleY(${p})` }} />
           </span>
-          <ol className="flex flex-col gap-10">
+          <ol className="flex flex-col gap-8 lg:gap-10">
             {TEMPOS.map((x, i) => (
               <li
                 key={x.t}
@@ -314,8 +315,8 @@ function Cena({ d, p }: { d: Dados; p: number }) {
                 className={cn('transition-opacity duration-500 ease-[cubic-bezier(.16,1,.3,1)]', i === atual ? 'opacity-100' : 'opacity-30')}
               >
                 <p className="text-sm font-semibold text-pine-400 tabular">0{i + 1}</p>
-                <h3 className="mt-1 text-3xl font-semibold text-white xl:text-4xl">{x.t}</h3>
-                <p className="mt-3 max-w-[36ch] text-lg text-pine-300">{x.d}</p>
+                <h3 className="mt-1 text-2xl font-semibold text-white lg:text-3xl xl:text-4xl">{x.t}</h3>
+                <p className="mt-3 max-w-[36ch] text-base text-pine-300 lg:text-lg">{x.d}</p>
               </li>
             ))}
           </ol>
@@ -377,7 +378,7 @@ function Empilhado({ d }: { d: Dados }) {
 export function Ciclo({ lar }: { lar: Lar }) {
   const d = useDados(lar)
   const reduced = usePrefersReducedMotion()
-  const desktop = useMediaQuery('(min-width: 1024px)')
+  const lado = useMediaQuery('(min-width: 768px)')
   if (!d) return null
 
   return (
@@ -403,7 +404,7 @@ export function Ciclo({ lar }: { lar: Lar }) {
         </div>
       ) : (
         <StickyScene
-          length={desktop ? '330vh' : '270vh'}
+          length={lado ? '330vh' : '270vh'}
           label="Da saída à nova entrada, em três momentos"
           innerClassName="pb-[var(--tabbar-h)]"
         >
