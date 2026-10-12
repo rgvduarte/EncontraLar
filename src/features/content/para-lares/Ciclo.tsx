@@ -158,7 +158,7 @@ function UiAviso({ d, t, ativo }: { d: Dados; t: number; ativo: boolean }) {
               className="flex items-center gap-3 rounded-2xl bg-sand px-4 py-3 will-change-transform"
               style={{ opacity: k, transform: `translate3d(0, ${(1 - k) * 28}px, 0) scale(${mix(0.96, 1, k)})` }}
             >
-              <LogoMark className="mt-0.5 size-8 shrink-0" />
+              <LogoMark tile className="mt-0.5 size-8 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="flex items-baseline justify-between gap-2 text-xs text-ink-mute">
                   <span className="truncate">Para {nome}</span>

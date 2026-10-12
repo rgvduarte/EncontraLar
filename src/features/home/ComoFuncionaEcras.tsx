@@ -233,7 +233,7 @@ export const EcraAlerta = memo(function EcraAlerta({ h, ativo }: { h: Historia; 
         }}
       >
         <div className="flex items-start gap-3 rounded-[1.35rem] bg-white/85 p-3 text-left shadow-lift ring-1 ring-black/5 backdrop-blur-xl">
-          <LogoMark className="size-9 shrink-0" />
+          <LogoMark tile className="size-9 shrink-0" />
           <div className="min-w-0 flex-1 leading-snug">
             <p className="flex items-baseline justify-between gap-2 text-xs text-ink-mute">
               <span className="font-medium text-ink-soft">EncontraLar</span>
