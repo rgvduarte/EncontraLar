@@ -1,1 +1,0 @@
-import{n as e,t}from"./index-KnHa0Kfn.js";var n=e();function r(){return t(`Página não encontrada`),(0,n.jsxs)(`div`,{className:`container-page py-16`,children:[(0,n.jsx)(`h1`,{className:`text-4xl font-semibold`,children:`Página não encontrada`}),(0,n.jsx)(`p`,{className:`mt-4 text-ink-soft`,children:`Página em construção.`})]})}export{r as default};
