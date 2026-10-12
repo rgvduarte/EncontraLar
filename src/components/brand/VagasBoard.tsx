@@ -21,14 +21,11 @@ export function VagasBoard({
   titulo?: string
   theme?: 'light' | 'dark'
 }) {
-  const lista = useMemo(
-    () =>
-      lares
-        .filter((l) => vagasLivres(l) > 0 && l.tipo !== 'centro_dia')
-        .sort((a, b) => b.atualizadoEm.localeCompare(a.atualizadoEm))
-        .slice(0, 15),
+  const comVaga = useMemo(
+    () => lares.filter((l) => vagasLivres(l) > 0 && l.tipo !== 'centro_dia').sort((a, b) => b.atualizadoEm.localeCompare(a.atualizadoEm)),
     [lares],
   )
+  const lista = useMemo(() => comVaga.slice(0, 15), [comVaga])
   const [offset, setOffset] = useState(0)
   useEffect(() => {
     if (lista.length <= linhas) return
@@ -52,7 +49,7 @@ export function VagasBoard({
           </span>
           {titulo}
         </p>
-        <span className={cn('text-xs', dark ? 'text-pine-400' : 'text-ink-mute')}>{lista.length} com vaga</span>
+        <span className={cn('text-xs', dark ? 'text-pine-300' : 'text-ink-mute')}>{comVaga.length} com vaga</span>
       </header>
       <ol aria-live="off" className="px-2 pb-2">
         {visiveis.map((l, i) => {
@@ -70,7 +67,7 @@ export function VagasBoard({
                     {l.localidade} · {q ? QUARTO_CURTO[q.tipo].toLowerCase() : ''} · {tempoRelativo(l.atualizadoEm)}
                   </span>
                 </span>
-                <span className={cn('shrink-0 text-sm font-semibold tabular', dark ? 'text-leaf-200' : 'text-leaf-600')}>
+                <span className={cn('shrink-0 text-sm font-semibold tabular', dark ? 'text-leaf-200' : 'text-leaf-700')}>
                   {n} {n === 1 ? 'vaga' : 'vagas'}
                 </span>
                 <ChevronRight aria-hidden className={cn('size-4 shrink-0', dark ? 'text-pine-500' : 'text-ink-mute/60')} />

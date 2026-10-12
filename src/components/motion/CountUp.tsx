@@ -32,7 +32,8 @@ export function CountUp({
     return () => cancelAnimationFrame(raf)
   }, [inView, value, duration])
   return (
-    <span ref={ref} className={className} aria-label={format(value)}>
+    <span ref={ref} className={className}>
+      <span className="sr-only">{format(value)}</span>
       <span aria-hidden>{format(n)}</span>
     </span>
   )

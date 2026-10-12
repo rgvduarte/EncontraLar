@@ -56,8 +56,8 @@
   --color-terra-300: #84b9ff;
   --color-terra-400: #4096ff;
   --color-terra-500: #147ce5;
-  --color-terra-600: #0071e3;
-  --color-terra-700: #0060c0;
+  --color-terra-600: #0066cc;
+  --color-terra-700: #0055aa;
   --color-terra-800: #004d9a;
   --color-terra-900: #003a75;
 
@@ -210,7 +210,7 @@
 @layer base {
   :is(h1, h2, h3, .font-display) em {
     font-style: normal;
-    background: linear-gradient(92deg, #0071e3 0%, #1f9d55 100%);
+    background: linear-gradient(92deg, #0066cc 0%, #1f8a4c 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

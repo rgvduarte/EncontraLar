@@ -95,7 +95,13 @@ export const PortugalMap = memo(function PortugalMap({
   const ativoP = ativo ? pontos.find((p) => p.lar.id === ativo) : undefined
 
   return (
-    <svg viewBox={`${PT_VIEWBOX.x} ${PT_VIEWBOX.y} ${PT_VIEWBOX.w} ${PT_VIEWBOX.h}`} className={cn('block h-auto w-full', className)} role="img" aria-label={title}>
+    <svg
+      viewBox={`${PT_VIEWBOX.x} ${PT_VIEWBOX.y} ${PT_VIEWBOX.w} ${PT_VIEWBOX.h}`}
+      className={cn('block h-auto w-full', className)}
+      // com pontos clicáveis é um grupo de ligações; sem interação é uma imagem
+      role={onSelect ? 'group' : 'img'}
+      aria-label={title}
+    >
       {base.map((p, i) => (
         <circle key={i} cx={p.x} cy={p.y} r="1.75" fill={dotBase} />
       ))}
