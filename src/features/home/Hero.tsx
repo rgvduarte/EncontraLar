@@ -29,9 +29,15 @@ function Palavras({ texto, de, enfase }: { texto: string; de: number; enfase?: b
       })
     }
     medir()
+    // o ResizeObserver não dispara em caixas inline: observa o título; e volta a medir quando a Inter carregar
     const ro = new ResizeObserver(medir)
-    ro.observe(el)
-    return () => ro.disconnect()
+    ro.observe(el.closest('h1') ?? el)
+    let vivo = true
+    document.fonts?.ready.then(() => vivo && medir())
+    return () => {
+      vivo = false
+      ro.disconnect()
+    }
   }, [enfase])
 
   return (

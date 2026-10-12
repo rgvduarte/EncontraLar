@@ -17,40 +17,8 @@ const POSICAO = [
   'xl:absolute xl:top-[66%] xl:left-[86%]',
 ]
 
-/** Altura útil do mapa no sistema de coordenadas do SVG (norte = 0, Algarve ≈ 530). */
-const ALTURA = 540
-/** Quanto demora a "varrer" o país de norte a sul. */
-const VARRIMENTO = 1150
-
-/**
- * "Acende" o mapa de norte para sul: cada ponto recebe um atraso proporcional à latitude (com um pouco de
- * acaso para parecer orgânico). Só opacity/transform, e só uma vez. O PortugalMap é partilhado, por isso
- * isto escreve estilos inline nos nós já desenhados em vez de mudar o componente.
- */
-function acenderMapa(svg: SVGSVGElement, base: number) {
-  const atraso = (y: number, extra = 0) => base + extra + Math.max(0, Math.min(1, y / ALTURA)) * VARRIMENTO
-  for (const el of Array.from(svg.children)) {
-    if (!(el instanceof SVGElement)) continue
-    const tag = el.tagName.toLowerCase()
-    if (tag === 'circle') {
-      // grelha de pontos cinzentos
-      const x = Number(el.getAttribute('cx'))
-      const y = Number(el.getAttribute('cy'))
-      const acaso = (Math.abs(Math.sin(x * 12.9898 + y * 78.233)) * 43758.5453) % 1
-      el.style.animation = `hm-dot 520ms ease-out ${Math.round(atraso(y, acaso * 240))}ms backwards`
-    } else if (tag === 'a' || tag === 'g') {
-      // instituições: "acendem" um pouco depois da grelha à sua volta
-      const c = el.querySelector('circle:last-of-type')
-      const y = Number(c?.getAttribute('cy') ?? 0)
-      el.style.transformBox = 'fill-box'
-      el.style.transformOrigin = 'center'
-      el.style.animation = `hm-dot-pop 640ms cubic-bezier(.16,1,.3,1) ${Math.round(atraso(y, 260))}ms backwards`
-    } else if (tag === 'path' || tag === 'text') {
-      // ilhas e nomes das cidades
-      el.style.animation = `hm-dot 700ms ease-out ${Math.round(base + VARRIMENTO * 0.7)}ms backwards`
-    }
-  }
-}
+/** Quanto demora a "varrer" o país de norte a sul (a cortina que se levanta). */
+const VARRIMENTO = 900
 
 /**
  * Pulsação das instituições com vaga, desenhada por cima do SVG em HTML e animada só com transform/opacity
@@ -109,7 +77,8 @@ function useProfundidade(el: RefObject<HTMLElement | null>, referencia: RefObjec
 
 /**
  * O "produto como imagem": o mapa de Portugal em pontos, com as últimas vagas a flutuar à volta.
- * Entrada: o mapa acende-se de norte para sul quando entra no ecrã; depois as etiquetas aparecem uma a uma.
+ * Entrada: o mapa acende-se de norte para sul quando entra no ecrã, as instituições com vaga começam a
+ * pulsar e as etiquetas aparecem uma a uma.
  * Desktop largo: paralaxe subtil entre o mapa (mais longe) e as etiquetas (mais perto).
  * Passar o rato (ou o foco) numa etiqueta realça o ponto da instituição no mapa.
  */
@@ -134,20 +103,16 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
     mapaRef.current?.querySelector('svg[role="img"]')?.setAttribute('role', 'group')
   }, [])
 
-  // antes da primeira pintura com o mapa visível: atrasos de cada ponto (se o mapa já está no ecrã ao abrir
-  // a página, espera que o título acabe de entrar; se só aparece com o scroll, começa logo)
+  // antes da primeira pintura com o mapa visível: se o mapa já está no ecrã ao abrir a página, espera que o
+  // título acabe de entrar; se só aparece com o scroll, começa logo
   useLayoutEffect(() => {
-    if (!visto) return
-    const b = Math.max(0, 760 - (performance.now() - montado))
-    setBase(b)
-    const svg = mapaRef.current?.querySelector('svg')
-    if (svg && !prefersReducedMotion()) acenderMapa(svg, b + 120)
+    if (visto) setBase(Math.max(0, 950 - (performance.now() - montado)))
   }, [visto, montado])
 
   return (
     <figure ref={figRef} className="hm-map relative mx-auto w-full max-w-[19rem] sm:max-w-[30rem] lg:max-w-[34rem]">
       <div ref={camadaMapa} className={cn(largo && 'will-change-transform')}>
-        <div ref={mapaRef} className={cn('relative', visto ? 'hm-in' : 'hm-wait')} style={entrada(base, 'hm-settle', 900)}>
+        <div ref={mapaRef} className={cn('relative overflow-hidden', visto ? 'hm-in' : 'hm-wait')} style={entrada(base, 'hm-settle', 900)}>
           <PortugalMap
             lares={lares}
             pulse={false}
@@ -155,7 +120,11 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
             onSelect={(l) => navigate(`/lar/${l.id}`)}
             title={`Mapa de Portugal com ${lares.length} instituições, ${comVaga} com vaga agora. Cada ponto abre a ficha da instituição.`}
           />
-          {visto && <Pulsos lares={lares} atraso={base + VARRIMENTO + 200} />}
+          {visto && <Pulsos lares={lares} atraso={base + VARRIMENTO + 150} />}
+          {/* "acender" de norte para sul: uma cortina branca com a orla esbatida desce e destapa o mapa.
+              Um só elemento animado com transform (compositor) — animar os ~2000 pontos um a um obrigava a
+              recalcular o estilo e repintar o SVG inteiro em cada frame. */}
+          {visto && <span aria-hidden className="hm-veil" style={{ animationDelay: `${Math.round(base + 60)}ms` }} />}
         </div>
       </div>
 

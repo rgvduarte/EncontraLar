@@ -77,20 +77,22 @@ export function ComVagaSection({ lares }: { lares: Lar[] }) {
   const seguirFoco = useCallback(
     (e: FocusEvent<HTMLDivElement>) => {
       const cartao = e.currentTarget
-      const faixa = cartao.parentElement
-      const fixo = faixa?.parentElement
-      const seccao = fixo?.parentElement
-      if (!faixa || !fixo || !seccao) return
-      fixo.scrollLeft = 0
-      const dist = Math.max(0, faixa.scrollWidth - window.innerWidth + 80)
-      if (!dist) return
-      const centro = cartao.offsetLeft + cartao.offsetWidth / 2 - window.innerWidth / 2
-      const p = Math.min(1, Math.max(0, centro / dist))
-      const topo = seccao.getBoundingClientRect().top + window.scrollY - 64
-      const alvo = topo + p * (seccao.offsetHeight - (window.innerHeight - 64))
-      if (Math.abs(alvo - window.scrollY) < 4) return
-      if (lenis) lenis.scrollTo(alvo, { immediate: true })
-      else window.scrollTo({ top: alvo })
+      // depois do scroll automático do próprio navegador ao focar (que mexeria no contentor fixo)
+      requestAnimationFrame(() => {
+        const faixa = cartao.parentElement
+        const fixo = faixa?.parentElement
+        const seccao = fixo?.parentElement
+        if (!faixa || !fixo || !seccao) return
+        fixo.scrollLeft = 0
+        const dist = Math.max(0, faixa.scrollWidth - window.innerWidth + 80)
+        const centro = cartao.offsetLeft + cartao.offsetWidth / 2 - window.innerWidth / 2
+        const p = dist ? Math.min(1, Math.max(0, centro / dist)) : 0
+        const topo = seccao.getBoundingClientRect().top + window.scrollY - 64
+        const alvo = Math.round(topo + p * (seccao.offsetHeight - (window.innerHeight - 64)))
+        if (Math.abs(alvo - window.scrollY) < 4) return
+        if (lenis) lenis.scrollTo(alvo, { immediate: true, force: true })
+        else window.scrollTo({ top: alvo })
+      })
     },
     [lenis],
   )

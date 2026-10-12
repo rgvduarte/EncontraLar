@@ -45,28 +45,23 @@
     transform: none;
   }
 }
-/* pontos do mapa (aplicado por latitude, de norte para sul) */
-@keyframes hm-dot {
+/* cortina do mapa: começa a tapar tudo e desce até sair (orla de cima esbatida = o mapa "acende" de norte para sul) */
+@keyframes hm-veil {
   from {
-    opacity: 0;
+    transform: translate3d(0, -20%, 0);
   }
   to {
-    opacity: 1;
+    transform: translate3d(0, 50%, 0);
   }
 }
-@keyframes hm-dot-pop {
-  0% {
-    opacity: 0;
-    transform: scale(0.2);
-  }
-  65% {
-    opacity: 1;
-    transform: scale(1.35);
-  }
-  100% {
-    opacity: 1;
-    transform: none;
-  }
+.hm-veil {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 200%;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgb(255 255 255 / 0) 0%, #fff 20%, #fff 100%);
+  transform: translate3d(0, 50%, 0);
+  animation: hm-veil 900ms cubic-bezier(0.45, 0.05, 0.4, 1) backwards;
 }
 /* etiquetas de vaga: "pop" com uma pequena mola */
 @keyframes hm-pop {
@@ -118,9 +113,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .hm-in,
-  .hm-halo,
-  .hm-map svg * {
+  .hm-halo {
     animation: none !important;
+  }
+  .hm-veil {
+    display: none;
   }
   .hm-wait {
     opacity: 1;
