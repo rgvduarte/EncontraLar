@@ -45,7 +45,7 @@ function Conteudo({ lar }: { lar: Lar }) {
           'Menos telefonemas.',
           <em key="em">Mais vagas preenchidas.</em>,
         ]}
-        subtitle="Atualize as vagas num toque e receba pedidos com o perfil clínico já preenchido."
+        subtitle="Atualize as vagas num toque. Receba pedidos de famílias e de hospitais, com o perfil de cuidados já preenchido."
         className="max-w-[72rem]"
         titleWidth="max-w-none"
       >
@@ -71,7 +71,7 @@ function Conteudo({ lar }: { lar: Lar }) {
 
       {/* 4 · clímax: as funcionalidades, a verificação e quanto custa (sem valores) */}
       <Bento base={lar} ensaio={ensaio} />
-      <Verificacao />
+      <Verificacao lar={lar} />
       <QuantoCusta lar={lar} />
 
       <section aria-labelledby="pl-faq" className="container-narrow pb-20 sm:pb-32 lg:pb-40">

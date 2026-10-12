@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Candidatura, EstadoCandidatura, Lar, PerfilIdoso } from '@/types'
-import { pedidosPorTratar, vagaAceiteHaPouco, verificarCompatibilidade, DIA_MS } from './derive'
-import { necessidadesTexto, perfilLinha } from '../shared/pedidoBits'
+import { entradasEsteAno, entradasUltimos12Meses, ordenarNovos, pedidosPorTratar, vagaAceiteHaPouco, verificarCompatibilidade, DIA_MS } from './derive'
+import { altaTexto, necessidadesTexto, nomePedido, perfilLinha, quemPediu, relacaoTexto } from '../shared/pedidoBits'
+import { acoesDoPedido } from '../pedidos/acoes'
 
 const perfil = {
   nome: 'Maria',
@@ -72,5 +73,64 @@ describe('vagaAceiteHaPouco', () => {
       vagaAceiteHaPouco(cand('aceite', { atualizadaEm: '2026-10-12T10:00:00.000Z', historico: [{ data: '', estado: 'em_analise' }, historico[1]!] }), agora),
     ).toBe(false)
     expect(vagaAceiteHaPouco(cand('vaga_proposta', { atualizadaEm: '2026-10-12T10:00:00.000Z', historico }), agora)).toBe(false)
+  })
+})
+
+describe('pedidos em duas fases (RGPD)', () => {
+  const agora = Date.parse('2026-10-12T12:00:00.000Z')
+  const enc = (altaPrevista: string) => ({ casoId: 'caso-1', profissionalId: 'u-pro', organizacao: 'Hospital X · Serviço Social', altaPrevista })
+
+  it('antes de aceitar: sem nome nem contacto, só a faixa etária e a origem', () => {
+    const c = cand('enviada', { origem: 'profissional', encaminhamento: enc('2026-10-16'), contacto: { nome: 'Marta (Hospital X)', email: 'm@x.pt' } })
+    expect(nomePedido(c)).toBe('Pessoa de 80–84 anos')
+    expect(relacaoTexto(c)).toBe('Encaminhado por Hospital X · Serviço Social')
+    expect(quemPediu(c)).toBe('quem fez o pedido')
+    expect(relacaoTexto(cand('enviada'))).toBe('Pedido de uma família')
+    const aceite = { ...c, estado: 'em_analise' as const, desbloqueadaEm: '2026-10-12T11:00:00.000Z' }
+    expect(nomePedido(aceite)).toBe('Maria, 84 anos')
+    expect(relacaoTexto(aceite)).toBe('Pedido feito por Marta')
+  })
+
+  it('ações: "Aceitar e ver contacto" e "Recusar", sem o nome no diálogo', () => {
+    const lar = { listaEspera: 0, quartos: [] } as unknown as Lar
+    const acoes = acoesDoPedido(cand('enviada'), lar, agora)
+    expect(acoes.map((a) => a.label)).toEqual(['Aceitar e ver contacto', 'Recusar'])
+    expect(acoes[0]!.tipo).toBe('aceitar')
+    expect(acoes[1]!.titulo).not.toContain('Maria')
+    expect(acoesDoPedido(cand('aceite'), lar, agora).map((a) => a.label)).toEqual(['Marcar entrada'])
+    const entrada = { data: '2026-10-01', confirmadaLarEm: '2026-10-01T10:00:00.000Z', taxa: 'aplicavel' as const }
+    expect(acoesDoPedido(cand('admitida', { entrada }), lar, agora)).toEqual([])
+  })
+
+  it('alta hospitalar: "Alta em N dias", "Alta amanhã", "Alta hoje"', () => {
+    const hoje = new Date(agora)
+    const dia = (n: number) => {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + n)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    }
+    expect(altaTexto(dia(4), agora)?.texto).toBe('Alta em 4 dias')
+    expect(altaTexto(dia(1), agora)?.texto).toBe('Alta amanhã')
+    expect(altaTexto(dia(0), agora)?.texto).toBe('Alta hoje')
+    expect(altaTexto(dia(-3), agora)?.texto).toMatch(/^Alta prevista: \d+ de /)
+    expect(altaTexto(undefined, agora)).toBeNull()
+  })
+
+  it('pedidos novos: alta nos próximos 7 dias primeiro, depois urgentes, depois os mais recentes', () => {
+    const d = (n: number) => new Date(agora + n * DIA_MS).toISOString().slice(0, 10)
+    const antigoComAlta = cand('enviada', { id: 'alta', criadaEm: '2026-10-01T10:00:00.000Z', encaminhamento: enc(d(3)) })
+    const urgente = cand('enviada', { id: 'urgente', criadaEm: '2026-10-05T10:00:00.000Z', perfil: { ...perfil, urgencia: 'imediata' } })
+    const recente = cand('enviada', { id: 'recente', criadaEm: '2026-10-11T10:00:00.000Z', perfil: { ...perfil, urgencia: 'planeamento' } })
+    const altaLonge = cand('enviada', { id: 'longe', criadaEm: '2026-10-12T10:00:00.000Z', encaminhamento: enc(d(30)), perfil: { ...perfil, urgencia: '1-3meses' } })
+    expect(ordenarNovos([recente, altaLonge, urgente, antigoComAlta], agora).map((c) => c.id)).toEqual(['alta', 'urgente', 'longe', 'recente'])
+  })
+})
+
+describe('entradas', () => {
+  const agora = Date.parse('2026-10-12T12:00:00.000Z')
+  const comEntrada = (data: string) => cand('admitida', { entrada: { data, confirmadaLarEm: `${data}T10:00:00.000Z`, taxa: 'aplicavel' } })
+  it('conta os últimos 12 meses e o ano civil', () => {
+    const cands = [comEntrada('2026-09-01'), comEntrada('2025-12-01'), comEntrada('2025-09-01'), cand('aceite')]
+    expect(entradasUltimos12Meses(cands, agora).map((c) => c.entrada!.data)).toEqual(['2026-09-01', '2025-12-01'])
+    expect(entradasEsteAno(cands, agora)).toHaveLength(1)
   })
 })

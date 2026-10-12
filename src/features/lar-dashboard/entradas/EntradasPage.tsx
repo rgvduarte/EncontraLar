@@ -62,12 +62,12 @@ function LinhaEntrada({ c, lar, agora, indice }: { c: Candidatura; lar: Lar; ago
               Ver pedido
             </MoreLink>
           </div>
-          <dl className="mt-3 grid gap-x-8 gap-y-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1.2fr)]">
+          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4 sm:gap-x-8 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1.2fr)]">
             <Campo k="Entrou a">
               <span className="font-medium">{diaCurto(e.data, agora)}</span>
             </Campo>
             <Campo k="Origem">{origemTexto(c)}</Campo>
-            <Campo k="Confirmações">
+            <Campo k="Confirmações" className="max-sm:col-span-2">
               <span className="flex flex-wrap items-center gap-x-2">
                 <Lado nome="Instituição" feito={!!e.confirmadaLarEm} />
                 <span aria-hidden className="text-ink-mute">
@@ -83,7 +83,7 @@ function LinhaEntrada({ c, lar, agora, indice }: { c: Candidatura; lar: Lar; ago
                     : 'A aguardar a sua confirmação'}
               </span>
             </Campo>
-            <Campo k="Taxa">
+            <Campo k="Taxa" className="max-sm:col-span-2">
               {conta ? TAXA_TEXTO[e.taxa] : 'Não conta: entrou mais de 12 meses depois do pedido'}
             </Campo>
           </dl>
@@ -112,8 +112,8 @@ export default function EntradasPage({ lar, cands }: { lar: Lar; cands: Candidat
       <Reveal variant="blur">
         <section aria-labelledby="entradas-total">
           <h2 id="entradas-total" className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <Numero value={ano.length} duration={900} className="text-6xl leading-none font-semibold tracking-tight" />
-            <span className="max-w-xl text-2xl leading-snug font-semibold text-ink-mute">
+            <Numero value={ano.length} duration={900} className="text-5xl leading-none font-semibold tracking-tight sm:text-6xl" />
+            <span className="max-w-xl text-xl leading-snug font-semibold text-ink-mute sm:text-2xl">
               {ano.length === 1 ? 'pessoa entrou' : 'pessoas entraram'} através do EncontraLar nos últimos 12 meses
             </span>
           </h2>

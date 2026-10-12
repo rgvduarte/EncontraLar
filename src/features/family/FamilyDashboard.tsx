@@ -112,7 +112,7 @@ export default function FamilyDashboard() {
         )
       }
       nav={nav}
-      identity={<FamilyIdentity user={user} perfil={principal} />}
+      identity={<FamilyIdentity user={user} perfil={principal} entrou={Boolean(entrada)} />}
       aside={<SidebarHelp />}
     >
       <DraftBanner />

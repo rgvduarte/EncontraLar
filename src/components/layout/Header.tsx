@@ -42,11 +42,8 @@ const PAINEL: Record<Role, { label: string; icon: LucideIcon }> = {
   profissional: { label: 'Os meus casos', icon: FolderOpen },
 }
 
-/** "Hospital de Vale Formoso · Serviço Social" (só contas de profissional). */
-function organizacaoDe(user: User): string | undefined {
-  const o = user.organizacao
-  return o ? [o.nome, o.servico].filter(Boolean).join(' · ') : undefined
-}
+/** Onde trabalha o profissional ("Hospital de Vale Formoso"), por baixo do nome; as outras contas não têm. */
+const organizacaoDe = (user: User): string | undefined => (user.role === 'profissional' ? user.organizacao?.nome : undefined)
 
 // ————————————————————————————————————————— conteúdo dos menus
 

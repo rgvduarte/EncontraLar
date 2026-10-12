@@ -4,8 +4,8 @@ import { Avatar } from '@/components/ui/misc'
 import { MoreLink } from './ui'
 import { nomeCurto } from './text'
 
-/** Identidade no topo da barra lateral: quem está a usar e para quem procura. */
-export function FamilyIdentity({ user, perfil }: { user: User; perfil: PerfilIdoso | undefined }) {
+/** Identidade no topo da barra lateral: quem está a usar e para quem procura (ou de quem é o perfil, depois da entrada). */
+export function FamilyIdentity({ user, perfil, entrou = false }: { user: User; perfil: PerfilIdoso | undefined; entrou?: boolean }) {
   return (
     <div>
       <div className="flex items-center gap-3">
@@ -14,7 +14,7 @@ export function FamilyIdentity({ user, perfil }: { user: User; perfil: PerfilIdo
       </div>
       {perfil ? (
         <p className="mt-4 text-sm text-ink-mute">
-          A procurar para:
+          {entrou ? 'Perfil de cuidados:' : 'A procurar para:'}
           <Link to="/familia/perfil" className="mt-0.5 block text-base leading-snug font-medium text-ink hover:underline">
             {nomeCurto(perfil.nome)}, {perfil.idade} anos
           </Link>

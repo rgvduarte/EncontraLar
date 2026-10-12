@@ -168,7 +168,7 @@ function useRetomarIntencao(
       // já há pedido ativo: a visita marca-se nesse pedido (como no cartão), em vez de abrir um pedido novo
       const podeVisitar = ativa && !ativa.visita && ['enviada', 'em_analise', 'lista_espera'].includes(ativa.estado)
       if (visita && podeVisitar) abrirVisita(ativa)
-      // a folha trata o resto: perfis com pedido ativo, e contas de instituição ("só para famílias")
+      // a folha trata o resto: perfis com pedido ativo, contas de instituição ("só para famílias") e de serviço social (casos)
       else abrirPedido(visita)
     } else if (acao === 'alerta' && user.role === 'familia' && !fav?.alerta) {
       setAlerta(lar.id, true)

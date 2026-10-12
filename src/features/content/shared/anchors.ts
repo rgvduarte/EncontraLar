@@ -19,14 +19,24 @@ function hashFromWindow(): string {
   return i >= 0 ? raw.slice(i + 1) : ''
 }
 
-type Scroller = { scrollTo: (target: HTMLElement, opts?: { immediate?: boolean; force?: boolean }) => void } | null
+type Scroller = {
+  scrollTo: (target: HTMLElement, opts?: { immediate?: boolean; force?: boolean }) => void
+  resize: () => void
+} | null
 
 /** Faz scroll até ao elemento com este id. Devolve false se ainda não existir. */
 function scrollToId(id: string, lenis: Scroller, { smooth = true, focus = true } = {}): boolean {
   const el = document.getElementById(id)
   if (!el) return false
   const animate = smooth && !reducedMotion()
-  if (lenis) lenis.scrollTo(el, { immediate: !animate, force: true })
+  if (lenis) {
+    // O Lenis calcula o destino com a posição que ele próprio guardou (animatedScroll). Se a página acabou de se
+    // mover sem ele (o clique do rato pôs a ligação à vista, a barra de scroll foi arrastada), o evento de scroll
+    // só chega no frame seguinte e o destino ficava errado pela mesma distância: a secção parava a meio do ecrã.
+    // resize() volta a ler a posição real (e a altura da página) antes de calcular.
+    lenis.resize()
+    lenis.scrollTo(el, { immediate: !animate, force: true })
+  }
   else el.scrollIntoView({ behavior: animate ? 'smooth' : ('instant' as ScrollBehavior), block: 'start' })
   if (focus) {
     if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1')

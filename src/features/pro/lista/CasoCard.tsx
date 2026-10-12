@@ -39,7 +39,8 @@ export function CasoCard({
         proposta && 'ring-2 ring-terra-600',
       )}
     >
-      <div className="flex items-start justify-between gap-4">
+      {/* telemóvel: o estado vem por cima do nome (o nome não parte em duas linhas por causa da etiqueta) */}
+      <div className="flex flex-col-reverse items-start gap-2 sm:flex-row sm:justify-between sm:gap-4">
         <H className={cn('text-xl leading-tight font-semibold sm:text-2xl', fechado && 'text-ink-soft')}>
           {estatico ? (
             titulo
@@ -52,14 +53,14 @@ export function CasoCard({
             </Link>
           )}
         </H>
-        <EstadoCasoChip estado={caso.estado} className="-mt-0.5 shrink-0" />
+        <EstadoCasoChip estado={caso.estado} className="shrink-0 sm:-mt-0.5" />
       </div>
       <p className="mt-1.5 text-ink-mute">
         {GRAU_LABEL[perfil.grau]}
         {caso.referencia && (
           <>
             {' · '}
-            <span className="tabular">{caso.referencia}</span>
+            <span className="whitespace-nowrap">{caso.referencia}</span>
           </>
         )}
       </p>

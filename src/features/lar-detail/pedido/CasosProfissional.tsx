@@ -161,7 +161,7 @@ export function CasosEnviadosAqui({ larId }: { larId: string }) {
               to={`/casos/${c.encaminhamento!.casoId}`}
               className="group flex min-h-12 items-center gap-2 rounded-md text-ink transition-colors hover:text-terra-600"
             >
-              <span className="min-w-0 flex-1 truncate">Caso de {c.perfil.nome}</span>
+              <span className="min-w-0 flex-1 truncate">{c.perfil.nome}</span>
               <span className="shrink-0 text-sm text-ink-mute">{ESTADO_CANDIDATURA_LABEL[c.estado]}</span>
               <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-mute" />
             </Link>

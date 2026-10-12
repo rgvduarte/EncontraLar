@@ -4,6 +4,7 @@ import { ChevronRight, Star } from 'lucide-react'
 import type { Lar } from '@/types'
 import { LarCover } from '@/components/lar/LarCover'
 import { VerifiedBadge } from '@/components/lar/badges'
+import { SeloNiveis } from '@/components/brand/SeloVerificado'
 import { NATUREZA_LABEL, TIPO_LABEL } from '@/lib/labels'
 import { tempoRelativo } from '@/lib/format'
 import { Parallax, Reveal, ScrollZoom } from '@/components/motion'
@@ -111,9 +112,13 @@ export function LarHero({ lar }: { lar: Lar }) {
           ) : (
             <span className="inline-flex min-h-12 items-center text-ink-mute">Sem avaliações</span>
           )}
-          <VerifiedBadge lar={lar} size="md" showPending />
+          {/* no telemóvel, o selo resumido; a partir do tablet, os três níveis por extenso na linha de baixo */}
+          <VerifiedBadge lar={lar} size="md" showPending className="sm:hidden" />
           <Frescura lar={lar} />
         </div>
+      </Reveal>
+      <Reveal variant="up" delay={340} className="max-sm:hidden">
+        <SeloNiveis lar={lar} className="mt-1 flex-row flex-wrap gap-x-6 gap-y-1 text-sm" />
       </Reveal>
     </header>
   )

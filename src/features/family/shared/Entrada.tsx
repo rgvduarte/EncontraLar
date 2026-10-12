@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import { BadgeCheck, Check } from 'lucide-react'
+import { BadgeCheck, Check, Phone } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
-import { Button } from '@/components/ui/Button'
+import { Button, buttonClasses } from '@/components/ui/Button'
 import { InputField } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/components/ui/Toast'
@@ -46,7 +46,7 @@ export function ConfirmarEntradaModal({ pedido, open, onClose }: { pedido: Pedid
     if (data < min) return setErro(`Escolha um dia a partir de ${diaMes(min)}, quando fez o pedido.`)
     confirmarEntradaFamilia(c.id, data)
     onClose()
-    toast.success('Entrada confirmada', `${maiuscula(oLar(lar.nome))} é avisada. Já pode deixar a sua avaliação.`)
+    toast.success('Entrada confirmada', 'A instituição foi avisada. Já pode deixar a sua avaliação.')
   }
 
   return (
@@ -201,7 +201,8 @@ export function EntradaTile({
     return (
       <section aria-labelledby={titleId} className={caixa}>
         {tile && <p className="eyebrow">Entrada registada pela instituição</p>}
-        <H id={titleId} className={titulo}>
+        {/* frase longa: um degrau abaixo no telemóvel */}
+        <H id={titleId} className={cn(titulo, tile && 'max-sm:text-xl')}>
           {maiuscula(oLar(lar.nome))} registou a entrada {deNome(c.perfil)} a {diaMes(c.entrada!.data)}. Confirma?
         </H>
         <p className="mt-2 max-w-2xl text-ink-mute">Com a sua confirmação, a entrada fica verificada e pode avaliar a instituição.</p>
@@ -210,12 +211,10 @@ export function EntradaTile({
             Confirmar
           </Button>
           {lar.telefone && (
-            <p className="text-center text-ink-mute sm:text-left">
-              Não está certo?{' '}
-              <a href={telHref(lar.telefone)} className="link inline-flex min-h-12 items-center">
-                Ligar para a instituição
-              </a>
-            </p>
+            <a href={telHref(lar.telefone)} className={buttonClasses('secondary', 'md', 'w-full sm:w-auto')}>
+              <Phone aria-hidden />
+              Não está certo? Ligar
+            </a>
           )}
         </div>
       </section>
@@ -225,10 +224,13 @@ export function EntradaTile({
   // passo === 'avaliar'
   return (
     <section aria-labelledby={titleId} className={caixa}>
-      <p className={cn('flex items-center gap-1.5 text-sm font-semibold', entradaVerificada(c) ? 'text-terra-700' : 'text-ink-mute')}>
-        {entradaVerificada(c) ? <BadgeCheck aria-hidden className="size-4" /> : <Check aria-hidden className="size-4" />}
-        {entradaVerificada(c) ? 'Entrada verificada' : 'Entrada confirmada'}
-      </p>
+      {/* no cartão, o estado da entrada já está por cima */}
+      {tile && (
+        <p className={cn('flex items-center gap-1.5 text-sm font-semibold', entradaVerificada(c) ? 'text-terra-700' : 'text-ink-mute')}>
+          {entradaVerificada(c) ? <BadgeCheck aria-hidden className="size-4" /> : <Check aria-hidden className="size-4" />}
+          {entradaVerificada(c) ? 'Entrada verificada' : 'Entrada confirmada'}
+        </p>
+      )}
       <H id={titleId} className={titulo}>
         Avaliar {lar.nome}
       </H>

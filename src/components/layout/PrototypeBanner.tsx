@@ -14,8 +14,9 @@ export function PrototypeBanner() {
   })
   if (closed) return null
   return (
-    // data-fundo-do-menu: inerte com o menu móvel aberto (com a página descida, o Tab ia parar aqui, fora do ecrã)
-    <div className="bg-sand text-ink-soft" data-fundo-do-menu>
+    // data-fundo-do-menu: inerte com o menu móvel aberto (com a página descida, o Tab ia parar aqui, fora do ecrã).
+    // <section> com nome: o aviso fica dentro de uma região (axe "region"), como o resto da página
+    <section aria-label="Aviso de protótipo" className="bg-sand text-ink-soft" data-fundo-do-menu>
       <div className="container-page relative flex min-h-9 items-center justify-center py-1 pr-12 text-center text-xs sm:min-h-10 sm:text-sm">
         <p>
           <span className="sm:hidden">Protótipo · dados fictícios.</span>
@@ -41,6 +42,6 @@ export function PrototypeBanner() {
           <X aria-hidden className="size-4" />
         </button>
       </div>
-    </div>
+    </section>
   )
 }

@@ -21,7 +21,7 @@ export interface DashboardNavItem {
 const contagem = (n: DashboardNavItem) => `${n.badge} ${n.badgeLabel ?? (n.badge === 1 ? 'novo' : 'novos')}`
 
 /**
- * Estrutura comum dos painéis (família e instituição): barra lateral fixa no desktop,
+ * Estrutura comum dos painéis (família, instituição e profissional): barra lateral fixa no desktop,
  * navegação em pílulas deslizáveis no telemóvel.
  */
 export function DashboardShell({
@@ -43,9 +43,9 @@ export function DashboardShell({
   aside?: ReactNode
   children: ReactNode
 }) {
-  // no telemóvel, a conta de instituição já navega pelo painel na barra inferior
+  // no telemóvel, as contas de instituição e de profissional já navegam pelo painel na barra inferior (MobileTabBar)
   const user = useCurrentUser()
-  const pilulasMoveis = user?.role !== 'lar'
+  const pilulasMoveis = user?.role !== 'lar' && user?.role !== 'profissional'
   // manter a pílula ativa visível (centrada) na fila deslizável
   const fila = useRef<HTMLUListElement>(null)
   const { pathname } = useLocation()

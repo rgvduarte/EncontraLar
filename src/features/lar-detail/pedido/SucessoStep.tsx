@@ -13,7 +13,7 @@ export function SucessoStep({ lar, c }: { lar: Lar; c: Candidatura }) {
   const passos = [
     {
       t: 'A equipa técnica recebe o pedido',
-      d: `${OLar(lar.nome)} vê primeiro o perfil de cuidados de ${nome}, sem dados pessoais. O seu contacto só é partilhado quando aceitar o pedido.`,
+      d: `${OLar(lar.nome)} vê primeiro o perfil de cuidados, sem dados pessoais. O nome de ${nome} e o seu contacto só são partilhados quando aceitar o pedido.`,
     },
     {
       t: 'Responde-lhe em poucos dias úteis',

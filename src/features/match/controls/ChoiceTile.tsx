@@ -36,7 +36,8 @@ export function ChoiceTile({
       <span
         aria-hidden
         className={cn(
-          'absolute top-5 right-5 flex size-6 items-center justify-center border-[1.5px] border-line-strong bg-white',
+          // o indicador é que mostra o estado (a borda do cartão pode ficar clara): contorno com 3:1, como no ChoiceCard
+          'absolute top-5 right-5 flex size-6 items-center justify-center border-[1.5px] border-pine-400 bg-white',
           'transition-[background-color,border-color,scale] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)]',
           'scale-90 group-has-[:checked]/tile:scale-100 group-has-[:checked]/tile:border-terra-600 group-has-[:checked]/tile:bg-terra-600',
           type === 'radio' ? 'rounded-full' : 'rounded-md',

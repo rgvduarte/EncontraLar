@@ -30,7 +30,7 @@ const NIVEIS = [
 
 /**
  * Lista compacta dos níveis de verificação de uma instituição: cada nível com um visto (cumprido) ou um círculo
- * vazio (ainda não). O estado não depende só da cor nem do ícone: o leitor de ecrã ouve "Licença confirmada: sim".
+ * vazio (ainda não). O estado não depende só da cor nem do ícone: o leitor de ecrã ouve "Licença confirmada (sim)".
  * Por omissão é uma coluna; passe `className="sm:flex-row sm:gap-6"` para a pôr numa linha.
  */
 export function SeloNiveis({ lar, className }: { lar: Pick<Lar, 'verificacao' | 'reviews'>; className?: string }) {
@@ -50,7 +50,8 @@ export function SeloNiveis({ lar, className }: { lar: Pick<Lar, 'verificacao' | 
             )}
             <span className={ok ? 'text-ink' : 'text-ink-mute'}>
               {texto}
-              <span className="sr-only">{ok ? ': sim' : ': ainda não'}</span>
+              {/* entre parênteses: o sr-only é absoluto e o leitor de ecrã põe um espaço antes ("Licença confirmada (sim)") */}
+              <span className="sr-only"> {ok ? '(sim)' : '(ainda não)'}</span>
             </span>
           </li>
         )

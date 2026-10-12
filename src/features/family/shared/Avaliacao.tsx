@@ -31,28 +31,33 @@ export function StarRating({
   onChange,
   size = 'md',
   error,
+  erroPartilhado,
 }: {
   label: string
   value: number
   onChange: (n: number) => void
   size?: 'md' | 'lg'
+  /** mensagem de erro própria, por baixo das estrelas */
   error?: string
+  /** id de uma mensagem de erro comum a vários grupos (ex.: "Avalie os quatro aspetos.") */
+  erroPartilhado?: string
 }) {
   const id = useId()
   const [hover, setHover] = useState(0)
   const mostra = hover || value
   const lg = size === 'lg'
+  const invalido = Boolean(error || erroPartilhado)
   return (
     <div
       role="radiogroup"
       aria-labelledby={`${id}-l`}
-      aria-describedby={error ? `${id}-e` : undefined}
+      aria-describedby={error ? `${id}-e` : erroPartilhado}
       aria-required
-      aria-invalid={error ? true : undefined}
-      data-invalido={error ? '' : undefined}
+      aria-invalid={invalido || undefined}
+      data-invalido={invalido ? '' : undefined}
       className={cn('grid items-center gap-x-3', lg ? 'grid-cols-[auto_minmax(0,1fr)] gap-y-2' : 'grid-cols-[auto_minmax(0,1fr)] gap-y-0.5 sm:grid-cols-[8.5rem_auto_minmax(0,1fr)]')}
     >
-      <span id={`${id}-l`} className={cn('col-span-2 font-medium text-ink', lg ? 'text-lg' : 'sm:col-span-1')}>
+      <span id={`${id}-l`} className={cn('col-span-2 font-medium', invalido ? 'text-alert-700' : 'text-ink', lg ? 'text-lg' : 'sm:col-span-1')}>
         {label}
       </span>
       <div className="-ml-1.5 flex" onPointerLeave={() => setHover(0)}>
@@ -132,7 +137,8 @@ export function AvaliarModal({ c, lar, open, onClose }: { c: Candidatura; lar: L
     // só ao abrir
   }, [open])
 
-  const erroEstrelas = (v: number) => (tentou && !v ? 'Escolha de 1 a 5 estrelas.' : undefined)
+  const erroAspetosId = `${formId}-aspetos`
+  const faltaAspeto = tentou && ASPETOS.some((a) => !aspetos[a.k])
   const erroTexto = tentou && texto.trim().length < MIN_TEXTO ? 'Escreva pelo menos uma frase.' : undefined
 
   const submit = (e: FormEvent) => {
@@ -194,7 +200,7 @@ export function AvaliarModal({ c, lar, open, onClose }: { c: Candidatura; lar: L
         </div>
       ) : (
         <form id={formId} ref={form} onSubmit={submit} noValidate className="flex flex-col gap-8">
-          <StarRating label="Nota geral" size="lg" value={nota} onChange={setNota} error={erroEstrelas(nota)} />
+          <StarRating label="Nota geral" size="lg" value={nota} onChange={setNota} error={tentou && !nota ? 'Escolha de 1 a 5 estrelas.' : undefined} />
           <div className="flex flex-col gap-4 border-t border-line pt-6 sm:gap-2">
             {ASPETOS.map((a) => (
               <StarRating
@@ -202,9 +208,14 @@ export function AvaliarModal({ c, lar, open, onClose }: { c: Candidatura; lar: L
                 label={a.label}
                 value={aspetos[a.k]}
                 onChange={(n) => setAspetos((s) => ({ ...s, [a.k]: n }))}
-                error={erroEstrelas(aspetos[a.k])}
+                erroPartilhado={tentou && !aspetos[a.k] ? erroAspetosId : undefined}
               />
             ))}
+            {faltaAspeto && (
+              <p id={erroAspetosId} className="text-sm font-medium text-alert-700">
+                Avalie os quatro aspetos, de 1 a 5 estrelas.
+              </p>
+            )}
           </div>
           <TextareaField
             label="A sua opinião"

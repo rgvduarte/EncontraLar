@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useCandidaturasDoLar, useCurrentUser } from '@/lib/store'
 import { pedidosPorTratar } from '@/features/lar-dashboard/lib/derive'
+import { usePropostasPendentes } from '@/features/pro/shared/data'
 import { useLenis } from '@/components/motion/SmoothScroll'
 import { prefersReducedMotion } from '@/lib/motion'
 import { cn } from '@/lib/cn'
@@ -76,6 +77,8 @@ export function MobileTabBar() {
   const pedidos = useCandidaturasDoLar(user?.role === 'lar' ? user.larId : undefined)
   // o mesmo número que a barra lateral do painel: pedidos novos + visitas por confirmar (sem contar duas vezes)
   const porTratar = user?.role === 'lar' ? pedidosPorTratar(pedidos) : 0
+  // profissional: o mesmo número que a barra lateral dos casos (vagas propostas à espera de resposta)
+  const propostas = usePropostasPendentes()
 
   useEffect(() => {
     document.documentElement.dataset.tabbar = visible ? 'on' : 'off'
@@ -87,7 +90,15 @@ export function MobileTabBar() {
     user?.role === 'profissional'
       ? [
           // Casos fica ativo na lista e no detalhe de um caso, mas não em "Novo caso" (que tem separador próprio)
-          { to: '/casos', label: 'Casos', icon: FolderOpen, end: true, ativo: (p: string) => /^\/casos(\/|$)/.test(p) && !/^\/casos\/novo(\/|$)/.test(p) },
+          {
+            to: '/casos',
+            label: 'Casos',
+            icon: FolderOpen,
+            end: true,
+            ativo: (p: string) => /^\/casos(\/|$)/.test(p) && !/^\/casos\/novo(\/|$)/.test(p),
+            badge: propostas,
+            badgeLabel: propostas === 1 ? 'vaga por responder' : 'vagas por responder',
+          },
           { to: '/casos/novo', label: 'Novo caso', icon: SquarePlus },
           // a pesquisa serve para escolher instituições a quem enviar o caso: volta à última desta sessão
           { to: ultimaPesquisa(), label: 'Mapa', icon: Map },

@@ -52,13 +52,14 @@ function AreaReservada({ role, atual }: { role: Role; atual: Role }) {
         title={AREA[role]}
         text={
           role === 'profissional'
-            ? `Tem sessão iniciada com uma conta de ${conta.nome}. Os casos e encaminhamentos são geridos por assistentes sociais de hospitais, centros de saúde e autarquias.`
+            ? `Tem sessão iniciada com uma conta de ${conta.nome}. Os casos são geridos por assistentes sociais de hospitais, centros de saúde e autarquias.`
             : `Tem sessão iniciada com uma conta de ${conta.nome}.`
         }
         action={
           <div className="flex flex-col items-center gap-3 sm:flex-row">
             <ButtonLink to={conta.painel}>{conta.acao}</ButtonLink>
-            <Button variant="subtle" onClick={() => void outraConta()}>
+            {/* branco sobre o cinza do cartão (o "subtle" cinza desaparecia) */}
+            <Button variant="inverse" onClick={() => void outraConta()}>
               Entrar com outra conta
             </Button>
           </div>

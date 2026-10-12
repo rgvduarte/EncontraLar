@@ -174,7 +174,8 @@ function ResumoAnonimoModal({ c, lar, agora, open, onClose }: { c: Candidatura; 
       onClose={onClose}
       size="lg"
       title={nomePedido(c)}
-      description={`${relacaoTexto(c)} · recebido a ${dataLonga(c.criadaEm)}`}
+      // a origem já está nas etiquetas logo abaixo
+      description={`${r.origem === 'familia' ? 'Pedido de uma família · r' : 'R'}ecebido a ${dataLonga(c.criadaEm)}`}
       footer={acoesDoPedido(c, lar, agora).length > 0 ? <PedidoAcoes c={c} lar={lar} agora={agora} variante="folha" className="w-full" /> : undefined}
     >
       <div className="flex flex-col gap-5">

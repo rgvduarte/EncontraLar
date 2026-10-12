@@ -84,6 +84,8 @@ export default function PedidosPage({ lar, cands }: { lar: Lar; cands: Candidatu
       ? ordenarNovos(doFiltro, agora)
       : doFiltro.sort((a, b) => (filtro === 'concluidos' ? porMarcar(b) - porMarcar(a) : 0) || b.atualizadaEm.localeCompare(a.atualizadaEm))
 
+  const aMarcar = lista.filter((c) => porMarcar(c) === 1).length
+
   const mudarFiltro = (f: FiltroPedidos) => {
     const next = new URLSearchParams(params)
     next.set('filtro', f)
@@ -138,6 +140,7 @@ export default function PedidosPage({ lar, cands }: { lar: Lar; cands: Candidatu
           <p role="status" aria-live="polite" className="mt-2 text-ink-mute">
             {lista.length ? RESUMO_FILTRO[filtro](lista.length) : def.vazio}
             {visitas[filtro] > 0 && ` Há ${visitas[filtro] === 1 ? '1 visita' : `${visitas[filtro]} visitas`} por confirmar.`}
+            {filtro === 'concluidos' && aMarcar > 0 && ` ${aMarcar === 1 ? '1 vaga aceite espera' : `${aMarcar} vagas aceites esperam`} que marque a entrada.`}
           </p>
         )}
 

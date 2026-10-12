@@ -41,7 +41,7 @@ const naoAceitar = (c: Candidatura, label = 'Não aceitar'): Acao => ({
   confirmVariant: 'danger',
   // antes de aceitar, nem no diálogo aparece o nome
   titulo: bloqueado(c) ? `${label} este pedido?` : `${label} o pedido de ${c.perfil.nome}?`,
-  explica: `${capitalizar(quemPediu(c))} é avisado(a) de que, neste momento, não tem condições para este perfil. Uma nota curta ajuda a procurar noutro lado sem perder tempo.`,
+  explica: `${capitalizar(quemPediu(c))} é avisado(a) de que, neste momento, a casa não tem condições para este perfil. Uma nota curta ajuda a procurar noutro lado sem perder tempo.`,
   confirmar: label,
   sugestoes: [
     'Neste momento não temos condições para assegurar os cuidados de que precisa.',

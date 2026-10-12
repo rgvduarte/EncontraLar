@@ -42,7 +42,8 @@ function SeloAvaliacao() {
   }, [aberta])
 
   return (
-    <span ref={raiz} className="relative inline-flex" onMouseEnter={() => setAberta(true)} onMouseLeave={() => setAberta(false)}>
+    // no telemóvel a dica ancora na linha da avaliação (estrelas), para caber no ecrã; no desktop, no próprio selo
+    <span ref={raiz} className="inline-flex sm:relative" onMouseEnter={() => setAberta(true)} onMouseLeave={() => setAberta(false)}>
       <button
         type="button"
         aria-describedby={tipId}
@@ -65,7 +66,7 @@ function SeloAvaliacao() {
         id={tipId}
         role="tooltip"
         className={cn(
-          'absolute bottom-full left-0 z-10 mb-1 w-max max-w-[min(17rem,calc(100vw-3rem))] rounded-xl bg-ink px-3.5 py-2.5 text-sm leading-snug text-white shadow-lift',
+          'absolute bottom-full left-0 z-10 mb-1 w-max max-w-[min(17rem,calc(100vw-2.5rem))] rounded-xl bg-ink px-3.5 py-2.5 text-sm leading-snug text-white shadow-lift',
           'transition-[opacity,visibility,translate] duration-200 ease-[cubic-bezier(.25,.1,.25,1)] motion-reduce:transition-none',
           aberta ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-1 opacity-0',
         )}
@@ -79,7 +80,7 @@ function SeloAvaliacao() {
 function Opiniao({ r, nova }: { r: Review; nova?: boolean }) {
   return (
     <li className={cn('border-b border-line py-7', nova && 'ficha-troca')}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div className="relative flex flex-wrap items-center gap-x-3 gap-y-1">
         <Stars value={r.nota} />
         {r.verificada && <SeloAvaliacao />}
       </div>

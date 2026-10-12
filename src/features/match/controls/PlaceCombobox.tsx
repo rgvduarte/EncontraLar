@@ -177,8 +177,8 @@ export function PlaceCombobox({
           onKeyDown={onKeyDown}
           className={cn(
             'min-h-14 w-full rounded-2xl border bg-white py-3 pr-14 pl-12 text-lg text-ink placeholder:text-ink-mute',
-            'transition-[border-color,box-shadow] duration-200 hover:border-pine-400 focus:border-terra-500 focus:ring-4 focus:ring-terra-100 focus:outline-none',
-            error ? 'border-alert-600' : 'border-line-strong',
+            'transition-[border-color,box-shadow] duration-200 hover:border-pine-500 focus:border-terra-500 focus:ring-4 focus:ring-terra-100 focus:outline-none',
+            error ? 'border-alert-600' : 'border-pine-400',
           )}
         />
         {query && (

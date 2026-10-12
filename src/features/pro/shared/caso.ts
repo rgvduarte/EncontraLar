@@ -175,8 +175,8 @@ export function ordenarRespostas(cs: Candidatura[]): Candidatura[] {
   return [...cs].sort((a, b) => ORDEM_RESPOSTA[a.estado] - ORDEM_RESPOSTA[b.estado] || b.atualizadaEm.localeCompare(a.atualizadaEm))
 }
 
-/** Notas escritas do lado de quem fez o pedido (não são "da instituição"). */
-const NOTA_NOSSA = /^Encaminhado por|pela família|^A família|^Vaga aceite/
+/** Notas automáticas (encaminhamento, respostas da família, registos de entrada): não são palavras da instituição. */
+const NOTA_NOSSA = /^Encaminhado por|pela família|^A família|^Vaga aceite|^Entrada (registada|confirmada)/
 
 /** Última nota escrita pela instituição no histórico do pedido. */
 export function ultimaNotaDoLar(c: Pick<Candidatura, 'historico'>): { nota: string; data: string } | null {

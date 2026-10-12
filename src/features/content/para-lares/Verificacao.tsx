@@ -1,22 +1,32 @@
 /**
- * A verificação em quatro passos: pedido → licença → visita → selo.
- * Uma linha "desenha-se" com o scroll e acende cada passo quando lá chega
- * (horizontal no desktop, vertical no telemóvel — segue a linha de leitura).
+ * Os três níveis de verificação (docs/MODELO-NEGOCIO.md): licença confirmada → visitada pela equipa →
+ * avaliações verificadas. Uma linha "desenha-se" com o scroll e acende cada nível quando lá chega
+ * (horizontal no desktop, vertical no telemóvel — segue a linha de leitura). Por baixo, o mesmo selo
+ * tal como aparece na ficha da instituição de exemplo (SeloNiveis).
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { Lar } from '@/types'
 import { useLares } from '@/lib/store'
 import { num } from '@/lib/format'
 import { range, subscribeScroll, usePrefersReducedMotion } from '@/lib/motion'
-import { SeloVerificado } from '@/components/brand/SeloVerificado'
+import { SeloNiveis, SeloVerificado } from '@/components/brand/SeloVerificado'
 import { Reveal } from '@/components/motion'
 import { cn } from '@/lib/cn'
 import { SectionTitle } from '../shared/ui'
 
 const PASSOS = [
-  { t: 'Pedido', d: 'Regista a instituição e o número da licença.' },
-  { t: 'Licença', d: 'Confirmamos a licença emitida pela Segurança Social.' },
-  { t: 'Visita', d: 'Visitamos a casa, em data combinada consigo.' },
-  { t: 'Selo', d: 'Aparece na ficha, com a data. Renova-se todos os anos.' },
+  {
+    t: 'Licença confirmada',
+    d: 'Confirmamos a licença de funcionamento na Carta Social e no Instituto da Segurança Social (ISS).',
+  },
+  {
+    t: 'Visitada pela equipa',
+    d: 'A equipa EncontraLar visita a casa, em data combinada consigo. A visita repete-se todos os anos.',
+  },
+  {
+    t: 'Avaliações verificadas',
+    d: 'Só as escrevem famílias cuja entrada foi confirmada. Ninguém as compra nem as escolhe.',
+  },
 ] as const
 
 /** Liga a linha ao scroll: posiciona a calha entre o 1.º e o último ponto e enche-a até à linha de leitura. */
@@ -82,9 +92,9 @@ function useLinha(n: number) {
   return { lista, calha, enchimento, pontos, chegou }
 }
 
-export function Verificacao() {
+export function Verificacao({ lar }: { lar: Lar }) {
   const lares = useLares()
-  const verificadas = useMemo(() => lares.filter((l) => l.verificacao.estado === 'verificado').length, [lares])
+  const visitadas = useMemo(() => lares.filter((l) => l.verificacao.estado === 'verificado').length, [lares])
   const { lista, calha, enchimento, pontos, chegou } = useLinha(PASSOS.length)
   const selo = chegou >= PASSOS.length
 
@@ -98,13 +108,13 @@ export function Verificacao() {
           <Reveal variant="blur" delay={120}>
             <SectionTitle
               id="pl-verificacao"
-              title="Verificadas, uma a uma."
-              subtitle={`O selo não se compra: as regras são as mesmas para todas as instituições. ${num(verificadas)} das ${num(lares.length)} instituições do mapa já o têm.`}
+              title="Verificadas, em três níveis."
+              subtitle={`O selo não se compra: as regras são as mesmas para todas as instituições. ${num(visitadas)} das ${num(lares.length)} instituições do mapa já foram visitadas.`}
             />
           </Reveal>
         </div>
 
-        <ol ref={lista} className="relative mx-auto mt-14 grid max-w-5xl grid-cols-1 gap-10 sm:mt-20 md:grid-cols-4 md:gap-6">
+        <ol ref={lista} className="relative mx-auto mt-14 grid max-w-4xl grid-cols-1 gap-10 sm:mt-20 md:grid-cols-3 md:gap-8">
           <span ref={calha} aria-hidden className="absolute overflow-hidden rounded-full bg-line-strong">
             <span ref={enchimento} className="absolute inset-0 origin-top-left bg-ink will-change-transform" style={{ transform: 'scale(0)' }} />
           </span>
@@ -125,18 +135,30 @@ export function Verificacao() {
                 >
                   {ultimo && selo && <span className="absolute inset-0 animate-ping rounded-full bg-terra-600/40 [animation-iteration-count:2] motion-reduce:hidden" />}
                 </span>
-                {/* o passo por chegar só desce um pouco (sem esbater): o texto mantém o contraste AA; o ponto e a linha marcam o progresso */}
+                {/* o nível por chegar só desce um pouco (sem esbater): o texto mantém o contraste AA; o ponto e a linha marcam o progresso */}
                 <div className={cn('transition-[translate] duration-700 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none', ok ? 'translate-y-0' : 'translate-y-2')}>
                   <h3 className="text-xl font-semibold text-ink">
-                    <span className="sr-only">Passo {i + 1}: </span>
+                    <span className="sr-only">Nível {i + 1}: </span>
                     {p.t}
                   </h3>
-                  <p className="mt-1.5 text-base text-ink-mute md:mx-auto md:max-w-[22ch]">{p.d}</p>
+                  <p className="mt-1.5 text-base text-ink-mute md:mx-auto md:max-w-[26ch]">{p.d}</p>
                 </div>
               </li>
             )
           })}
         </ol>
+
+        {/* o produto é a imagem: os mesmos três níveis, como aparecem na ficha */}
+        <Reveal variant="fade" delay={150} className="mx-auto mt-16 flex max-w-xl flex-col items-center sm:mt-24">
+          <figure className="w-full rounded-[1.75rem] bg-white p-6 shadow-soft sm:p-8">
+            <figcaption className="text-sm text-ink-mute">Na ficha da instituição</figcaption>
+            <p className="mt-1 text-xl font-semibold text-ink">{lar.nome}</p>
+            <SeloNiveis lar={lar} className="mt-4 text-base sm:flex-row sm:flex-wrap sm:gap-x-6" />
+          </figure>
+          <p className="mt-4 max-w-[46ch] text-center text-base text-ink-mute">
+            Cada nível tem um visto quando está cumprido. O que ainda falta também se vê.
+          </p>
+        </Reveal>
       </div>
     </section>
   )

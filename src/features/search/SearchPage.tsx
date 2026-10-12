@@ -12,6 +12,7 @@ import { FiltersModal, type ModoFiltros, type Rascunho } from './FiltersModal'
 import { refTitulo } from './focoTitulo'
 import { filtrar, noLocal, passaFiltros } from './filtering'
 import { MobileBar, ViewToggle } from './MobileBar'
+import { procuraDaPesquisa, useRegistoProcura } from './procura'
 import { cardDomId, NotaFinal, PAGINA, ResultsList } from './ResultsList'
 import { ResultsSummary, tituloPesquisa } from './ResultsSummary'
 import { SearchMap } from './SearchMap'
@@ -63,6 +64,9 @@ export default function SearchPage() {
   // a última pesquisa fica guardada sempre que o URL muda (para o cabeçalho e a barra de abas)
   const { pathname, search } = useLocation()
   useEffect(() => guardar(CHAVE_ULTIMA, pathname + search), [pathname, search])
+
+  // procura sem vaga agora num lugar ou distrito escolhido: registo anónimo quando a pesquisa assenta (1,5 s sem mudar o URL)
+  useRegistoProcura(procuraDaPesquisa(state, resultados.length, comVaga), search)
 
   // chave dos filtros (sem ordenação nem vista): reenquadra o mapa e repõe a paginação
   const fitKey = useMemo(() => toSearchParams({ ...state, ordem: 'relevancia', vista: 'lista' }).toString(), [state])

@@ -56,8 +56,8 @@ export function StepPessoa({ r, patch, erros, p }: StepProps) {
                   placeholder="Ex.: 84"
                   className={cn(
                     'min-h-13 w-full rounded-2xl border bg-white py-3 pr-16 pl-4 text-base text-ink tabular placeholder:text-ink-mute',
-                    'transition-[border-color,box-shadow] duration-200 hover:border-pine-400 focus:border-terra-500 focus:ring-4 focus:ring-terra-100 focus:outline-none',
-                    invalid ? 'border-alert-600' : 'border-line-strong',
+                    'transition-[border-color,box-shadow] duration-200 hover:border-pine-500 focus:border-terra-500 focus:ring-4 focus:ring-terra-100 focus:outline-none',
+                    invalid ? 'border-alert-600' : 'border-pine-400',
                   )}
                 />
                 <span

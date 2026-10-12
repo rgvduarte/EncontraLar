@@ -22,9 +22,7 @@ const ComoOrdenamosPage = lazy(() => import('@/features/content/ComoOrdenamosPag
 // canal profissional (assistentes sociais) e confirmação rápida de vagas sem login (docs/MODELO-NEGOCIO.md)
 const CasosApp = lazy(() => import('@/features/pro/CasosApp'))
 const ProfissionaisPage = lazy(() => import('@/features/pro/ProfissionaisPage'))
-// TEMP (shared-ui): enquanto o ficheiro não existe, o import estático partia o servidor de desenvolvimento (500)
-const paginaConfirmar = import.meta.glob<{ default: React.ComponentType }>('./features/confirmar/ConfirmarPage.tsx')
-const ConfirmarPage = lazy(() => (paginaConfirmar['./features/confirmar/ConfirmarPage.tsx'] ?? (() => import('@/features/content/NotFoundPage')))())
+const ConfirmarPage = lazy(() => import('@/features/confirmar/ConfirmarPage'))
 const NotFoundPage = lazy(() => import('@/features/content/NotFoundPage'))
 
 // HashRouter: URLs do tipo /#/pesquisa — funciona no GitHub Pages sem configuração de servidor.

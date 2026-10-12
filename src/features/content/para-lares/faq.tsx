@@ -20,10 +20,32 @@ export const LARES_FAQ: FaqItem[] = [
   {
     q: 'Como se sabe que a pessoa entrou através do EncontraLar?',
     a: (
-      <p>
-        O pedido nasce na plataforma, com data. Quando a pessoa entra, a instituição marca a entrada no painel e a família confirma-a do seu
-        lado. Conta a entrada que acontece até 12 meses depois do pedido.
-      </p>
+      <>
+        <p>
+          O primeiro pedido fica registado na plataforma, com data. Quando a pessoa entra, a instituição carrega em «Entrou» no painel e a
+          família responde a «Já entrou?» do seu lado. Basta uma confirmação para a entrada contar; com as duas fica «Entrada verificada».
+        </p>
+        <p>
+          Conta a entrada que acontece até 12 meses depois desse primeiro pedido. Só a família que confirmou a entrada pode deixar uma
+          avaliação verificada, por isso tem razões para o fazer. Nos lares privados, é esta entrada que dá lugar à taxa fixa; IPSS e
+          Misericórdias ficam isentas.
+        </p>
+      </>
+    ),
+  },
+  {
+    q: 'O que vê a instituição antes de aceitar um pedido?',
+    a: (
+      <>
+        <p>
+          Um resumo sem identificação: faixa etária, grau de dependência, cuidados necessários, zona, orçamento, urgência e origem do pedido
+          (uma família, ou um hospital com a data prevista de alta). Chega para decidir se a casa tem condições.
+        </p>
+        <p>
+          O nome, o contacto e o perfil completo só aparecem quando carrega em «Aceitar e ver contacto». Se recusar sem aceitar, nunca chega a
+          vê-los.
+        </p>
+      </>
     ),
   },
   {
@@ -61,8 +83,9 @@ export const LARES_FAQ: FaqItem[] = [
     q: 'Quem vê os dados de saúde das famílias?',
     a: (
       <p>
-        Só a instituição a quem a família envia o pedido, e só com o seu consentimento explícito: são dados de categoria especial (artigo 9.º
-        do RGPD). Não há listas de contactos à venda.{' '}
+        Só as instituições a quem a família, ou o profissional de saúde que acompanha a pessoa, envia o pedido, e só com consentimento
+        explícito: são dados de categoria especial (artigo 9.º do RGPD). Mesmo essas veem primeiro o resumo sem identificação. Não há listas
+        de contactos à venda.{' '}
         <Link to="/privacidade" className="link">
           Ler a política de privacidade
         </Link>

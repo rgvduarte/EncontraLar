@@ -22,6 +22,8 @@ import { SavePanel } from './SavePanel'
 import { ResultsStats } from './ResultsStats'
 import { SaveBar } from './SaveBar'
 import { urlPesquisa } from './searchLink'
+import { procuraDoPerfil } from './procura'
+import { useRegistoProcura } from '@/features/search/procura'
 import { scrollPara } from '../motion'
 import { cn } from '@/lib/cn'
 import { NotaFinal } from '../NotaFinal'
@@ -66,6 +68,9 @@ export function ResultsView({
   const longe = useMemo(() => compativeis.filter((m) => m.distanciaKm > raio), [compativeis, raio])
   // "com vaga agora" = vaga para quem pede hoje (um lugar livre prometido à lista de espera não conta)
   const comVaga = boas.filter((m) => vagaParaNovos(larPorId.get(m.larId)!, m.espera)).length
+  // nenhuma compatível com vaga agora na zona: registo anónimo da procura (sem o nome), quando as respostas assentam
+  const procura = useMemo(() => (perfil ? procuraDoPerfil(perfil, boas.length, comVaga) : null), [perfil, boas.length, comVaga])
+  useRegistoProcura(procura, JSON.stringify(perfil))
   // nenhuma sugestão cabe no orçamento: também vale a pena explicar o que limita
   const semNenhumaNoOrcamento = boas.length > 0 && perfil != null && !boas.some((m) => m.precoRef <= perfil.orcamentoMax)
   const diag = useMemo(

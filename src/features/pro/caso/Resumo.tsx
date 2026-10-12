@@ -72,7 +72,7 @@ export function Resumo({ caso, perfil, cands, onVerRespostas }: { caso: Caso; pe
           </div>
           <div>
             <dt className="text-sm text-ink-mute">Referência</dt>
-            <dd className="mt-1 font-medium tabular">{caso.referencia ?? 'Sem referência'}</dd>
+            <dd className="mt-1 font-medium whitespace-nowrap">{caso.referencia ?? 'Sem referência'}</dd>
           </div>
           <div>
             <dt className="text-sm text-ink-mute">Consentimento</dt>
@@ -97,13 +97,14 @@ export function Resumo({ caso, perfil, cands, onVerRespostas }: { caso: Caso; pe
         </div>
       )}
 
-      <div className="mt-6 flex flex-wrap gap-2 border-t border-black/[0.06] pt-6 max-sm:[&>*]:flex-1">
+      {/* telemóvel: "Marcar como colocado" numa linha, "Editar" e "Fechar caso" lado a lado */}
+      <div className="mt-6 grid grid-cols-2 gap-2 border-t border-black/[0.06] pt-6 sm:flex sm:flex-wrap">
         <Button variant="secondary" icon={<Pencil aria-hidden />} onClick={() => setEditar(true)}>
           Editar
         </Button>
         {aberto ? (
           <>
-            <Button variant="secondary" icon={<CheckCircle2 aria-hidden />} onClick={() => abrir('colocado')}>
+            <Button variant="secondary" icon={<CheckCircle2 aria-hidden />} onClick={() => abrir('colocado')} className="col-span-2 max-sm:order-first">
               Marcar como colocado
             </Button>
             <Button variant="secondary" icon={<XCircle aria-hidden />} onClick={() => abrir('fechado')}>
@@ -111,7 +112,7 @@ export function Resumo({ caso, perfil, cands, onVerRespostas }: { caso: Caso; pe
             </Button>
           </>
         ) : (
-          <Button variant="secondary" icon={<RotateCcw aria-hidden />} onClick={() => reabrir(caso.estado)}>
+          <Button variant="secondary" icon={<RotateCcw aria-hidden />} onClick={() => reabrir(caso.estado)} className="max-sm:order-first">
             Reabrir caso
           </Button>
         )}
