@@ -22,6 +22,8 @@ interface Tab {
   icon: LucideIcon
   end?: boolean
   badge?: number
+  /** regra de ativação própria (ex.: Painel ativo em /familia/* exceto guardados) */
+  ativo?: (pathname: string) => boolean
 }
 
 /** Rotas de fluxo focado (têm a sua própria barra de ação no fundo) — sem barra de abas. */
@@ -39,6 +41,7 @@ export function useTabBarVisible() {
 export function MobileTabBar() {
   const user = useCurrentUser()
   const visible = useTabBarVisible()
+  const { pathname } = useLocation()
   const pedidos = useCandidaturasDoLar(user?.role === 'lar' ? user.larId : undefined)
   const novos = pedidos.filter((c) => c.estado === 'enviada').length
 
@@ -62,7 +65,9 @@ export function MobileTabBar() {
           { to: '/pesquisa', label: 'Mapa', icon: Map },
           { to: '/encontrar', label: 'Escolher', icon: Compass },
           { to: user ? '/familia/guardados' : '/entrar?voltar=%2Ffamilia%2Fguardados', label: 'Guardados', icon: Heart },
-          user ? { to: '/familia', label: 'Painel', icon: CircleUserRound, end: true } : { to: '/entrar', label: 'Entrar', icon: CircleUserRound },
+          user
+            ? { to: '/familia', label: 'Painel', icon: CircleUserRound, ativo: (p: string) => p.startsWith('/familia') && !p.startsWith('/familia/guardados') }
+            : { to: '/entrar', label: 'Entrar', icon: CircleUserRound },
         ]
 
   return (
@@ -79,11 +84,13 @@ export function MobileTabBar() {
               className={({ isActive }) =>
                 cn(
                   'relative flex h-full flex-col items-center justify-center gap-1 text-[0.8125rem] leading-none font-medium transition-colors',
-                  isActive ? 'text-ink' : 'text-ink-mute active:text-ink',
+                  (t.ativo ? t.ativo(pathname) : isActive) ? 'text-ink' : 'text-ink-mute active:text-ink',
                 )
               }
             >
-              {({ isActive }) => (
+              {({ isActive: navAtivo }) => {
+                const isActive = t.ativo ? t.ativo(pathname) : navAtivo
+                return (
                 <>
                   <span className="relative">
                     <t.icon aria-hidden className="size-6" strokeWidth={isActive ? 2.3 : 1.8} />
@@ -95,7 +102,8 @@ export function MobileTabBar() {
                   </span>
                   {t.label}
                 </>
-              )}
+                )
+              }}
             </NavLink>
           </li>
         ))}

@@ -53,15 +53,15 @@ function useLinha(n: number) {
       return { horizontal, ay, by, ro }
     }
 
-    if (reduced) {
-      medir()
-      if (enchimento.current) enchimento.current.style.transform = 'none'
-      setChegou(n)
-      return
-    }
     return subscribeScroll(() => {
       const m = medir()
       if (!m) return
+      if (reduced) {
+        // movimento reduzido: linha completa e todos os passos acesos (só se mantém a geometria certa)
+        if (enchimento.current) enchimento.current.style.transform = 'none'
+        setChegou(n)
+        return
+      }
       const vh = window.innerHeight
       const leitura = vh * 0.72
       let v: number
@@ -119,7 +119,7 @@ export function Verificacao() {
                   }}
                   aria-hidden
                   className={cn(
-                    'relative mt-1 size-5 shrink-0 rounded-full border shadow-[0_0_0_8px_var(--color-sand)] transition-[background-color,border-color,transform] duration-500 ease-[cubic-bezier(.34,1.56,.64,1)]',
+                    'relative mt-1 size-5 shrink-0 rounded-full border shadow-[0_0_0_8px_var(--color-sand)] transition-[background-color,border-color,scale] duration-500 ease-[cubic-bezier(.34,1.56,.64,1)]',
                     ok ? (ultimo ? 'scale-125 border-terra-600 bg-terra-600' : 'border-ink bg-ink') : 'scale-90 border-line-strong bg-white',
                   )}
                 >

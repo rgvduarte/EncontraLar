@@ -1,4 +1,5 @@
 import { MESES_CURTOS, MESES_LONGOS, pct } from '@/lib/format'
+import { useInView } from '@/lib/motion'
 import { cn } from '@/lib/cn'
 
 function cor(p: number) {
@@ -16,6 +17,7 @@ export function ForecastStrip({
   meses = 6,
   inicio = new Date(),
   variant = 'full',
+  animate = true,
   className,
 }: {
   /** probabilidades acumuladas (0–1) no fim de cada mês, a partir de `inicio` */
@@ -23,8 +25,12 @@ export function ForecastStrip({
   meses?: number
   inicio?: Date
   variant?: 'full' | 'mini'
+  /** barras enchem quando entram no ecrã (escalonadas); com movimento reduzido aparecem logo */
+  animate?: boolean
   className?: string
 }) {
+  const [ref, inView] = useInView<HTMLElement>({ threshold: 0.2 })
+  const on = !animate || inView
   const dados = curva.slice(0, meses).map((p, i) => {
     const d = new Date(inicio.getFullYear(), inicio.getMonth() + i, 1)
     return { p, mes: d.getMonth(), ano: d.getFullYear() }
@@ -33,10 +39,13 @@ export function ForecastStrip({
 
   if (variant === 'mini') {
     return (
-      <div className={cn('flex items-end gap-[3px]', className)} role="img" aria-label={`Probabilidade acumulada de vaga — ${resumo}`}>
+      <div ref={ref as React.RefObject<HTMLDivElement>} className={cn('flex items-end gap-[3px]', className)} role="img" aria-label={`Probabilidade acumulada de vaga — ${resumo}`}>
         {dados.map((d, i) => (
           <span key={i} className="relative block h-5 w-1.5 overflow-hidden rounded-full bg-sand-deep">
-            <span className={cn('absolute inset-x-0 bottom-0 rounded-full', cor(d.p).barra)} style={{ height: `${Math.max(10, d.p * 100)}%` }} />
+            <span
+              className={cn('absolute inset-x-0 bottom-0 h-full origin-bottom rounded-full transition-[scale] duration-700 ease-[cubic-bezier(.16,1,.3,1)]', cor(d.p).barra)}
+              style={{ scale: `1 ${on ? Math.max(0.1, d.p) : 0}`, transitionDelay: `${i * 60}ms` }}
+            />
           </span>
         ))}
       </div>
@@ -44,7 +53,7 @@ export function ForecastStrip({
   }
 
   return (
-    <ol className={cn('grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6', className)} aria-label="Probabilidade de conseguir vaga, mês a mês">
+    <ol ref={ref as React.RefObject<HTMLOListElement>} className={cn('grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6', className)} aria-label="Probabilidade de conseguir vaga, mês a mês">
       {dados.map((d, i) => {
         const c = cor(d.p)
         return (
@@ -55,7 +64,10 @@ export function ForecastStrip({
             </span>
             <span className={cn('text-3xl font-semibold tracking-tight tabular', d.p >= 0.33 ? 'text-ink' : 'text-ink-mute')}>{pct(d.p)}</span>
             <span className="h-1 overflow-hidden rounded-full bg-sand-deep">
-              <span className={cn('block h-full rounded-full', c.barra)} style={{ width: `${Math.max(3, d.p * 100)}%` }} />
+              <span
+                className={cn('block h-full origin-left rounded-full transition-[scale] duration-[900ms] ease-[cubic-bezier(.16,1,.3,1)]', c.barra)}
+                style={{ scale: `${on ? Math.max(0.03, d.p) : 0} 1`, transitionDelay: `${i * 80}ms` }}
+              />
             </span>
             <span className={cn('text-xs', c.txt)}>{c.rotulo}</span>
           </li>

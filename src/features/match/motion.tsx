@@ -175,7 +175,7 @@ export function useEntrada<T extends HTMLElement>() {
     if (inView) setAtraso(atrasoEmLote())
   }, [inView])
   const className = cn(
-    'transition-[opacity,transform] duration-700 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
+    'transition-[opacity,transform,translate,scale] duration-700 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
     inView ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0',
   )
   const style: CSSProperties = { transitionDelay: inView ? `${atraso}ms` : '0ms' }

@@ -13,7 +13,7 @@
   to {
     opacity: 1;
     transform: none;
-    filter: blur(0);
+    filter: none;
   }
 }
 @keyframes hm-rise {
@@ -34,17 +34,15 @@
     opacity: 1;
   }
 }
-/* o mapa "assenta": entra ligeiramente maior e desfocado */
+/* o mapa "assenta": entra ligeiramente maior (sem desfoque: o SVG tem ~2000 pontos) */
 @keyframes hm-settle {
   from {
     opacity: 0;
     transform: scale(1.035);
-    filter: blur(6px);
   }
   to {
     opacity: 1;
     transform: none;
-    filter: blur(0);
   }
 }
 /* pontos do mapa (aplicado por latitude, de norte para sul) */
@@ -91,7 +89,9 @@
   animation-duration: var(--hm-t, 900ms);
   animation-delay: var(--hm-d, 0ms);
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  animation-fill-mode: both;
+  /* só "backwards": o estado inicial vale durante o atraso; no fim não fica nenhum transform/filter preso
+     (que manteria camadas e contextos de empilhamento para sempre) */
+  animation-fill-mode: backwards;
 }
 /* à espera do momento de entrar (ex.: mapa ainda fora do ecrã) */
 .hm-wait {

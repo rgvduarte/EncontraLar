@@ -272,13 +272,17 @@ function visivel(i: number, p: number) {
 /** progresso da ação dentro do tempo i (termina antes da transição para o seguinte) */
 const acao = (i: number, p: number) => range(p, i / N + (i === 0 ? 0.02 : FADE), (i + 1) / N - FADE * 2)
 
-function camada(i: number, p: number): CSSProperties {
+/**
+ * Estilo de uma camada que entra/sai com o progresso. As camadas de interface (decorativas) escondem-se
+ * de todo quando invisíveis; as de texto ficam sempre na árvore de acessibilidade (o leitor de ecrã lê os três tempos).
+ */
+function camada(i: number, p: number, decorativa = true): CSSProperties {
   const v = visivel(i, p)
   const depois = p < i / N // ainda está para vir → entra por baixo; senão sai por cima
   return {
     opacity: v,
     transform: `translate3d(0, ${(1 - v) * (depois ? 28 : -28)}px, 0) scale(${mix(0.97, 1, v)})`,
-    visibility: v < 0.01 ? 'hidden' : 'visible',
+    visibility: decorativa && v < 0.01 ? 'hidden' : undefined,
   }
 }
 
@@ -338,7 +342,7 @@ function Cena({ d, p }: { d: Dados; p: number }) {
         </div>
         <ol className="relative mt-5 h-[12rem] sm:h-[9.5rem]">
           {TEMPOS.map((x, i) => (
-            <li key={x.t} aria-current={i === atual ? 'step' : undefined} className="absolute inset-x-0 top-0" style={camada(i, p)}>
+            <li key={x.t} aria-current={i === atual ? 'step' : undefined} className="absolute inset-x-0 top-0" style={camada(i, p, false)}>
               <p className="text-sm font-semibold text-pine-400 tabular">
                 0{i + 1} <span className="font-normal">de 0{N}</span>
               </p>

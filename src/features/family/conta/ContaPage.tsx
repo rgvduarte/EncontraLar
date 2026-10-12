@@ -36,7 +36,7 @@ function Bloco({ id, titulo, texto, ordem = 0, children }: { id: string; titulo:
     <section
       ref={ref}
       aria-labelledby={id}
-      style={stagger(on, ordem, 90)}
+      style={stagger(on, Math.min(ordem, 2), 90)}
       className={cn(enterCls(on, 'up'), 'grid gap-6 border-t border-line py-10 first:border-t-0 first:pt-0 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12')}
     >
       <div>

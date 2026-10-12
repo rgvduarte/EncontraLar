@@ -209,7 +209,7 @@ export function ChoiceCard({
           type === 'radio' ? 'rounded-full' : 'rounded-md',
         )}
       >
-        <Check strokeWidth={3} className="size-3.5 scale-50 opacity-0 transition-[transform,opacity] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] group-has-[:checked]:scale-100 group-has-[:checked]:opacity-100" />
+        <Check strokeWidth={3} className="size-3.5 scale-50 opacity-0 transition-[transform,translate,scale,opacity] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] group-has-[:checked]:scale-100 group-has-[:checked]:opacity-100" />
       </span>
     </label>
   )

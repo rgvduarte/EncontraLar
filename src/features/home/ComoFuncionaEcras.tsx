@@ -51,7 +51,9 @@ function Peca({ ativo, atraso = 0, de = 18, className, children }: { ativo: bool
 export function Telefone({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <div className={cn('relative aspect-[9/19.5] shrink-0 rounded-[2.9rem] bg-ink p-[9px] shadow-lift ring-1 ring-black/10', className)}>
-      <div className="relative h-full overflow-hidden rounded-[2.35rem] bg-white" inert aria-hidden>
+      {/* --p fixo: corta a herança do --p da cena presa (que muda a cada frame) — sem isto o estilo dos ~2000
+          pontos do mapa do ecrã 1 era recalculado em cada frame de scroll */}
+      <div className="relative h-full overflow-hidden rounded-[2.35rem] bg-white [--p:0]" inert aria-hidden>
         {children}
         <span aria-hidden className="absolute top-2.5 left-1/2 z-30 h-[1.45rem] w-[5.5rem] -translate-x-1/2 rounded-full bg-ink" />
       </div>

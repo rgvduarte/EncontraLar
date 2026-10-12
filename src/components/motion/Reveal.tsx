@@ -1,4 +1,4 @@
-import { Children, isValidElement, type CSSProperties, type ElementType, type ReactNode } from 'react'
+import { Children, isValidElement, type CSSProperties, type ElementType, type HTMLAttributes, type ReactNode } from 'react'
 import { useInView } from '@/lib/motion'
 import { cn } from '@/lib/cn'
 
@@ -25,6 +25,7 @@ export function Reveal({
   duration = 1000,
   className,
   style,
+  ...rest
 }: {
   children: ReactNode
   as?: ElementType
@@ -34,14 +35,15 @@ export function Reveal({
   duration?: number
   className?: string
   style?: CSSProperties
-}) {
+} & Omit<HTMLAttributes<HTMLElement>, 'children' | 'className' | 'style'>) {
   const [ref, inView] = useInView<HTMLElement>()
   return (
     <As
+      {...rest}
       ref={ref}
       style={{ transitionDelay: inView ? `${delay}ms` : '0ms', transitionDuration: `${duration}ms`, ...style }}
       className={cn(
-        'transition-[opacity,transform,filter] ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
+        'transition-[opacity,transform,translate,scale,filter] ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
         // will-change só enquanto espera para entrar (poupa memória em listas longas)
         inView ? 'translate-x-0 translate-y-0 scale-100 opacity-100 blur-0' : cn(HIDDEN[variant], 'will-change-transform'),
         className,

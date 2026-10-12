@@ -57,7 +57,7 @@ export function Stepper({
   }
 
   const btn =
-    'flex size-16 shrink-0 touch-manipulation items-center justify-center rounded-full bg-sand text-ink transition-[background-color,transform,color] duration-200 md:size-14 ' +
+    'flex size-16 shrink-0 touch-manipulation items-center justify-center rounded-full bg-sand text-ink transition-[background-color,transform,translate,scale,color] duration-200 md:size-14 ' +
     'hover:bg-sand-deep active:scale-90 active:bg-sand-deep disabled:cursor-not-allowed disabled:text-pine-300 disabled:hover:bg-sand disabled:active:scale-100'
 
   return (

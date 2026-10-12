@@ -69,7 +69,7 @@ export function MobileActionBar({
       ref={ref}
       className={cn(
         'fixed inset-x-0 bottom-0 z-[950] border-t border-black/[0.06] bg-white/85 backdrop-blur-xl backdrop-saturate-150 lg:hidden',
-        'transition-[transform,opacity] duration-500 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
+        'transition-[transform,translate,scale,opacity] duration-500 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
         visivel ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-full opacity-0',
       )}
       aria-hidden={!visivel}

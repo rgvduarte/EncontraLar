@@ -105,7 +105,7 @@ export function Segmented<T extends string>({
           {ind && (
             <span
               aria-hidden
-              className="absolute top-1 bottom-1 left-0 rounded-full bg-white shadow-soft transition-[transform,width] duration-[460ms] ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none"
+              className="absolute top-1 bottom-1 left-0 rounded-full bg-white shadow-soft transition-[transform,translate,scale,width] duration-[460ms] ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none"
               style={{ width: ind.w, transform: `translateX(${ind.x}px)` }}
             />
           )}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { prefersReducedMotion, useInView, easeOut } from '@/lib/motion'
 
 /** Número que conta até ao valor quando entra no ecrã. */
@@ -15,6 +15,9 @@ export function CountUp({
 }) {
   const [ref, inView] = useInView<HTMLSpanElement>()
   const [n, setN] = useState(() => (prefersReducedMotion() ? value : 0))
+  // anima a partir do valor mostrado (não recomeça do zero quando o valor muda)
+  const atual = useRef(n)
+  atual.current = n
   useEffect(() => {
     if (!inView) return
     if (prefersReducedMotion()) {
@@ -22,10 +25,11 @@ export function CountUp({
       return
     }
     let raf = 0
+    const from = atual.current
     const start = performance.now()
     const step = (t: number) => {
       const k = Math.min(1, (t - start) / duration)
-      setN(value * easeOut(k))
+      setN(from + (value - from) * easeOut(k))
       if (k < 1) raf = requestAnimationFrame(step)
     }
     raf = requestAnimationFrame(step)

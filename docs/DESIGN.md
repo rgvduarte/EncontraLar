@@ -144,3 +144,16 @@ suspensos já são globais (Layout/Header).
 | Modais (`<dialog>`) | camada superior nativa (acima de tudo) |
 
 Não inventar valores intermédios (ex.: 1050) — usar esta escala.
+
+## 10. Armadilhas conhecidas (lições da implementação)
+
+- **Tailwind 4 anima `translate`/`scale`/`rotate` como propriedades próprias.** Em transições arbitrárias usar
+  `transition-[opacity,transform,translate,scale]` (ou `transition-transform`, que já as inclui); só `transform` não anima `translate-y-*`/`scale-*`.
+- **Scroll suave (Lenis):** filas horizontais usam `data-lenis-prevent-horizontal` (a roda vertical continua a mover a página);
+  `data-lenis-prevent` só em contentores com scroll vertical próprio. Scroll programático: `useScrollTo()` de `@/components/motion`
+  (recalcula a altura antes de deslocar — necessário após páginas carregadas de forma diferida).
+- **Elementos `position: fixed` dentro de páginas** devem ir por portal para `document.body`.
+- **`sr-only` dentro de filas horizontais** precisa de um antepassado `relative`, senão alarga a página no telemóvel.
+- **Toasts** ficam acima da barra de abas; páginas com barra de ação própria definem `--actionbar-h` no `<html>` enquanto está visível.
+- **Modal** tem `onClosed` (depois da animação de fecho) para encadear diálogos sem temporizadores.
+- **`ForecastStrip`** anima sozinho ao entrar no ecrã (`animate`, por omissão true); `CountUp` anima a partir do valor anterior.

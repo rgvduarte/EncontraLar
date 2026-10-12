@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { NavLink } from 'react-router'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { NavLink, useLocation } from 'react-router'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useCurrentUser } from '@/lib/store'
@@ -41,21 +41,30 @@ export function DashboardShell({
   // no telemóvel, a conta de instituição já navega pelo painel na barra inferior
   const user = useCurrentUser()
   const pilulasMoveis = user?.role !== 'lar'
+  // manter a pílula ativa visível (centrada) na fila deslizável
+  const fila = useRef<HTMLUListElement>(null)
+  const { pathname } = useLocation()
+  useEffect(() => {
+    const row = fila.current
+    const ativo = row?.querySelector<HTMLElement>('[aria-current="page"]')
+    if (!row || !ativo) return
+    row.scrollTo({ left: ativo.offsetLeft - row.clientWidth / 2 + ativo.clientWidth / 2, behavior: 'smooth' })
+  }, [pathname])
   return (
     <div className="flex flex-1 flex-col bg-white">
       <div className="border-b border-line">
-        <div className="container-page py-8 sm:py-10">
+        <div className="container-page py-5 sm:py-10">
           {eyebrow && <p className="eyebrow mb-1.5">{eyebrow}</p>}
           <h1 className="text-3xl font-semibold sm:text-4xl">{title}</h1>
-          {subtitle && <p className="mt-2 max-w-2xl text-lg text-ink-mute">{subtitle}</p>}
+          {subtitle ? <p className="mt-2 max-w-2xl text-lg text-ink-mute">{subtitle}</p> : null}
         </div>
       </div>
 
       {/* navegação móvel */}
       <nav aria-label="Secções do painel" className={cn('sticky top-16 z-[900] border-b border-line bg-white/85 backdrop-blur-xl lg:hidden', !pilulasMoveis && 'hidden')}>
-        <ul className="container-page flex snap-x gap-2 overflow-x-auto py-3 [scrollbar-width:none]" data-lenis-prevent>
+        <ul ref={fila} className="container-page relative flex snap-x scroll-px-5 gap-2 overflow-x-auto py-3 [scrollbar-width:none]" data-lenis-prevent-horizontal>
           {nav.map((n) => (
-            <li key={n.to} className="shrink-0">
+            <li key={n.to} className="shrink-0 snap-start">
               <NavLink
                 to={n.to}
                 end={n.end}

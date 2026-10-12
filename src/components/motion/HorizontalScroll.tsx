@@ -57,8 +57,8 @@ export function HorizontalScroll({
       <section aria-label={label} className={cn('py-4', className)}>
         {header}
         <div
-          className={cn('flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] sm:px-8', trackClassName)}
-          data-lenis-prevent
+          className={cn('relative flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] sm:px-8', trackClassName)}
+          data-lenis-prevent-horizontal
         >
           {children}
         </div>

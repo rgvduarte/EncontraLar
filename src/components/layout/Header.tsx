@@ -515,7 +515,7 @@ export function Header() {
         <nav
           aria-label="Principal (móvel)"
           className={cn(
-            'absolute inset-0 flex flex-col overflow-y-auto px-6 pt-4 pb-[calc(2rem+env(safe-area-inset-bottom))] transition-[transform,opacity] duration-500 ease-[cubic-bezier(.32,.72,0,1)]',
+            'absolute inset-0 flex flex-col overflow-y-auto px-6 pt-4 pb-[calc(2rem+env(safe-area-inset-bottom))] transition-[transform,translate,scale,opacity] duration-500 ease-[cubic-bezier(.32,.72,0,1)]',
             sub ? '-translate-x-1/4 opacity-0' : 'translate-x-0 opacity-100',
           )}
           data-lenis-prevent

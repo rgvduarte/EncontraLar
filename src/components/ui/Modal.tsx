@@ -11,6 +11,8 @@ interface ModalProps {
   /** rodapé com ações */
   footer?: ReactNode
   size?: 'md' | 'lg'
+  /** chamado depois de a animação de fecho terminar (útil para encadear diálogos) */
+  onClosed?: () => void
 }
 
 /**
@@ -18,10 +20,12 @@ interface ModalProps {
  * Desktop: cartão centrado que entra com escala suave. Telemóvel: folha que sobe do fundo
  * (mais ergonómica — ações ao alcance do polegar). Anima também ao fechar.
  */
-export function Modal({ open, onClose, title, description, children, footer, size = 'md' }: ModalProps) {
+export function Modal({ open, onClose, title, description, children, footer, size = 'md', onClosed }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null)
   const [closing, setClosing] = useState(false)
   const [mounted, setMounted] = useState(open)
+  const onClosedRef = useRef(onClosed)
+  onClosedRef.current = onClosed
 
   useEffect(() => {
     const d = ref.current
@@ -38,6 +42,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
         d.close()
         setClosing(false)
         setMounted(false)
+        onClosedRef.current?.()
       }, 220)
       return () => window.clearTimeout(t)
     }
@@ -72,7 +77,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
         // desktop: cartão centrado
         'sm:m-auto sm:max-h-[calc(100dvh-3rem)] sm:w-[calc(100%-3rem)] sm:rounded-[1.75rem] sm:open:animate-[pop-in_.32s_cubic-bezier(.16,1,.3,1)_both]',
         size === 'md' ? 'sm:max-w-lg' : 'sm:max-w-2xl',
-        closing && 'pointer-events-none opacity-0 transition-[opacity,transform] duration-200 max-sm:translate-y-8 sm:scale-[0.98] backdrop:opacity-0',
+        closing && 'pointer-events-none opacity-0 transition-[opacity,transform,translate,scale] duration-200 max-sm:translate-y-8 max-sm:open:animate-none sm:scale-[0.98] sm:open:animate-none backdrop:opacity-0',
       )}
     >
       {mounted && (

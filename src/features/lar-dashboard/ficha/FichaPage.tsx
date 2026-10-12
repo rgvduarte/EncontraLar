@@ -93,7 +93,7 @@ export default function FichaPage({ lar }: { lar: Lar }) {
           aria-hidden={!form.sujo || undefined}
           className={cn(
             'absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 rounded-full bg-white/90 py-2 pr-2 pl-6 shadow-lift ring-1 ring-black/5 backdrop-blur-xl backdrop-saturate-150 max-sm:pl-2',
-            'transition-[transform,opacity] duration-500 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
+            'transition-[transform,translate,scale,opacity] duration-500 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
             form.sujo ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-[calc(100%+var(--tabbar-h)+2rem)] opacity-0',
           )}
         >

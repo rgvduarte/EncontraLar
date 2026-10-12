@@ -29,7 +29,7 @@ const SIZES: Record<ButtonSize, string> = {
 export function buttonClasses(variant: ButtonVariant = 'primary', size: ButtonSize = 'md', extra?: string) {
   return cn(
     'inline-flex items-center justify-center rounded-full font-medium leading-tight tracking-[-0.01em] whitespace-nowrap',
-    'transition-[background-color,color,box-shadow,transform] duration-200 ease-[cubic-bezier(.25,.1,.25,1)] select-none active:scale-[0.98]',
+    'transition-[background-color,color,box-shadow,transform,translate,scale] duration-200 ease-[cubic-bezier(.25,.1,.25,1)] select-none active:scale-[0.98]',
     'disabled:cursor-not-allowed disabled:active:scale-100 [&_svg]:shrink-0 [&_svg]:size-[1.1em]',
     VARIANTS[variant],
     SIZES[size],

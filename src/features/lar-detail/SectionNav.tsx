@@ -80,7 +80,7 @@ export function SectionNav({ nome }: { nome: string }) {
           {/* indicador deslizante (só transform/opacity) */}
           <span
             aria-hidden
-            className="pointer-events-none absolute bottom-0 left-0 block h-0.5 w-px origin-left rounded-full bg-ink transition-[transform,opacity] duration-500 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none"
+            className="pointer-events-none absolute bottom-0 left-0 block h-0.5 w-px origin-left rounded-full bg-ink transition-[transform,translate,scale,opacity] duration-500 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none"
             style={{
               transform: barra ? `translateX(${barra.x}px) scaleX(${barra.w})` : 'scaleX(0)',
               opacity: ativo && barra ? 1 : 0,

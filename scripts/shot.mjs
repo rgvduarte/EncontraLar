@@ -68,7 +68,7 @@ if (full) {
     await page.waitForTimeout(90)
   }
   await page.waitForTimeout(700)
-  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.evaluate(() => (window.__lenis ? window.__lenis.scrollTo(0, { immediate: true, force: true }) : window.scrollTo(0, 0)))
 }
 await page.waitForTimeout(wait)
 await page.screenshot({ path: out, fullPage: full })
