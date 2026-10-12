@@ -51,7 +51,7 @@ export function ChoiceTile({
             strokeWidth={3.2}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="[stroke-dasharray:1_2] [stroke-dashoffset:1] transition-[stroke-dashoffset] delay-75 duration-300 ease-out group-has-[:checked]/tile:[stroke-dashoffset:0]"
+            className="[stroke-dasharray:1_2] [stroke-dashoffset:1] transition-[stroke-dashoffset] delay-75 duration-300 ease-out motion-reduce:delay-0 group-has-[:checked]/tile:[stroke-dashoffset:0]"
           />
         </svg>
       </span>

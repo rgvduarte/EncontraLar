@@ -72,8 +72,8 @@ export function CuidadosSection({ lar }: { lar: Lar }) {
         {criticosEmFalta.length > 0 && (
           <Bloco>
             <p className="mt-5 max-w-[65ch] text-ink-mute">
-              <span className="font-medium text-ink">Não assegura:</span> {juntar(criticosEmFalta.map((c) => minuscula(CUIDADO_LABEL[c])))}. Se
-              a pessoa precisar, confirme diretamente com a instituição.
+              <span className="font-medium text-ink">Não assegura:</span> {juntar(criticosEmFalta.map((c) => minuscula(CUIDADO_LABEL[c])))}. Se a
+              pessoa precisar, confirme diretamente com a instituição.
             </p>
           </Bloco>
         )}

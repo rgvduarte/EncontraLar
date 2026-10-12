@@ -10,7 +10,10 @@ import type { DadosLar } from '../helpers'
  * da página), seguida dos números-chave a contar e da apresentação.
  */
 export function SobreSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
-  const paragrafos = lar.descricao.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
+  const paragrafos = lar.descricao
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
   const comodidades = COMODIDADES_ORDEM.filter((c) => lar.comodidades.includes(c))
   const anos = lar.fundacao ? new Date().getFullYear() - lar.fundacao : 0
   const resumo = lar.resumo?.trim()
@@ -28,7 +31,11 @@ export function SobreSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
       {(lar.capacidade > 0 || lar.fundacao > 0) && (
         <Cascata as="dl" passo={120} className="grid grid-cols-2 gap-8 sm:gap-12">
           {lar.capacidade > 0 && (
-            <Numero valor={<Contador valor={lar.capacidade} />} rotulo="lugares" nota={dados.centroDia ? 'de frequência diária' : 'capacidade licenciada'} />
+            <Numero
+              valor={<Contador valor={lar.capacidade} />}
+              rotulo="lugares"
+              nota={dados.centroDia ? 'de frequência diária' : 'capacidade licenciada'}
+            />
           )}
           {lar.fundacao > 0 && (
             <Numero valor={lar.fundacao} rotulo="ano de fundação" nota={anos > 1 ? `há ${anos} anos` : anos === 1 ? 'há 1 ano' : 'abriu este ano'} />

@@ -29,19 +29,21 @@ export function LocalizacaoSection({ lar }: { lar: Lar }) {
   return (
     <Secao id="ficha-localizacao" rotulo="Localização" titulo="Onde fica">
       <Reveal variant="scale" duration={1100}>
-      <div className="relative h-72 overflow-hidden rounded-[1.75rem] bg-sand sm:h-96 [&_.leaflet-bar]:overflow-hidden [&_.leaflet-bar]:rounded-xl! [&_.leaflet-bar]:border-0! [&_.leaflet-control-attribution]:mr-5! [&_.leaflet-control-attribution]:mb-2! [&_.leaflet-control-attribution]:rounded-full [&_.leaflet-control-attribution]:px-2! [&_.leaflet-control-zoom]:mt-4! [&_.leaflet-control-zoom]:ml-4!">
-        <MapaSeguro fallback={<p className="flex h-full items-center justify-center p-6 text-center text-ink-mute">Não foi possível carregar o mapa.</p>}>
-          <Suspense
-            fallback={
-              <div className="flex h-full items-center justify-center">
-                <Spinner />
-              </div>
-            }
+        <div className="relative h-72 overflow-hidden rounded-[1.75rem] bg-sand sm:h-96 [&_.leaflet-bar]:overflow-hidden [&_.leaflet-bar]:rounded-xl! [&_.leaflet-bar]:border-0! [&_.leaflet-control-attribution]:mr-5! [&_.leaflet-control-attribution]:mb-2! [&_.leaflet-control-attribution]:rounded-full [&_.leaflet-control-attribution]:px-2! [&_.leaflet-control-zoom]:mt-4! [&_.leaflet-control-zoom]:ml-4!">
+          <MapaSeguro
+            fallback={<p className="flex h-full items-center justify-center p-6 text-center text-ink-mute">Não foi possível carregar o mapa.</p>}
           >
-            <LocationMap lat={lar.lat} lng={lar.lng} nome={lar.nome} />
-          </Suspense>
-        </MapaSeguro>
-      </div>
+            <Suspense
+              fallback={
+                <div className="flex h-full items-center justify-center">
+                  <Spinner />
+                </div>
+              }
+            >
+              <LocationMap lat={lar.lat} lng={lar.lng} nome={lar.nome} />
+            </Suspense>
+          </MapaSeguro>
+        </div>
       </Reveal>
 
       <Cascata as="div" passo={120} className="mt-10 grid gap-10 sm:grid-cols-2">

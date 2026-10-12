@@ -182,7 +182,7 @@ export const EcraAlerta = memo(function EcraAlerta({ h, ativo }: { h: Historia; 
   const { lar, est } = h
   const quarto = lar.quartos[0] ? QUARTO_CURTO[lar.quartos[0].tipo].toLowerCase() : null
   return (
-    <div className="absolute inset-0 flex flex-col items-center bg-sand px-5 pt-[9.75rem] text-center">
+    <div className="absolute inset-0 flex flex-col items-center bg-sand px-5 pt-[10.5rem] text-center">
       <Peca ativo={ativo} atraso={60} className="flex flex-col items-center">
         <span className="flex size-14 items-center justify-center rounded-full bg-leaf-500 text-white">
           <Check aria-hidden className="size-7" strokeWidth={2.75} />

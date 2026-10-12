@@ -266,49 +266,79 @@ export function usePresenca<T>(items: T[], keyOf: (t: T) => string, ms = 340): P
   return out
 }
 
+/** Posição (no ecrã) dos filhos [data-flip] da lista e de tudo o que vem depois dela no documento. */
+function medir(lista: HTMLElement): Map<Element, number> {
+  const m = new Map<Element, number>()
+  for (const k of Array.from(lista.children)) if ((k as HTMLElement).dataset.flip) m.set(k, k.getBoundingClientRect().top)
+  // "seguidores": irmãos seguintes da lista e de cada antepassado, que sobem/descem quando a lista muda de altura
+  for (let n: Element | null = lista; n && n !== document.body; n = n.parentElement) {
+    for (let s = n.nextElementSibling; s; s = s.nextElementSibling) {
+      if (s.tagName === 'DIALOG' || s.tagName === 'SCRIPT' || s.tagName === 'STYLE') continue
+      const pos = getComputedStyle(s).position
+      if (pos === 'fixed' || pos === 'absolute' || pos === 'sticky') continue
+      m.set(s, s.getBoundingClientRect().top)
+    }
+  }
+  return m
+}
+
 /**
- * FLIP para listas: os filhos com data-flip="<chave>" deslizam da posição antiga para a nova quando a
- * lista muda; os que têm data-leaving="true" desvanecem e encolhem ligeiramente. A lista deve ser `relative`.
+ * FLIP para listas: quando a lista muda (entra, sai ou troca de ordem um item), os filhos com
+ * data-flip="<chave>" deslizam da posição antiga para a nova e o conteúdo que vem depois da lista acompanha
+ * (em vez de saltar). Os que têm data-leaving="true" desvanecem. Só transform/opacity.
+ * As posições "antes" medem-se na renderização (o DOM ainda é o antigo); as "depois", logo após o commit.
  */
 export function useFlip(ref: RefObject<HTMLElement | null>, presencas: Presenca<unknown>[]) {
-  const pos = useRef<Map<string, number> | null>(null)
   const assinatura = presencas.map((p) => `${p.key}${p.leaving ? '·' : ''}`).join('\n')
   const ultima = useRef(assinatura)
+  const antes = useRef<Map<Element, number> | null>(null)
+
+  // fase de renderização: a lista vai mudar — guarda onde está tudo agora
+  if (assinatura !== ultima.current && !antes.current && ref.current && typeof window !== 'undefined' && !prefersReducedMotion()) {
+    antes.current = medir(ref.current)
+  }
 
   useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const antes = pos.current
-    const mudou = ultima.current !== assinatura
+    if (ultima.current === assinatura) return
     ultima.current = assinatura
-    const agora = new Map<string, number>()
-    const reduzido = prefersReducedMotion()
+    const prev = antes.current
+    antes.current = null
+    const el = ref.current
+    if (!el || !prev || prefersReducedMotion()) return
     for (const k of Array.from(el.children) as HTMLElement[]) {
-      const key = k.dataset.flip
-      if (!key) continue
-      const top = k.offsetTop
-      agora.set(key, top)
-      if (!antes || !mudou || reduzido) continue
-      if (k.dataset.leaving === 'true') {
-        if (k.dataset.saiu !== '1') {
-          k.dataset.saiu = '1'
-          k.animate(
-            [
-              { opacity: 1, transform: 'none' },
-              { opacity: 0, transform: 'translateX(-14px) scale(0.98)' },
-            ],
-            { duration: 280, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' },
-          )
-        }
-        continue
-      }
-      const de = antes.get(key)
-      if (de != null && Math.abs(de - top) > 1) {
-        k.animate([{ transform: `translateY(${de - top}px)` }, { transform: 'none' }], { duration: 560, easing: EASE })
+      if (k.dataset.leaving === 'true' && k.dataset.saiu !== '1') {
+        k.dataset.saiu = '1'
+        k.animate(
+          [
+            { opacity: 1, transform: 'none' },
+            { opacity: 0, transform: 'translateX(-14px) scale(0.98)' },
+          ],
+          { duration: 280, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' },
+        )
       }
     }
-    pos.current = agora
-  })
+    for (const [n, top] of medir(el)) {
+      if ((n as HTMLElement).dataset?.leaving === 'true') continue
+      const de = prev.get(n)
+      if (de == null || Math.abs(de - top) < 1) continue
+      n.animate([{ transform: `translateY(${de - top}px)` }, { transform: 'none' }], { duration: 560, easing: EASE })
+    }
+  }, [assinatura, ref])
+}
+
+/**
+ * Sem "scroll anchoring" enquanto o painel está montado: as listas animadas (FLIP) já mantêm o conteúdo
+ * no sítio, e o ajuste automático do navegador faria saltar o ecrã a meio da animação.
+ */
+export function useSemAncoragem() {
+  useEffect(() => {
+    const html = document.documentElement
+    const antes = html.style.overflowAnchor
+    html.style.overflowAnchor = 'none'
+    return () => {
+      html.style.overflowAnchor = antes
+    }
+  }, [])
 }
 
 // ————————————————————————————————————————— visto animado

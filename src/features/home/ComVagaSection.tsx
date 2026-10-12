@@ -1,6 +1,6 @@
-import { useCallback, useMemo, type FocusEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FocusEvent } from 'react'
 import { Link } from 'react-router'
-import { ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Lar } from '@/types'
 import { LarCard } from '@/components/lar/LarCard'
 import { HorizontalScroll } from '@/components/motion/HorizontalScroll'
@@ -20,6 +20,42 @@ const CARTOES = 7
 
 const item = 'flex w-[min(20rem,80vw)] shrink-0 snap-start sm:w-[21rem]'
 
+/** Margem esquerda da faixa no ecrã largo = margem do container-page (o 1.º cartão alinha com o título). */
+const ALINHAR = 'lg:pl-[max(2.5rem,calc((100vw-80rem)/2+2.5rem))] lg:scroll-pl-[max(2.5rem,calc((100vw-80rem)/2+2.5rem))]'
+
+const seta =
+  'flex size-12 items-center justify-center rounded-full bg-sand text-ink transition-colors duration-200 hover:bg-sand-deep disabled:cursor-default disabled:text-ink-mute/40 disabled:hover:bg-sand'
+
+/**
+ * Setas para a faixa quando ela NÃO está presa num ecrã largo (movimento reduzido): com rato e sem trackpad
+ * não há outra forma cómoda de a deslizar. A faixa é encontrada a partir do 1.º cartão (vive dentro do
+ * HorizontalScroll partilhado).
+ */
+function useSetas(ativo: boolean) {
+  const [faixa, setFaixa] = useState<HTMLElement | null>(null)
+  const [pos, setPos] = useState({ inicio: true, fim: false })
+  const primeiro = useCallback((el: HTMLDivElement | null) => setFaixa(el?.parentElement ?? null), [])
+  useEffect(() => {
+    if (!ativo || !faixa) return
+    const medir = () =>
+      setPos({ inicio: faixa.scrollLeft <= 4, fim: faixa.scrollLeft + faixa.clientWidth >= faixa.scrollWidth - 4 })
+    medir()
+    faixa.addEventListener('scroll', medir, { passive: true })
+    window.addEventListener('resize', medir)
+    return () => {
+      faixa.removeEventListener('scroll', medir)
+      window.removeEventListener('resize', medir)
+    }
+  }, [ativo, faixa])
+  const mover = (dir: 1 | -1) => {
+    const cartao = faixa?.firstElementChild
+    if (!faixa || !cartao) return
+    const passo = cartao.getBoundingClientRect().width + 20
+    faixa.scrollBy({ left: dir * passo * Math.max(1, Math.floor(faixa.clientWidth / passo) - 1), behavior: 'auto' })
+  }
+  return { primeiro, pos, mover }
+}
+
 /**
  * Desfecho: "Com vaga agora" — galeria horizontal de cartões reais.
  * Desktop: a secção fica presa e o scroll vertical faz deslizar a faixa (sem sequestrar: a roda continua a descer
@@ -32,6 +68,7 @@ export function ComVagaSection({ lares }: { lares: Lar[] }) {
   const desktop = useMediaQuery('(min-width: 1024px)')
   const reduzido = usePrefersReducedMotion()
   const presa = desktop && !reduzido
+  const setas = useSetas(desktop && reduzido)
 
   /**
    * Com a faixa presa, um cartão fora do ecrã que recebe foco (Tab) não deve "saltar" a faixa: repõe o scroll
@@ -59,7 +96,7 @@ export function ComVagaSection({ lares }: { lares: Lar[] }) {
   )
 
   const cabecalho = (
-    <div className={cn('container-page', presa ? 'mb-10 xl:mb-12' : 'mb-8 sm:mb-10')}>
+    <div className={cn('container-page flex items-end justify-between gap-6', presa ? 'mb-10 xl:mb-12' : 'mb-8 sm:mb-10')}>
       <Reveal variant="blur">
         <h2 id="com-vaga-titulo" className="headline">
           Com vaga agora.
@@ -70,6 +107,16 @@ export function ComVagaSection({ lares }: { lares: Lar[] }) {
           <ChevronRight aria-hidden className="size-4.5" />
         </Link>
       </Reveal>
+      {desktop && reduzido && lista.length > 1 && (
+        <div className="flex shrink-0 gap-3">
+          <button type="button" onClick={() => setas.mover(-1)} disabled={setas.pos.inicio} className={seta} aria-label="Instituições anteriores">
+            <ChevronLeft aria-hidden className="size-5" />
+          </button>
+          <button type="button" onClick={() => setas.mover(1)} disabled={setas.pos.fim} className={seta} aria-label="Mais instituições com vaga">
+            <ChevronRight aria-hidden className="size-5" />
+          </button>
+        </div>
+      )}
     </div>
   )
 
@@ -97,13 +144,10 @@ export function ComVagaSection({ lares }: { lares: Lar[] }) {
       header={cabecalho}
       className={presa ? undefined : 'py-20 sm:py-28'}
       // a faixa começa alinhada com o texto (container-page) e, no telemóvel, encaixa cartão a cartão
-      trackClassName={cn(
-        'scroll-px-5 sm:scroll-px-8 lg:pl-[max(2.5rem,calc((100vw-80rem)/2+2.5rem))]',
-        presa ? 'pb-2' : 'gap-4 sm:gap-5',
-      )}
+      trackClassName={cn('scroll-px-5 sm:scroll-px-8', ALINHAR, presa ? 'pb-2' : 'gap-4 sm:gap-5')}
     >
-      {lista.map((l) => (
-        <div key={l.id} className={item} onFocus={presa ? seguirFoco : undefined}>
+      {lista.map((l, i) => (
+        <div key={l.id} ref={i === 0 ? setas.primeiro : undefined} className={item} onFocus={presa ? seguirFoco : undefined}>
           <LarCard lar={l} className="w-full" />
         </div>
       ))}

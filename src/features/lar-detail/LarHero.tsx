@@ -41,7 +41,10 @@ function Frescura({ lar }: { lar: Lar }) {
   const quando = tempoRelativo(lar.atualizadoEm)
   return (
     <span className={cn('inline-flex items-center gap-2', f === 'antiga' ? 'text-sun-800' : 'text-ink-soft')}>
-      <span aria-hidden className={cn('size-2 shrink-0 rounded-full', f === 'recente' ? 'bg-leaf-500' : f === 'normal' ? 'bg-ink-mute' : 'bg-sun-500')} />
+      <span
+        aria-hidden
+        className={cn('size-2 shrink-0 rounded-full', f === 'recente' ? 'bg-leaf-500' : f === 'normal' ? 'bg-ink-mute' : 'bg-sun-500')}
+      />
       {f === 'antiga' ? `Vagas atualizadas ${quando} — confirme por telefone` : `Vagas atualizadas ${quando} pela instituição`}
     </span>
   )

@@ -41,7 +41,10 @@ export function SectionNav({ nome }: { nome: string }) {
   }, [ativo])
 
   return (
-    <nav aria-label="Secções da ficha" className="sticky top-16 z-[900] border-b border-black/[0.06] bg-white/80 backdrop-blur-xl backdrop-saturate-150">
+    <nav
+      aria-label="Secções da ficha"
+      className="sticky top-16 z-[900] border-b border-black/[0.06] bg-white/80 backdrop-blur-xl backdrop-saturate-150"
+    >
       <div className="container-page flex items-center gap-8">
         <p className="hidden min-w-0 shrink truncate text-lg font-semibold tracking-tight text-ink lg:block">{nome}</p>
         {/* a faixa é o contentor que desliza; a lista e o indicador deslizam juntos */}

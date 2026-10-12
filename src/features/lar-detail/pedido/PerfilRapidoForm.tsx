@@ -91,8 +91,26 @@ export function PerfilRapidoForm({ lar, formId, onGuardado }: { lar: Lar; formId
   return (
     <form id={formId} onSubmit={submeter} noValidate className="flex flex-col gap-7">
       <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
-        <InputField label="Nome" autoComplete="off" autoCapitalize="words" enterKeyHint="next" value={nome} onChange={(e) => setNome(e.target.value)} error={erros.nome} />
-        <InputField label="Idade" type="number" inputMode="numeric" enterKeyHint="next" min={50} max={115} value={idade} onChange={(e) => setIdade(e.target.value)} error={erros.idade} />
+        <InputField
+          label="Nome"
+          autoComplete="off"
+          autoCapitalize="words"
+          enterKeyHint="next"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          error={erros.nome}
+        />
+        <InputField
+          label="Idade"
+          type="number"
+          inputMode="numeric"
+          enterKeyHint="next"
+          min={50}
+          max={115}
+          value={idade}
+          onChange={(e) => setIdade(e.target.value)}
+          error={erros.idade}
+        />
       </div>
       <SelectField label="Quem é para si?" value={relacao} onChange={(e) => setRelacao(e.target.value)}>
         {RELACOES.map((r) => (

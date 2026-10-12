@@ -10,7 +10,7 @@ import { assuntosPendentes, numerosResumo, passosArranque } from './lib/derive'
 import { useAgora } from './lib/hooks'
 import { cabecalho, seccaoDoCaminho } from './shell/cabecalhos'
 import { PublicStatus, SidebarIdentity } from './shell/Identity'
-import { useTroca } from './shared/motion'
+import { useSemAncoragem, useTroca } from './shared/motion'
 import ResumoPage from './resumo/ResumoPage'
 import VagasPage from './vagas/VagasPage'
 import PedidosPage from './pedidos/PedidosPage'
@@ -35,6 +35,7 @@ export default function LarDashboard() {
   useDocumentTitle(cab?.doc ?? 'Painel da instituição')
   // ao trocar de separador (barra lateral ou barra de abas), a nova secção entra a subir com um leve desfoque
   const palco = useTroca<HTMLDivElement>(seccao, undefined, 560)
+  useSemAncoragem()
 
   if (!lar || !n || !cab) {
     return (

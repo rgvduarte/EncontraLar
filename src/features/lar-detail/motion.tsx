@@ -76,7 +76,12 @@ export function PalavrasAcesas({
 } & HTMLAttributes<HTMLElement>) {
   const [ref, inView] = useInView<HTMLElement>(NO_ECRA)
   // só espaços normais separam palavras: os espaços inseparáveis (3 meses) mantêm-se juntos
-  const palavras = partes.flatMap((p) => p.texto.split(' ').filter(Boolean).map((w) => ({ w, className: p.className })))
+  const palavras = partes.flatMap((p) =>
+    p.texto
+      .split(' ')
+      .filter(Boolean)
+      .map((w) => ({ w, className: p.className })),
+  )
   return (
     <As ref={ref} data-in={inView ? '' : undefined} className={cn('ficha-palavras', className)} {...rest}>
       {palavras.map((p, i) => (

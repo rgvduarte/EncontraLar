@@ -70,8 +70,7 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
   const [escolhido, setPasso] = useState<Passo | null>(null)
   const [perfilEscolhido, setPerfilId] = useState('')
   const [enviada, setEnviada] = useState<Candidatura | null>(null)
-  const perfil =
-    perfis.find((p) => p.id === perfilEscolhido) ?? perfis.find((p) => !ativas.has(p.id)) ?? perfis[0]
+  const perfil = perfis.find((p) => p.id === perfilEscolhido) ?? perfis.find((p) => !ativas.has(p.id)) ?? perfis[0]
   const passo: Passo = escolhido ?? (perfis.length ? 'compat' : 'perfil')
   const corpo = useRef<HTMLDivElement>(null)
 
@@ -118,7 +117,9 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
         <ButtonLink className={GRANDE} to={`/registar?voltar=${voltar}`} variant="subtle">
           Criar conta
         </ButtonLink>
-        <ButtonLink className={GRANDE} to={`/entrar?voltar=${voltar}`}>Entrar</ButtonLink>
+        <ButtonLink className={GRANDE} to={`/entrar?voltar=${voltar}`}>
+          Entrar
+        </ButtonLink>
       </>
     )
   } else if (user.role === 'lar') {
@@ -159,12 +160,23 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
     titulo = comVisita ? 'Marcar visita' : 'Pedir vaga'
     descricao = `Veja se ${lar.nome} responde ao que ${primeiro} precisa.`
     conteudo = (
-      <CompatibilidadeStep lar={lar} perfis={perfis} perfil={perfil} onEscolher={setPerfilId} ativas={ativas} onNovoPerfil={() => setPasso('perfil')} />
+      <CompatibilidadeStep
+        lar={lar}
+        perfis={perfis}
+        perfil={perfil}
+        onEscolher={setPerfilId}
+        ativas={ativas}
+        onNovoPerfil={() => setPasso('perfil')}
+      />
     )
     rodape = ja ? (
-      <ButtonLink className={GRANDE} to="/familia/pedidos">Ver o pedido</ButtonLink>
+      <ButtonLink className={GRANDE} to="/familia/pedidos">
+        Ver o pedido
+      </ButtonLink>
     ) : (
-      <Button className={GRANDE} onClick={() => setPasso('mensagem')}>Continuar</Button>
+      <Button className={GRANDE} onClick={() => setPasso('mensagem')}>
+        Continuar
+      </Button>
     )
   } else if (passo === 'mensagem') {
     titulo = comVisita ? 'Mensagem e visita' : 'Mensagem'
@@ -188,7 +200,9 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
         <Button className={GRANDE} variant="subtle" onClick={onClose}>
           Fechar
         </Button>
-        <ButtonLink className={GRANDE} to="/familia/pedidos">Ver os meus pedidos</ButtonLink>
+        <ButtonLink className={GRANDE} to="/familia/pedidos">
+          Ver os meus pedidos
+        </ButtonLink>
       </>
     )
   }

@@ -37,11 +37,11 @@ function Parcelas({ m }: { m: MatchResult }) {
             </p>
             <span aria-hidden className="mt-1.5 block h-1 overflow-hidden rounded-full bg-black/[0.08]">
               <span
-                className="block h-full origin-left rounded-full bg-ink transition-transform duration-[900ms] ease-[cubic-bezier(.16,1,.3,1)] [transform:scaleX(var(--f))] starting:[transform:scaleX(0)]"
+                className="block h-full origin-left rounded-full bg-ink transition-transform delay-(--d) duration-[900ms] ease-[cubic-bezier(.16,1,.3,1)] [transform:scaleX(var(--f))] starting:[transform:scaleX(0)] motion-reduce:delay-0"
                 style={
                   {
                     '--f': Math.max(0, Math.min(1, m.parcelas[k] / peso)).toFixed(3),
-                    transitionDelay: `${220 + i * 70}ms`,
+                    '--d': `${220 + i * 70}ms`,
                   } as CSSProperties
                 }
               />
@@ -143,8 +143,8 @@ export function WhyPanel({ m, nome }: { m: MatchResult; nome: string }) {
                   return (
                     <li
                       key={i}
-                      style={{ transitionDelay: `${120 + i * 45}ms` }}
-                      className="flex items-start gap-2.5 text-base leading-snug text-ink transition-[opacity,translate] duration-500 ease-[cubic-bezier(.16,1,.3,1)] starting:translate-y-1.5 starting:opacity-0"
+                      style={{ '--d': `${120 + i * 45}ms` } as CSSProperties}
+                      className="flex items-start gap-2.5 text-base leading-snug text-ink transition-[opacity,translate] delay-(--d) duration-500 ease-[cubic-bezier(.16,1,.3,1)] starting:translate-y-1.5 starting:opacity-0 motion-reduce:delay-0"
                     >
                       <g.Icon aria-hidden className={cn('mt-0.5 size-5 shrink-0', g.cor)} strokeWidth={1.8} />
                       <span>

@@ -167,7 +167,7 @@ export function ListaEspera({ lar, cands, agora, verHref }: { lar: Lar; cands: C
         </p>
       )}
       {presentes.length > 0 && (
-        <ol ref={lista} className="relative mt-4 divide-y divide-line border-t border-line [overflow-anchor:none]">
+        <ol ref={lista} className="relative mt-4 divide-y divide-line border-t border-line">
           {presentes.map(({ key, item: { l }, leaving }, i) =>
             l.tipo === 'online' ? (
               <LinhaOnline

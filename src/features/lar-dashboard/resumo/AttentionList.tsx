@@ -167,7 +167,7 @@ function Lista({ itens }: { itens: Item[] }) {
           </p>
         </Reveal>
       ) : (
-        <ul ref={lista} className="relative mt-4 divide-y divide-line border-t border-line [overflow-anchor:none]">
+        <ul ref={lista} className="relative mt-4 divide-y divide-line border-t border-line">
           {presentes.map(({ key, item: it, leaving }, i) => (
             <li key={key} data-flip={key} data-leaving={leaving} inert={leaving} aria-hidden={leaving || undefined} className="bg-white">
               <Reveal delay={Math.min(i, 5) * 80} className="flex flex-col gap-4 py-6">

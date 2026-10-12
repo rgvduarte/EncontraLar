@@ -127,7 +127,6 @@ export function CompatibilidadeStep({
           </Link>
         </p>
       </section>
-
     </div>
   )
 }

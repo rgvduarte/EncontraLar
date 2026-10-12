@@ -79,7 +79,12 @@ export function Numero({ valor, unidade, rotulo, nota }: { valor: ReactNode; uni
  */
 export function Linha({ termo, valor, nota, className }: { termo: ReactNode; valor: ReactNode; nota?: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex flex-col gap-0.5 border-b border-line py-4 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-x-6 sm:gap-y-1', className)}>
+    <div
+      className={cn(
+        'flex flex-col gap-0.5 border-b border-line py-4 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-x-6 sm:gap-y-1',
+        className,
+      )}
+    >
       <dt className="text-ink-soft max-sm:text-sm max-sm:text-ink-mute">
         {termo}
         {nota && <span className="block text-sm text-ink-mute">{nota}</span>}

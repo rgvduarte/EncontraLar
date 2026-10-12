@@ -27,9 +27,13 @@ export function PrecosSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
       <Cascata as="dl" passo={110} className="border-t border-line">
         {lar.quartos.map((q) => (
           <div key={q.tipo} className="flex flex-col border-b border-line py-5 sm:grid sm:grid-cols-[1fr_auto] sm:gap-x-6">
-            <dt className="text-lg font-semibold text-ink sm:col-start-1 sm:row-start-1">{dados.centroDia ? 'Frequência diária' : QUARTO_TABELA[q.tipo]}</dt>
+            <dt className="text-lg font-semibold text-ink sm:col-start-1 sm:row-start-1">
+              {dados.centroDia ? 'Frequência diária' : QUARTO_TABELA[q.tipo]}
+            </dt>
             <dd className="mt-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:text-right">
-              <span className="text-3xl font-semibold tracking-tight whitespace-nowrap text-ink tabular">{intervaloPreco(q.precoMin, q.precoMax)}</span>
+              <span className="text-3xl font-semibold tracking-tight whitespace-nowrap text-ink tabular">
+                {intervaloPreco(q.precoMin, q.precoMax)}
+              </span>
               <span className="ml-1.5 text-sm text-ink-mute sm:ml-0 sm:block">por mês</span>
             </dd>
             <dd className="mt-1 text-sm text-ink-mute sm:col-start-1 sm:row-start-2 sm:mt-0.5">
