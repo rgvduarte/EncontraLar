@@ -131,6 +131,7 @@ export function WhyPanel({ m, nome }: { m: MatchResult; nome: string }) {
         >
           <div className="min-h-0 overflow-hidden">
             <div
+              ref={painelRef}
               id={id}
               className={cn(
                 'mt-2 grid gap-10 rounded-[1.5rem] bg-sand p-6 transition-transform duration-500 ease-[cubic-bezier(.16,1,.3,1)] starting:-translate-y-3 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] sm:p-8',

@@ -40,7 +40,7 @@ export function Contexto({ stats }: { stats: HomeStats }) {
                   {it.rotulo}
                 </dt>
                 <dd className="text-[2.5rem] leading-none font-semibold tracking-[-0.04em] text-white tabular sm:text-6xl lg:text-7xl">
-                  <CountUp value={it.valor} duration={1600} format={(n) => num(Math.round(n))} />
+                  <CountUp value={it.valor} format={(n) => num(Math.round(n))} />
                 </dd>
               </Reveal>
             ))}

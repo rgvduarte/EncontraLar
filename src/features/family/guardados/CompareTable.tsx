@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Check, Minus, Star } from 'lucide-react'
 import type { Candidatura, Lar, PerfilIdoso } from '@/types'
@@ -8,6 +8,7 @@ import { estimarEspera, vagasLivres } from '@/lib/forecast'
 import { distanceKm } from '@/lib/geo'
 import { CUIDADO_LABEL, CUIDADOS_ORDEM, QUARTO_CURTO } from '@/lib/labels'
 import { euro, km, pct } from '@/lib/format'
+import { prefersReducedMotion } from '@/lib/motion'
 import { cn } from '@/lib/cn'
 import { isAtiva } from '../shared/estado'
 import { useMountAnimation } from '../shared/motion'
@@ -86,6 +87,19 @@ export function CompareTable({ lares, perfil, pedidos }: { lares: Lar[]; perfil:
     }
   })
   const chave = perfil?.necessidades.length ? perfil.necessidades : null
+
+  // telemóvel: ao acrescentar uma instituição, a faixa desliza até ao cartão novo (que entra a deslizar)
+  const ids = lares.map((l) => l.id).join(',')
+  const antes = useRef(ids)
+  useEffect(() => {
+    const prev = new Set(antes.current.split(','))
+    antes.current = ids
+    const novo = lares.findIndex((l) => !prev.has(l.id))
+    const el = faixa.current
+    const li = el?.children[novo] as HTMLElement | undefined
+    if (novo < 0 || !el || !li || el.scrollWidth <= el.clientWidth) return
+    el.scrollTo({ left: li.offsetLeft - (el.clientWidth - li.offsetWidth) / 2, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  }, [ids, lares])
 
   const linhas: Linha[] = [
     {

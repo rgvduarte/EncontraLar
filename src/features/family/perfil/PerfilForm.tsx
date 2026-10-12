@@ -297,7 +297,7 @@ export function PerfilForm({
         ref={barra}
         className={cn(
           fixa ? 'sticky shadow-lift' : 'relative',
-          'bottom-[calc(var(--tabbar-h)+0.75rem)] z-20 mt-10 rounded-[1.5rem] bg-white/90 p-3 ring-1 ring-black/[0.06] backdrop-blur-xl backdrop-saturate-150',
+          'bottom-[calc(var(--tabbar-h)+0.75rem)] z-20 mt-10 rounded-[1.5rem] bg-white/95 p-3 ring-1 ring-black/[0.06] backdrop-blur-xl backdrop-saturate-150',
           'sm:rounded-full sm:py-3 sm:pr-3 sm:pl-7',
           fixa && 'sm:shadow-card',
         )}

@@ -74,7 +74,15 @@ export default function PrevisaoPage({ lar, n }: { lar: Lar; n: NumerosResumo })
 
       <Reveal>
         <section aria-labelledby="prev-meses">
-          <SectionTitle id="prev-meses" title="Mês a mês" text="Lugares que deverão libertar-se nos próximos 12 meses, com o intervalo provável." />
+          <SectionTitle
+            id="prev-meses"
+            title="Mês a mês"
+            text={
+              <>
+                Lugares que deverão <span className="whitespace-nowrap">libertar-se</span> nos próximos 12 meses, com o intervalo provável.
+              </>
+            }
+          />
           {/* overflow-x-clip: a tabela acessível do gráfico (sr-only) não pode alargar a página no telemóvel */}
           <Crescer className="mt-8 overflow-x-clip">
             <ForecastChart data={meses} caption="Lugares que deverão libertar-se por mês, nos próximos 12 meses" />

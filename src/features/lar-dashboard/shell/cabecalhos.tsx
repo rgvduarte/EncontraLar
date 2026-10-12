@@ -70,7 +70,11 @@ function textos(seccao: Seccao, lar: Lar, user: User | null, a: Assuntos, passos
       return {
         eyebrow,
         title: 'Previsão de vagas',
-        subtitle: 'Quantos lugares deverão libertar-se nos próximos meses, a partir do seu histórico.',
+        subtitle: (
+          <>
+            Quantos lugares deverão <span className="whitespace-nowrap">libertar-se</span> nos próximos meses, a partir do seu histórico.
+          </>
+        ),
         doc: 'Previsão de vagas',
       }
     case 'ficha':

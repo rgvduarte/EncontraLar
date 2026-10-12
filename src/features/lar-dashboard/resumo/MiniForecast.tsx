@@ -14,7 +14,9 @@ export function MiniForecast({ lar }: { lar: Lar }) {
       <h2 id="mini-prev-titulo" className="text-xl font-semibold">
         Próximos 3 meses
       </h2>
-      <p className="mt-1 text-ink-mute">Deverão libertar-se cerca de {dec1(total)} lugares.</p>
+      <p className="mt-1 text-ink-mute">
+        Deverão <span className="whitespace-nowrap">libertar-se</span> cerca de {dec1(total)} lugares.
+      </p>
       <dl className="mt-6 grid grid-cols-3 gap-4">
         {meses.map((m) => (
           <div key={`${m.ano}-${m.mes}`} className="flex flex-col">
