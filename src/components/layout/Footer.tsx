@@ -59,16 +59,26 @@ export function Footer() {
           <p className="max-w-3xl">
             Protótipo de demonstração. Instituições, pessoas, avaliações e vagas são fictícias. Mapas © OpenStreetMap, © CARTO.
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              resetDemo()
-              toast.success('Dados de demonstração repostos')
-            }}
-            className="inline-flex min-h-10 items-center self-start text-xs text-terra-600 hover:underline md:self-auto"
-          >
-            Repor dados de demonstração
-          </button>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+            <button
+              type="button"
+              onClick={() => {
+                resetDemo()
+                toast.success('Dados de demonstração repostos')
+              }}
+              className="inline-flex min-h-10 items-center text-xs text-ink-mute hover:text-ink hover:underline"
+            >
+              Repor dados de demonstração
+            </button>
+            <a
+              href="https://www.buildity.pt"
+              target="_blank"
+              rel="noopener"
+              className="inline-flex min-h-10 items-center text-xs text-ink-mute transition-colors hover:text-ink"
+            >
+              by Buildity
+            </a>
+          </div>
         </div>
       </div>
     </footer>
