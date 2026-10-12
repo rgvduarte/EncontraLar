@@ -17,13 +17,15 @@
 --          linha completa fica legível; recusar sem aceitar ou o pedido ser cancelado NÃO desbloqueia;
 --        * os avisos ao lar sobre pedidos por aceitar e os valores devolvidos pelas RPC do lar não
 --          têm nomes nem contactos.
---   5. Avaliações verificadas: só por avaliar_lar(), por quem fez o pedido e confirmou a entrada,
---      uma por pedido. Acabou a inserção direta em avaliacoes.
+--   5. Avaliações verificadas: só por avaliar_lar(), por FAMÍLIAS que fizeram o pedido e confirmaram
+--      a entrada, uma por pedido. Acabou a inserção direta em avaliacoes.
 --   6. Procura sem resposta (public.procuras_anonimas): só se escreve por registar_procura()
 --      (anónima, validada e limitada); ninguém lê as linhas — o lar vê agregados do SEU distrito
 --      com procura_na_zona().
 --   7. Link de confirmação rápida das vagas sem sessão: só o hash SHA-256 do token fica na base de
 --      dados (ilegível para anon/authenticated); confirmar_vagas_por_token() para quem tem o link.
+--   8. Avisos a quem fez o pedido levam ao caso quando é um encaminhamento (linkAutor), também nos
+--      avisos de vaga e na expiração das propostas.
 -- =====================================================================================
 
 -- ————————————————————————————————————————————————————————————————— 1. tipos
@@ -927,6 +929,117 @@ begin
 end;
 $$;
 
+-- Avisos de vaga: como em 20261012190500; quem está na lista por um encaminhamento (profissional) é
+-- levado ao caso, não ao painel da família (linkAutor no protótipo).
+create or replace function private.avisar_nova_vaga(p_instituicao_id text, p_tipo public.tipo_quarto)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_inst public.instituicoes;
+  v_quarto text := private.nome_quarto(p_tipo);
+  v_lista integer;
+  v_favoritos integer;
+begin
+  select * into v_inst from public.instituicoes i where i.id = p_instituicao_id;
+  if not found or not v_inst.publicado then
+    return 0;
+  end if;
+
+  insert into public.notificacoes (user_id, tipo, titulo, texto, instituicao_id, candidatura_id, link)
+  select l.user_id, 'vaga', 'Abriu uma vaga onde está inscrito(a)',
+         format('%s tem uma nova vaga (quarto %s). A instituição contacta as famílias pela ordem da lista — está na posição %s.',
+                v_inst.nome, v_quarto, l.posicao),
+         v_inst.id, l.id, l.link
+    from (
+      select distinct on (c.user_id) c.user_id, c.id, c.posicao, private.link_autor(c) as link
+        from public.candidaturas c
+       where c.instituicao_id = v_inst.id and c.estado = 'lista_espera'
+       order by c.user_id, c.posicao
+    ) l
+   where not exists (
+     select 1 from public.notificacoes n
+      where n.user_id = l.user_id and n.instituicao_id = v_inst.id and n.tipo = 'vaga'
+        and n.created_at > now() - interval '24 hours'
+   );
+  get diagnostics v_lista = row_count;
+
+  insert into public.notificacoes (user_id, tipo, titulo, texto, instituicao_id, link)
+  select f.user_id, 'vaga', 'Nova vaga disponível',
+         format('%s indicou que tem uma vaga livre (quarto %s). Contacte a instituição se ainda tiver interesse.',
+                v_inst.nome, v_quarto),
+         v_inst.id, '/lar/' || v_inst.id
+    from public.favoritos f
+   where f.instituicao_id = v_inst.id
+     and f.alerta
+     and f.user_id is distinct from v_inst.owner_id
+     and not exists (
+       select 1 from public.candidaturas c
+        where c.instituicao_id = v_inst.id and c.estado = 'lista_espera' and c.user_id = f.user_id
+     )
+     and not exists (
+       select 1 from public.notificacoes n
+        where n.user_id = f.user_id and n.instituicao_id = v_inst.id and n.tipo = 'vaga'
+          and n.created_at > now() - interval '24 hours'
+     );
+  get diagnostics v_favoritos = row_count;
+
+  return v_lista + v_favoritos;
+end;
+$$;
+
+-- Propostas fora de prazo (pg_cron): como em 20261012190500; o aviso a quem fez o pedido leva ao caso
+-- quando é um encaminhamento, e o do lar abre o pedido.
+create or replace function private.expirar_propostas()
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  r record;
+  v_c public.candidaturas;
+  v_inst public.instituicoes;
+  v_n integer := 0;
+begin
+  for r in
+    select c.id from public.candidaturas c
+     where c.estado = 'vaga_proposta' and c.prazo_resposta < now()
+     order by c.instituicao_id, c.id
+  loop
+    v_c := private.bloquear_candidatura(r.id);
+    continue when v_c.id is null or v_c.estado <> 'vaga_proposta' or v_c.prazo_resposta >= now();
+
+    update public.candidaturas
+       set estado = 'lista_espera', prazo_resposta = null
+     where id = v_c.id
+    returning * into v_c;
+    insert into public.candidatura_eventos (candidatura_id, estado, nota, autor)
+    values (v_c.id, 'lista_espera', 'O prazo de 48 horas para responder à vaga terminou.', 'sistema');
+
+    select * into v_inst from public.instituicoes i where i.id = v_c.instituicao_id;
+    perform private.notificar(
+      v_c.user_id, 'candidatura', 'Prazo da vaga terminado',
+      format('O prazo para responder à vaga em %s terminou. %s mantém a posição %s na lista de espera.',
+             v_inst.nome, v_c.perfil_snapshot ->> 'nome', v_c.posicao),
+      v_inst.id, v_c.id, private.link_autor(v_c)
+    );
+    if v_inst.owner_id is not null then
+      perform private.notificar(
+        v_inst.owner_id, 'candidatura', 'Proposta sem resposta',
+        format('%s não respondeu no prazo à vaga proposta para %s. Pode propô-la à pessoa seguinte da lista.',
+               v_c.contacto ->> 'nome', v_c.perfil_snapshot ->> 'nome'),
+        v_inst.id, v_c.id, private.link_pedido(v_c.id)
+      );
+    end if;
+    v_n := v_n + 1;
+  end loop;
+  return v_n;
+end;
+$$;
+
 -- ————————————————————————————————————————————————————————————————— 9. duas fases: o lar
 
 -- Pedidos recebidos pela instituição do utilizador autenticado (vazio se não gerir nenhuma).
@@ -1163,8 +1276,9 @@ $$;
 
 -- ————————————————————————————————————————————————————————————————— 11. avaliação verificada
 
--- avaliarLar: só quem fez o pedido e confirmou a entrada; uma avaliação por pedido; fica
--- "verificada" (trigger avaliacoes_verificar) e atualiza média e total (trigger avaliacoes_agregados).
+-- avaliarLar: só FAMÍLIAS (um profissional confirma a entrada em nome da pessoa, mas não avalia), só
+-- quem fez o pedido e confirmou a entrada; uma avaliação por pedido; fica "verificada" (trigger
+-- avaliacoes_verificar) e atualiza média e total (trigger avaliacoes_agregados).
 -- Autor como no protótipo: "Ana F." (primeiro nome + inicial do último).
 create function private.avaliar_lar(p_candidatura_id uuid, p_nota integer, p_texto text, p_aspetos jsonb)
 returns public.avaliacoes
@@ -1186,6 +1300,9 @@ declare
 begin
   if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then
     raise exception 'Crie uma conta com email para avaliar.' using errcode = '42501';
+  end if;
+  if not private.tem_papel('familia') then
+    raise exception 'Só as famílias deixam avaliações.' using errcode = '42501';
   end if;
   if v_c.id is null or v_c.user_id <> v_uid then
     raise exception 'Pedido não encontrado.' using errcode = 'P0002';

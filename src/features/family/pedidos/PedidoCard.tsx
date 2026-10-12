@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { Mail, Phone } from 'lucide-react'
+import { Lock, Mail, Phone } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
 import { toast } from '@/components/ui/Toast'
 import { LarCover } from '@/components/lar/LarCover'
@@ -9,8 +9,10 @@ import { cancelarCandidatura } from '@/lib/store'
 import { ESTADO_CANDIDATURA_DESCRICAO } from '@/lib/labels'
 import { dataLonga } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { estimativaPessoal, isAtiva, oLar } from '../shared/estado'
+import { emCurso, entradaPorConfirmar, estimativaPessoal, oLar } from '../shared/estado'
 import { VagaProposta } from '../shared/VagaProposta'
+import { ConfirmarEntradaModal, EntradaEstado, EntradaTile, passoEntrada } from '../shared/Entrada'
+import { AvaliarModal } from '../shared/Avaliacao'
 import { AnimatedForecast } from '../shared/Forecast'
 import { enterCls, sairEDepois, useChangeAnimation, useSeen } from '../shared/motion'
 import { ConfirmModal, EstadoTag, MoreLink } from '../shared/ui'
@@ -71,6 +73,7 @@ export function PedidoCard({
   thumbBar?: boolean
 }) {
   const [cancelar, setCancelar] = useState(false)
+  const [modal, setModal] = useState<'entrada' | 'avaliar' | null>(null)
   const [seen, visto] = useSeen<HTMLElement>()
   const on = visto || !animateIn
   const card = useRef<HTMLElement | null>(null)
@@ -82,9 +85,12 @@ export function PedidoCard({
     [seen],
   )
   const estadoRef = useRef<HTMLDivElement>(null)
-  // quando o estado muda (aceite, recusada…), o bloco de estado entra de novo
-  useChangeAnimation(estadoRef, c.estado)
-  const ativa = isAtiva(c)
+  // quando o estado muda (aceite, recusada, entrada confirmada…), o bloco de estado entra de novo
+  useChangeAnimation(estadoRef, `${c.estado}-${c.entrada?.confirmadaLarEm ?? ''}-${c.entrada?.confirmadaFamiliaEm ?? ''}`)
+  // "ativa" aqui = ainda à procura: com entrada registada já não há visita a marcar nem pedido a cancelar
+  const ativa = emCurso(c)
+  const passo = passoEntrada(c)
+  const porConfirmar = entradaPorConfirmar(c)
   const titleId = `pedido-${c.id}-titulo`
   const pessoa = nomeCurto(c.perfil.nome)
   const mostraEspera = ['enviada', 'em_analise', 'lista_espera'].includes(c.estado)
@@ -129,20 +135,41 @@ export function PedidoCard({
       <div ref={estadoRef} className="mt-8">
         {c.estado === 'vaga_proposta' ? (
           <VagaProposta c={c} lar={lar} variant="inline" thumbBar={thumbBar} />
+        ) : porConfirmar ? (
+          <EntradaTile c={c} lar={lar} variant="card" onConfirmar={() => setModal('entrada')} onAvaliar={() => setModal('avaliar')} />
+        ) : c.estado === 'admitida' ? (
+          <EntradaEstado c={c} />
         ) : (
           <>
             <p className="text-lg font-semibold">
               <EstadoTag estado={c.estado} />
             </p>
             <p className="mt-1 text-ink-mute">{ESTADO_CANDIDATURA_DESCRICAO[c.estado]}</p>
+            {c.estado === 'enviada' && !c.desbloqueadaEm && (
+              <p className="mt-4 flex max-w-2xl items-start gap-2 text-sm text-ink-mute">
+                <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
+                Até aceitar o pedido, a instituição vê só o perfil de cuidados, sem o nome nem os seus contactos.
+              </p>
+            )}
           </>
         )}
       </div>
 
       {c.estado === 'aceite' && (
-        <p className="mt-8 rounded-[1.75rem] bg-sand p-6 text-ink-soft">
+        <p className="mt-4 max-w-2xl text-ink-soft">
           Para a entrada, costumam pedir o cartão de cidadão e de utente, um relatório médico recente e a lista da medicação.
         </p>
+      )}
+
+      {passo && passo !== 'confirmar' && (
+        <EntradaTile
+          c={c}
+          lar={lar}
+          variant="card"
+          className="mt-8"
+          onConfirmar={() => setModal('entrada')}
+          onAvaliar={() => setModal('avaliar')}
+        />
       )}
 
       {mostraEspera && <Espera c={c} lar={lar} />}
@@ -210,6 +237,11 @@ export function PedidoCard({
           )}
         </div>
       </footer>
+
+      <ConfirmarEntradaModal pedido={{ c, lar }} open={modal === 'entrada'} onClose={() => setModal(null)} />
+      {(c.estado === 'admitida' || modal === 'avaliar') && (
+        <AvaliarModal c={c} lar={lar} open={modal === 'avaliar'} onClose={() => setModal(null)} />
+      )}
 
       <ConfirmModal
         open={cancelar}

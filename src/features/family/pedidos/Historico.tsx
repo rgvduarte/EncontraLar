@@ -40,7 +40,8 @@ export function Historico({ c }: { c: Candidatura }) {
             )}
             <span data-ponto aria-hidden className={cn('absolute top-2 left-0 size-2.5 rounded-full', atual ? 'bg-ink' : 'bg-line-strong')} />
             <p className={cn('font-medium', atual ? 'text-ink' : 'text-ink-soft')}>
-              {ESTADO_CANDIDATURA_LABEL[h.estado]}
+              {/* a segunda confirmação da entrada (instituição + família) torna-a verificada */}
+              {h.estado === 'admitida' && itens.slice(0, i).some((x) => x.estado === 'admitida') ? 'Entrada verificada' : ESTADO_CANDIDATURA_LABEL[h.estado]}
               {atual && <span className="sr-only"> (estado atual)</span>}
             </p>
             <p className="text-sm text-ink-mute">

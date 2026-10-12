@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { Candidatura, Lar, PerfilIdoso } from '@/types'
-import { useLares, useMinhasCandidaturas, usePerfis } from '@/lib/store'
+import { jaAvaliou, useLares, useMinhasCandidaturas, usePerfis } from '@/lib/store'
 import { LUGARES } from '@/data/localidades'
 import { dataLocal } from './text'
 import { emCurso, isAtiva, ordenarPedidos } from './estado'
@@ -45,7 +45,7 @@ export function usePedidos(): {
   const cands = useMinhasCandidaturas()
   const idx = useLarIndex()
   return useMemo(() => {
-    const todos = ordenarPedidos(cands)
+    const todos = ordenarPedidos(cands, jaAvaliou)
       .map((c) => ({ c, lar: idx.get(c.larId) }))
       .filter((x): x is PedidoComLar => Boolean(x.lar))
     return {

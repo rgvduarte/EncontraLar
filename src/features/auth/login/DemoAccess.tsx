@@ -27,7 +27,7 @@ const CONTAS: { role: Role; titulo: string; descricao: string; email: string }[]
   {
     role: 'profissional',
     titulo: 'Entrar como assistente social',
-    descricao: 'Casos com alta prevista, enviados a várias instituições.',
+    descricao: 'Casos, altas previstas e encaminhamentos.',
     email: DEMO_PRO_EMAIL,
   },
 ]

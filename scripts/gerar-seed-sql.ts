@@ -258,18 +258,15 @@ function linhaPerfil(p: PerfilIdoso, agora: number, userVar: string): string {
 }
 
 /**
- * Quando o lar aceitou o pedido (desbloqueada_em). O protótipo regista desbloqueadaEm em aceitarPedido
- * e ao fazer avançar um pedido (atualizarCandidatura); nos pedidos de exemplo que já avançaram sem o
- * campo usa-se o primeiro passo em frente do histórico. Recusar ou cancelar sem aceitar não desbloqueia
- * (na BD é a regra: ver 20261012190800_modelo_negocio.sql).
+ * Quando o lar aceitou o pedido (desbloqueada_em) = desbloqueadaEm do protótipo. Sem ele (pedido por
+ * aceitar, ou recusado/cancelado sem ter sido aceite) fica null. Um pedido que avançou sem
+ * desbloqueadaEm é um erro do seed: a BD recusa-o (restrição candidaturas_desbloqueio).
  */
 export function desbloqueioDe(c: Candidatura): string | undefined {
-  if (c.desbloqueadaEm) return c.desbloqueadaEm
-  const passo = c.historico.find((h) => !['enviada', 'recusada', 'cancelada'].includes(h.estado))
-  if (!passo && !['enviada', 'recusada', 'cancelada'].includes(c.estado)) {
-    throw new Error(`candidatura ${c.id}: estado ${c.estado} sem data de aceitação (desbloqueadaEm ou histórico)`)
+  if (!c.desbloqueadaEm && !['enviada', 'recusada', 'cancelada'].includes(c.estado)) {
+    throw new Error(`candidatura ${c.id}: estado ${c.estado} sem desbloqueadaEm (o lar só faz avançar pedidos que aceitou)`)
   }
-  return passo?.data
+  return c.desbloqueadaEm
 }
 
 function blocoCandidatura(c: Candidatura, agora: number, varDe: Map<string, string>, porLar: Map<string, Lar>): string[] {

@@ -13,7 +13,7 @@ import { tempoRelativo } from '@/lib/format'
 import { ESTADO_CANDIDATURA_LABEL } from '@/lib/labels'
 import { cn } from '@/lib/cn'
 import { useLarIndex, usePerfisOrdenados, pesquisaUrl } from '../shared/data'
-import { isAtiva } from '../shared/estado'
+import { diaMes, isAtiva } from '../shared/estado'
 import { MoreLink } from '../shared/ui'
 import { Tween, sairEDepois, useMountAnimation, useStagger } from '../shared/motion'
 import { CompareTable } from './CompareTable'
@@ -185,7 +185,9 @@ export default function GuardadosPage() {
                 <div className="mt-3 flex flex-col px-1">
                   {pedido && (
                     <p className="flex flex-wrap items-center gap-x-2 text-sm text-ink-mute">
-                      Pedido: {ESTADO_CANDIDATURA_LABEL[pedido.estado].toLowerCase()}
+                      {pedido.estado === 'admitida' && pedido.entrada
+                        ? `Entrou a ${diaMes(pedido.entrada.data)}`
+                        : `Pedido: ${ESTADO_CANDIDATURA_LABEL[pedido.estado].toLowerCase()}`}
                       <MoreLink to={`/familia/pedidos#pedido-${pedido.id}`}>Ver pedido</MoreLink>
                     </p>
                   )}

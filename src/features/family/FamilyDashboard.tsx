@@ -8,6 +8,7 @@ import { usePedidos, usePerfisOrdenados } from './shared/data'
 import { DraftBanner } from './shared/DraftBanner'
 import { FamilyIdentity, SidebarHelp } from './shared/Identity'
 import { comArtigo, primeiroNome, saudacao } from './shared/text'
+import { emLar, entradaPorConfirmar } from './shared/estado'
 import ResumoPage from './resumo/ResumoPage'
 import PedidosPage from './pedidos/PedidosPage'
 import GuardadosPage from './guardados/GuardadosPage'
@@ -41,16 +42,19 @@ export default function FamilyDashboard() {
   const user = useCurrentUser()!
   const { pathname } = useLocation()
   const { principal } = usePerfisOrdenados()
-  const { ativos } = usePedidos()
+  const { ativos, emCurso, admitidos } = usePedidos()
   const resto = pathname.replace(/^\/familia\/?/, '').replace(/\/$/, '')
   const seccao = (resto.split('/')[0] ?? '') as Seccao
   // /familia/<secção> exato; qualquer outro caminho volta ao resumo
   const Pagina = resto.includes('/') ? undefined : PAGINAS.get(seccao)
   const propostas = ativos.filter((p) => p.c.estado === 'vaga_proposta').length
+  // a instituição registou a entrada e espera a confirmação da família
+  const porConfirmar = admitidos.filter((p) => entradaPorConfirmar(p.c)).length
+  const entrada = principal && admitidos.find((p) => p.c.perfilId === principal.id)
 
   const nav: DashboardNavItem[] = [
     { to: '/familia', label: 'Resumo', icon: LayoutGrid, end: true },
-    { to: '/familia/pedidos', label: 'Pedidos', icon: FileText, badge: propostas || undefined },
+    { to: '/familia/pedidos', label: 'Pedidos', icon: FileText, badge: propostas + porConfirmar || undefined, badgeLabel: 'por responder' },
     { to: '/familia/guardados', label: 'Guardados', icon: Heart },
     { to: '/familia/perfil', label: 'Perfil de cuidados', icon: UserRound },
     { to: '/familia/conta', label: 'Conta', icon: Settings },
@@ -68,8 +72,12 @@ export default function FamilyDashboard() {
       </>
     )
     if (propostas) subtitle = propostas === 1 ? 'Há uma vaga à espera da sua resposta.' : `Há ${propostas} vagas à espera da sua resposta.`
-    else if (principal && ativos.length)
-      subtitle = `${ativos.length === 1 ? 'Um pedido' : `${ativos.length} pedidos`} em curso para ${comArtigo(principal)}.`
+    else if (porConfirmar) subtitle = porConfirmar === 1 ? 'Há uma entrada por confirmar.' : `Há ${porConfirmar} entradas por confirmar.`
+    else if (principal && entrada) {
+      const quem = comArtigo(principal)
+      subtitle = `${quem.charAt(0).toUpperCase()}${quem.slice(1)} entrou ${emLar(entrada.lar.nome)}.`
+    } else if (principal && emCurso.length)
+      subtitle = `${emCurso.length === 1 ? 'Um pedido' : `${emCurso.length} pedidos`} em curso para ${comArtigo(principal)}.`
     else if (principal) subtitle = `A procurar lar para ${comArtigo(principal)}.`
     else subtitle = 'Comece por descrever a pessoa de quem cuida.'
   }

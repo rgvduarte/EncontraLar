@@ -48,8 +48,9 @@ Este documento explica como pôr a base de dados real a funcionar, passo a passo
 - **Dados internos** (`owner_id`, `visualizacoes_30d`, `confirmacao_token_hash`, `candidatura_eventos.autor_id`,
   `avaliacoes.user_id`, `avaliacoes.candidatura_id`) não são legíveis por `anon`/`authenticated`; o gestor obtém
   os da sua ficha com a RPC `painel_instituicao()` e o autor das avaliações as suas com `minhas_avaliacoes()`.
-- **Avaliações verificadas**: só pela RPC `avaliar_lar`, por quem fez o pedido e **confirmou a entrada**, uma
-  por pedido. Não há escrita direta na tabela.
+- **Avaliações verificadas**: só pela RPC `avaliar_lar`, por **famílias** que fizeram o pedido e **confirmaram a
+  entrada**, uma por pedido (um profissional confirma a entrada em nome da pessoa, mas não avalia). Não há
+  escrita direta na tabela.
 - **RPC sem sessão**: só três — `registar_procura` (pesquisa anónima, limitada), `vagas_por_token` e
   `confirmar_vagas_por_token` (link de confirmação das vagas). Para isso `anon` tem `USAGE` no schema
   `private` e `EXECUTE` **apenas** nas três funções internas correspondentes (o teste de migrações falha se
@@ -298,15 +299,13 @@ passam a vir inline no ficheiro gerado.
   apagar o perfil retire o consentimento de todos os pedidos, muda a frase da interface e uma linha do trigger.
 - **Mudar telefone/e-mail/site** de uma ficha verificada também a faz voltar a "pendente" (anti-fraude). Se for
   demasiado restritivo, retirar esses campos de `private.proteger_instituicao`.
-- ~~**Avaliações**: qualquer família avaliava qualquer ficha~~ — decidido no modelo de negócio: só quem confirmou
-  a entrada, uma por pedido (`avaliar_lar`).
-- **Profissionais registados por conta própria**: a organização ("Hospital X") é declarada no registo e mostrada ao
-  lar no resumo do pedido, sem verificação. Validar (domínio de e-mail institucional, aprovação pelo
-  administrador) antes de a interface a destacar?
-- **Avaliação por profissionais**: como no protótipo, quem fez o pedido (também um profissional) avalia depois de
-  confirmar a entrada, e a relação aparece "Familiar de residente". Restringir a famílias ou usar outra relação?
-- **Limites de pedidos dos profissionais**: os mesmos de uma família (20 por dia, 3 por instituição). Uma
-  assistente social com muitos casos pode precisar de mais.
+- ~~**Avaliações**: qualquer família avaliava qualquer ficha~~ — decidido no modelo de negócio: só famílias que
+  confirmaram a entrada, uma por pedido (`avaliar_lar`); os profissionais não avaliam.
+- **Profissionais registados por conta própria** (fica assim por agora): a organização ("Hospital X") é declarada
+  no registo e mostrada ao lar no resumo do pedido, sem verificação. Validar mais tarde (domínio de e-mail
+  institucional, aprovação pelo administrador) antes de a interface a destacar.
+- **Limites de pedidos dos profissionais** (fica assim por agora): os mesmos de uma família (20 por dia, 3 por
+  instituição). Uma assistente social com muitos casos pode vir a precisar de mais.
 - **Procura anónima**: a repetição é filtrada por 10 minutos (sem identificar quem pesquisa) e há limites
   globais (60/min, 300/h por distrito). Se for preciso mais rigor contra robôs, um CAPTCHA ou uma Edge Function
   à frente da RPC.
@@ -365,10 +364,12 @@ nem alta.
    `em_analise` na mesma transação e avisa quem fez o pedido. Fazer o pedido avançar com
    `atualizar_estado_candidatura` (em análise, lista de espera) também desbloqueia, como no protótipo.
 3. **Nunca desbloqueia**: recusar sem aceitar, e o pedido ser cancelado pela família (retirada do
-   consentimento) — `aceitar_candidatura` recusa-os. Diferença assumida em relação a `contactoVisivel` do
-   protótipo, que considera visível qualquer estado diferente de `enviada`: com o Supabase, decida o que mostrar
-   com `!!c.desbloqueadaEm`.
-4. **Sem fugas laterais**: os avisos ao lar de pedidos por aceitar não têm nomes ("Pedido de vaga de uma família
+   consentimento) — `aceitar_candidatura` recusa-os. É a mesma regra do protótipo: `contactoVisivel(c)` =
+   `!!c.desbloqueadaEm` (`src/lib/negocio.ts`), e o seed regista `desbloqueadaEm` em todos os pedidos que avançaram.
+4. **Rotas dos avisos**: os avisos a quem fez o pedido levam ao painel da família ou, num encaminhamento, ao caso
+   (`/casos/<caso_id>`, também nos avisos de vaga e de prazo terminado); os do lar abrem o pedido
+   (`/gestao/pedidos?pedido=<id>`).
+5. **Sem fugas laterais**: os avisos ao lar de pedidos por aceitar não têm nomes ("Pedido de vaga de uma família
    (pessoa de 80–84 anos)…", "Encaminhamento do Hospital X (…)", visitas e cancelamentos idem); as RPC do lar que
    devolvem um pedido por aceitar (`atualizar_estado_candidatura` ao recusar, `confirmar_visita`) devolvem-no
    sem identificadores, contacto, mensagem nem perfil completo (`private.para_lar`).
@@ -385,7 +386,7 @@ o Realtime de `candidaturas` só traz os aceites — use o aviso (`notificacoes`
 | `aceitar_candidatura(id)` | lar (dono) | "Aceitar e ver contacto". |
 | `marcar_entrada(id, data)` | lar (dono) | Só de `aceite`/`admitida`; `admitida`, confirmação do lar, taxa pela natureza; avisa o autor. Data não futura nem anterior ao pedido. |
 | `confirmar_entrada_familia(id, data)` | autor do pedido | O mesmo do outro lado; avisa o lar. A primeira confirmação fixa a data e a taxa. |
-| `avaliar_lar(candidatura_id, nota, texto, aspetos)` | autor do pedido | Só com a entrada confirmada pela família; uma por pedido; `verificada`; atualiza média e total. |
+| `avaliar_lar(candidatura_id, nota, texto, aspetos)` | família autora do pedido | Só contas `familia` e só com a entrada confirmada pela família; uma por pedido; `verificada`; atualiza média e total. |
 | `minhas_avaliacoes()` | autenticado | As suas avaliações e o pedido de cada uma. |
 | `criar_caso(perfil, referencia, alta_prevista, consentimento)` | profissional | Cria o perfil e o caso (consentimento obrigatório). |
 | `atualizar_caso(id, alteracoes)` | profissional (do caso) | Só as chaves indicadas (`referencia`, `alta_prevista`, `estado`, `perfil`). |

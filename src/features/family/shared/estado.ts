@@ -30,17 +30,24 @@ export const familiaConfirmou = (c: Pick<Candidatura, 'entrada'>) => Boolean(c.e
 export const entradaPorConfirmar = (c: Pick<Candidatura, 'estado' | 'entrada'>) =>
   c.estado === 'admitida' && Boolean(c.entrada?.confirmadaLarEm) && !c.entrada?.confirmadaFamiliaEm
 
+/** Durante quanto tempo uma entrada acabada de confirmar (e por avaliar) fica no topo da lista. */
+const ENTRADA_RECENTE_MS = 30 * 86_400_000
+
 /**
  * Ordem no painel: o que pede resposta primeiro (vaga proposta, entrada registada por confirmar),
- * depois a vaga aceite e os pedidos à espera. A entrada já confirmada é um fim feliz: fica no fim
- * dos ativos, sem insistir; os terminados vêm por último.
+ * depois a vaga aceite e os pedidos à espera. A entrada confirmada é um fim feliz: fica junto da
+ * vaga aceite enquanto é recente e está por avaliar (não salta para o fim mal se confirma) e
+ * depois passa para o fim dos ativos, sem insistir. Os terminados vêm por último.
  */
-function prioridade(c: Candidatura): number {
+function prioridade(c: Candidatura, avaliado: (c: Candidatura) => boolean, agora: number): number {
   switch (c.estado) {
     case 'vaga_proposta':
       return 0
-    case 'admitida':
-      return entradaPorConfirmar(c) ? 1 : 6
+    case 'admitida': {
+      if (entradaPorConfirmar(c)) return 1
+      const em = c.entrada?.confirmadaFamiliaEm
+      return em && !avaliado(c) && agora - new Date(em).getTime() < ENTRADA_RECENTE_MS ? 2 : 6
+    }
     case 'aceite':
       return 2
     case 'lista_espera':
@@ -56,9 +63,9 @@ function prioridade(c: Candidatura): number {
   }
 }
 
-/** Primeiro o que pede resposta; depois por atualização mais recente. */
-export function ordenarPedidos(cs: Candidatura[]): Candidatura[] {
-  return [...cs].sort((a, b) => prioridade(a) - prioridade(b) || b.atualizadaEm.localeCompare(a.atualizadaEm))
+/** Primeiro o que pede resposta; depois por atualização mais recente. `avaliado`: o pedido já tem avaliação. */
+export function ordenarPedidos(cs: Candidatura[], avaliado: (c: Candidatura) => boolean = () => false, agora = Date.now()): Candidatura[] {
+  return [...cs].sort((a, b) => prioridade(a, avaliado, agora) - prioridade(b, avaliado, agora) || b.atualizadaEm.localeCompare(a.atualizadaEm))
 }
 
 /** "9 de outubro" (com o ano quando não é o atual) a partir de "AAAA-MM-DD". */

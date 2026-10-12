@@ -72,6 +72,23 @@ export default function VagasPage({ lar }: { lar: Lar }) {
         Última atualização: {dataHoraLonga(lar.atualizadoEm)} ({tempoRelativo(lar.atualizadoEm, new Date(agora))}). As alterações gravam-se sozinhas, um segundo
         depois do último toque.
       </p>
+
+      <Reveal>
+        <section aria-labelledby="confirmacao-rapida" className="tile">
+          <h2 id="confirmacao-rapida" className="text-xl font-semibold">
+            Confirmação rápida
+          </h2>
+          <p className="mt-2 max-w-2xl text-ink-soft">
+            Todas as segundas-feiras enviamos-lhe um SMS e um email com um link. Abre a pergunta «Ainda tem estes lugares livres?» e confirma as vagas num
+            toque, sem iniciar sessão.
+          </p>
+          {lar.confirmacaoToken && (
+            <MoreLink to={`/confirmar/${encodeURIComponent(lar.confirmacaoToken)}`} className="mt-2">
+              Ver o link (exemplo)
+            </MoreLink>
+          )}
+        </section>
+      </Reveal>
     </div>
   )
 }

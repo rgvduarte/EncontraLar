@@ -17,7 +17,7 @@ const ABAS: { k: Aba; label: string }[] = [
 
 export default function PedidosPage() {
   useDocumentTitle('Os meus pedidos')
-  const { ativos, terminados } = usePedidos()
+  const { ativos, emCurso, admitidos, terminados } = usePedidos()
   const { principal } = usePerfisOrdenados()
   const { hash } = useLocation()
   const alvo = hash.startsWith('#pedido-') ? hash.slice(8) : null
@@ -113,7 +113,13 @@ export default function PedidosPage() {
         </div>
         <p className="text-sm text-ink-mute" aria-live="polite">
           {aba === 'ativos'
-            ? `${ativos.length === 1 ? '1 pedido em curso' : `${ativos.length} pedidos em curso`}. Cada mudança chega por notificação.`
+            ? [
+                emCurso.length > 0 && `${emCurso.length === 1 ? '1 pedido em curso' : `${emCurso.length} pedidos em curso`}.`,
+                admitidos.length > 0 && (admitidos.length === 1 ? '1 entrada registada.' : `${admitidos.length} entradas registadas.`),
+                emCurso.length > 0 && 'Cada mudança chega por notificação.',
+              ]
+                .filter(Boolean)
+                .join(' ')
             : `${terminados.length === 1 ? '1 pedido terminado' : `${terminados.length} pedidos terminados`}.`}
         </p>
       </div>

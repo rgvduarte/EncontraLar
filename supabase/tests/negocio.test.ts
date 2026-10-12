@@ -322,6 +322,56 @@ describe('profissionais e casos', () => {
   })
 })
 
+describe('profissional: entrada, avaliação e avisos', () => {
+  /** encaminhamento aceite pelo lar e com a vaga aceite pelo profissional */
+  async function encaminhamentoAceite(sufixo: string) {
+    const pro = await profissional(`pro-${sufixo}@x.pt`)
+    const b = await cenarioBase(db, { sufixo, livres: { individual: 2 } })
+    const k = await novoCaso(pro)
+    const [c] = await q<{ id: string }>(db, pro, 'select id from public.enviar_caso($1, $2)', [k.id, [b.instituicao]])
+    await aceitar(b.lar, c!.id)
+    return { pro, b, k, c: c!.id }
+  }
+
+  it('o profissional confirma a entrada mas não avalia (só famílias)', async () => {
+    const { pro, b, c } = await encaminhamentoAceite('p1')
+    await mudarEstado(b.lar, c, 'vaga_proposta')
+    await q(db, pro, 'select public.responder_vaga($1, true)', [c])
+    await q(db, b.lar, 'select public.marcar_entrada($1, current_date)', [c])
+    const [e] = await json<Cand>(db, pro, 'select * from public.confirmar_entrada_familia($1, current_date)', [c])
+    expect(e!.entrada_confirmada_familia_em).not.toBeNull()
+    const ev = await q<{ autor: string }>(db, pro, "select autor from public.candidatura_eventos where candidatura_id = $1 and nota = 'Entrada confirmada pela família.'", [c])
+    expect(ev).toEqual([{ autor: 'profissional' }])
+    expect(await codigoErro(db, pro, `select public.avaliar_lar($1, 5, 'Excelente acolhimento do utente.', '{"cuidados":5,"alimentacao":5,"instalacoes":5,"comunicacao":5}')`, [c])).toBe('42501')
+    expect(await erro(db, pro, `select public.avaliar_lar($1, 5, 'Excelente acolhimento do utente.', '{"cuidados":5,"alimentacao":5,"instalacoes":5,"comunicacao":5}')`, [c])).toMatch(/Só as famílias/)
+    expect(await q(db, pro, 'select * from public.minhas_avaliacoes()')).toEqual([])
+    expect((await adm<{ n: number }>('select num_avaliacoes n from public.instituicoes where id = $1', [b.instituicao]))[0]!.n).toBe(0)
+  })
+
+  it('avisos de vaga e de prazo terminado levam o profissional ao caso; o do lar abre o pedido', async () => {
+    const { pro, b, k, c } = await encaminhamentoAceite('p2')
+    // na lista de espera: abre uma vaga → aviso com a rota do caso
+    await mudarEstado(b.lar, c, 'lista_espera')
+    await q(db, b.lar, "select public.definir_vagas($1, 'duplo', 3)", [b.instituicao])
+    const [vaga] = await q<{ link: string }>(db, pro, "select link from public.notificacoes where candidatura_id = $1 and tipo = 'vaga'", [c])
+    expect(vaga!.link).toBe(`/casos/${k.id}`)
+    // vaga proposta sem resposta no prazo (pg_cron)
+    await mudarEstado(b.lar, c, 'vaga_proposta')
+    await adm("update public.candidaturas set prazo_resposta = now() - interval '1 minute' where id = $1", [c])
+    await adm('select private.expirar_propostas()')
+    const [prazo] = await q<{ link: string }>(db, pro, "select link from public.notificacoes where candidatura_id = $1 and titulo = 'Prazo da vaga terminado'", [c])
+    expect(prazo!.link).toBe(`/casos/${k.id}`)
+    const [lar] = await q<{ link: string }>(db, b.lar, "select link from public.notificacoes where candidatura_id = $1 and titulo = 'Proposta sem resposta'", [c])
+    expect(lar!.link).toBe(`/gestao/pedidos?pedido=${c}`)
+    // e para uma família continua a ser o painel da família
+    const f = await cenarioBase(db, { sufixo: 'p2f', livres: { individual: 0 } })
+    const cf = await candidatar(f.familia, f.instituicao, f.perfil)
+    await mudarEstado(f.lar, cf.id, 'lista_espera')
+    await q(db, f.lar, "select public.definir_vagas($1, 'individual', 1)", [f.instituicao])
+    expect(await q(db, f.familia, "select link from public.notificacoes where candidatura_id = $1 and tipo = 'vaga'", [cf.id])).toEqual([{ link: '/familia' }])
+  })
+})
+
 describe('avaliações verificadas', () => {
   const avaliar = (quem: string, candidatura: string, nota = 5, texto = 'Equipa atenta e muito carinhosa com o meu pai.') =>
     q<{ id: number; verificada: boolean; autor: string; relacao: string }>(db, quem,

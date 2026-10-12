@@ -2,6 +2,7 @@ import type { Candidatura, Lar, User } from '@/types'
 import { Reveal } from '@/components/motion'
 import type { NumerosResumo } from '../lib/derive'
 import { AttentionList } from './AttentionList'
+import { EntradasCard } from './EntradasCard'
 import { Freshness } from './Freshness'
 import { Kpis } from './Kpis'
 import { MiniForecast } from './MiniForecast'
@@ -24,6 +25,9 @@ export default function ResumoPage({ lar, cands, user, n }: { lar: Lar; cands: C
       <div className="grid items-start gap-12 sm:gap-14 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] xl:gap-12">
         <AttentionList lar={lar} cands={cands} />
         <div className="flex flex-col gap-12">
+          <Reveal variant="blur" delay={40}>
+            <EntradasCard cands={cands} />
+          </Reveal>
           <Reveal variant="blur" delay={80}>
             <VagaLibertadaPanel lar={lar} />
           </Reveal>

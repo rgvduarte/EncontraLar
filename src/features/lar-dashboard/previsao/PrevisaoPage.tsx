@@ -9,6 +9,7 @@ import { Numero } from '../shared/motion'
 import { MoreLink, SectionTitle, Stat, dec1 } from '../shared/ui'
 import { Crescer } from './Crescer'
 import { EstadiaForm } from './EstadiaForm'
+import { ProcuraZona } from './ProcuraZona'
 import { SaidasChart } from './SaidasChart'
 
 /** "Contacte já as N primeiras famílias da lista" — a frase que transforma a previsão numa ação. */
@@ -72,6 +73,10 @@ export default function PrevisaoPage({ lar, n }: { lar: Lar; n: NumerosResumo })
           )}
         </Reveal>
       </section>
+
+      <Reveal>
+        <ProcuraZona lar={lar} />
+      </Reveal>
 
       <Reveal>
         <section aria-labelledby="prev-meses">
