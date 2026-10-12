@@ -1,0 +1,1 @@
+import{d as e,l as t}from"./hooks-DeFN7zV3.js";import{W as n}from"./index-DPeMSEmI.js";var r=e(t(),1);function i(){let e=n();return(0,r.useMemo)(()=>e.find(e=>e.id===`lar-jardins-do-douro`)??e.find(e=>e.tipo===`erpi`&&e.listaEspera>0&&e.historicoSaidas.length>0)??e[0],[e])}export{i as t};
