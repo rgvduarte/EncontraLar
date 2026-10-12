@@ -9,7 +9,7 @@ const TXT: Record<Disponibilidade, string> = { disponivel: '#ffffff', breve: '#1
 
 const S = 400
 const C = S / 2
-const R = 176
+const R = 168
 
 const kmTxt = (v: number) => `${v.toLocaleString('pt-PT', { maximumFractionDigits: v < 10 ? 1 : 0 })} km`
 
@@ -44,20 +44,38 @@ export const ProximityRadar = memo(function ProximityRadar({
   const k = R / ext
   const cosLat = Math.cos((centro.lat * Math.PI) / 180)
 
-  const proj = useMemo(
-    () =>
-      pontos
-        .map((p) => {
-          const dx = (p.lng - centro.lng) * 111.32 * cosLat
-          const dy = (p.lat - centro.lat) * 110.57
-          const d = Math.hypot(dx, dy)
-          return { ...p, x: C + dx * k, y: C - dy * k, d }
-        })
-        .filter((p) => p.d <= ext)
-        // números mais baixos (melhores) desenhados por cima
-        .sort((a, b) => (b.rank ?? 999) - (a.rank ?? 999) || Number(a.disp === 'disponivel') - Number(b.disp === 'disponivel')),
-    [pontos, centro.lat, centro.lng, cosLat, k, ext],
-  )
+  const proj = useMemo(() => {
+    const lista = pontos
+      .map((p) => {
+        const dx = (p.lng - centro.lng) * 111.32 * cosLat
+        const dy = (p.lat - centro.lat) * 110.57
+        const d = Math.hypot(dx, dy)
+        return { ...p, x: C + dx * k, y: C - dy * k, d }
+      })
+      .filter((p) => p.d <= ext)
+      // os numerados (melhores) primeiro, para ficarem no sítio certo; os outros afastam-se
+      .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))
+    // evitar sobreposições: instituições da mesma localidade caem quase no mesmo ponto
+    const colocados: { x: number; y: number; r: number }[] = []
+    for (const p of lista) {
+      const r = p.rank != null ? 15 : 6
+      let tentativa = 0
+      let { x, y } = p
+      const choca = () => colocados.some((c) => Math.hypot(c.x - x, c.y - y) < c.r + r + 1.5)
+      while (choca() && tentativa < 40) {
+        tentativa++
+        const ang = tentativa * 2.39996
+        const dist = 4 + tentativa * 2.2
+        x = p.x + Math.cos(ang) * dist
+        y = p.y + Math.sin(ang) * dist
+      }
+      colocados.push({ x, y, r })
+      p.x = x
+      p.y = y
+    }
+    // desenhar: esbatidos por baixo, numerados por cima (o nº 1 no topo)
+    return lista.reverse().sort((a, b) => Number(!a.esbatido) - Number(!b.esbatido))
+  }, [pontos, centro.lat, centro.lng, cosLat, k, ext])
 
   const rRaio = raioKm * k
   const metade = raioKm / 2
@@ -81,18 +99,26 @@ export const ProximityRadar = memo(function ProximityRadar({
         <line x1={C} y1={C - R - 10} x2={C} y2={C + R + 10} />
         <line x1={C - R - 10} y1={C} x2={C + R + 10} y2={C} />
       </g>
-      <text x={C} y={C - R - 16} textAnchor="middle" fontSize="13" fontWeight="700" fill="#46524f" fontFamily="'Fraunces Variable', Georgia, serif">
+      <text x={C} y={C - R - 14} textAnchor="middle" fontSize="17" fontWeight="700" fill="#46524f" fontFamily="'Fraunces Variable', Georgia, serif">
         N
       </text>
 
       {/* etiquetas dos anéis */}
-      <g fontFamily="'Atkinson Hyperlegible', sans-serif" fontWeight="700" fontSize="12">
-        <rect x={C + 6} y={C - rRaio - 11} width={kmTxt(raioKm).length * 7 + 12} height="22" rx="11" fill="#1d564e" />
-        <text x={C + 12} y={C - rRaio + 4} fill="#ffffff">
+      <g fontFamily="'Atkinson Hyperlegible', sans-serif" fontWeight="700" fontSize="16">
+        <rect x={C + 8} y={C - rRaio - 14} width={kmTxt(raioKm).length * 9 + 18} height="28" rx="14" fill="#1d564e" />
+        <text x={C + 17} y={C - rRaio + 5.5} fill="#ffffff">
           {kmTxt(raioKm)}
         </text>
-        {rRaio / 2 > 34 && (
-          <text x={C + 6} y={C - rRaio / 2 - 5} fill="#22695e">
+        {rRaio / 2 > 44 && (
+          <text
+            x={C + 8}
+            y={C - rRaio / 2 - 6}
+            fill="#1d564e"
+            paintOrder="stroke"
+            stroke="#eef6f4"
+            strokeWidth="4"
+            strokeLinejoin="round"
+          >
             {kmTxt(metade)}
           </text>
         )}
@@ -102,7 +128,7 @@ export const ProximityRadar = memo(function ProximityRadar({
       {proj.map((p) => {
         const ativo = destaque === p.id
         const numerado = p.rank != null
-        const raio = numerado ? (ativo ? 15 : 12) : ativo ? 7 : 4.6
+        const raio = numerado ? (ativo ? 18 : 15) : ativo ? 8 : 5.5
         return (
           <g
             key={p.id}
@@ -115,9 +141,9 @@ export const ProximityRadar = memo(function ProximityRadar({
             {numerado && (
               <text
                 x={p.x}
-                y={p.y + 4.5}
+                y={p.y + 5.5}
                 textAnchor="middle"
-                fontSize={ativo ? 15 : 13}
+                fontSize={ativo ? 18 : 16}
                 fontWeight="700"
                 fill={TXT[p.disp]}
                 fontFamily="'Atkinson Hyperlegible', sans-serif"
@@ -131,9 +157,9 @@ export const ProximityRadar = memo(function ProximityRadar({
 
       {/* casa da família */}
       <g>
-        <circle cx={C} cy={C} r="17" fill="#b9472f" stroke="#ffffff" strokeWidth="3" />
+        <circle cx={C} cy={C} r="19" fill="#b9472f" stroke="#ffffff" strokeWidth="3" />
         <path
-          d={`M${C - 7} ${C + 1} L${C} ${C - 6} L${C + 7} ${C + 1} M${C - 5} ${C - 1} V${C + 7} H${C + 5} V${C - 1}`}
+          d={`M${C - 8} ${C + 1} L${C} ${C - 7} L${C + 8} ${C + 1} M${C - 5.5} ${C - 1.5} V${C + 8} H${C + 5.5} V${C - 1.5}`}
           fill="none"
           stroke="#ffffff"
           strokeWidth="2.2"
@@ -142,18 +168,18 @@ export const ProximityRadar = memo(function ProximityRadar({
         />
         <text
           x={C}
-          y={C + 36}
+          y={C + 42}
           textAnchor="middle"
-          fontSize="14"
+          fontSize="18"
           fontWeight="700"
           fill="#1c2a29"
           fontFamily="'Atkinson Hyperlegible', sans-serif"
           paintOrder="stroke"
           stroke="#fbf8f3"
-          strokeWidth="4"
+          strokeWidth="5"
           strokeLinejoin="round"
         >
-          {rotuloCentro.length > 28 ? `${rotuloCentro.slice(0, 27)}…` : rotuloCentro}
+          {rotuloCentro.length > 26 ? `${rotuloCentro.slice(0, 25)}…` : rotuloCentro}
         </text>
       </g>
     </svg>
@@ -161,7 +187,7 @@ export const ProximityRadar = memo(function ProximityRadar({
 })
 
 /** Legenda do mapa de proximidade (cor + texto, nunca só cor). */
-export function RadarLegend({ className, numerado }: { className?: string; numerado?: boolean }) {
+export function RadarLegend({ className, numerado, esbatido }: { className?: string; numerado?: boolean; esbatido?: string }) {
   const itens: [Disponibilidade, string][] = [
     ['disponivel', 'Vaga agora'],
     ['breve', 'Vaga prevista em breve'],
@@ -179,6 +205,12 @@ export function RadarLegend({ className, numerado }: { className?: string; numer
           {l}
         </li>
       ))}
+      {esbatido && (
+        <li className="inline-flex items-center gap-2">
+          <span aria-hidden className="size-3.5 rounded-full bg-dusk-500 opacity-35" />
+          {esbatido}
+        </li>
+      )}
       {numerado && <li className="text-ink-mute">Números = posição na lista</li>}
     </ul>
   )

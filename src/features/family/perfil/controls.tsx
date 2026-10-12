@@ -10,6 +10,7 @@ export function Chip({
   onChange,
   icon,
   tag,
+  compact,
   children,
   className,
 }: {
@@ -18,34 +19,48 @@ export function Chip({
   checked: boolean
   onChange: (v: boolean) => void
   icon?: ReactNode
-  /** etiqueta discreta à direita (ex.: "essencial") */
+  /** etiqueta discreta por baixo do texto (ex.: "essencial") */
   tag?: ReactNode
+  /** versão curta (sem caixa de verificação; visto antes do texto quando escolhido) */
+  compact?: boolean
   children: ReactNode
   className?: string
 }) {
   return (
     <label
       className={cn(
-        'group relative flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border-2 border-line bg-white px-4 py-2 transition-colors',
+        'group relative flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border-2 border-line bg-white py-2 transition-colors',
+        compact ? 'px-3' : 'px-4',
         'hover:border-pine-400 has-[:checked]:border-pine-700 has-[:checked]:bg-pine-50',
         'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
         className,
       )}
     >
       <input type={type} name={name} checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
-      {icon && <span className="text-pine-700 [&_svg]:size-5">{icon}</span>}
-      <span className="flex-1 leading-snug font-semibold text-ink">{children}</span>
-      {tag}
-      <span
-        aria-hidden
-        className={cn(
-          'flex size-6 shrink-0 items-center justify-center border-2 border-line-strong bg-white text-white transition-colors',
-          'group-has-[:checked]:border-pine-700 group-has-[:checked]:bg-pine-700',
-          type === 'radio' ? 'rounded-full' : 'rounded-md',
-        )}
-      >
-        <Check strokeWidth={3} className="size-3.5" />
-      </span>
+      {compact ? (
+        <span className="flex flex-1 items-center justify-center gap-1.5 text-center leading-snug font-semibold text-ink">
+          <Check aria-hidden strokeWidth={3} className="hidden size-4 shrink-0 text-pine-700 group-has-[:checked]:inline-block" />
+          {children}
+        </span>
+      ) : (
+        <>
+          {icon && <span className="text-pine-700 [&_svg]:size-5">{icon}</span>}
+          <span className="flex-1">
+            <span className="block leading-snug font-semibold text-ink">{children}</span>
+            {tag && <span className="mt-0.5 block">{tag}</span>}
+          </span>
+          <span
+            aria-hidden
+            className={cn(
+              'flex size-6 shrink-0 items-center justify-center border-2 border-line-strong bg-white text-white transition-colors',
+              'group-has-[:checked]:border-pine-700 group-has-[:checked]:bg-pine-700',
+              type === 'radio' ? 'rounded-full' : 'rounded-md',
+            )}
+          >
+            <Check strokeWidth={3} className="size-3.5" />
+          </span>
+        </>
+      )}
     </label>
   )
 }

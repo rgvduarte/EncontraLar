@@ -130,7 +130,7 @@ export function PerfilForm({
                 />
               </div>
             </div>
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
               <SelectField label="Relação consigo" value={form.relacao} onChange={(e) => set('relacao', e.target.value)}>
                 {!RELACOES.includes(form.relacao as (typeof RELACOES)[number]) && <option value={form.relacao}>{form.relacao}</option>}
                 {RELACOES.map((r) => (
@@ -138,13 +138,13 @@ export function PerfilForm({
                 ))}
               </SelectField>
               <Grupo label="Género" hint="Ajuda a propor quarto partilhado.">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2 sm:max-w-md">
                   {([
                     ['F', 'Feminino'],
                     ['M', 'Masculino'],
                     ['', 'Não indicar'],
                   ] as const).map(([v, l]) => (
-                    <Chip key={l} type="radio" name="genero" checked={(form.genero ?? '') === v} onChange={() => set('genero', v || undefined)} className="px-3 text-sm">
+                    <Chip key={l} compact type="radio" name="genero" checked={(form.genero ?? '') === v} onChange={() => set('genero', v || undefined)} className="text-sm">
                       {l}
                     </Chip>
                   ))}
@@ -177,7 +177,7 @@ export function PerfilForm({
                     icon={<Icon aria-hidden />}
                     tag={
                       CUIDADOS_CRITICOS.includes(c) ? (
-                        <span className="rounded-full bg-terra-50 px-2 text-xs font-bold text-terra-800 ring-1 ring-terra-200">essencial</span>
+                        <span className="text-xs font-bold tracking-wide text-terra-700 uppercase">essencial</span>
                       ) : undefined
                     }
                   >
@@ -192,7 +192,7 @@ export function PerfilForm({
             <Grupo label="Tipo de quarto">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {QUARTOS.map((q) => (
-                  <Chip key={q} type="radio" name="quarto" checked={form.quarto === q} onChange={() => set('quarto', q)} className="text-sm">
+                  <Chip key={q} compact type="radio" name="quarto" checked={form.quarto === q} onChange={() => set('quarto', q)}>
                     {q === 'indiferente' ? 'Indiferente' : q === 'duplo' ? 'Duplo, partilhado' : QUARTO_CURTO[q]}
                   </Chip>
                 ))}
@@ -237,7 +237,7 @@ export function PerfilForm({
               <Grupo label="Distância máxima" hint="Raio a partir desse local.">
                 <div className="flex flex-wrap gap-2">
                   {raios.map((r) => (
-                    <Chip key={r} type="radio" name="raio" checked={form.raioKm === r} onChange={() => set('raioKm', r)} className="min-w-20 px-3 text-sm">
+                    <Chip key={r} compact type="radio" name="raio" checked={form.raioKm === r} onChange={() => set('raioKm', r)} className="min-w-20">
                       {r} km
                     </Chip>
                   ))}

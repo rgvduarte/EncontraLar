@@ -223,6 +223,22 @@ export default function GuardadosPage() {
               </li>
             )
           })}
+          <li>
+            <Link
+              to={principal ? pesquisaUrl(principal) : '/pesquisa'}
+              className="group flex h-full min-h-48 flex-col items-start justify-end gap-2 rounded-3xl border-2 border-dashed border-line-strong p-6 transition-colors hover:border-pine-500 hover:bg-white"
+            >
+              <span aria-hidden className="flex size-12 items-center justify-center rounded-2xl bg-sand text-pine-700 group-hover:bg-pine-50">
+                <Map className="size-6" />
+              </span>
+              <span className="font-display text-xl font-semibold">Guardar mais instituições</span>
+              <span className="text-sm text-ink-soft">
+                {principal
+                  ? `No mapa, já filtrado para o perfil de ${nomeCurto(principal.nome)}. Comparar três ou quatro ajuda a decidir com calma.`
+                  : 'No mapa de vagas, toque no coração de cada instituição que lhe interessar.'}
+              </span>
+            </Link>
+          </li>
         </ul>
       </section>
     </div>

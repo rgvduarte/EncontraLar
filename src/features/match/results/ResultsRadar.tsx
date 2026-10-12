@@ -59,7 +59,7 @@ export function ResultsRadar({
         rotuloCentro={local.label}
         titulo={`Mapa de proximidade com ${plural(boas.length, 'sugestão', 'sugestões')} à volta ${deLocal(local.label)}. A lista tem a mesma informação.`}
       />
-      <RadarLegend numerado={boas.length > 0} className="px-1 pt-2" />
+      <RadarLegend numerado={boas.length > 0} esbatido={outras.length ? 'Esbatido: pouco compatível' : undefined} className="px-1 pt-2" />
     </section>
   )
 }

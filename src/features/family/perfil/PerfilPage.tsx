@@ -66,7 +66,7 @@ export default function PerfilPage() {
                       ativo ? 'border-pine-700 shadow-card' : 'border-line hover:border-pine-400',
                     )}
                   >
-                    <Avatar nome={p.nome} className={cn('size-14 text-lg', ativo && 'bg-pine-700 text-white')} />
+                    <Avatar nome={p.nome} className="size-14 text-lg" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-display text-xl leading-tight font-semibold">{nomeCurto(p.nome)}</span>
                       <span className="block text-sm text-ink-soft">

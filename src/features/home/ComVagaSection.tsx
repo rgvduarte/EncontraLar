@@ -162,6 +162,7 @@ export function ComVagaSection({ lares }: { lares: Lar[] }) {
               </ul>
               {lista.length > MOSTRAR && (
                 <p className="mt-5 text-sm text-ink-mute">
+                  <span className="md:hidden">Deslize para o lado para ver as outras. </span>
                   Mostramos {MOSTRAR} de {lista.length}: primeiro as verificadas, depois as que atualizaram as vagas há menos tempo.
                 </p>
               )}

@@ -199,11 +199,11 @@ export function VagasCard({
               <Button size="lg" full onClick={onPedir} icon={<Send aria-hidden className="size-5" />} className="whitespace-normal">
                 {ctaLabel}
               </Button>
-              <div className="flex gap-3">
-                <Button variant="secondary" onClick={onVisita} className="flex-1" icon={<CalendarDays aria-hidden className="size-5" />}>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="secondary" onClick={onVisita} className="flex-1 px-3.5" icon={<CalendarDays aria-hidden className="size-5" />}>
                   Marcar visita
                 </Button>
-                <FavoriteButton larId={lar.id} larNome={lar.nome} variant="inline" />
+                <FavoriteButton larId={lar.id} larNome={lar.nome} variant="inline" className="grow justify-center px-3.5" />
               </div>
             </div>
           </>

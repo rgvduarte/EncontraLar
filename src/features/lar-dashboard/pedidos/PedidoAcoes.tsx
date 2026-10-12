@@ -2,15 +2,29 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { Info, KeyRound } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
-import { Button } from '@/components/ui/Button'
+import { Button, type ButtonVariant } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 import { acoesDoPedido, type Acao } from './acoes'
 import { EstadoModal } from './EstadoModal'
 
 /** Botões de ação de um pedido + diálogo de confirmação com nota para a família. */
-export function PedidoAcoes({ c, lar, className }: { c: Candidatura; lar: Lar; className?: string }) {
+export function PedidoAcoes({
+  c,
+  lar,
+  className,
+  apenasPrincipal,
+  variantePrincipal,
+}: {
+  c: Candidatura
+  lar: Lar
+  className?: string
+  /** mostra só a primeira ação (as restantes ficam no detalhe do pedido) */
+  apenasPrincipal?: boolean
+  variantePrincipal?: ButtonVariant
+}) {
   const [acao, setAcao] = useState<Acao | null>(null)
-  const acoes = acoesDoPedido(c, lar)
+  const todas = acoesDoPedido(c, lar)
+  const acoes = apenasPrincipal ? todas.slice(0, 1) : todas
 
   if (c.estado === 'aceite') {
     return (
@@ -25,10 +39,10 @@ export function PedidoAcoes({ c, lar, className }: { c: Candidatura; lar: Lar; c
   return (
     <div className={cn('flex flex-col gap-3', className)}>
       <div className="flex flex-wrap items-center gap-2">
-        {acoes.map((a) => (
+        {acoes.map((a, i) => (
           <Button
             key={a.id}
-            variant={a.variant}
+            variant={i === 0 && variantePrincipal ? variantePrincipal : a.variant}
             disabled={Boolean(a.bloqueio)}
             icon={<a.icon aria-hidden className="size-5" />}
             onClick={() => setAcao(a)}

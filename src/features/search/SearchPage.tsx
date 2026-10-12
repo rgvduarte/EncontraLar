@@ -109,12 +109,12 @@ export default function SearchPage() {
       )}
       <ResultsHeader state={state} resultados={resultados} comVaga={comVaga} acao={desktop ? <SortSelect model={model} /> : undefined}>
         {!desktop && (
-          <div className="relative mt-4 flex flex-wrap items-center gap-2">
+          <div className="relative mt-4 flex flex-col gap-2.5">
             <QuickVaga model={model} />
-            <SortSelect model={model} />
+            <SortSelect model={model} className="self-start" />
           </div>
         )}
-        <ActivePills model={model} className="relative mt-4" />
+        <ActivePills model={model} semLocal={!desktop} className="relative mt-4" />
       </ResultsHeader>
       {resultados.length > 0 ? (
         <ResultsList

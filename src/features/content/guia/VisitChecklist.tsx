@@ -174,7 +174,7 @@ export function VisitChecklist() {
           <span className="text-sm text-ink-mute">EncontraLar · Guia para famílias</span>
         </div>
 
-        <div className="grid gap-5 border-b border-line bg-cream px-5 py-6 sm:px-7 md:grid-cols-[minmax(0,1fr)_12rem] print:grid-cols-[minmax(0,1fr)_12rem] print:bg-white">
+        <div className="grid gap-5 border-b border-line bg-cream px-5 py-6 sm:px-7 md:grid-cols-[minmax(0,1fr)_15rem] print:grid-cols-[minmax(0,1fr)_15rem] print:bg-white">
           <InputField
             label="Instituição visitada"
             placeholder="Ex.: Lar de São José"

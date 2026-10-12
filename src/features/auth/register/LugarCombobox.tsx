@@ -4,6 +4,7 @@ import { FieldShell } from '@/components/ui/Field'
 import { LUGARES, type LugarPesquisa } from '@/data/localidades'
 import { cn } from '@/lib/cn'
 import { normalizar } from '../shared/validators'
+import { distritoTexto } from '../shared/lugar'
 
 const MAX = 8
 
@@ -161,7 +162,7 @@ export const LugarCombobox = forwardRef<
                 <span className="font-semibold">
                   <Realce texto={l.label} q={value} />
                 </span>
-                <span className="shrink-0 text-sm text-ink-mute">Distrito: {l.distrito}</span>
+                <span className="shrink-0 text-right text-sm text-ink-mute">{distritoTexto(l.distrito)}</span>
               </li>
             ))}
           </ul>

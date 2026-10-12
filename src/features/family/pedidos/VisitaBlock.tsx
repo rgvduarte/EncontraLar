@@ -3,55 +3,103 @@ import { Link } from 'react-router'
 import { BookOpenText, CalendarCheck, CalendarClock, CalendarPlus, Pencil } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
 import { Button } from '@/components/ui/Button'
-import { InputField, SelectField } from '@/components/ui/Field'
+import { SelectField } from '@/components/ui/Field'
 import { toast } from '@/components/ui/Toast'
 import { pedirVisita } from '@/lib/store'
 import { cn } from '@/lib/cn'
 import { descarregarVisita } from '../shared/ics'
-import { amanhaISO, dataLocal, quando, visitaPorExtenso } from '../shared/text'
+import { amanhaISO, dataLocal, diaPorExtenso, isoDia, quando, visitaPorExtenso } from '../shared/text'
 
 /** Horários habituais de visita (a instituição confirma ou propõe outro). */
 const HORAS = ['10:00', '10:30', '11:00', '11:30', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00']
+
+/** Próximos 14 dias, a começar amanhã (o dia atual raramente é possível). */
+function proximosDias(extra?: string): string[] {
+  const dias = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() + i + 1)
+    return isoDia(d)
+  })
+  if (extra && extra >= amanhaISO() && !dias.includes(extra)) dias.push(extra)
+  return dias
+}
 
 function VisitaForm({ c, lar, onDone, inicial }: { c: Candidatura; lar: Lar; onDone?: () => void; inicial?: { data: string; hora: string } }) {
   const [data, setData] = useState(inicial?.data ?? '')
   const [hora, setHora] = useState(inicial?.hora ?? '15:00')
   const [erro, setErro] = useState<string | null>(null)
-  const min = amanhaISO()
+  const dias = proximosDias(inicial?.data)
+  const erroId = `visita-erro-${c.id}`
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     if (!data) return setErro('Escolha o dia da visita.')
-    if (data < min) return setErro('Escolha um dia a partir de amanhã.')
     pedirVisita(c.id, data, hora)
     toast.success('Pedido de visita enviado', `${lar.nome} vai confirmar ${visitaPorExtenso(data, hora)} ou propor outro horário.`)
     onDone?.()
   }
 
   return (
-    <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,11rem)_auto] sm:items-end">
-      <InputField
-        type="date"
-        label="Dia"
-        min={min}
-        value={data}
-        onChange={(e) => {
-          setData(e.target.value)
-          setErro(null)
-        }}
-        error={erro ?? undefined}
-        required
-      />
-      <SelectField label="Hora" value={hora} onChange={(e) => setHora(e.target.value)}>
-        {HORAS.map((h) => (
-          <option key={h} value={h}>
-            {h}
-          </option>
-        ))}
-      </SelectField>
-      <Button type="submit" icon={<CalendarClock aria-hidden className="size-5" />} className={cn(erro && 'sm:mb-8')}>
-        Pedir visita
-      </Button>
+    <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+      <fieldset aria-describedby={erro ? erroId : undefined}>
+        <legend className="mb-2 text-base font-bold">Dia</legend>
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pt-1 pb-2 [scrollbar-width:thin] md:grid md:grid-cols-7 md:overflow-visible">
+          {dias.map((iso, i) => {
+            const d = dataLocal(iso)
+            const fimDeSemana = d.getDay() === 0 || d.getDay() === 6
+            const novoMes = i === 0 || d.getDate() === 1
+            return (
+              <label
+                key={iso}
+                className={cn(
+                  'group flex min-h-20 min-w-16 shrink-0 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 px-2 py-2 text-center transition-colors',
+                  'border-line bg-white hover:border-pine-400 has-[:checked]:border-pine-700 has-[:checked]:bg-pine-700 has-[:checked]:text-white',
+                  'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
+                )}
+              >
+                <input
+                  type="radio"
+                  name={`visita-dia-${c.id}`}
+                  value={iso}
+                  checked={data === iso}
+                  onChange={() => {
+                    setData(iso)
+                    setErro(null)
+                  }}
+                  className="sr-only"
+                  aria-label={diaPorExtenso(d)}
+                />
+                <span aria-hidden className={cn('text-xs font-bold uppercase', fimDeSemana ? 'text-terra-700 group-has-[:checked]:text-terra-200' : 'text-ink-soft group-has-[:checked]:text-pine-100')}>
+                  {d.toLocaleDateString('pt-PT', { weekday: 'short' }).replace('.', '')}
+                </span>
+                <span aria-hidden className="font-display text-2xl leading-none font-semibold tabular">
+                  {d.getDate()}
+                </span>
+                <span aria-hidden className={cn('text-xs', novoMes ? 'font-bold' : 'opacity-0')}>
+                  {d.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', '')}
+                </span>
+              </label>
+            )
+          })}
+        </div>
+        {erro && (
+          <p id={erroId} role="alert" className="mt-1 text-sm font-bold text-alert-700">
+            {erro}
+          </p>
+        )}
+      </fieldset>
+      <div className="flex flex-wrap items-end gap-4">
+        <SelectField label="Hora" value={hora} onChange={(e) => setHora(e.target.value)} wrapperClassName="w-40">
+          {HORAS.map((h) => (
+            <option key={h} value={h}>
+              {h}
+            </option>
+          ))}
+        </SelectField>
+        <Button type="submit" icon={<CalendarClock aria-hidden className="size-5" />}>
+          {data ? `Pedir visita para ${dataLocal(data).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })}, ${hora}` : 'Pedir visita'}
+        </Button>
+      </div>
     </form>
   )
 }

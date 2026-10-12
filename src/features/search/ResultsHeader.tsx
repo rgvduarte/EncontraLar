@@ -135,7 +135,7 @@ export function ResultsHeader({ state, resultados, comVaga, acao, children }: He
         size={44}
       />
       <p className="eyebrow relative">Mapa de vagas</p>
-      <h1 className="relative mt-1.5 max-w-[32rem] text-3xl leading-tight font-semibold text-ink">{t.h1}</h1>
+      <h1 className="relative mt-1.5 max-w-[32rem] text-[1.875rem] leading-tight font-semibold text-ink sm:text-3xl">{t.h1}</h1>
       <p className="relative mt-1.5 text-sm text-ink-soft">{t.contexto}</p>
 
       <div className="relative mt-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">

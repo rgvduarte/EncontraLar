@@ -127,7 +127,10 @@ export function InstitutionForm({ onDraftChange }: { onDraftChange?: (d: Institu
         intro="O essencial para aparecer no mapa. Quartos, cuidados, equipa e vagas completam-se depois, no painel."
       >
         <InstituicaoFields form={form} />
-        <InstitutionPreview draft={draft} className="mt-8 lg:hidden" />
+        <div className="mt-10 lg:hidden">
+          <p className="eyebrow mb-3">Assim vai aparecer</p>
+          <InstitutionPreview draft={draft} />
+        </div>
       </FormSection>
 
       <FormSection n={4} id="passo-confirmar-inst" title={<>Confirmar e <em>registar</em></>}>

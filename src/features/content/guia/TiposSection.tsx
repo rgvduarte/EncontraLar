@@ -74,7 +74,7 @@ function Acesso({ direto }: { direto: boolean }) {
 
 function Nome({ r }: { r: Resposta }) {
   return (
-    <span className="flex flex-col items-start gap-1.5">
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
       <span className="font-display text-xl leading-tight font-semibold text-ink">
         {r.nome}
         {r.sigla && <span className="ml-1.5 font-sans text-sm font-bold tracking-wide text-ink-mute">{r.sigla}</span>}
@@ -108,35 +108,36 @@ export function TiposSection() {
 
       {/* desktop: tabela comparativa */}
       <div className="mt-10 hidden overflow-hidden rounded-3xl border border-line bg-white shadow-soft md:block">
-        <table className="w-full border-collapse text-left text-base">
+        <table className="w-full table-fixed border-collapse text-left text-base">
           <caption className="sr-only">Comparação dos tipos de resposta: para quem são, custo típico e como aceder</caption>
           <thead className="bg-sand/70 text-xs tracking-[0.12em] text-ink-mute uppercase">
             <tr>
-              <th scope="col" className="w-[20%] px-5 py-3 font-bold">Resposta</th>
-              <th scope="col" className="px-5 py-3 font-bold">Para quem</th>
-              <th scope="col" className="px-5 py-3 font-bold">Custo típico</th>
-              <th scope="col" className="px-5 py-3 font-bold">Como aceder</th>
+              <th scope="col" className="px-6 py-3 font-bold">Para quem</th>
+              <th scope="col" className="px-6 py-3 font-bold">Custo típico</th>
+              <th scope="col" className="px-6 py-3 font-bold">Como aceder</th>
             </tr>
           </thead>
-          <tbody>
-            {RESPOSTAS.map((r) => (
-              <tr key={r.nome} className={cn('border-t border-line align-top', !r.direto && 'bg-terra-50/40')}>
-                <th scope="row" className="px-5 py-5 font-normal">
-                  <Nome r={r} />
+          {RESPOSTAS.map((r) => (
+            <tbody key={r.nome} className={cn('border-t border-line-strong', !r.direto && 'bg-terra-50/50')}>
+              <tr>
+                <th scope="rowgroup" colSpan={3} className="px-6 pt-5 pb-1 font-normal">
+                  <span className="flex flex-wrap items-center justify-between gap-3">
+                    <Nome r={r} />
+                    {r.pesquisa && (
+                      <Link to={r.pesquisa} className="link inline-flex min-h-10 items-center gap-1 text-sm">
+                        Ver no mapa <ArrowRight aria-hidden className="size-4" />
+                      </Link>
+                    )}
+                  </span>
                 </th>
-                <td className="px-5 py-5 text-ink-soft">{r.paraQuem}</td>
-                <td className="px-5 py-5 text-ink-soft">{r.custo}</td>
-                <td className="px-5 py-5 text-ink-soft">
-                  {r.acesso}
-                  {r.pesquisa && (
-                    <Link to={r.pesquisa} className="link mt-2 flex items-center gap-1 text-sm">
-                      Ver no mapa <ArrowRight aria-hidden className="size-4" />
-                    </Link>
-                  )}
-                </td>
               </tr>
-            ))}
-          </tbody>
+              <tr className="align-top text-ink-soft">
+                <td className="px-6 pt-2 pb-6">{r.paraQuem}</td>
+                <td className="px-6 pt-2 pb-6">{r.custo}</td>
+                <td className="px-6 pt-2 pb-6">{r.acesso}</td>
+              </tr>
+            </tbody>
+          ))}
         </table>
       </div>
 

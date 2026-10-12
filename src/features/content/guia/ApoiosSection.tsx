@@ -1,9 +1,8 @@
 /**
  * #apoios — comparticipações e apoios. Sem valores: as regras mudam e remetemos sempre para a fonte oficial.
  */
-import { Landmark, Receipt } from 'lucide-react'
+import { Building2, Landmark, Lightbulb, Receipt } from 'lucide-react'
 import { AnchorSection, Callout, Confirme, SectionMark } from '../shared/editorial'
-import { cn } from '@/lib/cn'
 
 interface Apoio {
   nome: string
@@ -64,6 +63,12 @@ const APOIOS: Apoio[] = [
   },
 ]
 
+const GRUPOS = [
+  { entidade: 'Instituição', titulo: 'Pede-se na própria instituição', Icon: Building2 },
+  { entidade: 'Segurança Social', titulo: 'Pede-se à Segurança Social', Icon: Landmark },
+  { entidade: 'Autoridade Tributária', titulo: 'No IRS', Icon: Receipt },
+] as const
+
 export function ApoiosSection() {
   return (
     <AnchorSection id="apoios">
@@ -79,40 +84,48 @@ export function ApoiosSection() {
         lead="O custo é muitas vezes o que mais assusta. Há apoios públicos que podem fazer diferença; os valores mudam todos os anos, por isso indicamos sempre onde confirmar."
       />
 
-      <ol className="mt-10 flex flex-col gap-5">
-        {APOIOS.map((a, i) => (
-          <li
-            key={a.nome}
-            className={cn(
-              'relative grid gap-5 rounded-3xl border border-line bg-white p-6 sm:p-7 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:gap-8',
-              i === 0 && 'border-pine-200 bg-pine-50/50',
-            )}
-          >
-            <div className="flex flex-col gap-3">
-              <p className="flex items-center gap-2 text-xs font-bold tracking-[0.12em] text-ink-mute uppercase">
-                {a.entidade === 'Autoridade Tributária' ? <Receipt aria-hidden className="size-4" /> : <Landmark aria-hidden className="size-4" />}
-                {a.entidade}
-              </p>
-              <h3 className="text-2xl leading-snug font-semibold text-ink">{a.nome}</h3>
-              <p className="text-lg leading-relaxed text-ink-soft">{a.oQue}</p>
-              {a.nota && <p className="text-base font-semibold text-pine-800">{a.nota}</p>}
-            </div>
-            <div className="flex flex-col gap-4 border-t border-line pt-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
-              <dl className="flex flex-col gap-4">
-              <div>
-                <dt className="text-xs font-bold tracking-[0.12em] text-ink-mute uppercase">Para quem</dt>
-                <dd className="mt-1 text-base text-ink">{a.quem}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold tracking-[0.12em] text-ink-mute uppercase">Onde pedir</dt>
-                <dd className="mt-1 text-base text-ink">{a.onde}</dd>
-              </div>
-              </dl>
-              <Confirme fonte={a.fonte} />
-            </div>
-          </li>
+      <div className="mt-10 flex flex-col gap-12">
+        {GRUPOS.map((g) => (
+          <div key={g.entidade}>
+            <h3 className="flex items-center gap-3 font-sans text-xs font-bold tracking-[0.12em] text-ink-mute uppercase">
+              <span className="flex size-9 items-center justify-center rounded-full bg-pine-50 text-pine-700">
+                <g.Icon aria-hidden className="size-4.5" />
+              </span>
+              {g.titulo}
+              <span aria-hidden className="h-px flex-1 bg-line-strong" />
+            </h3>
+            <ul className="mt-2 flex flex-col divide-y divide-line">
+              {APOIOS.filter((a) => a.entidade === g.entidade).map((a) => (
+                <li key={a.nome} className="grid gap-5 py-7 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:gap-10">
+                  <div className="flex flex-col gap-3">
+                    <h4 className="font-display text-2xl leading-snug font-semibold text-ink">{a.nome}</h4>
+                    <p className="text-lg leading-relaxed text-ink-soft">{a.oQue}</p>
+                    {a.nota && (
+                      <p className="flex gap-2 text-base font-semibold text-pine-800">
+                        <Lightbulb aria-hidden className="mt-1 size-4.5 shrink-0" />
+                        {a.nota}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-4 rounded-2xl bg-sand/70 p-5">
+                    <dl className="flex flex-col gap-4">
+                      <div>
+                        <dt className="text-xs font-bold tracking-[0.12em] text-ink-mute uppercase">Para quem</dt>
+                        <dd className="mt-1 text-base text-ink">{a.quem}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-bold tracking-[0.12em] text-ink-mute uppercase">Onde pedir</dt>
+                        <dd className="mt-1 text-base text-ink">{a.onde}</dd>
+                      </div>
+                    </dl>
+                    <Confirme fonte={a.fonte} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ol>
+      </div>
 
       <Callout tone="dica" title="Não sabe a que tem direito?" className="mt-8">
         <p>

@@ -8,11 +8,11 @@ export function NextSteps() {
   return (
     <ol aria-label="Passos seguintes" className="flex flex-col gap-8">
       {PASSOS.map((p) => (
-        <li key={p.n} className="grid grid-cols-[auto_1fr] items-start gap-x-4 opacity-70 sm:grid-cols-[3.5rem_1fr] sm:gap-x-6">
+        <li key={p.n} className="grid grid-cols-[auto_1fr] items-start gap-x-4 sm:grid-cols-[3.5rem_1fr] sm:gap-x-6">
           <span aria-hidden className="pt-3 font-display text-4xl leading-none font-semibold text-line-strong tabular sm:pt-1 sm:text-right sm:text-6xl">
             {p.n}
           </span>
-          <div className="rounded-3xl border-2 border-dashed border-line-strong px-5 py-4">
+          <div className="rounded-3xl border-2 border-dashed border-line-strong bg-cream px-5 py-4">
             <p className="font-display text-xl font-semibold text-ink-soft">
               <span className="sr-only">Passo {p.n}: </span>
               {p.titulo}

@@ -94,12 +94,10 @@ export function MapController({ fitKey, local, raio, resultados, padding, onUser
         for (const p of pontos) b.extend(p)
         map.fitBounds(b, opts)
       } else if (local.tipo === 'distrito') {
+        // centro do distrito como referência; aproxima até onde os resultados permitirem
         const c = CENTRO_DISTRITO[local.distrito]
-        map.setView([c.lat, c.lng], c.zoom, { animate: false })
-        if (pontos.length) {
-          const b = L.latLngBounds(pontos)
-          if (!map.getBounds().contains(b)) map.fitBounds(b, opts)
-        }
+        if (pontos.length) map.fitBounds(L.latLngBounds([...pontos, [c.lat, c.lng]]), { ...opts, maxZoom: c.zoom + 2 })
+        else map.setView([c.lat, c.lng], c.zoom, { animate: opts.animate })
       } else {
         map.fitBounds(limitesPais(resultados), { ...opts, maxZoom: 12 })
       }

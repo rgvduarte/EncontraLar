@@ -54,15 +54,25 @@ export function SortSelect({ model, className }: { model: SearchModel; className
 }
 
 /** "Com vaga agora" / "Vaga em breve" — atalhos visíveis no telemóvel (o resto fica no modal). */
-export function QuickVaga({ model }: { model: SearchModel }) {
+export function QuickVaga({ model, className }: { model: SearchModel; className?: string }) {
   const { state, update } = model
   const setVaga = (v: VagaFiltro) => update({ vaga: state.vaga === v ? null : v })
   return (
-    <div role="group" aria-label="Disponibilidade" className="flex flex-wrap gap-2">
-      <ToggleChip pressed={state.vaga === 'agora'} onClick={() => setVaga('agora')} icon={<DispGlyph disp="disponivel" onDark={state.vaga === 'agora'} />}>
+    <div role="group" aria-label="Disponibilidade" className={cn('grid grid-cols-2 gap-2', className)}>
+      <ToggleChip
+        pressed={state.vaga === 'agora'}
+        onClick={() => setVaga('agora')}
+        icon={<DispGlyph disp="disponivel" onDark={state.vaga === 'agora'} />}
+        className="justify-center px-3"
+      >
         Com vaga agora
       </ToggleChip>
-      <ToggleChip pressed={state.vaga === 'breve'} onClick={() => setVaga('breve')} icon={<DispGlyph disp="breve" onDark={state.vaga === 'breve'} />}>
+      <ToggleChip
+        pressed={state.vaga === 'breve'}
+        onClick={() => setVaga('breve')}
+        icon={<DispGlyph disp="breve" onDark={state.vaga === 'breve'} />}
+        className="justify-center px-3"
+      >
         Vaga em breve
       </ToggleChip>
     </div>
@@ -70,9 +80,9 @@ export function QuickVaga({ model }: { model: SearchModel }) {
 }
 
 /** Pílulas removíveis dos filtros ativos (inclui o local). */
-export function ActivePills({ model, className }: { model: SearchModel; className?: string }) {
+export function ActivePills({ model, className, semLocal }: { model: SearchModel; className?: string; semLocal?: boolean }) {
   const { state, update } = model
-  const pilulas = pilulasAtivas(state)
+  const pilulas = pilulasAtivas(state).filter((p) => !semLocal || p.id !== 'local')
   if (!pilulas.length) return null
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>

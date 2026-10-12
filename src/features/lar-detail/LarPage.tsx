@@ -62,7 +62,7 @@ function Ficha({ lar }: { lar: Lar }) {
             <LarHero lar={lar} dados={dados} />
           </div>
 
-          <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <div className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
             <div ref={cartaoRef} className="lg:sticky" style={{ top: topoCartao }}>
               <VagasCard
                 lar={lar}

@@ -6,6 +6,7 @@ import { NATUREZA_LABEL, TIPO_LABEL } from '@/lib/labels'
 import { euro, plural } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { lugarCanonico, lugarPorLabel } from './LugarCombobox'
+import { distritoTexto } from '../shared/lugar'
 
 export interface InstitutionDraft {
   instNome: string
@@ -58,7 +59,7 @@ export function InstitutionPreview({ draft, className }: { draft: InstitutionDra
             {lugar ? (
               <>
                 {lugar.split(' — ')[0]}
-                {distrito && distrito !== lugar.split(' — ')[0] && <> · distrito de {distrito}</>}
+                {distrito && distrito !== lugar.split(' — ')[0] && <> · {distritoTexto(distrito)}</>}
               </>
             ) : (
               vazio

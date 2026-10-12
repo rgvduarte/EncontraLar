@@ -32,7 +32,7 @@ export function PrecosSection({ lar, dados, numero }: { lar: Lar; dados: DadosLa
             <tr>
               <th scope="col" className="px-5 py-3 font-bold sm:px-6">{dados.centroDia ? 'Frequência' : 'Tipo de quarto'}</th>
               <th scope="col" className="hidden px-3 py-3 text-right font-bold sm:table-cell">{dados.centroDia ? 'Lugares' : 'Camas'}</th>
-              <th scope="col" className="px-3 py-3 text-right font-bold">Livres hoje</th>
+              <th scope="col" className="hidden px-3 py-3 text-right font-bold sm:table-cell">Livres hoje</th>
               <th scope="col" className="px-5 py-3 text-right font-bold sm:px-6">Mensalidade{social ? '*' : ''}</th>
             </tr>
           </thead>
@@ -41,16 +41,24 @@ export function PrecosSection({ lar, dados, numero }: { lar: Lar; dados: DadosLa
               <tr key={q.tipo}>
                 <th scope="row" className="px-5 py-4 font-semibold text-ink sm:px-6">
                   {dados.centroDia ? 'Frequência diária' : QUARTO_TABELA[q.tipo]}
+                  <span className="mt-0.5 block text-sm font-normal text-ink-soft sm:hidden">
+                    {q.livres > 0 ? (
+                      <span className="font-bold text-leaf-700">{q.livres} {q.livres === 1 ? 'livre' : 'livres'}</span>
+                    ) : (
+                      'Sem lugares livres'
+                    )}{' '}
+                    · {q.total} {dados.centroDia ? 'lugares' : 'camas'}
+                  </span>
                 </th>
                 <td className="hidden px-3 py-4 text-right text-ink-soft tabular sm:table-cell">{q.total}</td>
-                <td className="px-3 py-4 text-right tabular">
+                <td className="hidden px-3 py-4 text-right tabular sm:table-cell">
                   {q.livres > 0 ? (
                     <Badge tone="leaf">{q.livres} {q.livres === 1 ? 'livre' : 'livres'}</Badge>
                   ) : (
                     <span className="text-ink-mute">0</span>
                   )}
                 </td>
-                <td className="px-5 py-4 text-right font-display text-xl font-semibold whitespace-nowrap text-ink tabular sm:px-6">
+                <td className="px-5 py-4 text-right font-display text-lg font-semibold whitespace-nowrap text-ink tabular sm:px-6 sm:text-xl">
                   {intervaloPreco(q.precoMin, q.precoMax)}
                 </td>
               </tr>

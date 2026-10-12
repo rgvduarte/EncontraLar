@@ -1,6 +1,8 @@
 import { useId, useMemo, useState } from 'react'
 import { LoaderCircle, LocateFixed, MapPinned } from 'lucide-react'
+import type { Lar } from '@/types'
 import { LUGARES } from '@/data/localidades'
+import { CUIDADOS_CRITICOS } from '@/lib/labels'
 import { Button } from '@/components/ui/Button'
 import { vagasLivres } from '@/lib/forecast'
 import { plural } from '@/lib/format'
@@ -25,9 +27,19 @@ export function StepLocal({ r, patch, erros, lares }: StepProps) {
   const perto = useMemo(() => (r.local ? comDistancia(residenciais(lares), r.local) : []), [lares, r.local])
   const noRaio = perto.filter((x) => x.d <= r.raioKm)
   const comVaga = noRaio.filter((x) => vagasLivres(x.lar) > 0).length
+  // o que já sabemos do retrato (grau + cuidados essenciais)
+  const serve = useMemo(() => {
+    const criticos = r.semNecessidades ? [] : r.necessidades.filter((n) => CUIDADOS_CRITICOS.includes(n))
+    const grau = r.grau
+    return (l: Lar) => (!grau || l.graus.includes(grau)) && criticos.every((c) => l.cuidados.includes(c))
+  }, [r.grau, r.necessidades, r.semNecessidades])
+  const servem = noRaio.filter((x) => serve(x.lar)).length
   const pontos = useMemo(
-    () => perto.filter((x) => x.d <= r.raioKm * 1.35).map((x) => pontoRadar(x.lar, { esbatido: x.d > r.raioKm })),
-    [perto, r.raioKm],
+    () =>
+      perto
+        .filter((x) => x.d <= r.raioKm * 1.35)
+        .map((x) => pontoRadar(x.lar, { esbatido: x.d > r.raioKm || !serve(x.lar) })),
+    [perto, r.raioKm, serve],
   )
   const maisProxima = perto[0]
 
@@ -149,32 +161,41 @@ export function StepLocal({ r, patch, erros, lares }: StepProps) {
               </span>
             ))}
           </div>
-          <p id={`${raioId}-conta`} aria-live="polite" className="mt-3 rounded-2xl bg-sand px-5 py-4 text-base text-ink">
+          <div id={`${raioId}-conta`} aria-live="polite" className="mt-3 rounded-3xl bg-sand px-5 py-4 text-base text-ink">
             {r.local ? (
               noRaio.length ? (
                 <>
-                  <strong className="font-display text-2xl font-semibold text-pine-800 tabular">{noRaio.length}</strong>{' '}
-                  {noRaio.length === 1 ? 'instituição' : 'instituições'} neste raio
-                  {comVaga > 0 ? (
-                    <>
-                      , <strong className="text-leaf-700">{comVaga} com vaga agora</strong>.
-                    </>
-                  ) : (
-                    '. Nenhuma com vaga hoje — a previsão ajuda a escolher onde se inscrever.'
+                  <dl className="grid grid-cols-3 gap-3">
+                    {[
+                      { n: noRaio.length, t: noRaio.length === 1 ? 'instituição neste raio' : 'instituições neste raio', c: 'text-ink' },
+                      { n: servem, t: servem === 1 ? 'serve o retrato até agora' : 'servem o retrato até agora', c: 'text-pine-800' },
+                      { n: comVaga, t: 'com vaga agora', c: 'text-leaf-700' },
+                    ].map((x) => (
+                      <div key={x.t} className="flex flex-col-reverse gap-1">
+                        <dt className="text-sm leading-snug text-ink-soft">{x.t}</dt>
+                        <dd className={cn('font-display text-3xl leading-none font-semibold tabular', x.c)}>{x.n}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {servem === 0 && (
+                    <p className="mt-3 border-t border-dashed border-line-strong pt-3 text-sm text-ink-soft">
+                      Nenhuma das instituições deste raio admite o grau de dependência e os cuidados essenciais indicados. Experimente
+                      alargar a distância.
+                    </p>
                   )}
                 </>
               ) : maisProxima ? (
-                <>
+                <p>
                   Nenhuma instituição a menos de {r.raioKm} km. A mais próxima fica a{' '}
                   <strong>{Math.ceil(maisProxima.d)} km</strong> — experimente alargar o raio.
-                </>
+                </p>
               ) : (
-                'Ainda não temos instituições registadas perto desta localização.'
+                <p>Ainda não temos instituições registadas perto desta localização.</p>
               )
             ) : (
-              'Escolha primeiro uma localidade para ver quantas instituições ficam por perto.'
+              <p>Escolha primeiro uma localidade para ver quantas instituições ficam por perto.</p>
             )}
-          </p>
+          </div>
         </div>
       </div>
 
@@ -194,7 +215,7 @@ export function StepLocal({ r, patch, erros, lares }: StepProps) {
           </div>
         )}
         <figcaption className="px-2 pb-1">
-          <RadarLegend />
+          <RadarLegend esbatido="Esbatido: fora do raio ou não serve o retrato" />
         </figcaption>
       </figure>
     </div>

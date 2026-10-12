@@ -6,8 +6,8 @@ import { HeroMap } from './HeroMap'
 import { HeroStats } from './HeroStats'
 import type { HomeStats } from './homeData'
 
-const dataDeHoje = (agora: number) =>
-  new Date(agora).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })
+const diaDaSemana = (agora: number) => new Date(agora).toLocaleDateString('pt-PT', { weekday: 'long' })
+const diaEMes = (agora: number) => new Date(agora).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' })
 
 export function Hero({ lares, stats, agora }: { lares: Lar[]; stats: HomeStats; agora: number }) {
   return (
@@ -16,26 +16,31 @@ export function Hero({ lares, stats, agora }: { lares: Lar[]; stats: HomeStats; 
         <div className="grid grid-cols-1 gap-x-12 gap-y-12 lg:grid-cols-12">
           <div className="flex flex-col lg:col-span-7">
             {/* linha de data, como num jornal */}
-            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line-strong pb-3 text-sm font-bold tracking-[0.08em] text-ink-soft uppercase">
-              <span className="first-letter:uppercase">{dataDeHoje(agora)}</span>
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line-strong pb-3 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase sm:text-sm">
+              <span>
+                <span className="hidden sm:inline">{diaDaSemana(agora)}, </span>
+                {diaEMes(agora)}
+              </span>
               <span aria-hidden className="text-line-strong">
                 /
               </span>
-              <span className="text-leaf-700">{stats.comVaga} instituições com vaga hoje</span>
+              <span className="text-leaf-700">
+                {stats.comVaga} <span className="hidden sm:inline">instituições </span>com vaga hoje
+              </span>
             </p>
 
             <h1
               id="home-titulo"
-              className="mt-6 text-[2.6rem] leading-[1.02] font-semibold tracking-tight text-ink sm:text-6xl xl:text-[4.6rem]"
+              className="mt-5 text-[2.6rem] leading-[1.02] font-semibold tracking-tight text-ink sm:mt-6 sm:text-6xl xl:text-[4.6rem]"
             >
               Um lar com vaga, <em>perto</em> de quem ama.
             </h1>
-            <p className="mt-5 max-w-2xl text-lg text-ink-soft sm:text-xl">
+            <p className="mt-4 max-w-2xl text-base text-ink-soft sm:mt-5 sm:text-xl">
               Vagas atualizadas pelas próprias instituições, o preço real de cada quarto e uma previsão honesta de quando abre a
               próxima vaga — em lares, residências e centros de dia de todo o país.
             </p>
 
-            <div className="mt-8">
+            <div className="mt-6 sm:mt-8">
               <SearchPanel lares={lares} />
             </div>
 

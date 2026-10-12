@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { ArrowUpRight } from 'lucide-react'
 import type { Lar } from '@/types'
@@ -54,6 +54,12 @@ function UltimaVaga({ lares, agora }: { lares: Lar[]; agora: number }) {
  */
 export function HeroMap({ lares, comVaga, agora }: { lares: Lar[]; comVaga: number; agora: number }) {
   const navigate = useNavigate()
+  const mapaRef = useRef<HTMLDivElement>(null)
+  // O PortugalMap declara role="img", mas com onSelect contém ligações focáveis (um "img" não pode ter
+  // controlos lá dentro). Até o componente partilhado tratar disto, expomo-lo como grupo de ligações.
+  useEffect(() => {
+    mapaRef.current?.querySelector('svg[role="img"]')?.setAttribute('role', 'group')
+  }, [])
   return (
     <figure className="relative mx-auto w-full max-w-md lg:max-w-none">
       {/* bloco de azulejo desencontrado, por trás da moldura */}
@@ -72,7 +78,7 @@ export function HeroMap({ lares, comVaga, agora }: { lares: Lar[]; comVaga: numb
             <span className="tabular">{comVaga}</span> com vaga
           </p>
         </div>
-        <div className="px-3 pt-1 pb-2 sm:px-5">
+        <div ref={mapaRef} className="px-3 pt-1 pb-2 sm:px-5">
           <PortugalMap
             lares={lares}
             onSelect={(l) => navigate(`/lar/${l.id}`)}

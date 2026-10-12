@@ -51,6 +51,7 @@ export function EmptyResults({ model }: { model: SearchModel }) {
                       <span className="flex-1 font-bold text-ink">{a.acao}</span>
                       <span className="shrink-0 text-sm text-ink-soft">
                         mostra <strong className="font-display text-xl text-pine-800 tabular">{num(a.n)}</strong>
+                        <span className="sr-only"> {a.n === 1 ? 'instituição' : 'instituições'}</span>
                       </span>
                       <ArrowRight aria-hidden className="size-5 shrink-0 text-pine-700 transition-transform group-hover:translate-x-0.5" />
                     </button>

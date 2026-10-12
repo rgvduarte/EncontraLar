@@ -1,24 +1,30 @@
 import { Link } from 'react-router'
-import { ArrowRight, BedDouble, Phone } from 'lucide-react'
+import { ArrowRight, BedDouble, Phone, Target } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
 import { estimarEspera, vagasLivres } from '@/lib/forecast'
 import { duracaoHumana, tempoRelativo } from '@/lib/format'
 import { GRAU_LABEL, QUARTO_CURTO } from '@/lib/labels'
 import { cn } from '@/lib/cn'
-import { linhasListaEspera, verificarCompatibilidade } from '../lib/derive'
+import { linhasListaEspera, quartoParaPropor, verificarCompatibilidade } from '../lib/derive'
 import { PanelHeading } from '../shared/PanelHeading'
 import { relacaoTexto } from '../shared/pedidoBits'
 import { PedidoAcoes } from './PedidoAcoes'
 import { EstadoTag } from './partes'
 
-function LinhaOnline({ c, posicao, lar, agora, verHref }: { c: Candidatura; posicao: number; lar: Lar; agora: number; verHref: string }) {
+function LinhaOnline({ c, posicao, lar, agora, verHref, sugerido }: { c: Candidatura; posicao: number; lar: Lar; agora: number; verHref: string; sugerido: boolean }) {
   const p = c.perfil
   const inscrito = [...c.historico].reverse().find((h) => h.estado === 'lista_espera')?.data ?? c.atualizadaEm
   const faltas = verificarCompatibilidade(lar, p).filter((x) => x.estado === 'falta')
   const est = estimarEspera(lar, { posicao })
   return (
-    <li className="grid grid-cols-[3.5rem_1fr] gap-x-4 border-t border-line bg-white p-5 first:border-t-0 sm:grid-cols-[5rem_1fr] sm:p-6">
-      <span className="font-display text-4xl leading-none font-semibold text-pine-800 tabular sm:text-5xl" aria-hidden>
+    <li
+      className={cn(
+        'relative grid grid-cols-[3.5rem_1fr] gap-x-4 border-t border-line p-5 first:border-t-0 sm:grid-cols-[5rem_1fr] sm:p-6',
+        sugerido ? 'bg-terra-50/70' : 'bg-white',
+      )}
+    >
+      {sugerido && <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-terra-500" />}
+      <span className={cn('font-display text-4xl leading-none font-semibold tabular sm:text-5xl', sugerido ? 'text-terra-700' : 'text-pine-800')} aria-hidden>
         {posicao}
       </span>
       <div className="min-w-0">
@@ -34,6 +40,11 @@ function LinhaOnline({ c, posicao, lar, agora, verHref }: { c: Candidatura; posi
           </div>
           {c.estado === 'vaga_proposta' && <EstadoTag c={c} size="sm" />}
         </div>
+        {sugerido && (
+          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-terra-100 px-3 py-1 text-sm font-bold text-terra-800">
+            <Target aria-hidden className="size-4" /> Sugestão: primeira pessoa da lista que pediu o tipo de quarto livre
+          </p>
+        )}
         <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <span className="text-ink-mute">Inscrito(a) {tempoRelativo(inscrito, new Date(agora))}</span>
           <span className={faltas.length ? 'font-bold text-alert-700' : 'font-bold text-leaf-700'}>
@@ -44,9 +55,9 @@ function LinhaOnline({ c, posicao, lar, agora, verHref }: { c: Candidatura; posi
           </span>
         </p>
         <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-          <PedidoAcoes c={c} lar={lar} />
+          <PedidoAcoes c={c} lar={lar} apenasPrincipal variantePrincipal={sugerido || c.estado !== 'lista_espera' ? undefined : 'secondary'} />
           <Link to={verHref} className="link inline-flex min-h-12 items-center gap-1.5" aria-label={`Ver o pedido de ${p.nome}`}>
-            Ver pedido <ArrowRight aria-hidden className="size-4" />
+            Ver pedido e mais opções <ArrowRight aria-hidden className="size-4" />
           </Link>
         </div>
       </div>
@@ -78,6 +89,15 @@ export function ListaEsperaLedger({ lar, cands, agora, verHref }: { lar: Lar; ca
   const online = linhas.filter((l) => l.tipo === 'online').length
   const total = linhas.reduce((s, l) => s + (l.tipo === 'online' ? 1 : l.ate - l.de + 1), 0)
   const livres = lar.quartos.filter((q) => q.livres > 0)
+  // sugestão: a primeira pessoa (por posição) que pediu um tipo de quarto livre e cabe na ficha
+  const sugerido = linhas.find(
+    (l) =>
+      l.tipo === 'online' &&
+      l.c.estado === 'lista_espera' &&
+      quartoParaPropor(lar, l.c.perfil)?.preferido &&
+      verificarCompatibilidade(lar, l.c.perfil).every((x) => x.estado === 'ok'),
+  )
+  const sugeridoId = sugerido?.tipo === 'online' ? sugerido.c.id : null
 
   return (
     <section aria-labelledby="lista-titulo" className="flex flex-col gap-5">
@@ -120,7 +140,7 @@ export function ListaEsperaLedger({ lar, cands, agora, verHref }: { lar: Lar; ca
         <ol className="overflow-hidden rounded-3xl border border-line shadow-card">
           {linhas.map((l) =>
             l.tipo === 'online' ? (
-              <LinhaOnline key={l.c.id} c={l.c} posicao={l.posicao} lar={lar} agora={agora} verHref={verHref(l.c)} />
+              <LinhaOnline key={l.c.id} c={l.c} posicao={l.posicao} lar={lar} agora={agora} verHref={verHref(l.c)} sugerido={l.c.id === sugeridoId} />
             ) : (
               <LinhaFora key={`f-${l.de}`} de={l.de} ate={l.ate} />
             ),

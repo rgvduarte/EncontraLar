@@ -156,7 +156,7 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
         attributionControl
       >
         <TileLayer url={TILES} subdomains="abcd" maxZoom={19} attribution={ATTRIBUTION} />
-        <ZoomControl position="topright" zoomInTitle="Aproximar" zoomOutTitle="Afastar" />
+        <ZoomControl position={mobile ? 'bottomright' : 'topright'} zoomInTitle="Aproximar" zoomOutTitle="Afastar" />
         <MapController
           fitKey={fitKey}
           local={local}

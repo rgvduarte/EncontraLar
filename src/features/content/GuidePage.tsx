@@ -79,8 +79,8 @@ export default function GuidePage() {
       <section aria-labelledby="guia-fecho" className="on-dark relative bg-pine-900 text-pine-50 print:hidden">
         <CalcadaDivider color="#163a37" bg="#fbf8f3" height={26} className="absolute inset-x-0 -top-[25px]" />
         <div className="absolute inset-0" style={calcadaStonesBg('#ffffff', 0.035)} aria-hidden />
-        <div className="relative container-page grid gap-8 py-16 sm:py-20 lg:grid-cols-12 lg:items-end">
-          <div className="lg:col-span-7">
+        <div className="relative container-page grid gap-8 py-16 sm:py-20 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end lg:gap-16">
+          <div>
             <h2 id="guia-fecho" className="text-4xl font-semibold text-white sm:text-5xl">
               Pronto para o <em>próximo passo</em>?
             </h2>
@@ -88,14 +88,15 @@ export default function GuidePage() {
               Veja onde há vaga agora, perto de quem vai visitar — ou deixe-nos sugerir instituições compatíveis com o perfil de saúde da pessoa.
             </p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row lg:col-span-5 lg:justify-end">
-            <ButtonLink to="/pesquisa?vaga=agora" variant="accent" size="lg" icon={<Search aria-hidden className="size-5" />}>
+          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+            <ButtonLink to="/pesquisa?vaga=agora" variant="accent" size="lg" full icon={<Search aria-hidden className="size-5" />}>
               Ver vagas no mapa
             </ButtonLink>
             <ButtonLink
               to="/encontrar"
               size="lg"
               variant="secondary"
+              full
               className="border-white/30! bg-transparent! text-white! hover:bg-white/10!"
               icon={<Sparkles aria-hidden className="size-5" />}
               iconRight={<ArrowRight aria-hidden className="size-5" />}
@@ -104,6 +105,7 @@ export default function GuidePage() {
             </ButtonLink>
           </div>
         </div>
+        <AzulejoBand color="#4f9b8c" opacity={0.5} size={40} className="relative h-10 opacity-40" />
       </section>
     </>
   )

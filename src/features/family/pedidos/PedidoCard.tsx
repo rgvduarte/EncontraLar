@@ -14,7 +14,7 @@ import { estimativaPessoal, isAtiva } from '../shared/estado'
 import { PedidoRail } from '../shared/PedidoRail'
 import { VagaProposta } from '../shared/VagaProposta'
 import { ConfirmModal, EstadoBadge } from '../shared/ui'
-import { deNome, g, nomeCurto, ordinal, telHref } from '../shared/text'
+import { comArtigo, deNome, g, nomeCurto, ordinal, telHref } from '../shared/text'
 import { Historico } from './Historico'
 import { VisitaBlock } from './VisitaBlock'
 
@@ -53,7 +53,7 @@ function Lugar({ c, lar }: { c: Candidatura; lar: Lar }) {
   const proxLugar = lar.listaEspera + 1
   return (
     <div>
-      <h3 className="eyebrow">Lugar na lista de espera</h3>
+      <h3 className="eyebrow">{c.posicao ? 'Lugar na lista de espera' : 'Lista de espera'}</h3>
       {c.posicao ? (
         <p className="mt-2 flex items-baseline gap-3">
           <span className="font-display text-6xl leading-none font-semibold text-ink tabular">{ordinal(c.posicao)}</span>
@@ -61,7 +61,7 @@ function Lugar({ c, lar }: { c: Candidatura; lar: Lar }) {
         </p>
       ) : (
         <p className="mt-2 text-ink-soft">
-          Ainda sem lugar: a instituição está a analisar o pedido. Se {nomeCurto(c.perfil.nome)} fosse {g(c.perfil, 'inscrita', 'inscrito')}{' '}
+          Ainda sem lugar: a instituição está a analisar o pedido. Se {comArtigo(c.perfil)} fosse {g(c.perfil, 'inscrita', 'inscrito')}{' '}
           hoje, ficaria em{' '}
           <strong className="text-ink">{ordinal(proxLugar)}</strong>.
         </p>

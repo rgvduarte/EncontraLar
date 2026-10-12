@@ -41,7 +41,7 @@ export function PlaceCombobox({
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState(value?.label ?? '')
   const [open, setOpen] = useState(false)
-  const [ativo, setAtivo] = useState(0)
+  const [ativo, setAtivo] = useState(-1)
 
   // se o valor mudar por fora (ex.: "perto de mim", atalho), o texto acompanha
   const [ultimoValor, setUltimoValor] = useState(value?.label)
@@ -51,6 +51,12 @@ export function PlaceCombobox({
   }
 
   const res = useMemo(() => residenciais(lares), [lares])
+
+  // peso de cada lugar = nº de instituições à volta (Porto antes de Portalegre ao escrever "Por")
+  const peso = useMemo(
+    () => new Map(LUGARES.map((l) => [l.label, res.filter((x) => distanceKm(l, x) <= l.raio + 5).length])),
+    [res],
+  )
 
   const opcoes = useMemo(() => {
     const q = norm(query)
@@ -63,13 +69,12 @@ export function PlaceCombobox({
       if (n.startsWith(q) || n.split(/[\s—-]+/).some((p) => p.startsWith(q))) comeca.push(l)
       else if (n.includes(q) || d.startsWith(q)) contem.push(l)
     }
-    return [...comeca, ...contem].slice(0, LIMITE)
-  }, [query])
-
-  const contagens = useMemo(
-    () => new Map(opcoes.map((o) => [o.label, res.filter((l) => distanceKm(o, l) <= o.raio + 5).length])),
-    [opcoes, res],
-  )
+    const ordem = (a: LugarPesquisa, b: LugarPesquisa) =>
+      Number(norm(b.label) === q) - Number(norm(a.label) === q) ||
+      Number(a.label.includes(' — ')) - Number(b.label.includes(' — ')) ||
+      (peso.get(b.label) ?? 0) - (peso.get(a.label) ?? 0)
+    return [...comeca.sort(ordem), ...contem.sort(ordem)].slice(0, LIMITE)
+  }, [query, peso])
 
   const mostrar = open && opcoes.length > 0
   const semResultados = open && query.trim().length > 1 && opcoes.length === 0 && value?.label !== query
@@ -87,11 +92,13 @@ export function PlaceCombobox({
       setAtivo((a) => (opcoes.length ? (a + 1) % opcoes.length : 0))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setAtivo((a) => (opcoes.length ? (a - 1 + opcoes.length) % opcoes.length : 0))
+      setAtivo((a) => (opcoes.length ? (a <= 0 ? opcoes.length - 1 : a - 1) : -1))
     } else if (e.key === 'Enter') {
-      if (mostrar && opcoes[ativo]) {
+      // Enter escolhe a opção ativa (ou a primeira, se ainda não usou as setas)
+      const alvo = opcoes[Math.max(0, ativo)]
+      if (mostrar && alvo) {
         e.preventDefault()
-        escolher(opcoes[ativo])
+        escolher(alvo)
       }
     } else if (e.key === 'Escape') {
       if (open) {
@@ -135,7 +142,7 @@ export function PlaceCombobox({
           onChange={(e) => {
             setQuery(e.target.value)
             setOpen(true)
-            setAtivo(0)
+            setAtivo(-1)
             if (value && e.target.value !== value.label) onChange(null)
           }}
           onFocus={() => query && !value && setOpen(true)}
@@ -171,7 +178,7 @@ export function PlaceCombobox({
           )}
         >
           {opcoes.map((o, i) => {
-            const n = contagens.get(o.label) ?? 0
+            const n = peso.get(o.label) ?? 0
             return (
               <li
                 key={o.label}
