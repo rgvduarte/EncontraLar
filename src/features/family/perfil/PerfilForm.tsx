@@ -19,7 +19,6 @@ import {
   URGENCIA_LABEL,
 } from '@/lib/labels'
 import { recomendar } from '@/lib/matching'
-import { vagasLivres } from '@/lib/forecast'
 import { useDebounced } from '@/lib/hooks'
 import { euro } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -31,7 +30,8 @@ import { mesmoPerfil, ORCAMENTO_MAX, ORCAMENTO_MIN, perfilParaInput, perfilVazio
 
 const LUGARES_POR_DISTRITO = DISTRITOS.map((d) => ({ d, lugares: LUGARES.filter((l) => l.distrito === d) })).filter((x) => x.lugares.length)
 const QUARTOS: (TipoQuarto | 'indiferente')[] = ['indiferente', 'individual', 'duplo', 'casal']
-const ESSENCIAIS = CUIDADOS_CRITICOS.map((c) => CUIDADO_LABEL[c].toLowerCase())
+// só a 1.ª letra em minúscula: os nomes ficam iguais às pílulas ("demência e Alzheimer")
+const ESSENCIAIS = CUIDADOS_CRITICOS.map((c) => CUIDADO_LABEL[c].charAt(0).toLowerCase() + CUIDADO_LABEL[c].slice(1))
 const essenciaisTxt = `${ESSENCIAIS.slice(0, -1).join(', ')} e ${ESSENCIAIS[ESSENCIAIS.length - 1]}`
 
 /** Quantas instituições servem estes critérios — feedback imediato enquanto edita. */
@@ -40,8 +40,8 @@ function useContagem(form: PerfilInput) {
   const f = useDebounced(form, 300)
   return useMemo(() => {
     const dentro = recomendar(lares, f, 500).filter((m) => m.compativel && m.distanciaKm <= f.raioKm)
-    const ids = new Set(dentro.map((m) => m.larId))
-    return { compativeis: dentro.length, comVaga: lares.filter((l) => ids.has(l.id) && vagasLivres(l) > 0).length, f }
+    // "com vaga" = lugar livre para quem pede hoje (um lugar livre que a lista de espera vai ocupar não conta)
+    return { compativeis: dentro.length, comVaga: dentro.filter((m) => m.espera.imediata).length, f }
   }, [lares, f])
 }
 
