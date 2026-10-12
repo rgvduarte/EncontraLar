@@ -149,7 +149,7 @@ export default function SearchPage() {
           <div className="w-[46%] max-w-[46rem] shrink-0 xl:w-[44rem]">{lista}</div>
           <div className="relative min-w-0 flex-1">
             <div className="sticky top-[calc(4rem+var(--barra))] h-[calc(100dvh-4rem-var(--barra))] py-4 pr-4">
-              {mapa('h-full w-full rounded-[1.75rem]')}
+              {mapa('relative h-full w-full rounded-[1.75rem]')}
             </div>
           </div>
         </div>

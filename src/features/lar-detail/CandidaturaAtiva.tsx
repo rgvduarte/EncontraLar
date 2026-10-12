@@ -52,13 +52,17 @@ export function CandidaturaAtiva({ lar, c, onVisita }: { lar: Lar; c: Candidatur
             <p className="mt-3 text-ink">Há lugar livre para si — a instituição deve contactá-lo(a).</p>
           ) : (
             <>
-              <p className="mt-3 text-ink">
-                <span className="font-semibold tabular">{pct(est.p90)}</span> de probabilidade de vaga em 3 meses
-              </p>
-              <p className="text-ink">
-                Espera estimada de <span className="font-semibold">{esperaEstimada(est)}</span>
-              </p>
-              <p className="mt-1 text-sm text-ink-mute">Estimativa para a sua posição, não é garantia.</p>
+              <dl className="mt-4 flex flex-col gap-1.5">
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-ink-soft">Probabilidade de vaga em 3 meses</dt>
+                  <dd className="shrink-0 font-semibold text-ink tabular">{pct(est.p90)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-ink-soft">Espera estimada</dt>
+                  <dd className="shrink-0 font-semibold text-ink">{esperaEstimada(est)}</dd>
+                </div>
+              </dl>
+              <p className="mt-2 text-sm text-ink-mute">Estimativa para a sua posição, não é garantia.</p>
             </>
           )}
         </div>

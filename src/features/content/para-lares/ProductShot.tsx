@@ -89,7 +89,7 @@ export function ProductShot({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+          <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
             <div className="px-5 py-5 sm:px-7 sm:py-6 lg:border-r lg:border-line">
               <p className="text-sm font-semibold text-ink">Vagas agora</p>
               <ul className="mt-2 divide-y divide-line">
@@ -98,7 +98,8 @@ export function ProductShot({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
                     <div className="min-w-0">
                       <p className="font-medium text-ink">{QUARTO_CURTO[q.tipo]}</p>
                       <p className="text-sm text-ink-mute tabular">
-                        {plural(q.total, 'lugar', 'lugares')} · {euro(q.precoMin)}
+                        {plural(q.total, 'lugar', 'lugares')}
+                        <span className="hidden sm:inline"> · {euro(q.precoMin)}</span>
                       </p>
                     </div>
                     <Stepper tipo={q.tipo} n={ensaio.livres[q.tipo] ?? 0} max={q.total} onChange={(d) => ensaio.mudar(q.tipo, d)} />

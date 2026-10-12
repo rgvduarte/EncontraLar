@@ -34,7 +34,7 @@ function Espera({ c, lar }: { c: Candidatura; lar: Lar }) {
         </div>
         <div>
           <dt className="text-sm text-ink-mute">{pessoal ? 'Estimativa para si' : 'Se entrar na lista hoje'}</dt>
-          <dd className="mt-1 text-3xl leading-tight font-semibold tracking-tight first-letter:uppercase">{texto}</dd>
+          <dd className="mt-1 text-2xl leading-tight font-semibold tracking-tight first-letter:uppercase sm:text-3xl">{texto}</dd>
         </div>
       </dl>
       {!est.imediata && (
@@ -65,33 +65,33 @@ export function PedidoCard({ c, lar }: { c: Candidatura; lar: Lar }) {
   }
 
   return (
-    <article id={`pedido-${c.id}`} aria-labelledby={titleId} className="scroll-mt-40 rounded-[1.75rem] bg-white p-6 ring-1 ring-line sm:p-10">
-      <header className="flex items-start gap-5">
-        <Link to={`/lar/${lar.id}`} tabIndex={-1} aria-hidden className="block size-16 shrink-0 overflow-hidden rounded-2xl sm:size-20">
-          <LarCover hue={lar.capa.hue} variante={lar.capa.variante} />
-        </Link>
-        <div className="min-w-0">
-          <h2 id={titleId} className="text-2xl leading-tight font-semibold sm:text-3xl">
+    <article id={`pedido-${c.id}`} aria-labelledby={titleId} className="scroll-mt-40 border-t border-line pt-12 first:border-t-0 first:pt-0 sm:rounded-[1.75rem] sm:border-t-0 sm:bg-white sm:p-10 sm:ring-1 sm:ring-line sm:first:pt-10">
+      <header>
+        <div className="flex items-center gap-4 sm:gap-5">
+          <Link to={`/lar/${lar.id}`} tabIndex={-1} aria-hidden className="block size-14 shrink-0 overflow-hidden rounded-2xl sm:size-20">
+            <LarCover hue={lar.capa.hue} variante={lar.capa.variante} />
+          </Link>
+          <h2 id={titleId} className="min-w-0 text-xl leading-tight font-semibold sm:text-3xl">
             <Link to={`/lar/${lar.id}`} className="hover:underline">
               {lar.nome}
             </Link>
           </h2>
-          <p className="mt-1.5 text-ink-mute">
-            {lar.localidade} · para {pessoa} · desde {dataLonga(c.criadaEm)}
-          </p>
         </div>
+        <p className="mt-3 text-ink-mute sm:mt-2 sm:pl-25">
+          {lar.localidade} · para {pessoa} · desde {dataLonga(c.criadaEm)}
+        </p>
       </header>
 
-      <div className="mt-8">
-        <p className="text-lg font-semibold">
-          <EstadoTag estado={c.estado} />
-        </p>
-        <p className="mt-1 text-ink-mute">{ESTADO_CANDIDATURA_DESCRICAO[c.estado]}</p>
-      </div>
-
-      {c.estado === 'vaga_proposta' && (
+      {c.estado === 'vaga_proposta' ? (
         <div className="mt-8">
           <VagaProposta c={c} lar={lar} variant="inline" />
+        </div>
+      ) : (
+        <div className="mt-8">
+          <p className="text-lg font-semibold">
+            <EstadoTag estado={c.estado} />
+          </p>
+          <p className="mt-1 text-ink-mute">{ESTADO_CANDIDATURA_DESCRICAO[c.estado]}</p>
         </div>
       )}
 

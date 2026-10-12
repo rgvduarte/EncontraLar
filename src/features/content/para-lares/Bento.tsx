@@ -40,7 +40,9 @@ function VistaFamilia({ ensaio }: { ensaio: Ensaio }) {
       {quarto && (
         <div className="flex items-center justify-between gap-4 rounded-[1.25rem] bg-white py-2 pr-2 pl-5 shadow-soft">
           <p className="text-base text-ink">
-            Vagas em quarto <span className="lowercase">{QUARTO_CURTO[quarto.tipo]}</span>
+            <span className="hidden sm:inline">Vagas em quarto </span>
+            <span className="sm:hidden">Quarto </span>
+            <span className="lowercase">{QUARTO_CURTO[quarto.tipo]}</span>
           </p>
           <Stepper tipo={quarto.tipo} n={ensaio.livres[quarto.tipo] ?? 0} max={quarto.total} onChange={(d) => ensaio.mudar(quarto.tipo, d)} />
         </div>
@@ -116,7 +118,7 @@ function ListaEspera({ lar }: { lar: Lar }) {
               {c.posicao}
             </span>
             <span className="min-w-0 flex-1 truncate text-ink">
-              {nomeCurto(c.perfil.nome)} <span className="text-ink-mute">· {c.perfil.idade} anos</span>
+              {nomeCurto(c.perfil.nome)} <span className="text-ink-mute">· {c.perfil.idade}<span className="hidden sm:inline"> anos</span></span>
             </span>
             {i === 0 ? (
               <span className="shrink-0 text-sm font-medium text-terra-600">Próxima</span>
@@ -160,7 +162,7 @@ function Ocupacao({ lar }: { lar: Lar }) {
         {kpis.map((x) => (
           <div key={x.k} className="flex flex-col-reverse gap-1">
             <dt className="text-sm leading-snug text-ink-mute">{x.k}</dt>
-            <dd className="text-3xl font-semibold tracking-tight text-ink tabular sm:text-4xl">{x.v}</dd>
+            <dd className="text-2xl font-semibold tracking-tight text-ink tabular sm:text-4xl">{x.v}</dd>
           </div>
         ))}
       </dl>
@@ -176,7 +178,7 @@ export function Bento({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
       <Reveal>
         <SectionTitle id="pl-funcoes" title="Feito para quem não tem tempo." subtitle="Quatro coisas. Bem feitas." />
       </Reveal>
-      <div className="mt-14 grid gap-4 sm:mt-20 lg:grid-cols-12">
+      <div className="mt-14 grid grid-cols-1 gap-4 sm:mt-20 lg:grid-cols-12">
         <Tile title="Vagas num toque." text="Mais uma, menos uma. O cartão que as famílias veem muda no mesmo instante." className="lg:col-span-7">
           <VistaFamilia ensaio={ensaio} />
         </Tile>

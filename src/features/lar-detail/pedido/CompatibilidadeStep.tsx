@@ -76,9 +76,16 @@ export function CompatibilidadeStep({
         </div>
       )}
 
+      {jaPedido && (
+        <p className="-mt-2 rounded-2xl bg-sand px-5 py-4 text-ink" aria-live="polite">
+          <span className="font-semibold">Já fez um pedido para {primeiroNome} aqui.</span>{' '}
+          <span className="text-ink-mute">Estado: {ESTADO_CANDIDATURA_LABEL[jaPedido.estado].toLowerCase()}. Não é preciso repetir.</span>
+        </p>
+      )}
+
       <section aria-labelledby="compat-titulo" aria-live="polite">
         <p className="text-sm text-ink-mute">Compatibilidade com {primeiroNome}</p>
-        <div className="mt-1 flex items-baseline gap-4">
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-4">
           <p className="text-6xl font-semibold tracking-tight text-ink tabular">{m.score}%</p>
           <h3 id="compat-titulo" className="text-xl font-semibold tracking-tight">
             {scoreLabel(m.score)}
@@ -115,12 +122,6 @@ export function CompatibilidadeStep({
         </p>
       </section>
 
-      {jaPedido && (
-        <p className="text-ink" aria-live="polite">
-          <span className="font-semibold">Já fez um pedido para {primeiroNome} aqui.</span>{' '}
-          <span className="text-ink-mute">Estado: {ESTADO_CANDIDATURA_LABEL[jaPedido.estado].toLowerCase()}. Não é preciso repetir.</span>
-        </p>
-      )}
     </div>
   )
 }

@@ -15,11 +15,30 @@ const Posicao = ({ children }: { children: ReactNode }) => (
   </span>
 )
 
-function LinhaOnline({ c, posicao, lar, agora, verHref, sugerido }: { c: Candidatura; posicao: number; lar: Lar; agora: number; verHref: string; sugerido: boolean }) {
+function LinhaOnline({
+  c,
+  posicao,
+  lar,
+  agora,
+  verHref,
+  sugerido,
+  haSugestao,
+}: {
+  c: Candidatura
+  posicao: number
+  lar: Lar
+  agora: number
+  verHref: string
+  sugerido: boolean
+  /** há outra linha sugerida — esta fica com a ação discreta */
+  haSugestao: boolean
+}) {
   const p = c.perfil
   const inscrito = [...c.historico].reverse().find((h) => h.estado === 'lista_espera')?.data ?? c.atualizadaEm
   const faltas = verificarCompatibilidade(lar, p).filter((x) => x.estado === 'falta').length
   const est = estimarEspera(lar, { posicao })
+  const q = c.estado === 'lista_espera' ? quartoParaPropor(lar, p) : null
+  const outroQuarto = q && !q.preferido && p.quarto !== 'indiferente' ? `Pediu quarto ${QUARTO_CURTO[p.quarto].toLowerCase()}; o lugar livre é ${QUARTO_CURTO[q.tipo].toLowerCase()}` : null
   const espera = est.imediata ? 'Há lugar livre para esta posição' : est.diasMediana != null ? `Espera estimada: ${duracaoHumana(est.diasMediana)}` : 'Espera estimada: mais de 2 anos'
   return (
     <li className="grid grid-cols-[3.5rem_1fr] gap-x-4 py-8 sm:grid-cols-[4.5rem_1fr]">
@@ -36,7 +55,7 @@ function LinhaOnline({ c, posicao, lar, agora, verHref, sugerido }: { c: Candida
           {c.estado === 'vaga_proposta' && <EstadoTag c={c} />}
         </div>
         <p className="text-ink-soft">
-          {relacaoTexto(c)} · {perfilLinha(c).toLowerCase()}
+          {relacaoTexto(c)} · {perfilLinha(c)}
         </p>
         <p className="text-ink-soft">{procuraTexto(c)}</p>
         <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-mute">
@@ -45,10 +64,11 @@ function LinhaOnline({ c, posicao, lar, agora, verHref, sugerido }: { c: Candida
             {faltas ? `${faltas} ${faltas === 1 ? 'ponto' : 'pontos'} a verificar` : 'Compatível com a ficha'}
           </span>
           <span>{espera}</span>
+          {outroQuarto && <span>{outroQuarto}</span>}
         </p>
         <PropostaLinha c={c} agora={agora} className="mt-4" />
         <div className="mt-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-          <PedidoAcoes c={c} lar={lar} agora={agora} apenasPrincipal />
+          <PedidoAcoes c={c} lar={lar} agora={agora} apenasPrincipal discreto={haSugestao && !sugerido} />
           <MoreLink to={verHref} aria-label={`Ver o pedido de ${p.nome}`}>
             Ver pedido
           </MoreLink>
@@ -115,7 +135,7 @@ export function ListaEspera({ lar, cands, agora, verHref }: { lar: Lar; cands: C
         <ol className="mt-4 divide-y divide-line border-t border-line">
           {linhas.map((l) =>
             l.tipo === 'online' ? (
-              <LinhaOnline key={l.c.id} c={l.c} posicao={l.posicao} lar={lar} agora={agora} verHref={verHref(l.c)} sugerido={l.c.id === sugeridoId} />
+              <LinhaOnline key={l.c.id} c={l.c} posicao={l.posicao} lar={lar} agora={agora} verHref={verHref(l.c)} sugerido={l.c.id === sugeridoId} haSugestao={sugeridoId != null} />
             ) : (
               <LinhaFora key={`f-${l.de}`} de={l.de} ate={l.ate} />
             ),

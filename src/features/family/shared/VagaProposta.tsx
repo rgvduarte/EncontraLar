@@ -36,7 +36,7 @@ function restante(ms: number): string {
 function Contagem({ prazo }: { prazo: string }) {
   const now = useNow()
   const ms = new Date(prazo).getTime() - now
-  const ate = `${diaPorExtenso(new Date(prazo))}, às ${horaDe(prazo)}`
+  const ate = `${diaPorExtenso(new Date(prazo)).replace('-', '\u2011')}, às ${horaDe(prazo)}`
   if (ms <= 0) {
     return (
       <div>
@@ -47,7 +47,7 @@ function Contagem({ prazo }: { prazo: string }) {
   }
   return (
     <div>
-      <p className="text-5xl leading-none font-semibold tracking-tight text-white tabular sm:text-6xl">{restante(ms)}</p>
+      <p className="text-[2.5rem] leading-none font-semibold tracking-tight whitespace-nowrap text-white tabular sm:text-6xl">{restante(ms)}</p>
       <p className="mt-3 text-white/65">
         para responder · até {ate}
       </p>
@@ -101,19 +101,19 @@ export function VagaProposta({ c, lar, variant = 'tile' }: { c: Candidatura; lar
         </p>
       )}
 
-      <div className={cn('grid gap-8', tile ? 'mt-10 lg:grid-cols-[1fr_auto] lg:items-end' : 'mt-8')}>
+      <div className={tile ? 'mt-10' : 'mt-8'}>
         {c.prazoResposta ? <Contagem prazo={c.prazoResposta} /> : <p className="text-white/70">Responda à instituição o mais depressa possível.</p>}
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          <button type="button" className={pillWhite(tile ? 'lg' : 'md')} onClick={() => setModal('aceitar')}>
-            Aceitar vaga
-          </button>
-          <button type="button" className={pillGlass(tile ? 'lg' : 'md')} onClick={() => setModal('recusar')}>
-            Recusar e manter na lista
-          </button>
-        </div>
+      </div>
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <button type="button" className={pillWhite(tile ? 'lg' : 'md')} onClick={() => setModal('aceitar')}>
+          Aceitar vaga
+        </button>
+        <button type="button" className={pillGlass(tile ? 'lg' : 'md')} onClick={() => setModal('recusar')}>
+          Recusar e manter na lista
+        </button>
       </div>
 
-      <p className="mt-8 flex flex-wrap gap-x-6 text-white/65">
+      <p className="mt-4 flex flex-wrap gap-x-6 text-white/65">
         {lar.telefone && (
           <a href={telHref(lar.telefone)} className="inline-flex min-h-12 items-center gap-2 font-medium text-terra-300 hover:underline">
             <Phone aria-hidden className="size-4" />

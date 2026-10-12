@@ -122,7 +122,7 @@ export function VagaLibertadaPanel({ lar }: { lar: Lar }) {
                         />
                         <span className="flex-1 font-medium">{QUARTO_CURTO[q.tipo]}</span>
                         <span className="text-sm text-ink-mute tabular">{cheio ? 'todos livres' : `${q.livres} de ${q.total} livres`}</span>
-                        <Check aria-hidden strokeWidth={2.5} className="size-5 shrink-0 text-ink opacity-0 transition-opacity group-has-[:checked]:opacity-100" />
+                        <Check aria-hidden strokeWidth={2.5} className="hidden size-5 shrink-0 text-ink group-has-[:checked]:block" />
                       </label>
                     )
                   })}

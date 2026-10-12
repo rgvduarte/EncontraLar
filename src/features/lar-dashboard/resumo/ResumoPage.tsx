@@ -1,5 +1,5 @@
 import type { Candidatura, Lar, User } from '@/types'
-import { Reveal } from '@/components/ui/Reveal'
+import { Reveal } from '@/components/motion'
 import type { NumerosResumo } from '../lib/derive'
 import { AttentionList } from './AttentionList'
 import { Freshness } from './Freshness'

@@ -28,7 +28,7 @@ export function Verificacao({ lar }: { lar: Lar }) {
     { titulo: 'Registo da instituição', texto: 'Feito.', feito: true },
     {
       titulo: v.licenca ? `Licença de funcionamento n.º ${v.licenca}` : 'Licença de funcionamento',
-      texto: v.licenca ? 'Em análise pela nossa equipa.' : 'Envie o número da licença para verificacao@encontralar.pt.',
+      texto: v.licenca ? 'Em análise pela nossa equipa.' : 'Ainda sem número indicado. A nossa equipa vai contactá-lo para o pedir.',
       feito: false,
     },
     { titulo: 'Visita às instalações', texto: 'Combinamos a data consigo depois de analisar a licença.', feito: false },

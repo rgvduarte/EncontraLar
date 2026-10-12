@@ -27,6 +27,7 @@ interface Props {
   onZona: (b: Bounds) => void
   /** telemóvel: sem popups, cartão no fundo */
   mobile: boolean
+  /** deve incluir o posicionamento (relative/absolute) e o tamanho */
   className?: string
 }
 
@@ -41,6 +42,9 @@ interface PinProps {
 
 const PinMarker = memo(function PinMarker({ e, ativo, popup, onHover, onSelect, registar }: PinProps) {
   const id = e.lar.id
+  const { lat, lng } = e.lar
+  // posição estável: um array novo a cada render faz o agrupamento retirar e repor o marcador (e fecha o popup)
+  const position = useMemo<[number, number]>(() => [lat, lng], [lat, lng])
   const icon = useMemo(() => pinIcon(e.lar, e.disp, ativo), [e.lar, e.disp, ativo])
   const handlers = useMemo<L.LeafletEventHandlerFnMap>(
     () => ({
@@ -61,7 +65,7 @@ const PinMarker = memo(function PinMarker({ e, ativo, popup, onHover, onSelect, 
   return (
     <Marker
       ref={(m) => registar(id, m)}
-      position={[e.lar.lat, e.lar.lng]}
+      position={position}
       icon={icon}
       title={descricaoMarcador(e.lar, e.disp)}
       alt={e.lar.nome}
@@ -128,6 +132,11 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
   }, [selectedId, mobile, map])
 
   const centro = centroDe(local)
+  const cLat = centro?.lat
+  const cLng = centro?.lng
+  const centroLL = useMemo<[number, number] | null>(() => (cLat != null && cLng != null ? [cLat, cLng] : null), [cLat, cLng])
+  const zona = local.tipo === 'zona' ? local.bounds : null
+  const zonaLL = useMemo<[[number, number], [number, number]] | null>(() => (zona ? [[zona.s, zona.w], [zona.n, zona.e]] : null), [zona])
   const selecionado = mobile && selectedId ? resultados.find((e) => e.lar.id === selectedId) : undefined
   const porRegiao = useMemo(() => {
     const c = { continente: 0, madeira: 0, acores: 0 }
@@ -147,11 +156,11 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
   }
 
   return (
-    <div className={cn('el-map relative isolate overflow-hidden bg-sand', className)} role="region" aria-label="Mapa das instituições">
+    <div className={cn('el-map isolate overflow-hidden bg-sand', selecionado && 'el-map--peek', className)} role="region" aria-label="Mapa das instituições">
       <p className="sr-only">O mapa repete a informação da lista. Cada marcador pode ser escolhido com a tecla Tab e aberto com Enter.</p>
       <MapContainer ref={setMap} center={[39.6, -8.0]} zoom={7} minZoom={5} zoomControl={false} className="h-full w-full bg-sand" attributionControl>
         <TileLayer url={TILES} subdomains="abcd" maxZoom={19} attribution={ATTRIBUTION} />
-        <ZoomControl position="topright" zoomInTitle="Aproximar" zoomOutTitle="Afastar" />
+        <ZoomControl position={mobile ? 'bottomright' : 'topright'} zoomInTitle="Aproximar" zoomOutTitle="Afastar" />
         <MapController
           fitKey={fitKey}
           local={local}
@@ -162,29 +171,26 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
           onBackgroundClick={() => mobile && onSelect(null)}
         />
 
-        {centro && (
+        {centroLL && (
           <>
             <Circle
-              center={[centro.lat, centro.lng]}
+              center={centroLL}
               radius={raio * 1000}
               interactive={false}
               pathOptions={{ className: 'el-raio', weight: 1.5, dashArray: '4 7', lineCap: 'round' }}
             />
             <CircleMarker
               key={local.tipo}
-              center={[centro.lat, centro.lng]}
+              center={centroLL}
               radius={6}
               interactive={false}
               pathOptions={{ className: cn('el-centro', local.tipo === 'coords' && 'el-centro--gps'), weight: 3, fillOpacity: 1 }}
             />
           </>
         )}
-        {local.tipo === 'zona' && (
+        {zonaLL && (
           <Rectangle
-            bounds={[
-              [local.bounds.s, local.bounds.w],
-              [local.bounds.n, local.bounds.e],
-            ]}
+            bounds={zonaLL}
             interactive={false}
             pathOptions={{ className: 'el-raio', weight: 1.5, dashArray: '4 7', lineCap: 'round', fill: false }}
           />

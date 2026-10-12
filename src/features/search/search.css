@@ -40,6 +40,9 @@
 .el-map .leaflet-bar a:hover {
   background: var(--color-sand);
 }
+.el-map--peek .leaflet-control-zoom {
+  visibility: hidden;
+}
 .el-map .leaflet-control-attribution {
   border-top-left-radius: 8px;
   background: rgb(255 255 255 / 0.8);
@@ -280,24 +283,4 @@
 .el-range:focus-visible::-moz-range-thumb {
   outline: 3px solid var(--color-terra-500);
   outline-offset: 2px;
-}
-
-/* ———————————————————————————————— filtros em ecrã inteiro no telemóvel (Modal partilhado) */
-
-@media (max-width: 1023.98px) {
-  dialog:has(.el-filtros) {
-    width: 100%;
-    max-width: none;
-    height: 100dvh;
-    max-height: none;
-    margin: 0;
-    border-radius: 0;
-  }
-  dialog:has(.el-filtros) > div {
-    height: 100%;
-    max-height: none;
-  }
-  dialog:has(.el-filtros) > div > div:nth-child(2) {
-    flex: 1;
-  }
 }

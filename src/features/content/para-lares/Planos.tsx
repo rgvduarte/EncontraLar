@@ -74,7 +74,7 @@ export function Planos({ lar }: { lar: Lar }) {
         <p className="mt-5 text-center text-sm text-ink-mute">Preços indicativos (protótipo), por instituição.</p>
       </Reveal>
 
-      <ul className="mx-auto mt-16 grid max-w-5xl gap-4 sm:mt-20 md:grid-cols-3">
+      <ul className="mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-4 sm:mt-20 md:grid-cols-3">
         {PLANOS.map((p, i) => {
           const destaque = p.id === 'profissional'
           return (
@@ -88,9 +88,9 @@ export function Planos({ lar }: { lar: Lar }) {
                 <span className="text-xl font-semibold text-ink">{p.nome}</span>
                 {destaque && <span className="text-sm font-medium text-terra-600">Recomendado</span>}
               </p>
-              <p className={cn('mt-6 flex min-h-14 items-end font-semibold tracking-tight text-ink tabular', p.id === 'rede' ? 'text-3xl' : 'text-4xl sm:text-5xl')}>
-                {p.preco}
-                {'periodo' in p && <span className="text-lg font-normal tracking-normal text-ink-mute">{p.periodo}</span>}
+              <p className="mt-6 flex h-16 items-end gap-1 font-semibold tracking-tight text-ink tabular">
+                <span className={cn('leading-none', p.id === 'rede' ? 'text-3xl' : 'text-4xl sm:text-5xl')}>{p.preco}</span>
+                {'periodo' in p && <span className="text-lg leading-none font-normal tracking-normal text-ink-mute">{p.periodo}</span>}
               </p>
               <p className="mt-3 min-h-14 text-base text-ink-mute">{p.para}</p>
               <ButtonLink to={p.cta.to} variant={destaque ? 'primary' : 'subtle'} full className="mt-6">

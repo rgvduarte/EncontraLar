@@ -32,7 +32,7 @@ export function Verificacao() {
           />
         </Reveal>
 
-        <ol className="relative mx-auto mt-16 grid max-w-5xl gap-10 sm:mt-20 md:grid-cols-4 md:gap-6">
+        <ol className="relative mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-10 sm:mt-20 md:grid-cols-4 md:gap-6">
           <span aria-hidden className="absolute top-[0.6rem] right-[12.5%] left-[12.5%] hidden h-px bg-line-strong md:block" />
           {PASSOS.map((p, i) => (
             <Reveal as="li" key={p.t} delay={i * 90} className="relative flex gap-5 md:flex-col md:items-center md:gap-5 md:text-center">

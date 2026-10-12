@@ -54,7 +54,7 @@ export function Freshness({ lar }: { lar: Lar }) {
             <CircleCheck aria-hidden className="size-6" strokeWidth={1.75} /> Confirmado
           </p>
         ) : (
-          <Button size="lg" icon={<Check aria-hidden strokeWidth={2.5} />} onClick={confirmar}>
+          <Button size="lg" icon={<Check aria-hidden strokeWidth={2.5} />} onClick={confirmar} className="max-sm:w-full">
             Está tudo certo
           </Button>
         )}

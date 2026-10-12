@@ -10,7 +10,8 @@ import { escolherFichaPrecos, escolherPrevisao, exemploCompatibilidade, type Hom
 import { MatchCard, PrecosCard, PrevisaoCard, VerificacaoPeca } from './BentoPieces'
 import { abrirPergunta } from './FaqSection'
 
-const linkClasses = 'link inline-flex min-h-12 items-center gap-0.5 self-start text-lg'
+// azul um pouco mais escuro sobre o cinza dos tiles (#0071e3 sobre #f5f5f7 fica abaixo de 4,5:1)
+const linkClasses = 'link inline-flex min-h-12 items-center gap-0.5 self-start text-lg text-terra-700'
 
 function Mais({ to, children }: { to: string; children: ReactNode }) {
   return (
@@ -70,8 +71,9 @@ export function Bento({ lares, stats, agora }: { lares: Lar[]; stats: HomeStats;
             acao={<Mais to="/pesquisa?vaga=agora">Ver vagas no mapa</Mais>}
             className="md:col-span-2"
           >
-            {/* a contagem no cabeçalho do VagasBoard está limitada a 15 no componente partilhado: escondida aqui */}
-            <VagasBoard lares={lares} linhas={4} className="[&_header>span]:hidden" />
+            {/* ajustes locais ao componente partilhado: a contagem do cabeçalho está limitada a 15 (escondida)
+                e o verde das vagas fica abaixo de 4,5:1 sobre branco (passa a leaf-700) */}
+            <VagasBoard lares={lares} linhas={4} className="[&_.text-leaf-600]:text-leaf-700 [&_header>span]:hidden" />
           </Tile>
 
           {ficha && (

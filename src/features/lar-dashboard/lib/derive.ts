@@ -178,6 +178,9 @@ export interface CompatCheck {
   texto: string
 }
 
+/** Só a primeira letra em minúscula — mantém nomes próprios ("demência e Alzheimer"). */
+export const minuscula = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
+
 const grauTexto = (g: PerfilIdoso['grau']) => (g === 'autonomo' ? 'pessoas autónomas' : GRAU_LABEL[g].toLowerCase())
 const listaHumana = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} e ${xs[xs.length - 1]}`)
 
@@ -196,8 +199,8 @@ export function verificarCompatibilidade(lar: Lar, perfil: PerfilIdoso): CompatC
     criticos.length === 0
       ? { id: 'cuidados', estado: 'ok', titulo: 'Cuidados essenciais', texto: 'Não indicou cuidados críticos' }
       : faltam.length
-        ? { id: 'cuidados', estado: 'falta', titulo: 'Cuidados essenciais', texto: `Não assegura ${listaHumana(faltam.map((n) => CUIDADO_LABEL[n].toLowerCase()))}` }
-        : { id: 'cuidados', estado: 'ok', titulo: 'Cuidados essenciais', texto: `Assegura ${listaHumana(criticos.map((n) => CUIDADO_LABEL[n].toLowerCase()))}` },
+        ? { id: 'cuidados', estado: 'falta', titulo: 'Cuidados essenciais', texto: `Não assegura ${listaHumana(faltam.map((n) => minuscula(CUIDADO_LABEL[n])))}` }
+        : { id: 'cuidados', estado: 'ok', titulo: 'Cuidados essenciais', texto: `Assegura ${listaHumana(criticos.map((n) => minuscula(CUIDADO_LABEL[n])))}` },
   )
 
   if (perfil.quarto === 'indiferente') {

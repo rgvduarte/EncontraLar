@@ -4,6 +4,8 @@ import { Building2, LoaderCircle, LocateFixed, Map as MapIcon, MapPin, Search, X
 import type { Lar } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
+import { useMediaQuery } from '@/lib/hooks'
+import { useLenis } from '@/components/motion/SmoothScroll'
 import { distanciaAoMaisProximo, normalizar, resolverTexto, sugerir, urlPesquisa, type Opcao } from './search'
 
 const ICONE = { lugar: MapPin, distrito: MapIcon, lar: Building2 }
@@ -38,6 +40,19 @@ export function SearchPill({ lares }: { lares: Lar[] }) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
   const [geo, setGeo] = useState<EstadoGeo>({ s: 'idle' })
+  const largo = useMediaQuery('(min-width: 640px)')
+  const lenis = useLenis()
+  const formRef = useRef<HTMLFormElement>(null)
+
+  /** No telemóvel, sobe a pesquisa para o topo para que as sugestões não fiquem por baixo do teclado. */
+  const subirNoTelemovel = () => {
+    const form = formRef.current
+    if (largo || !form) return
+    const alvo = window.scrollY + form.getBoundingClientRect().top - 80
+    if (alvo <= window.scrollY + 4) return
+    if (lenis) lenis.scrollTo(alvo)
+    else window.scrollTo({ top: alvo, behavior: 'smooth' })
+  }
 
   const opcoes = useMemo(() => sugerir(texto, lares), [texto, lares])
   const vazio = !texto.trim()
@@ -131,6 +146,7 @@ export function SearchPill({ lares }: { lares: Lar[] }) {
   return (
     <div className="relative z-20 mx-auto w-full max-w-2xl">
       <form
+        ref={formRef}
         role="search"
         aria-label="Procurar lares e residências"
         onSubmit={submeter}
@@ -156,14 +172,17 @@ export function SearchPill({ lares }: { lares: Lar[] }) {
           autoCorrect="off"
           spellCheck={false}
           enterKeyHint="search"
-          placeholder="Cidade ou concelho"
+          placeholder={largo ? 'Cidade ou concelho' : 'Onde procura?'}
           value={texto}
           onChange={(e) => {
             setTexto(e.target.value)
             setOpen(true)
             if (geo.s === 'erro') setGeo({ s: 'idle' })
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true)
+            subirNoTelemovel()
+          }}
           onClick={() => setOpen(true)}
           onBlur={() => setOpen(false)}
           onKeyDown={onKeyDown}
@@ -227,7 +246,16 @@ export function SearchPill({ lares }: { lares: Lar[] }) {
                 <span className="block truncate text-ink-soft">
                   <Realce texto={o.label} q={texto} />
                 </span>
-                <span className="block truncate text-sm text-ink-mute">{o.detalhe}</span>
+                <span className="block truncate text-sm text-ink-mute">
+                  {o.kind === 'lugar' && o.detalhe.includes(' · ') ? (
+                    <>
+                      {o.detalhe.split(' · ')[0]}
+                      <span className="hidden sm:inline"> · {o.detalhe.split(' · ')[1]}</span>
+                    </>
+                  ) : (
+                    o.detalhe
+                  )}
+                </span>
               </span>
               <span className="shrink-0 text-right text-sm leading-snug tabular">
                 {o.kind === 'lar' ? (
@@ -237,7 +265,7 @@ export function SearchPill({ lares }: { lares: Lar[] }) {
                     <span className={cn('block', o.comVaga ? 'font-medium text-leaf-700' : 'text-ink-mute')}>
                       {o.comVaga ? `${o.comVaga} com vaga` : 'Sem vaga hoje'}
                     </span>
-                    <span className="block text-ink-mute">
+                    <span className="hidden text-ink-mute sm:block">
                       {o.total} {o.total === 1 ? 'instituição' : 'instituições'}
                     </span>
                   </>

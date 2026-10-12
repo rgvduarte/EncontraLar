@@ -14,6 +14,7 @@ export function PedidoAcoes({
   agora,
   className,
   apenasPrincipal,
+  discreto,
 }: {
   c: Candidatura
   lar: Lar
@@ -21,6 +22,8 @@ export function PedidoAcoes({
   className?: string
   /** mostra só a primeira ação (as restantes ficam no detalhe do pedido) */
   apenasPrincipal?: boolean
+  /** a ação principal fica cinzenta (quando outra linha é a sugerida) */
+  discreto?: boolean
 }) {
   const [acao, setAcao] = useState<Acao | null>(null)
   const todas = acoesDoPedido(c, lar, agora)
@@ -39,8 +42,8 @@ export function PedidoAcoes({
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       <div className="flex flex-wrap items-center gap-2">
-        {acoes.map((a) => (
-          <Button key={a.id} variant={a.variant} disabled={Boolean(a.bloqueio)} onClick={() => setAcao(a)}>
+        {acoes.map((a, i) => (
+          <Button key={a.id} variant={discreto && i === 0 ? 'subtle' : a.variant} disabled={Boolean(a.bloqueio)} onClick={() => setAcao(a)}>
             {a.label}
           </Button>
         ))}

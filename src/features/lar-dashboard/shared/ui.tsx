@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, type LinkProps } from 'react-router'
 import { ChevronRight } from 'lucide-react'
-import { Reveal } from '@/components/ui/Reveal'
+import { Reveal } from '@/components/motion'
 import { cn } from '@/lib/cn'
 
 /** Título de bloco dentro do painel: h2 + uma frase de apoio + ação opcional à direita. */

@@ -85,7 +85,7 @@ export default function PedidosPage() {
         </p>
       </div>
 
-      <div id="pedidos-painel" role="tabpanel" aria-labelledby={`aba-${aba}`} className="mt-8 flex flex-col gap-8">
+      <div id="pedidos-painel" role="tabpanel" aria-labelledby={`aba-${aba}`} className="mt-10 flex flex-col gap-12 sm:mt-8 sm:gap-8">
         {lista.length === 0 ? (
           aba === 'ativos' ? (
             <EmptyState

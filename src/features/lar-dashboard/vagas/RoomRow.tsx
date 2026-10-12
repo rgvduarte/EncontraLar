@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import type { RoomOffer } from '@/types'
 import { Meter } from '@/components/ui/misc'
-import { euro, pct } from '@/lib/format'
+import { euro, num, pct } from '@/lib/format'
 import { QUARTO_CURTO, QUARTO_LABEL } from '@/lib/labels'
 import { cn } from '@/lib/cn'
 import { Stepper } from '../shared/Stepper'
@@ -30,7 +30,7 @@ export function RoomRow({ larId, quarto, podeRemover }: { larId: string; quarto:
           <h2 className="text-2xl font-semibold">{NOME[quarto.tipo]}</h2>
           <p className="mt-1 text-ink-mute">
             {quarto.total} {quarto.total === 1 ? 'lugar' : 'lugares'} ·{' '}
-            {quarto.precoMin === quarto.precoMax ? euro(quarto.precoMin) : `${euro(quarto.precoMin)}–${euro(quarto.precoMax)}`}/mês
+            {quarto.precoMin === quarto.precoMax ? euro(quarto.precoMin) : `${num(quarto.precoMin)}–${euro(quarto.precoMax)}`}/mês
           </p>
           <div className="mt-4 flex max-w-xs items-center gap-3">
             <Meter value={ocupacao} label={`Ocupação do ${QUARTO_LABEL[quarto.tipo].toLowerCase()}: ${pct(ocupacao)}`} className="h-1 flex-1" />

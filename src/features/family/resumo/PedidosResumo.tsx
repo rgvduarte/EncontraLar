@@ -12,7 +12,7 @@ import { nomeCurto, ordinal } from '../shared/text'
 function Situacao({ c, lar }: { c: Candidatura; lar: Lar }) {
   if (c.estado === 'vaga_proposta') {
     return (
-      <p className="text-right">
+      <p className="sm:text-right">
         <span className="block text-sm text-ink-mute">Responder até</span>
         <span className="font-semibold text-terra-700">
           {c.prazoResposta
@@ -24,7 +24,7 @@ function Situacao({ c, lar }: { c: Candidatura; lar: Lar }) {
   }
   if (c.estado === 'aceite') {
     return (
-      <p className="text-right">
+      <p className="sm:text-right">
         <span className="block text-sm text-ink-mute">Entrada</span>
         <span className="font-semibold">a combinar</span>
       </p>

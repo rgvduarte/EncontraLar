@@ -20,7 +20,7 @@ function Preco({ lar }: { lar: Lar }) {
     <div>
       <p className="text-ink">
         {p.desde && <span className="mr-1.5 text-base text-ink-mute">desde</span>}
-        <span className="text-4xl font-semibold tracking-tight tabular">{p.valor}</span>
+        <span className="text-[2.5rem] font-semibold tracking-tight whitespace-nowrap tabular sm:text-4xl">{p.valor}</span>
         <span className="text-base text-ink-mute">/mês</span>
       </p>
       {precoSocial(lar) && <p className="mt-1 text-sm text-ink-mute">Conforme os rendimentos</p>}
@@ -38,33 +38,33 @@ function contexto(lar: Lar, dados: DadosLar): string {
   return lar.listaEspera > 0 ? `${plural(lar.listaEspera, 'pessoa', 'pessoas')} à espera` : 'Ninguém à espera'
 }
 
-/** Duas linhas de previsão para quem pede hoje. */
+/** Previsão para quem pede hoje, em duas linhas (estilo ficha técnica). */
 function Previsao({ dados }: { dados: DadosLar }) {
   const { est, livres, unidade } = dados
+  const linhas = est.imediata
+    ? [
+        { t: `${unidade.um === 'lugar' ? 'Lugar' : 'Vaga'} livre para si`, v: 'Sim' },
+        { t: 'Pessoas à sua frente', v: '0' },
+      ]
+    : [
+        { t: `Probabilidade de ${unidade.um} em 3 meses`, v: pct(est.p90) },
+        { t: 'Espera estimada', v: esperaEstimada(est) },
+      ]
   return (
-    <div className="text-base">
+    <div>
       <p className="text-sm text-ink-mute">Se pedir hoje</p>
-      {est.imediata ? (
-        <>
-          <p className="mt-1 text-ink">
-            Há {unidade.um === 'lugar' ? 'lugar livre' : 'vaga livre'} <span className="font-semibold">para si</span>
-          </p>
-          <p className="text-ink">Ninguém à sua frente</p>
-        </>
-      ) : (
-        <>
-          <p className="mt-1 text-ink">
-            <span className="font-semibold tabular">{pct(est.p90)}</span> de probabilidade de {unidade.um} em 3 meses
-          </p>
-          <p className="text-ink">
-            Espera estimada de <span className="font-semibold">{esperaEstimada(est)}</span>
-          </p>
-          {livres > 0 && (
-            <p className="mt-1 text-sm text-ink-mute">
-              {livres === 1 ? `A ${unidade.um} livre deverá ir` : `As ${unidade.varios} livres deverão ir`} para quem já está na lista.
-            </p>
-          )}
-        </>
+      <dl className="mt-2 flex flex-col gap-1.5">
+        {linhas.map((l) => (
+          <div key={l.t} className="flex items-baseline justify-between gap-4">
+            <dt className="text-ink-soft">{l.t}</dt>
+            <dd className="shrink-0 font-semibold text-ink tabular">{l.v}</dd>
+          </div>
+        ))}
+      </dl>
+      {!est.imediata && livres > 0 && (
+        <p className="mt-2 text-sm text-ink-mute">
+          {livres === 1 ? `A ${unidade.um} livre deverá ir` : `As ${unidade.varios} livres deverão ir`} para quem já está na lista.
+        </p>
       )}
       <button
         type="button"

@@ -8,11 +8,11 @@ import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/misc'
 import { toast } from '@/components/ui/Toast'
 import { Reveal } from '@/components/ui/Reveal'
-import { PESOS, recomendar } from '@/lib/matching'
+import { PESOS, recomendar, type MatchResult } from '@/lib/matching'
 import { vagasLivres } from '@/lib/forecast'
 import { plural } from '@/lib/format'
 import { paraPerfilInput, paraPerfilMatch } from '../model'
-import { pessoa } from '../language'
+import { deLocal, pessoa } from '../language'
 import { diagnosticar, type Ajuste } from '../diagnose'
 import { escreverSessao, KEY_PERFIL_RASCUNHO, type AcoesSessao, type Sessao } from '../useMatchSession'
 import { ProfileSentence } from './ProfileSentence'
@@ -24,11 +24,17 @@ import { urlPesquisa } from './searchLink'
 
 const PAGINA = 8
 
+/** O motor escreve "A 2 km de Porto"; em PT-PT é "do Porto", "da Maia", "da sua localização". */
+function comArtigo(m: MatchResult, label: string): MatchResult {
+  const fim = ` de ${label}`
+  return { ...m, razoes: m.razoes.map((x) => (x.texto.endsWith(fim) ? { ...x, texto: `${x.texto.slice(0, -fim.length)} ${deLocal(label)}` } : x)) }
+}
+
 export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; acoes: AcoesSessao; lares: Lar[]; user: User | null }) {
   const { r } = sessao
   const p = useMemo(() => pessoa(r), [r])
   const perfil = useMemo(() => paraPerfilMatch(r), [r])
-  const matches = useMemo(() => (perfil ? recomendar(lares, perfil, 80) : []), [lares, perfil])
+  const matches = useMemo(() => (perfil ? recomendar(lares, perfil, 80).map((m) => comArtigo(m, perfil.local.label)) : []), [lares, perfil])
   const larPorId = useMemo(() => new Map(lares.map((l) => [l.id, l])), [lares])
   const boas = useMemo(() => matches.filter((m) => m.compativel && m.score >= 50), [matches])
   const outras = useMemo(() => matches.filter((m) => !(m.compativel && m.score >= 50)), [matches])
@@ -81,9 +87,9 @@ export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; ac
         </>
       )
     ) : p.proprio ? (
-      'Ainda não há um lar à sua medida'
+      'Ainda sem lugar à sua medida'
     ) : (
-      `Ainda não encontrámos lugar para ${p.a}`
+      `Ainda sem lugar para ${p.a}`
     )
 
   return (
@@ -91,7 +97,11 @@ export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; ac
       <section className="container-narrow pt-16 pb-14 text-center sm:pt-24 sm:pb-20">
         <div className="animate-fade-up">
           <p className="eyebrow">Sugestões</p>
-          <h1 ref={h1} tabIndex={-1} className="mx-auto mt-3 max-w-3xl font-display text-4xl font-semibold text-ink outline-none sm:text-5xl lg:text-6xl">
+          <h1
+            ref={h1}
+            tabIndex={-1}
+            className="mx-auto mt-3 max-w-3xl font-display text-[2.5rem] leading-[1.06] font-semibold text-ink outline-none sm:text-5xl lg:text-6xl"
+          >
             {titulo}
           </h1>
           <ProfileSentence r={r} onAlterar={acoes.irPara} className="mx-auto mt-7 max-w-3xl" />
@@ -107,12 +117,12 @@ export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; ac
         </div>
       </section>
 
-      <ResultsStats n={n} comVaga={comVaga} melhor={boas[0]?.score ?? null} />
+      {n > 0 && <ResultsStats n={n} comVaga={comVaga} melhor={boas[0]?.score ?? null} />}
       <p className="sr-only" aria-live="polite">
         {n ? `${plural(n, 'sugestão compatível', 'sugestões compatíveis')}, ${comVaga} com vaga agora.` : 'Sem sugestões compatíveis.'}
       </p>
 
-      <section aria-labelledby="lista-t" className="container-narrow py-16 sm:py-24">
+      <section aria-labelledby="lista-t" className={n > 0 ? 'container-narrow py-16 sm:py-24' : 'container-narrow pb-16 sm:pb-24'}>
         {n === 0 && (
           <div className="mb-16">
             {diag ? (
@@ -127,29 +137,18 @@ export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; ac
           </div>
         )}
 
-        {(n > 0 || outras.length > 0) && (
-          <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-            <div>
-              <h2 id="lista-t" className="text-3xl font-semibold text-ink sm:text-4xl">
-                {n > 0 ? 'Por ordem de compatibilidade' : 'Para comparar'}
-              </h2>
-              <Link to={urlPesquisa(r)} className="link mt-1 inline-flex min-h-12 items-center gap-0.5 text-base">
-                Ver no mapa de vagas
-                <ChevronRight aria-hidden className="size-4" />
-              </Link>
-            </div>
-            {outras.length > 0 && (
-              <Switch
-                checked={verOutras}
-                onChange={setVerOutras}
-                label="Mostrar também as pouco compatíveis"
-                description={plural(outras.length, 'instituição', 'instituições')}
-                className="w-full sm:w-auto"
-              />
-            )}
+        {n > 0 && (
+          <div>
+            <h2 id="lista-t" className="text-3xl font-semibold text-ink sm:text-4xl">
+              Por ordem de compatibilidade
+            </h2>
+            <Link to={urlPesquisa(r)} className="link mt-1 inline-flex min-h-12 items-center gap-0.5 text-base">
+              Ver no mapa de vagas
+              <ChevronRight aria-hidden className="size-4" />
+            </Link>
           </div>
         )}
-        {n === 0 && outras.length === 0 && (
+        {n === 0 && (
           <h2 id="lista-t" className="sr-only">
             Sugestões
           </h2>
@@ -172,14 +171,22 @@ export function ResultsView({ sessao, acoes, lares, user }: { sessao: Sessao; ac
 
         {diag && n > 0 && <DiagnosisCard d={diag} variante="poucas" onAjuste={aplicar} className="mt-12" />}
 
+        {outras.length > 0 && (
+          <Switch
+            checked={verOutras}
+            onChange={setVerOutras}
+            label="Mostrar também as pouco compatíveis"
+            description={`${plural(outras.length, 'instituição', 'instituições')} que ${outras.length === 1 ? 'falha' : 'falham'} um requisito essencial ou ${outras.length === 1 ? 'fica' : 'ficam'} abaixo de 50%.`}
+            className="mt-12 border-t border-line pt-6"
+          />
+        )}
+
         {verOutras && outras.length > 0 && (
           <section aria-labelledby="outras-t" className="mt-16 animate-fade-in">
             <h2 id="outras-t" className="text-2xl font-semibold text-ink sm:text-3xl">
               Pouco compatíveis
             </h2>
-            <p className="mt-2 max-w-2xl text-base text-ink-mute">
-              Falham um requisito essencial ou ficam abaixo de 50%. Abra «Porque sugerimos» para ver o que falta.
-            </p>
+            <p className="mt-2 max-w-2xl text-base text-ink-mute">Abra «Porque sugerimos» para ver o que falta em cada uma.</p>
             <ol aria-label="Instituições pouco compatíveis" className="mt-4 divide-y divide-line">
               {outras.map((m) => (
                 <RankedItem key={m.larId} lar={larPorId.get(m.larId)!} m={m} apagado />

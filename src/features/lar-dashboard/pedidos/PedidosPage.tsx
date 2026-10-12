@@ -71,7 +71,7 @@ export default function PedidosPage({ lar, cands }: { lar: Lar; cands: Candidatu
 
   return (
     <div className="flex flex-col gap-4">
-      <div role="group" aria-label="Mostrar pedidos por estado" className="-mx-5 overflow-x-auto px-5 [scrollbar-width:none] sm:mx-0 sm:px-0">
+      <div role="group" aria-label="Mostrar pedidos por estado" data-lenis-prevent className="-mx-5 overflow-x-auto px-5 [scrollbar-width:none] sm:mx-0 sm:px-0">
         <div className="inline-flex gap-1 rounded-full bg-sand p-1">
           {FILTROS.map((f) => {
             const ativo = f.id === filtro

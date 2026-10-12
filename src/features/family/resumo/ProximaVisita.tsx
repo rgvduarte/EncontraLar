@@ -42,18 +42,18 @@ export function ProximaVisita({ visita, outras = 0, temPedidos }: { visita: Visi
         Próxima visita
       </h2>
       <div className="mt-6 tile grid gap-8 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-12">
-        <p className="flex flex-col leading-none">
+        <p className="flex items-center gap-5 leading-none sm:flex-col sm:items-start sm:gap-0">
           <span className="sr-only">
             {data.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}, às {c.visita!.hora}
           </span>
-          <span aria-hidden className="text-lg font-medium text-terra-600 capitalize">
-            {data.toLocaleDateString('pt-PT', { weekday: 'long' })}
-          </span>
-          <span aria-hidden className="mt-2 text-7xl font-semibold tracking-tight tabular">
+          <span aria-hidden className="text-6xl font-semibold tracking-tight tabular sm:order-2 sm:mt-2 sm:text-7xl">
             {data.getDate()}
           </span>
-          <span aria-hidden className="mt-2 text-lg text-ink-mute">
-            {data.toLocaleDateString('pt-PT', { month: 'long' })} · {c.visita!.hora}
+          <span aria-hidden className="flex flex-col gap-1.5 sm:contents">
+            <span className="text-lg font-medium text-terra-600 capitalize sm:order-1">{data.toLocaleDateString('pt-PT', { weekday: 'long' })}</span>
+            <span className="text-lg text-ink-mute sm:order-3 sm:mt-2">
+              {data.toLocaleDateString('pt-PT', { month: 'long' })} · {c.visita!.hora}
+            </span>
           </span>
         </p>
         <div className="min-w-0">

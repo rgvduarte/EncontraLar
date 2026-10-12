@@ -21,10 +21,14 @@ const PREFIXOS = [
   'Lar',
 ]
 
-/** "Casa de Repouso Jardins do Douro" → { prefixo: "Casa de Repouso", nucleo: "Jardins do Douro" } */
+/**
+ * "Casa de Repouso Jardins do Douro" → { prefixo: "Casa de Repouso", nucleo: "Jardins do Douro" }.
+ * Só divide quando o resto é um nome próprio ("Lar das Hortênsias" fica inteiro).
+ */
 export function dividirNome(nome: string): { prefixo: string | null; nucleo: string } {
   for (const p of PREFIXOS) {
-    if (nome.startsWith(`${p} `) && nome.length > p.length + 4) return { prefixo: p, nucleo: nome.slice(p.length + 1) }
+    const resto = nome.slice(p.length + 1)
+    if (nome.startsWith(`${p} `) && resto.length > 3 && /^\p{Lu}/u.test(resto)) return { prefixo: p, nucleo: resto }
   }
   return { prefixo: null, nucleo: nome }
 }
@@ -95,7 +99,10 @@ export const QUARTO_TABELA: Record<TipoQuarto, string> = {
 export function esperaEstimada(est: EstimativaEspera): string {
   if (est.imediata) return 'sem espera'
   if (est.diasOtimista == null) return 'mais de 2 anos'
-  return intervaloMeses(est.diasOtimista, est.diasPessimista ?? 24 * 31)
+  const fim = est.diasPessimista ?? 24 * 31
+  // intervalos curtos: evita "menos de 1 a 1 mês"
+  if (Math.round(fim / 30) <= 1) return fim < 30 ? 'menos de 1 mês' : 'cerca de 1 mês'
+  return intervaloMeses(est.diasOtimista, fim)
 }
 
 /** Preço para cartões e barras: "desde 1550 €" (privado) ou "450–1100 €" (IPSS/Misericórdia). */

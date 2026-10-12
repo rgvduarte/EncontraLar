@@ -52,8 +52,7 @@ function contar(lares: Lar[], pertence: (l: Lar) => boolean) {
 export const deDistrito = (d: Distrito) =>
   d === 'Porto' ? 'do Porto' : d === 'Guarda' ? 'da Guarda' : d === 'Madeira' ? 'da Madeira' : d === 'Açores' ? 'dos Açores' : `de ${d}`
 
-const nomeDistrito = (d: Distrito) =>
-  d === 'Madeira' || d === 'Açores' ? `Região Autónoma ${deDistrito(d)}` : `Distrito ${deDistrito(d)}`
+const nomeDistrito = (d: Distrito) => (d === 'Madeira' || d === 'Açores' ? `Região Autónoma ${deDistrito(d)}` : `Distrito ${deDistrito(d)}`)
 
 /** 0 = começa por · 1 = uma palavra começa por · 2 = contém · -1 = não corresponde */
 function relevancia(label: string, q: string): number {
@@ -70,24 +69,31 @@ export function sugerir(texto: string, lares: Lar[], limite = 7): Opcao[] {
     id: `lugar:${l.label}`,
     kind: 'lugar',
     label: l.label,
-    detalhe: l.label.includes(' — ') ? 'Zona da cidade' : `Concelho · ${l.distrito}`,
+    detalhe: l.label.includes(' — ')
+      ? 'Zona da cidade'
+      : `Concelho · ${l.distrito === 'Madeira' || l.distrito === 'Açores' ? l.distrito : `distrito ${deDistrito(l.distrito)}`}`,
     lugar: l,
     ...contar(lares, (x) => distanceKm(l, x) <= l.raio),
   })
 
   if (!q) {
-    // sem texto: as localidades com mais instituições (calculado, não escolhido à mão)
-    return LUGARES.filter((l) => !l.label.includes(' — '))
-      .map(lugarOpcao)
-      .sort((a, b) => b.total - a.total || b.comVaga - a.comVaga)
+    // sem texto: os concelhos com mais instituições (contadas no próprio concelho, para que os vizinhos
+    // de Lisboa e do Porto não ganhem só por o raio apanhar a cidade)
+    const noConcelho = new Map<string, number>()
+    for (const l of lares) noConcelho.set(l.concelho, (noConcelho.get(l.concelho) ?? 0) + 1)
+    return LUGARES.filter((l) => !l.label.includes(' — ') && noConcelho.has(l.label))
+      .sort((a, b) => noConcelho.get(b.label)! - noConcelho.get(a.label)! || a.label.localeCompare(b.label, 'pt'))
       .slice(0, 5)
+      .map(lugarOpcao)
   }
 
+  // mais relevantes primeiro; em empate, onde há mais instituições ("por" → Porto antes de Portalegre)
   const lugares = LUGARES.map((l) => ({ l, r: relevancia(l.label, q) }))
     .filter((x) => x.r >= 0)
-    .sort((a, b) => a.r - b.r || a.l.label.localeCompare(b.l.label, 'pt'))
+    .map((x) => ({ r: x.r, o: lugarOpcao(x.l) }))
+    .sort((a, b) => a.r - b.r || b.o.total - a.o.total || a.o.label.localeCompare(b.o.label, 'pt'))
     .slice(0, 5)
-    .map((x) => lugarOpcao(x.l))
+    .map((x) => x.o)
 
   const distritos = DISTRITOS.map((d) => ({ d, r: relevancia(d, q) }))
     .filter((x) => x.r >= 0 && x.r < 2)

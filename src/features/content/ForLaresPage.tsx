@@ -84,7 +84,7 @@ function Conteudo({ lar }: { lar: Lar }) {
             <ButtonLink to="/registar?tipo=lar" variant="accent" size="lg">
               Registar instituição
             </ButtonLink>
-            <MoreLink onClick={abrirDemo} className="text-lg text-terra-300 hover:text-terra-200">
+            <MoreLink onClick={abrirDemo} tone="dark" className="text-lg">
               Ver painel de demonstração
             </MoreLink>
           </div>

@@ -41,7 +41,7 @@ export function AttentionList({ lar, cands }: { lar: Lar; cands: Candidatura[] }
         </>
       ),
       titulo: `${c.perfil.nome}, ${c.perfil.idade} anos`,
-      texto: `${relacaoTexto(c)} · ${perfilLinha(c).toLowerCase()}`,
+      texto: `${relacaoTexto(c)} · ${perfilLinha(c)}`,
       acoes: <ButtonLink to={verPedidoHref(c)}>Abrir pedido</ButtonLink>,
     })
   }

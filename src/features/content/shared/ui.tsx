@@ -18,7 +18,8 @@ export function ExternalLink({ href, children, className }: { href: string; chil
   )
 }
 
-const MORE = 'inline-flex min-h-12 items-center gap-0.5 font-medium text-terra-600 transition-colors hover:text-terra-700 hover:underline underline-offset-4'
+const MORE = 'inline-flex min-h-12 items-center gap-0.5 font-medium transition-colors hover:underline underline-offset-4'
+const MORE_TONE = { light: 'text-terra-600 hover:text-terra-700', dark: 'text-terra-300 hover:text-terra-200' } as const
 
 /** Ligação de texto estilo Apple: "Saber mais ›". Com `to` é uma rota; com `onClick` é um botão. */
 export function MoreLink({
@@ -26,11 +27,14 @@ export function MoreLink({
   onClick,
   children,
   className,
+  tone = 'light',
 }: {
   to?: To
   onClick?: () => void
   children: ReactNode
   className?: string
+  /** 'dark' sobre fundos pretos */
+  tone?: keyof typeof MORE_TONE
 }) {
   const inner = (
     <>
@@ -50,13 +54,13 @@ export function MoreLink({
               }
             : undefined
         }
-        className={cn(MORE, className)}
+        className={cn(MORE, MORE_TONE[tone], className)}
       >
         {inner}
       </Link>
     )
   return (
-    <button type="button" onClick={onClick} className={cn(MORE, className)}>
+    <button type="button" onClick={onClick} className={cn(MORE, MORE_TONE[tone], className)}>
       {inner}
     </button>
   )
@@ -124,12 +128,12 @@ const FONTES = {
   financas: { href: 'https://www.portaldasfinancas.gov.pt', label: 'portaldasfinancas.gov.pt' },
 } as const
 
-/** Lembrete discreto para confirmar valores e regras na fonte oficial. */
+/** Ligação discreta para confirmar valores e regras na fonte oficial. */
 export function Confirme({ fonte, className }: { fonte: keyof typeof FONTES; className?: string }) {
   const f = FONTES[fonte]
   return (
     <p className={cn('text-sm text-ink-mute', className)}>
-      Valores e condições mudam todos os anos. Confirme em <ExternalLink href={f.href}>{f.label}</ExternalLink>.
+      Confirme em <ExternalLink href={f.href}>{f.label}</ExternalLink>
     </p>
   )
 }

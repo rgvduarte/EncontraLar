@@ -64,8 +64,8 @@ export default function GuidePage() {
         </article>
       </div>
 
-      <section aria-labelledby="guia-fecho" className="bg-sand print:hidden">
-        <Reveal className="container-narrow flex flex-col items-center py-24 text-center sm:py-32">
+      <section aria-labelledby="guia-fecho" className="container-page print:hidden">
+        <Reveal className="flex flex-col items-center border-t border-line py-24 text-center sm:py-32">
           <h2 id="guia-fecho" className="headline max-w-[16ch]">
             Pronto para o próximo passo?
           </h2>

@@ -83,13 +83,17 @@ export function ResultsSummary({ model, desktop }: Props) {
         <p aria-live="polite" aria-atomic="true" className="text-base text-ink-mute">
           <span className="font-medium text-ink tabular">{num(n)}</span> {n === 1 ? 'instituição' : 'instituições'}
           {!desktop && centro && <> até {state.raio} km</>}
-          <span aria-hidden> · </span>
-          <span className="inline-flex items-baseline gap-1.5">
-            <DispDot disp="disponivel" className="size-2.5 self-center" />
-            <span>
-              <span className="font-medium text-ink tabular">{num(comVaga)}</span> com vaga agora
-            </span>
-          </span>
+          {n > 0 && (
+            <>
+              <span aria-hidden> · </span>
+              <span className="inline-flex items-baseline gap-1.5">
+                <DispDot disp="disponivel" className="size-2.5 self-center" />
+                <span>
+                  <span className="font-medium text-ink tabular">{num(comVaga)}</span> com vaga agora
+                </span>
+              </span>
+            </>
+          )}
         </p>
         {n > 1 && (
           <QuietSelect
@@ -107,7 +111,7 @@ export function ResultsSummary({ model, desktop }: Props) {
         )}
       </div>
 
-      {(pilulas.length > 0 || total >= 2) && (
+      {(pilulas.length > 0 || (total >= 2 && n > 0)) && (
         <div className="mt-1 flex flex-wrap items-center gap-x-2">
           {pilulas.length > 0 && <span className="sr-only">Filtros ativos:</span>}
           {pilulas.map((p) => (
@@ -124,7 +128,7 @@ export function ResultsSummary({ model, desktop }: Props) {
               </span>
             </button>
           ))}
-          {total >= 2 && (
+          {total >= 2 && n > 0 && (
             <button
               type="button"
               onClick={() => update({ ...FILTROS_VAZIOS })}

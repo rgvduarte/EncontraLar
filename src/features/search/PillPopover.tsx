@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { useDismiss } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
@@ -33,6 +33,14 @@ export function PillPopover({ label, panelLabel, active, children, onClose, pane
   }, [])
   useDismiss(open, ref, close)
 
+  // alinhar à direita quando o painel não cabe à direita da pílula
+  const [direita, setDireita] = useState(false)
+  useLayoutEffect(() => {
+    if (!open || !ref.current || !panelRef.current) return
+    const b = ref.current.getBoundingClientRect()
+    setDireita(b.left + panelRef.current.offsetWidth > document.documentElement.clientWidth - 16)
+  }, [open])
+
   useEffect(() => {
     if (open) panelRef.current?.querySelector<HTMLElement>('input, button')?.focus()
   }, [open])
@@ -57,7 +65,8 @@ export function PillPopover({ label, panelLabel, active, children, onClose, pane
           role="dialog"
           aria-label={panelLabel}
           className={cn(
-            'absolute top-full left-0 z-50 mt-2 w-[22rem] animate-fade-in rounded-[1.5rem] bg-white p-6 shadow-lift ring-1 ring-black/5',
+            'absolute top-full z-50 mt-2 w-[22rem] animate-pop-in rounded-[1.5rem] bg-white p-6 shadow-lift ring-1 ring-black/5',
+            direita ? 'right-0' : 'left-0',
             panelClassName,
           )}
         >

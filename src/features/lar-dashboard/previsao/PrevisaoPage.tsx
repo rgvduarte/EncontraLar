@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { Lar } from '@/types'
 import { ForecastChart } from '@/components/lar/ForecastChart'
-import { Reveal } from '@/components/ui/Reveal'
+import { Reveal } from '@/components/motion'
 import { FATOR_LISTA_EFETIVA, previsaoMensal } from '@/lib/forecast'
 import { MESES_LONGOS } from '@/lib/format'
 import { insightsPrevisao, type NumerosResumo } from '../lib/derive'

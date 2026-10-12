@@ -67,7 +67,7 @@ function RadioPills<T extends string | number | null>({
 
 const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
 
-/** "Mais filtros" (desktop) ou todos os filtros (telemóvel, ecrã inteiro), com contagem ao vivo. */
+/** "Mais filtros" (desktop) ou todos os filtros (telemóvel, folha inferior), com contagem ao vivo. */
 export function FiltersModal({ open, onClose, modo, state, contar, precos, onApply }: Props) {
   const inicial = (): Rascunho => ({ ...filtrosDe(state), raio: state.raio })
   const [r, setR] = useState<Rascunho>(inicial)
@@ -109,7 +109,7 @@ export function FiltersModal({ open, onClose, modo, state, contar, precos, onApp
         </div>
       }
     >
-      <div className="el-filtros flex flex-col gap-10 pb-2">
+      <div className="flex flex-col gap-10 pb-2">
         {todos && (
           <Secao titulo="Disponibilidade" ajuda="Vagas indicadas pelas instituições; «em breve» é uma previsão.">
             <RadioPills

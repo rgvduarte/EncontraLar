@@ -96,9 +96,9 @@ export function Linhas() {
           <li key={l.tel} className="border-t border-line">
             <a
               href={`tel:${l.tel}`}
-              className="group grid gap-x-8 gap-y-1 py-5 transition-colors sm:grid-cols-[11rem_minmax(0,1fr)] sm:items-baseline"
+              className="group grid gap-x-8 gap-y-1 py-5 transition-colors sm:grid-cols-[13rem_minmax(0,1fr)] sm:items-baseline"
             >
-              <span className="text-2xl font-semibold tracking-tight text-terra-600 tabular group-hover:text-terra-700">{l.numero}</span>
+              <span className="text-2xl font-semibold tracking-tight whitespace-nowrap text-terra-600 tabular group-hover:text-terra-700">{l.numero}</span>
               <span>
                 <span className="block font-semibold text-ink">{l.nome}</span>
                 <span className="block text-base text-ink-mute">{l.quando}</span>

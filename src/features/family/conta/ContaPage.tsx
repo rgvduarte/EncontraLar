@@ -126,7 +126,11 @@ export default function ContaPage() {
             error={erroTel ?? undefined}
             hint="Numa vaga proposta, as instituições preferem ligar."
           />
-          <InputField label="Email" type="email" value={user.email} readOnly aria-readonly hint="Serve para entrar e não pode ser alterado." className="bg-sand" />
+          <div>
+            <p className="font-medium">Email</p>
+            <p className="mt-1 text-lg">{user.email}</p>
+            <p className="text-sm text-ink-mute">Serve para entrar e não pode ser alterado.</p>
+          </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <Button type="submit" disabled={!alterado}>
               Guardar

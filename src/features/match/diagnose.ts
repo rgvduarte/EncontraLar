@@ -68,17 +68,22 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
   const criticos = (r.semNecessidades ? [] : r.necessidades).filter((n) => CUIDADOS_CRITICOS.includes(n))
   const serve = (l: Lar) => l.graus.includes(grau) && criticos.every((c) => l.cuidados.includes(c))
   if (!admitem.length) {
-    const alt = raioAte(perto, r.raioKm, serve)
+    // de preferência um raio onde também haja os cuidados essenciais; senão, onde pelo menos admitam o grau
+    const alt = raioAte(perto, r.raioKm, serve) ?? raioAte(perto, r.raioKm, (l) => l.graus.includes(grau))
     return {
       chave: 'grau',
       titulo: `O grau de dependência é o que mais limita`,
       texto:
-        `Nenhuma das ${area.length} instituições a menos de ${r.raioKm} km ${onde} admite pessoas com ${GRAU_LABEL[grau].toLowerCase()}.` +
+        (area.length === 1
+          ? `A única instituição a menos de ${r.raioKm} km ${onde} não admite pessoas com ${GRAU_LABEL[grau].toLowerCase()}.`
+          : `Nenhuma das ${area.length} instituições a menos de ${r.raioKm} km ${onde} admite pessoas com ${GRAU_LABEL[grau].toLowerCase()}.`) +
         (grau === 'grave'
           ? ' Para dependência grave é preciso um lar preparado para pessoas acamadas, com enfermagem permanente — e são menos.'
           : ''),
       ajustes: [
-        ...(alt ? [{ label: `Alargar o raio para ${alt.raio} km (a mais próxima fica a ${km(alt.d)})`, patch: { raioKm: alt.raio } }] : []),
+        ...(alt
+          ? [{ label: `Alargar o raio para ${alt.raio} km (a mais próxima fica a ${km(alt.d)})`, patch: { raioKm: alt.raio } }]
+          : [{ label: 'Procurar noutra zona', passo: 3 }]),
         { label: 'Rever o grau de autonomia', passo: 1 },
       ],
     }
@@ -96,7 +101,9 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
       titulo: 'Os cuidados essenciais não existem tão perto',
       texto:
         pior.n === 0
-          ? `Das ${admitem.length} instituições da zona que admitem ${GRAU_LABEL[grau].toLowerCase()}, nenhuma assegura ${CUIDADO_LABEL[pior.c].toLowerCase()}.`
+          ? admitem.length === 1
+            ? `A única instituição da zona que admite ${GRAU_LABEL[grau].toLowerCase()} não assegura ${CUIDADO_LABEL[pior.c].toLowerCase()}.`
+            : `Das ${admitem.length} instituições da zona que admitem ${GRAU_LABEL[grau].toLowerCase()}, nenhuma assegura ${CUIDADO_LABEL[pior.c].toLowerCase()}.`
           : `Há instituições na zona com cada um destes cuidados, mas nenhuma assegura ao mesmo tempo ${nomes(criticos)}.`,
       ajustes: [
         ...(alt ? [{ label: `Alargar o raio para ${alt.raio} km (a mais próxima fica a ${km(alt.d)})`, patch: { raioKm: alt.raio } }] : []),
@@ -117,7 +124,10 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
     return {
       chave: 'ss',
       titulo: 'Falta acordo com a Segurança Social',
-      texto: `Nenhuma das ${compat.length} instituições compatíveis a menos de ${r.raioKm} km tem vagas com acordo de cooperação.`,
+      texto:
+        compat.length === 1
+          ? `A única instituição compatível a menos de ${r.raioKm} km não tem vagas com acordo de cooperação.`
+          : `Nenhuma das ${compat.length} instituições compatíveis a menos de ${r.raioKm} km tem vagas com acordo de cooperação.`,
       ajustes: [
         ...(alt ? [{ label: `Alargar o raio para ${alt.raio} km`, patch: { raioKm: alt.raio } }] : []),
         { label: 'Ver também sem comparticipação', patch: { precisaAcordoSS: false } },
@@ -135,7 +145,7 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
     return {
       chave: 'orcamento',
       titulo: 'O orçamento está abaixo dos preços da zona',
-      texto: `As ${compat.length} instituições que podem receber ${p.a} a menos de ${r.raioKm} km pedem, no mínimo, ${euro(min)} por mês${
+      texto: `${compat.length === 1 ? `A única instituição que pode receber ${p.a} a menos de ${r.raioKm} km pede` : `As ${compat.length} instituições que podem receber ${p.a} a menos de ${r.raioKm} km pedem`}, no mínimo, ${euro(min)} por mês${
         compat.length > 2 ? ` (mediana ${euro(med)})` : ''
       }. O orçamento indicado é ${euro(orc)}.`,
       ajustes: [
@@ -173,7 +183,10 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
     return {
       chave: 'orcamento',
       titulo: 'Poucas opções dentro do orçamento',
-      texto: `Só ${cabem} das ${compat.length} instituições compatíveis da zona cabem em ${euro(orc)} por mês.`,
+      texto:
+        compat.length === 1
+          ? 'Há só uma instituição compatível na zona.'
+          : `Só ${cabem} das ${compat.length} instituições compatíveis da zona ${cabem === 1 ? 'cabe' : 'cabem'} em ${euro(orc)} por mês.`,
       ajustes: v > orc ? [{ label: `Experimentar até ${euro(v)} (mediana da zona)`, patch: { orcamentoMax: v } }] : [],
     }
   }
