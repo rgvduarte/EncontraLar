@@ -74,10 +74,10 @@ function LinhaOnline({
           <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
             <div className="min-w-0">
               {sugerido && <p className="text-sm font-medium text-terra-700">Sugestão: é a primeira da lista para o quarto livre</p>}
-              <h3 className="text-lg font-semibold">
+              <h2 className="text-lg font-semibold">
                 <span className="sr-only">Posição {posicao}: </span>
                 {p.nome}, {p.idade} anos
-              </h3>
+              </h2>
             </div>
             {c.estado === 'vaga_proposta' && <EstadoTag c={c} />}
           </div>

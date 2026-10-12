@@ -11,9 +11,14 @@ export interface DashboardNavItem {
   icon: LucideIcon
   /** contador (ex.: pedidos novos) */
   badge?: number
+  /** como o leitor de ecrã lê o contador, depois do número (ex.: "por tratar"); por omissão "novo"/"novos" */
+  badgeLabel?: string
   /** só ativo em correspondência exata (para a rota índice) */
   end?: boolean
 }
+
+/** Como o leitor de ecrã lê o contador ("Pedidos, 2 novos" e não "Pedidos2"). */
+const contagem = (n: DashboardNavItem) => `${n.badge} ${n.badgeLabel ?? (n.badge === 1 ? 'novo' : 'novos')}`
 
 /**
  * Estrutura comum dos painéis (família e instituição): barra lateral fixa no desktop,
@@ -51,7 +56,8 @@ export function DashboardShell({
     row.scrollTo({ left: ativo.offsetLeft - row.clientWidth / 2 + ativo.clientWidth / 2, behavior: 'smooth' })
   }, [pathname])
   return (
-    <div className="flex flex-1 flex-col bg-white">
+    // --barra-fixa: as pílulas ficam presas por baixo do cabeçalho no telemóvel — o foco (Tab) para acima delas (index.css)
+    <div className={cn('flex flex-1 flex-col bg-white', pilulasMoveis && '[--barra-fixa:4.25rem] lg:[--barra-fixa:0px]')}>
       <div className="border-b border-line">
         <div className="container-page py-5 sm:py-10">
           {eyebrow && <p className="eyebrow mb-1.5">{eyebrow}</p>}
@@ -63,7 +69,8 @@ export function DashboardShell({
 
       {/* navegação móvel */}
       <nav aria-label="Secções do painel" className={cn('sticky top-16 z-[900] border-b border-line bg-white/85 backdrop-blur-xl lg:hidden', !pilulasMoveis && 'hidden')}>
-        <ul ref={fila} className="container-page relative flex snap-x scroll-px-5 gap-2 overflow-x-auto py-3 [scrollbar-width:none]" data-lenis-prevent-horizontal>
+        {/* overflow-y-hidden: a fila não pode ter scroll vertical próprio, senão "agarra" o gesto vertical da página */}
+        <ul ref={fila} className="container-page relative flex snap-x scroll-px-5 gap-2 overflow-x-auto overflow-y-hidden py-3 [scrollbar-width:none]" data-lenis-prevent-horizontal>
           {nav.map((n) => (
             <li key={n.to} className="shrink-0 snap-start">
               <NavLink
@@ -78,7 +85,14 @@ export function DashboardShell({
               >
                 <n.icon aria-hidden className="size-4.5" />
                 {n.label}
-                {!!n.badge && <span className="rounded-full bg-alert-600 px-2 text-xs font-semibold text-white">{n.badge}</span>}
+                {!!n.badge && (
+                  <>
+                    <span aria-hidden className="rounded-full bg-alert-600 px-2 text-xs font-semibold text-white">
+                      {n.badge}
+                    </span>
+                    <span className="sr-only">, {contagem(n)}</span>
+                  </>
+                )}
               </NavLink>
             </li>
           ))}
@@ -106,9 +120,12 @@ export function DashboardShell({
                       <n.icon aria-hidden className="size-[1.15rem]" />
                       <span className="flex-1">{n.label}</span>
                       {!!n.badge && (
-                        <span className="flex min-w-6 items-center justify-center rounded-full bg-alert-600 px-1.5 text-xs font-semibold text-white">
-                          {n.badge}
-                        </span>
+                        <>
+                          <span aria-hidden className="flex min-w-6 items-center justify-center rounded-full bg-alert-600 px-1.5 text-xs font-semibold text-white">
+                            {n.badge}
+                          </span>
+                          <span className="sr-only">, {contagem(n)}</span>
+                        </>
                       )}
                     </NavLink>
                   </li>

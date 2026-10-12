@@ -212,6 +212,7 @@ export const ESTADO_CANDIDATURA_LABEL: Record<EstadoCandidatura, string> = {
   lista_espera: 'Em lista de espera',
   vaga_proposta: 'Vaga proposta',
   aceite: 'Vaga aceite',
+  admitida: 'Entrou',
   recusada: 'Não foi possível',
   cancelada: 'Cancelada',
 }
@@ -222,6 +223,7 @@ export const ESTADO_CANDIDATURA_DESCRICAO: Record<EstadoCandidatura, string> = {
   lista_espera: 'O pedido foi aceite para a lista de espera. Avisamos quando houver vaga.',
   vaga_proposta: 'Há uma vaga para si! Responda dentro do prazo indicado.',
   aceite: 'Vaga confirmada. A instituição vai combinar a data de entrada.',
+  admitida: 'A entrada na instituição está registada.',
   recusada: 'A instituição não tem condições para este perfil neste momento.',
   cancelada: 'Este pedido foi cancelado.',
 }

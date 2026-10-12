@@ -13,6 +13,7 @@ const PONTO: Record<Candidatura['estado'], string> = {
   lista_espera: 'bg-dusk-500',
   vaga_proposta: 'bg-leaf-500',
   aceite: 'bg-leaf-500',
+  admitida: 'bg-leaf-500',
   recusada: 'bg-alert-600',
   cancelada: 'bg-dusk-500',
 }

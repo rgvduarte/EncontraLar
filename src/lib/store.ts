@@ -7,25 +7,30 @@
 import { useMemo, useSyncExternalStore } from 'react'
 import type {
   Candidatura,
+  Caso,
   DB,
   EstadoCandidatura,
   Favorito,
   Lar,
   Natureza,
   Notificacao,
+  Organizacao,
   PerfilIdoso,
+  ProcuraAnonima,
+  Review,
   Role,
   TipoQuarto,
   TipoResposta,
   User,
 } from '@/types'
-import { createSeed, DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_PASSWORD, SEED_VERSION } from '@/data/seed'
+import { createSeed, DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_PASSWORD, DEMO_PRO_EMAIL, SEED_VERSION } from '@/data/seed'
 import { LOCALIDADES, LUGARES } from '@/data/localidades'
 import { hashPassword } from './hash'
 import { uid } from './random'
 import { ESTADO_CANDIDATURA_LABEL } from './labels'
 import { diaPorExtenso, horaPt } from './format'
 import { aoLar, doLar, larPlural, maiuscula, noLar, oLar } from './artigos'
+import { contactoVisivel, faixaEtaria, taxaPara } from './negocio'
 
 const DB_KEY = 'encontralar:db'
 const SESSION_KEY = 'encontralar:sessao'
@@ -48,6 +53,9 @@ function safeSet(storage: () => Storage, key: string, value: string | null) {
   }
 }
 
+/** Pesquisas sem vaga guardadas (anónimas) — só as mais recentes. */
+const MAX_PROCURAS = 500
+
 /** Os dados de demonstração "envelhecem": vagas atualizadas "há 10 dias", visitas no passado. */
 const IDADE_MAX_SEED_MS = 12 * 3_600_000
 
@@ -63,6 +71,8 @@ function dbValida(d: unknown): d is DB {
     Array.isArray(x.candidaturas) &&
     Array.isArray(x.favoritos) &&
     Array.isArray(x.notificacoes) &&
+    Array.isArray(x.casos) &&
+    Array.isArray(x.procuras) &&
     x.lares.every((l) => !!l && Array.isArray(l.quartos) && Array.isArray(l.historicoSaidas))
   )
 }
@@ -87,6 +97,8 @@ export function rebaseDemo(antigo: DB, fresco: DB = createSeed()): DB {
     candidaturas: juntar(antigo.candidaturas, fresco.candidaturas),
     notificacoes: juntar(antigo.notificacoes, fresco.notificacoes),
     favoritos: [...fresco.favoritos, ...antigo.favoritos.filter((f) => f && !favSeed.has(chave(f)))],
+    casos: juntar(antigo.casos, fresco.casos),
+    procuras: juntar(antigo.procuras, fresco.procuras).slice(-MAX_PROCURAS),
   }
 }
 
@@ -155,6 +167,11 @@ const nowIso = () => new Date().toISOString()
 
 /** Notificações da instituição abrem o pedido em causa, não o resumo genérico. */
 const linkPedido = (candidaturaId: string) => `/gestao/pedidos?pedido=${encodeURIComponent(candidaturaId)}`
+/** Para onde levar o autor do pedido: o painel da família, ou o caso do profissional. */
+const linkAutor = (c: Pick<Candidatura, 'encaminhamento'>) => (c.encaminhamento ? `/casos/${encodeURIComponent(c.encaminhamento.casoId)}` : '/familia')
+/** Como o lar se refere a um pedido ainda não aceite: sem nome nem contacto. */
+const pedidoAnonimo = (c: Candidatura) =>
+  `${c.encaminhamento ? `encaminhamento ${c.encaminhamento.organizacao.startsWith('Hospital') ? 'do' : 'de'} ${c.encaminhamento.organizacao}` : 'uma família'} (pessoa de ${faixaEtaria(c.perfil.idade)} anos)`
 
 // ————————————————————————————————————————— hooks de leitura
 
@@ -235,6 +252,40 @@ export function useMeuLar(): Lar | undefined {
   return useLar(user?.role === 'lar' ? user.larId : undefined)
 }
 
+/** Casos do profissional com sessão iniciada (mais recentes primeiro). */
+export function useCasos(): Caso[] {
+  const d = useDB()
+  const user = useCurrentUser()
+  return useMemo(
+    () => (user?.role === 'profissional' ? d.casos.filter((c) => c.profissionalId === user.id).sort((a, b) => b.atualizadoEm.localeCompare(a.atualizadoEm)) : []),
+    [d.casos, user],
+  )
+}
+
+export function useCaso(id: string | undefined): Caso | undefined {
+  const casos = useCasos()
+  return useMemo(() => (id ? casos.find((c) => c.id === id) : undefined), [casos, id])
+}
+
+/** Pedidos enviados a partir de um caso (um por instituição). */
+export function useCandidaturasDoCaso(casoId: string | undefined): Candidatura[] {
+  const d = useDB()
+  return useMemo(
+    () => (casoId ? d.candidaturas.filter((c) => c.encaminhamento?.casoId === casoId).sort((a, b) => b.atualizadaEm.localeCompare(a.atualizadaEm)) : []),
+    [d.candidaturas, casoId],
+  )
+}
+
+/** Pesquisas sem vaga no distrito da instituição, nos últimos `dias` (anónimas). */
+export function useProcurasZona(lar: Pick<Lar, 'distrito'> | undefined, dias = 30): ProcuraAnonima[] {
+  const d = useDB()
+  return useMemo(() => {
+    if (!lar) return []
+    const desde = Date.now() - dias * 86_400_000
+    return d.procuras.filter((p) => p.distrito === lar.distrito && Date.parse(p.criadaEm) >= desde)
+  }, [d.procuras, lar, dias])
+}
+
 export const getDB = () => db
 export const getCurrentUser = () => (sessionUserId ? (db.users.find((u) => u.id === sessionUserId) ?? null) : null)
 
@@ -260,7 +311,7 @@ export function login(email: string, password: string): AuthResult {
 }
 
 export function loginDemo(role: Role): AuthResult {
-  return login(role === 'familia' ? DEMO_FAMILIA_EMAIL : DEMO_LAR_EMAIL, DEMO_PASSWORD)
+  return login(role === 'familia' ? DEMO_FAMILIA_EMAIL : role === 'lar' ? DEMO_LAR_EMAIL : DEMO_PRO_EMAIL, DEMO_PASSWORD)
 }
 
 export function logout() {
@@ -273,6 +324,8 @@ export interface RegisterInput {
   email: string
   password: string
   telefone?: string
+  /** role 'profissional': hospital, centro de saúde, autarquia… */
+  organizacao?: Organizacao
   instituicao?: {
     nome: string
     tipo: TipoResposta
@@ -305,6 +358,11 @@ export function register(input: RegisterInput): AuthResult {
     passwordHash: hashPassword(input.password, email),
     telefone: input.telefone?.trim() || undefined,
     criadoEm: nowIso(),
+  }
+  if (input.role === 'profissional') {
+    const org = input.organizacao
+    if (!org || !org.nome.trim()) return { ok: false, error: 'Indique onde trabalha (hospital, centro de saúde…).' }
+    user.organizacao = { nome: org.nome.trim(), tipo: org.tipo, servico: org.servico?.trim() || undefined }
   }
 
   let lares = db.lares
@@ -375,8 +433,10 @@ export function register(input: RegisterInput): AuthResult {
         texto:
           input.role === 'lar'
             ? 'A sua ficha foi criada e está pendente de verificação. Complete a informação e mantenha as vagas atualizadas.'
-            : 'Crie o perfil da pessoa de quem cuida para receber sugestões compatíveis e alertas de vaga.',
-        link: input.role === 'lar' ? '/gestao' : '/familia',
+            : input.role === 'profissional'
+              ? 'Crie um caso com o perfil de cuidados da pessoa e envie o pedido às instituições compatíveis de uma só vez.'
+              : 'Crie o perfil da pessoa de quem cuida para receber sugestões compatíveis e alertas de vaga.',
+        link: input.role === 'lar' ? '/gestao' : input.role === 'profissional' ? '/casos' : '/familia',
         lida: false,
         criadaEm: nowIso(),
       },
@@ -520,7 +580,7 @@ export function candidatar(input: CandidatarInput): Candidatura | null {
         userId: lar.ownerId,
         tipo: 'candidatura',
         titulo: 'Novo pedido de vaga',
-        texto: `${user.nome} enviou um pedido para ${perfil.nome} (${perfil.idade} anos).${input.visita ? ' Pediu também uma visita.' : ''}`,
+        texto: `Pedido de vaga de uma família (pessoa de ${faixaEtaria(perfil.idade)} anos).${input.visita ? ' Pediu também uma visita.' : ''} Abra o pedido para o aceitar e ver o contacto.`,
         candidaturaId: c.id,
         larId: lar.id,
         link: linkPedido(c.id),
@@ -541,7 +601,7 @@ export function pedirVisita(candidaturaId: string, data: string, hora: string) {
           userId: lar.ownerId,
           tipo: 'visita',
           titulo: 'Pedido de visita',
-          texto: `${c.contacto.nome} pediu uma visita para ${diaPorExtenso(data)}, às ${horaPt(hora)}.`,
+          texto: `${contactoVisivel(c) ? c.contacto.nome : maiuscula(pedidoAnonimo(c))} pediu uma visita para ${diaPorExtenso(data)}, às ${horaPt(hora)}.`,
           candidaturaId: c.id,
           larId: c.larId,
           link: linkPedido(c.id),
@@ -578,7 +638,7 @@ export function cancelarCandidatura(id: string) {
         userId: lar.ownerId,
         tipo: 'candidatura',
         titulo: 'Pedido cancelado',
-        texto: `${c.contacto.nome} cancelou o pedido para ${c.perfil.nome}.`,
+        texto: contactoVisivel(c) ? `${c.contacto.nome} cancelou o pedido para ${c.perfil.nome}.` : `O pedido de ${pedidoAnonimo(c)} foi cancelado.`,
         candidaturaId: c.id,
         larId: c.larId,
         link: linkPedido(c.id),
@@ -684,7 +744,7 @@ function avisarNovaVaga(state: DB, lar: Lar, tipo: TipoQuarto): { state: DB; avi
           texto: `Abriu uma vaga ${noLar(lar.nome)} (${quarto}). A instituição contacta as famílias pela ordem da lista${c.posicao != null ? `: ${c.perfil.nome} está na posição ${c.posicao}` : ''}.`,
           larId: lar.id,
           candidaturaId: c.id,
-          link: '/familia',
+          link: linkAutor(c),
         }),
       )
     }
@@ -792,6 +852,8 @@ export function atualizarCandidatura(id: string, estado: EstadoCandidatura, nota
             posicao,
             prazoResposta: prazo,
             atualizadaEm: agora,
+            // fazer avançar o pedido equivale a aceitá-lo: o contacto passa a estar visível
+            desbloqueadaEm: x.desbloqueadaEm ?? (x.estado === 'enviada' && estado !== 'recusada' ? agora : undefined),
             historico: [...x.historico, { data: agora, estado, nota }],
           }
         : x,
@@ -818,7 +880,7 @@ export function atualizarCandidatura(id: string, estado: EstadoCandidatura, nota
         texto: (textos[estado] ?? `O pedido para ${c.perfil.nome} foi atualizado.`) + (nota ? ` Nota: ${nota}` : ''),
         larId: lar.id,
         candidaturaId: c.id,
-        link: '/familia',
+        link: linkAutor(c),
       }),
     ],
   }
@@ -843,7 +905,7 @@ export function confirmarVisita(id: string) {
         texto: `A visita ${lar ? aoLar(lar.nome) : 'à instituição'} ficou confirmada para ${diaPorExtenso(c.visita.data)}, às ${horaPt(c.visita.hora)}.`,
         larId: c.larId,
         candidaturaId: c.id,
-        link: '/familia',
+        link: linkAutor(c),
       }),
     ],
   })
@@ -859,4 +921,276 @@ export function resetDemo(): { contaRemovida: boolean } {
   const contaRemovida = !!sessionUserId && !seed.users.some((u) => u.id === sessionUserId)
   if (contaRemovida) setSession(null)
   return { contaRemovida }
+}
+
+// ————————————————————————————————————————— modelo de negócio (docs/MODELO-NEGOCIO.md)
+
+/** O lar aceita o pedido: passa a ver o contacto e o perfil completo (RGPD: só depois de aceitar). */
+export function aceitarPedido(id: string) {
+  const c = db.candidaturas.find((x) => x.id === id)
+  if (!c || c.desbloqueadaEm || c.estado !== 'enviada') return
+  // passar a "em análise" já regista o desbloqueio e avisa quem fez o pedido
+  atualizarCandidatura(id, 'em_analise')
+}
+
+/** Junta uma confirmação de entrada (do lar ou da família) ao pedido e passa-o a "admitida". */
+function registarConfirmacaoEntrada(state: DB, c: Candidatura, lado: 'lar' | 'familia', data: string): DB {
+  const lar = state.lares.find((l) => l.id === c.larId)
+  if (!lar) return state
+  const agora = nowIso()
+  const entrada = {
+    ...(c.entrada ?? { data, taxa: taxaPara(lar) }),
+    data: c.entrada?.data ?? data,
+    ...(lado === 'lar' ? { confirmadaLarEm: agora } : { confirmadaFamiliaEm: agora }),
+  }
+  const nota = lado === 'lar' ? 'Entrada registada pela instituição.' : 'Entrada confirmada pela família.'
+  return {
+    ...state,
+    candidaturas: state.candidaturas.map((x) =>
+      x.id === c.id
+        ? {
+            ...x,
+            estado: 'admitida',
+            posicao: undefined,
+            prazoResposta: undefined,
+            entrada,
+            atualizadaEm: agora,
+            historico: [...x.historico, { data: agora, estado: 'admitida', nota }],
+          }
+        : x,
+    ),
+  }
+}
+
+const PODE_ENTRAR: EstadoCandidatura[] = ['aceite', 'admitida']
+
+/** A instituição marca "Entrou" (dia da entrada AAAA-MM-DD). Avisa quem fez o pedido para confirmar. */
+export function marcarEntrada(id: string, data: string) {
+  const c = db.candidaturas.find((x) => x.id === id)
+  if (!c || !PODE_ENTRAR.includes(c.estado) || c.entrada?.confirmadaLarEm) return
+  const lar = db.lares.find((l) => l.id === c.larId)
+  if (!lar) return
+  const state = registarConfirmacaoEntrada(db, c, 'lar', data)
+  commit({
+    ...state,
+    notificacoes: c.entrada?.confirmadaFamiliaEm
+      ? state.notificacoes
+      : [
+          ...state.notificacoes,
+          novaNotificacao({
+            userId: c.userId,
+            tipo: 'candidatura',
+            titulo: 'Entrada registada',
+            texto: `${maiuscula(oLar(lar.nome))} registou a entrada de ${c.perfil.nome} a ${diaPorExtenso(data)}. Confirme no painel, para poder deixar uma avaliação verificada.`,
+            larId: lar.id,
+            candidaturaId: c.id,
+            link: linkAutor(c),
+          }),
+        ],
+  })
+}
+
+/** A família (ou o profissional que fez o pedido) confirma que a pessoa entrou. */
+export function confirmarEntradaFamilia(id: string, data: string) {
+  const user = getCurrentUser()
+  const c = db.candidaturas.find((x) => x.id === id)
+  if (!user || !c || c.userId !== user.id || !PODE_ENTRAR.includes(c.estado) || c.entrada?.confirmadaFamiliaEm) return
+  const lar = db.lares.find((l) => l.id === c.larId)
+  if (!lar) return
+  const state = registarConfirmacaoEntrada(db, c, 'familia', data)
+  commit({
+    ...state,
+    notificacoes:
+      lar.ownerId && !c.entrada?.confirmadaLarEm
+        ? [
+            ...state.notificacoes,
+            novaNotificacao({
+              userId: lar.ownerId,
+              tipo: 'candidatura',
+              titulo: 'Entrada confirmada pela família',
+              texto: `${c.contacto.nome} confirmou a entrada de ${c.perfil.nome} a ${diaPorExtenso(c.entrada?.data ?? data)}. Registe-a também no painel.`,
+              larId: lar.id,
+              candidaturaId: c.id,
+              link: linkPedido(c.id),
+            }),
+          ]
+        : state.notificacoes,
+  })
+}
+
+export interface AvaliacaoInput {
+  nota: number
+  texto: string
+  aspetos: Review['aspetos']
+}
+
+const relacaoReview = (relacao: string) => (relacao === 'Eu próprio(a)' ? 'Residente' : 'Familiar de residente')
+
+/** Avaliação verificada: só quem confirmou a entrada, uma por pedido. */
+export function avaliarLar(candidaturaId: string, input: AvaliacaoInput): Review | null {
+  const user = getCurrentUser()
+  const c = db.candidaturas.find((x) => x.id === candidaturaId)
+  if (!user || !c || c.userId !== user.id || !c.entrada?.confirmadaFamiliaEm) return null
+  const lar = db.lares.find((l) => l.id === c.larId)
+  const id = `r-${c.id}`
+  if (!lar || lar.reviews.some((r) => r.id === id)) return null
+  const nota = Math.max(1, Math.min(5, Math.round(input.nota)))
+  const [primeiro, ...resto] = user.nome.trim().split(/\s+/)
+  const review: Review = {
+    id,
+    autor: resto.length ? `${primeiro} ${resto[resto.length - 1]![0]}.` : (primeiro ?? 'Família'),
+    relacao: relacaoReview(c.perfil.relacao),
+    data: nowIso(),
+    nota,
+    texto: input.texto.trim(),
+    verificada: true,
+    aspetos: input.aspetos,
+  }
+  const total = lar.numAvaliacoes + 1
+  commit({
+    ...db,
+    lares: patchLar(db.lares, lar.id, (l) => ({
+      ...l,
+      reviews: [review, ...l.reviews],
+      numAvaliacoes: total,
+      avaliacao: Math.round(((l.avaliacao * l.numAvaliacoes + nota) / total) * 10) / 10,
+    })),
+  })
+  return review
+}
+
+/** O utilizador já avaliou a instituição a partir deste pedido? */
+export const jaAvaliou = (c: Pick<Candidatura, 'id' | 'larId'>) => !!db.lares.find((l) => l.id === c.larId)?.reviews.some((r) => r.id === `r-${c.id}`)
+
+// ————————————————————————————————————————— casos (profissionais)
+
+export interface CasoInput {
+  perfil: Omit<PerfilInput, 'id'>
+  referencia?: string
+  altaPrevista?: string
+  consentimento: boolean
+}
+
+export function criarCaso(input: CasoInput): Caso | null {
+  const user = getCurrentUser()
+  if (!user || user.role !== 'profissional' || !input.consentimento) return null
+  const agora = nowIso()
+  const perfil: PerfilIdoso = { ...input.perfil, id: uid('p'), userId: user.id, criadoEm: agora, atualizadoEm: agora }
+  const caso: Caso = {
+    id: uid('caso'),
+    profissionalId: user.id,
+    perfilId: perfil.id,
+    referencia: input.referencia?.trim() || undefined,
+    altaPrevista: input.altaPrevista || undefined,
+    consentimento: true,
+    estado: 'aberto',
+    criadoEm: agora,
+    atualizadoEm: agora,
+  }
+  commit({ ...db, perfis: [...db.perfis, perfil], casos: [...db.casos, caso] })
+  return caso
+}
+
+export function atualizarCaso(id: string, patch: Partial<Pick<Caso, 'referencia' | 'altaPrevista' | 'estado'>> & { perfil?: Partial<PerfilInput> }) {
+  const user = getCurrentUser()
+  const caso = db.casos.find((c) => c.id === id && c.profissionalId === user?.id)
+  if (!caso) return
+  const agora = nowIso()
+  const { perfil, ...resto } = patch
+  commit({
+    ...db,
+    casos: db.casos.map((c) => (c.id === id ? { ...c, ...resto, atualizadoEm: agora } : c)),
+    perfis: perfil ? db.perfis.map((p) => (p.id === caso.perfilId ? { ...p, ...perfil, id: p.id, userId: p.userId, atualizadoEm: agora } : p)) : db.perfis,
+  })
+}
+
+const organizacaoTexto = (o: Organizacao | undefined) => (o ? `${o.nome}${o.servico ? ` · ${o.servico}` : ''}` : 'Serviço social')
+
+/**
+ * Envia o caso a várias instituições de uma vez: um pedido por instituição, com o contacto do profissional.
+ * Ignora instituições que já têm um pedido ativo deste caso. Devolve os pedidos criados.
+ */
+export function enviarCaso(casoId: string, larIds: string[], mensagem?: string): Candidatura[] {
+  const user = getCurrentUser()
+  const caso = db.casos.find((c) => c.id === casoId && c.profissionalId === user?.id)
+  const perfil = caso && db.perfis.find((p) => p.id === caso.perfilId)
+  if (!user || !caso || !perfil || !caso.consentimento) return []
+  const agora = nowIso()
+  const organizacao = organizacaoTexto(user.organizacao)
+  const novos: Candidatura[] = []
+  const notifs: Notificacao[] = []
+  for (const larId of new Set(larIds)) {
+    const lar = db.lares.find((l) => l.id === larId)
+    if (!lar) continue
+    const ativo = db.candidaturas.some((c) => c.larId === larId && c.encaminhamento?.casoId === casoId && !['cancelada', 'recusada'].includes(c.estado))
+    if (ativo) continue
+    const c: Candidatura = {
+      id: uid('c'),
+      larId,
+      userId: user.id,
+      perfilId: perfil.id,
+      perfil,
+      contacto: { nome: `${user.nome} (${organizacao})`, email: user.email, telefone: user.telefone },
+      estado: 'enviada',
+      mensagem: mensagem?.trim() || undefined,
+      criadaEm: agora,
+      atualizadaEm: agora,
+      historico: [{ data: agora, estado: 'enviada', nota: `Encaminhado por ${organizacao}.` }],
+      origem: 'profissional',
+      encaminhamento: { casoId, profissionalId: user.id, organizacao, altaPrevista: caso.altaPrevista },
+    }
+    novos.push(c)
+    if (lar.ownerId) {
+      notifs.push(
+        novaNotificacao({
+          userId: lar.ownerId,
+          tipo: 'candidatura',
+          titulo: 'Novo encaminhamento',
+          texto: `${maiuscula(pedidoAnonimo(c))}${caso.altaPrevista ? `, com alta prevista para ${diaPorExtenso(caso.altaPrevista)}` : ''}. Abra o pedido para o aceitar e ver o contacto.`,
+          candidaturaId: c.id,
+          larId,
+          link: linkPedido(c.id),
+        }),
+      )
+    }
+  }
+  if (novos.length) {
+    commit({
+      ...db,
+      candidaturas: [...db.candidaturas, ...novos],
+      notificacoes: [...db.notificacoes, ...notifs],
+      casos: db.casos.map((c) => (c.id === casoId ? { ...c, atualizadoEm: agora } : c)),
+    })
+  }
+  return novos
+}
+
+// ————————————————————————————————————————— procura sem resposta (anónima)
+
+const procurasDestaSessao = new Set<string>()
+
+/** Guarda uma pesquisa sem vagas (sem dados pessoais). No máximo uma por combinação, por sessão. */
+export function registarProcura(p: Omit<ProcuraAnonima, 'id' | 'criadaEm'>) {
+  const chave = JSON.stringify([p.distrito, p.lugar, p.grau, [...p.cuidados].sort(), p.orcamentoMax])
+  if (procurasDestaSessao.has(chave)) return
+  procurasDestaSessao.add(chave)
+  commit({ ...db, procuras: [...db.procuras, { ...p, id: uid('q'), criadaEm: nowIso() }].slice(-MAX_PROCURAS) })
+}
+
+// ————————————————————————————————————————— confirmação rápida de vagas (link sem login)
+
+export const larPorToken = (token: string | undefined) => (token ? db.lares.find((l) => l.confirmacaoToken === token) : undefined)
+
+export function useLarPorToken(token: string | undefined): Lar | undefined {
+  const lares = useLares()
+  return useMemo(() => (token ? lares.find((l) => l.confirmacaoToken === token) : undefined), [lares, token])
+}
+
+/** Resposta ao "Ainda tem N vagas?": sim confirma; não põe os lugares livres a 0. Devolve a instituição. */
+export function responderConfirmacao(token: string, aindaTem: boolean): Lar | null {
+  const lar = larPorToken(token)
+  if (!lar) return null
+  if (aindaTem) confirmarVagasAtualizadas(lar.id)
+  else commit({ ...db, lares: patchLar(db.lares, lar.id, (l) => ({ ...l, quartos: l.quartos.map((q) => ({ ...q, livres: 0 })), atualizadoEm: nowIso() })) })
+  return db.lares.find((l) => l.id === lar.id) ?? null
 }

@@ -4,6 +4,7 @@
  */
 import type {
   Candidatura,
+  Caso,
   Comodidade,
   Cuidado,
   DB,
@@ -14,27 +15,32 @@ import type {
   Natureza,
   Notificacao,
   PerfilIdoso,
+  ProcuraAnonima,
   Review,
   RoomOffer,
   TipoResposta,
   User,
 } from '@/types'
-import { LOCALIDADES, type Localidade } from './localidades'
+import { LOCALIDADES, LUGARES, type Localidade } from './localidades'
 import { createRng, type Rng } from '@/lib/random'
 import { SAZONALIDADE } from '@/lib/forecast'
 import { hashPassword } from '@/lib/hash'
 import { diaPorExtenso, isoDia } from '@/lib/format'
 import { emTerra } from '@/lib/lugares'
-import { aoLar, flexLar, larPlural, noLar, oLar } from '@/lib/artigos'
+import { aoLar, flexLar, larPlural, maiuscula, noLar, oLar } from '@/lib/artigos'
+import { tokenConfirmacao } from '@/lib/negocio'
 
-/** 4: textos gerados revistos, telefones com 9 dígitos, acordos com a Segurança Social só no setor social. */
-export const SEED_VERSION = 4
+/** 5: modelo de negócio (entradas, encaminhamentos de profissionais, casos, procura sem resposta, link de confirmação).
+ *  4: textos gerados revistos, telefones com 9 dígitos, acordos com a Segurança Social só no setor social. */
+export const SEED_VERSION = 5
 export const DEMO_PASSWORD = 'demo1234'
 export const DEMO_FAMILIA_EMAIL = 'familia@exemplo.pt'
 export const DEMO_LAR_EMAIL = 'lar@exemplo.pt'
 export const DEMO_LAR_ID = 'lar-jardins-do-douro'
 export const DEMO_FAMILIA_ID = 'u-ana-ferreira'
 export const DEMO_LAR_USER_ID = 'u-helena-marques'
+export const DEMO_PRO_EMAIL = 'social@exemplo.pt'
+export const DEMO_PRO_ID = 'u-marta-correia'
 
 const DIA = 86_400_000
 
@@ -634,6 +640,8 @@ export function createSeed(agora = Date.now()): DB {
     }
   }
 
+  for (const l of lares) l.confirmacaoToken = tokenConfirmacao(l.id)
+
   const iso = (diasAtras: number, horas = 0) => new Date(agora - diasAtras * DIA - horas * 3_600_000).toISOString()
   // data local (AAAA-MM-DD): toISOString daria o dia em UTC, que difere do local perto da meia-noite
   const futuro = (dias: number) => isoDia(new Date(agora + dias * DIA))
@@ -643,6 +651,11 @@ export function createSeed(agora = Date.now()): DB {
   const users: User[] = [
     { id: DEMO_FAMILIA_ID, role: 'familia', nome: 'Ana Ferreira', email: DEMO_FAMILIA_EMAIL, passwordHash: demoHash, telefone: '912 000 101', criadoEm: iso(41), demo: true },
     { id: DEMO_LAR_USER_ID, role: 'lar', nome: 'Helena Marques', email: DEMO_LAR_EMAIL, passwordHash: hashPassword(DEMO_PASSWORD, DEMO_LAR_EMAIL), telefone: '220 000 042', criadoEm: iso(400), larId: DEMO_LAR_ID, demo: true },
+    {
+      id: DEMO_PRO_ID, role: 'profissional', nome: 'Marta Correia', email: DEMO_PRO_EMAIL, passwordHash: hashPassword(DEMO_PASSWORD, DEMO_PRO_EMAIL),
+      telefone: '225 000 310', criadoEm: iso(120), demo: true,
+      organizacao: { nome: 'Hospital de Vale Formoso', tipo: 'hospital', servico: 'Serviço Social' },
+    },
   ]
 
   const maria = perfil(
@@ -668,7 +681,7 @@ export function createSeed(agora = Date.now()): DB {
   const perfis: PerfilIdoso[] = [maria]
 
   // famílias fictícias que se candidataram ao lar de demonstração
-  const outras: { nome: string; email: string; tel: string; p: Partial<PerfilIdoso> & Pick<PerfilIdoso, 'nome' | 'idade' | 'relacao' | 'grau'>; estado: EstadoCandidatura; posicao?: number; dias: number; msg: string; visita?: Candidatura['visita'] }[] = [
+  const outras: { nome: string; email: string; tel: string; p: Partial<PerfilIdoso> & Pick<PerfilIdoso, 'nome' | 'idade' | 'relacao' | 'grau'>; estado: EstadoCandidatura; posicao?: number; dias: number; msg: string; visita?: Candidatura['visita']; entrada?: { diasAtras: number; lar: boolean; familia: boolean } }[] = [
     {
       nome: 'Rui Sousa', email: 'rui.sousa@exemplo.pt', tel: '936 000 214', dias: 0.3, estado: 'enviada',
       p: { nome: 'Joaquim Sousa', idade: 88, relacao: 'Pai', genero: 'M', grau: 'grave', necessidades: ['acamados', 'enfermagem24h', 'diabetes'], urgencia: 'imediata', orcamentoMax: 2100, quarto: 'indiferente', notas: 'Internado após AVC. Alta hospitalar prevista para a próxima semana.' },
@@ -700,6 +713,18 @@ export function createSeed(agora = Date.now()): DB {
       p: { nome: 'Beatriz Nogueira', idade: 87, relacao: 'Avó', genero: 'F', grau: 'moderada', necessidades: ['demencia'], urgencia: 'imediata', orcamentoMax: 2000, quarto: 'duplo' },
       msg: 'Muito obrigada pela rapidez na resposta.',
     },
+    {
+      nome: 'Teresa Matos', email: 'teresa.matos@exemplo.pt', tel: '916 000 274', dias: 96, estado: 'admitida',
+      p: { nome: 'Henrique Matos', idade: 85, relacao: 'Pai', genero: 'M', grau: 'moderada', necessidades: ['demencia', 'fisioterapia'], urgencia: '1-3meses', orcamentoMax: 2100, quarto: 'individual' },
+      msg: 'O meu pai precisa de acompanhamento na memória e gosta muito de jardim.',
+      entrada: { diasAtras: 70, lar: true, familia: true },
+    },
+    {
+      nome: 'Luís Barros', email: 'luis.barros@exemplo.pt', tel: '927 000 851', dias: 40, estado: 'admitida',
+      p: { nome: 'Olívia Barros', idade: 90, relacao: 'Mãe', genero: 'F', grau: 'grave', necessidades: ['acamados', 'enfermagem24h'], urgencia: 'imediata', orcamentoMax: 2400, quarto: 'duplo' },
+      msg: 'A minha mãe teve alta do hospital e precisa de cuidados permanentes.',
+      entrada: { diasAtras: 12, lar: true, familia: false },
+    },
   ]
 
   const candidaturas: Candidatura[] = []
@@ -712,10 +737,19 @@ export function createSeed(agora = Date.now()): DB {
     const historico: Candidatura['historico'] = [{ data: criada, estado: 'enviada' }]
     if (o.estado !== 'enviada') historico.push({ data: iso(Math.max(0, o.dias - 2)), estado: 'em_analise' })
     if (o.estado === 'lista_espera') historico.push({ data: iso(Math.max(0, o.dias - 5)), estado: 'lista_espera', nota: 'Perfil adequado. Inscrito(a) na lista de espera.' })
-    if (o.estado === 'aceite') {
+    if (o.estado === 'aceite' || o.estado === 'admitida') {
       historico.push({ data: iso(o.dias - 3), estado: 'vaga_proposta' })
-      historico.push({ data: iso(o.dias - 4), estado: 'aceite', nota: 'Entrada a 1 do próximo mês.' })
+      historico.push({ data: iso(o.dias - 4), estado: 'aceite', nota: o.estado === 'aceite' ? 'Entrada a 1 do próximo mês.' : undefined })
     }
+    const entrada = o.entrada
+      ? {
+          data: isoDia(new Date(agora - o.entrada.diasAtras * DIA)),
+          confirmadaLarEm: o.entrada.lar ? iso(o.entrada.diasAtras - 0.2) : undefined,
+          confirmadaFamiliaEm: o.entrada.familia ? iso(o.entrada.diasAtras - 1) : undefined,
+          taxa: 'aplicavel' as const,
+        }
+      : undefined
+    if (o.entrada) historico.push({ data: iso(o.entrada.diasAtras - 0.2), estado: 'admitida', nota: 'Entrada registada pela instituição.' })
     candidaturas.push({
       id: `c-fam-${k}`,
       larId: DEMO_LAR_ID,
@@ -730,8 +764,21 @@ export function createSeed(agora = Date.now()): DB {
       criadaEm: criada,
       atualizadaEm: historico[historico.length - 1]!.data,
       historico,
+      entrada,
     })
   })
+
+  // avaliação verificada da família que confirmou a entrada (só quem entrou pode avaliar)
+  const demo = lares[0]!
+  demo.reviews = [
+    {
+      id: 'r-c-fam-6', autor: 'Teresa M.', relacao: 'Familiar de residente', data: iso(30), nota: 5, verificada: true,
+      texto: 'O meu pai está muito bem acompanhado. A equipa da unidade de demências é paciente e mantém-nos sempre informados.',
+      aspetos: { cuidados: 5, alimentacao: 4, instalacoes: 5, comunicacao: 5 },
+    },
+    ...demo.reviews,
+  ]
+  demo.numAvaliacoes += 1
 
   // candidaturas da família de demonstração
   const portoProximos = lares
@@ -778,6 +825,99 @@ export function createSeed(agora = Date.now()): DB {
     },
   )
 
+  // ——— profissional de demonstração: serviço social hospitalar (fictício)
+  const ORG = 'Hospital de Vale Formoso · Serviço Social'
+  const porto = lares.filter((l) => l.id !== DEMO_LAR_ID && l.distrito === 'Porto' && l.tipo === 'erpi')
+  const comEnfermagem = porto.find((l) => l.cuidados.includes('enfermagem24h') && l.id !== larVisita.id) ?? porto[0]!
+  const semEnfermagem = porto.find((l) => !l.cuidados.includes('enfermagem24h') && l.id !== comEnfermagem.id) ?? porto[1]!
+  const ipss = porto.find((l) => l.natureza !== 'privado' && l.id !== comEnfermagem.id && l.id !== semEnfermagem.id) ?? porto[2]!
+  const contactoPro = { nome: `Marta Correia (${ORG})`, email: DEMO_PRO_EMAIL, telefone: '225 000 310' }
+  const albano = perfil(
+    {
+      id: 'p-pro-1', userId: DEMO_PRO_ID, nome: 'Albano Teixeira', idade: 83, relacao: 'Utente', genero: 'M', grau: 'grave',
+      necessidades: ['acamados', 'enfermagem24h'], urgencia: 'imediata', orcamentoMax: 1800, quarto: 'indiferente',
+      local: { label: 'Porto — Paranhos', lat: 41.1705, lng: -8.6045 }, raioKm: 20, precisaAcordoSS: false,
+      notas: 'Internado após fratura do colo do fémur. Vive sozinho; a filha está emigrada.',
+    },
+    agora,
+  )
+  const rosa = perfil(
+    {
+      id: 'p-pro-2', userId: DEMO_PRO_ID, nome: 'Rosa Almeida', idade: 79, relacao: 'Utente', genero: 'F', grau: 'moderada',
+      necessidades: ['demencia'], urgencia: 'imediata', orcamentoMax: 900, quarto: 'duplo', precisaAcordoSS: true,
+    },
+    agora,
+  )
+  const jose = perfil(
+    {
+      id: 'p-pro-3', userId: DEMO_PRO_ID, nome: 'José Barbosa', idade: 90, relacao: 'Utente', genero: 'M', grau: 'ligeira',
+      necessidades: ['diabetes', 'fisioterapia'], urgencia: 'imediata', orcamentoMax: 1500, quarto: 'indiferente',
+      local: { label: 'Matosinhos', lat: 41.1844, lng: -8.6963 },
+    },
+    agora,
+  )
+  perfis.push(albano, rosa, jose)
+  const casos: Caso[] = [
+    { id: 'caso-1', profissionalId: DEMO_PRO_ID, perfilId: albano.id, referencia: 'SS-2026-0418', altaPrevista: futuro(4), consentimento: true, estado: 'aberto', criadoEm: iso(2), atualizadoEm: iso(0.5) },
+    { id: 'caso-2', profissionalId: DEMO_PRO_ID, perfilId: rosa.id, referencia: 'SS-2026-0377', altaPrevista: isoDia(new Date(agora - 20 * DIA)), consentimento: true, estado: 'colocado', criadoEm: iso(35), atualizadoEm: iso(20) },
+    { id: 'caso-3', profissionalId: DEMO_PRO_ID, perfilId: jose.id, referencia: 'SS-2026-0431', altaPrevista: futuro(9), consentimento: true, estado: 'aberto', criadoEm: iso(0.2), atualizadoEm: iso(0.2) },
+  ]
+  const encaminhamento = (caso: Caso) => ({ casoId: caso.id, profissionalId: DEMO_PRO_ID, organizacao: ORG, altaPrevista: caso.altaPrevista })
+  candidaturas.push(
+    {
+      id: 'c-pro-1', larId: DEMO_LAR_ID, userId: DEMO_PRO_ID, perfilId: albano.id, perfil: albano, contacto: contactoPro, estado: 'enviada',
+      mensagem: 'Utente com alta clínica prevista para esta semana. Precisa de enfermagem permanente. Podemos enviar o relatório clínico depois de aceitarem o pedido.',
+      criadaEm: iso(0.5), atualizadaEm: iso(0.5), historico: [{ data: iso(0.5), estado: 'enviada', nota: `Encaminhado por ${ORG}.` }],
+      origem: 'profissional', encaminhamento: encaminhamento(casos[0]!),
+    },
+    {
+      id: 'c-pro-2', larId: comEnfermagem.id, userId: DEMO_PRO_ID, perfilId: albano.id, perfil: albano, contacto: contactoPro, estado: 'em_analise',
+      criadaEm: iso(0.5), atualizadaEm: iso(0.2), desbloqueadaEm: iso(0.2),
+      historico: [{ data: iso(0.5), estado: 'enviada', nota: `Encaminhado por ${ORG}.` }, { data: iso(0.2), estado: 'em_analise', nota: 'Vamos ligar amanhã de manhã.' }],
+      origem: 'profissional', encaminhamento: encaminhamento(casos[0]!),
+    },
+    {
+      id: 'c-pro-3', larId: semEnfermagem.id, userId: DEMO_PRO_ID, perfilId: albano.id, perfil: albano, contacto: contactoPro, estado: 'recusada',
+      criadaEm: iso(0.5), atualizadaEm: iso(0.3),
+      historico: [{ data: iso(0.5), estado: 'enviada', nota: `Encaminhado por ${ORG}.` }, { data: iso(0.3), estado: 'recusada', nota: 'Não temos enfermagem durante a noite.' }],
+      origem: 'profissional', encaminhamento: encaminhamento(casos[0]!),
+    },
+    {
+      id: 'c-pro-4', larId: ipss.id, userId: DEMO_PRO_ID, perfilId: rosa.id, perfil: rosa, contacto: contactoPro, estado: 'admitida',
+      criadaEm: iso(34), atualizadaEm: iso(21), desbloqueadaEm: iso(33),
+      historico: [
+        { data: iso(34), estado: 'enviada', nota: `Encaminhado por ${ORG}.` },
+        { data: iso(33), estado: 'em_analise' },
+        { data: iso(27), estado: 'vaga_proposta' },
+        { data: iso(26), estado: 'aceite' },
+        { data: iso(21), estado: 'admitida', nota: 'Entrada registada pela instituição.' },
+      ],
+      origem: 'profissional', encaminhamento: encaminhamento(casos[1]!),
+      entrada: { data: isoDia(new Date(agora - 21 * DIA)), confirmadaLarEm: iso(21), confirmadaFamiliaEm: iso(20), taxa: ipss.natureza === 'privado' ? 'aplicavel' : 'isenta' },
+    },
+  )
+
+  // ——— procura sem resposta (anónima): pesquisas sem vagas nos últimos 30 dias
+  const rngQ = createRng(5150)
+  const lugaresPorto = LUGARES.filter((l) => l.distrito === 'Porto')
+  const CUIDADOS_PROCURA: Cuidado[] = ['demencia', 'acamados', 'enfermagem24h', 'fisioterapia', 'diabetes', 'paliativos']
+  const GRAUS: GrauDependencia[] = ['ligeira', 'moderada', 'moderada', 'grave', 'grave']
+  const procuras: ProcuraAnonima[] = Array.from({ length: 84 }, (_, i) => {
+    const noPorto = rngQ.chance(0.55)
+    const lugar = noPorto ? rngQ.pick(lugaresPorto) : rngQ.pick(LUGARES)
+    return {
+      id: `q-${i}`,
+      criadaEm: iso(rngQ.float(0, 30)),
+      distrito: lugar.distrito,
+      lugar: lugar.label,
+      grau: rngQ.pick(GRAUS),
+      cuidados: rngQ.sample(CUIDADOS_PROCURA, rngQ.int(0, 2)),
+      orcamentoMax: rngQ.chance(0.8) ? rngQ.int(9, 24) * 100 : undefined,
+      resultados: rngQ.int(0, 9),
+      comVaga: 0,
+    }
+  })
+
   const favoritos: Favorito[] = [
     { userId: DEMO_FAMILIA_ID, larId: DEMO_LAR_ID, alerta: true, criadoEm: iso(20) },
     { userId: DEMO_FAMILIA_ID, larId: larVisita.id, alerta: true, criadoEm: iso(7) },
@@ -802,7 +942,7 @@ export function createSeed(agora = Date.now()): DB {
     },
     {
       id: 'n-lar-1', userId: DEMO_LAR_USER_ID, tipo: 'candidatura', titulo: 'Novo pedido de vaga',
-      texto: 'Rui Sousa enviou um pedido para Joaquim Sousa (88 anos, dependência grave). Indicou urgência: alta hospitalar.',
+      texto: 'Pedido de vaga de uma família (pessoa de 85–89 anos, dependência grave, urgência imediata). Abra o pedido para o aceitar e ver o contacto.',
       candidaturaId: 'c-fam-0', link: linkPedido('c-fam-0'), lida: false, criadaEm: iso(0.3),
     },
     {
@@ -815,6 +955,26 @@ export function createSeed(agora = Date.now()): DB {
       texto: 'Fichas atualizadas na última semana aparecem primeiro nas pesquisas e transmitem mais confiança às famílias.',
       link: '/gestao', lida: true, criadaEm: iso(8),
     },
+    {
+      id: 'n-lar-4', userId: DEMO_LAR_USER_ID, tipo: 'candidatura', titulo: 'Novo encaminhamento',
+      texto: `Encaminhamento do ${ORG} (pessoa de 80–84 anos), com alta prevista para ${diaPorExtenso(futuro(4))}. Abra o pedido para o aceitar e ver o contacto.`,
+      candidaturaId: 'c-pro-1', link: linkPedido('c-pro-1'), lida: false, criadaEm: iso(0.5),
+    },
+    {
+      id: 'n-lar-5', userId: DEMO_LAR_USER_ID, tipo: 'candidatura', titulo: 'Confirme a entrada',
+      texto: 'Registou a entrada de Olívia Barros. A família ainda não confirmou; enviámos-lhe um lembrete.',
+      candidaturaId: 'c-fam-7', link: linkPedido('c-fam-7'), lida: true, criadaEm: iso(11),
+    },
+    {
+      id: 'n-pro-1', userId: DEMO_PRO_ID, tipo: 'candidatura', titulo: 'Em análise',
+      texto: `O pedido para Albano Teixeira está em análise ${noLar(comEnfermagem.nome)}.`,
+      larId: comEnfermagem.id, candidaturaId: 'c-pro-2', link: '/casos/caso-1', lida: false, criadaEm: iso(0.2),
+    },
+    {
+      id: 'n-pro-2', userId: DEMO_PRO_ID, tipo: 'candidatura', titulo: 'Não foi possível',
+      texto: `${maiuscula(oLar(semEnfermagem.nome))} não ${larPlural(semEnfermagem.nome) ? 'têm' : 'tem'}, neste momento, condições para receber Albano Teixeira. Nota: Não temos enfermagem durante a noite.`,
+      larId: semEnfermagem.id, candidaturaId: 'c-pro-3', link: '/casos/caso-1', lida: true, criadaEm: iso(0.3),
+    },
   ]
 
   return {
@@ -826,6 +986,8 @@ export function createSeed(agora = Date.now()): DB {
     candidaturas,
     favoritos,
     notificacoes,
+    casos,
+    procuras,
   }
 }
 

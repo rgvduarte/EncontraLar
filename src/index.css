@@ -133,6 +133,9 @@
     text-rendering: optimizeLegibility;
     scroll-behavior: smooth;
     font-feature-settings: 'cv11', 'ss01', 'ss03';
+    /* o foco (Tab) nunca fica por baixo da barra de abas nem de uma barra de ação fixa no fundo (WCAG 2.4.11).
+       Só em baixo: o Lenis soma scroll-padding-top a cada scrollTo(elemento), e as secções já têm scroll-mt-*. */
+    scroll-padding-bottom: calc(var(--tabbar-h) + var(--actionbar-h, 0px) + 1rem);
   }
   body {
     @apply bg-cream font-sans text-base text-ink antialiased;
@@ -156,6 +159,10 @@
     outline: 3px solid var(--color-terra-500);
     outline-offset: 3px;
     border-radius: 8px;
+    /* e nunca escondido por baixo do cabeçalho fixo (h-16) nem de barras fixas da página (--barra-fixa, ex.: pílulas
+       do painel). Margem no próprio elemento focado e não scroll-padding-top no html: este somava-se às âncoras
+       (scroll-mt-* das secções) e ao scrollTo do Lenis. Os scroll-mt-* (utilities) continuam a ganhar. */
+    scroll-margin-top: calc(4rem + var(--barra-fixa, 0px) + 1rem);
   }
   button, [role='button'], a, input, select, textarea, label { -webkit-tap-highlight-color: transparent; }
   button:not(:disabled), [role='button'] { cursor: pointer; }
@@ -292,4 +299,15 @@
 @keyframes pt-pulse {
   0% { transform: scale(1); opacity: 0.45; }
   100% { transform: scale(2.8); opacity: 0; }
+}
+
+/*
+ * Filas horizontais com scroll próprio (data-lenis-prevent-horizontal): o lenis.css dá-lhes
+ * overscroll-behavior: contain nos DOIS eixos. No eixo vertical isso faz o Lenis ignorar o gesto
+ * (hasNestedScroll) e impede o browser de o passar à página — a página fica presa (dedo, roda, trackpad).
+ * Fora de qualquer @layer de propósito: o lenis.css não tem layer e ganharia a qualquer regra em camada.
+ * Especificidade (0,2,1) > (0,2,0); o eixo x continua contain. As filas também precisam de overflow-y-hidden.
+ */
+html.lenis [data-lenis-prevent-horizontal] {
+  overscroll-behavior-y: auto;
 }

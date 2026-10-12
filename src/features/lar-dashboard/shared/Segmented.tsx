@@ -99,9 +99,9 @@ export function Segmented<T extends string>({
         ref={faixa}
         role="group"
         aria-label={label}
-        data-lenis-prevent
+        data-lenis-prevent-horizontal
         onScroll={medirBordas}
-        className="snap-x scroll-px-5 overflow-x-auto overscroll-x-contain px-5 [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden"
+        className="snap-x scroll-px-5 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-auto! px-5 [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden"
         style={{ maskImage: mascara, WebkitMaskImage: mascara }}
       >
         <div ref={trilho} className="relative inline-flex gap-1 rounded-full bg-sand p-1">

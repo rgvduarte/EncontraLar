@@ -9,9 +9,10 @@ import {
 import { Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
+// contorno pine-400 (#8e8e93, ≈3.3:1 sobre branco): o limite de um campo branco numa página branca tem de chegar a 3:1 (WCAG 1.4.11)
 const controlBase =
-  'w-full rounded-2xl border border-line-strong bg-white px-4 text-base text-ink placeholder:text-ink-mute ' +
-  'transition-[border-color,box-shadow] hover:border-pine-400 focus:border-terra-500 focus:ring-4 focus:ring-terra-100 focus:outline-none ' +
+  'w-full rounded-2xl border border-pine-400 bg-white px-4 text-base text-ink placeholder:text-ink-mute ' +
+  'transition-[border-color,box-shadow] hover:border-pine-500 focus:border-terra-500 focus:ring-4 focus:ring-terra-100 focus:outline-none ' +
   'disabled:cursor-not-allowed disabled:bg-sand aria-[invalid=true]:border-alert-600 aria-[invalid=true]:ring-alert-50'
 
 interface FieldShellProps {
@@ -158,7 +159,7 @@ export function Checkbox({
   return (
     <label className={cn('group flex min-h-12 cursor-pointer items-start gap-3 rounded-xl py-2', className)}>
       <span className="relative mt-0.5 flex size-7 shrink-0 items-center justify-center">
-        <input type="checkbox" className="peer absolute inset-0 cursor-pointer appearance-none rounded-[8px] border-[1.5px] border-line-strong bg-white transition-colors checked:border-terra-600 checked:bg-terra-600 group-hover:border-pine-400 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500" {...rest} />
+        <input type="checkbox" className="peer absolute inset-0 cursor-pointer appearance-none rounded-[8px] border-[1.5px] border-pine-400 bg-white transition-colors checked:border-terra-600 checked:bg-terra-600 group-hover:border-pine-500 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500" {...rest} />
         <Check aria-hidden strokeWidth={3} className="pointer-events-none relative size-4.5 scale-50 text-white opacity-0 transition-[opacity,scale] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] peer-checked:scale-100 peer-checked:opacity-100" />
       </span>
       <span className="flex flex-col">
@@ -204,7 +205,8 @@ export function ChoiceCard({
       <span
         aria-hidden
         className={cn(
-          'absolute top-5 right-5 flex size-6 items-center justify-center border-[1.5px] border-line-strong bg-white text-white transition-colors',
+          // o indicador é que mostra o estado (a borda do cartão pode ficar clara): contorno com 3:1
+          'absolute top-5 right-5 flex size-6 items-center justify-center border-[1.5px] border-pine-400 bg-white text-white transition-colors',
           'peer-checked:border-terra-600 peer-checked:bg-terra-600',
           type === 'radio' ? 'rounded-full' : 'rounded-md',
         )}
@@ -247,7 +249,8 @@ export function Switch({
         onClick={() => onChange(!checked)}
         className={cn(
           'relative inline-flex h-[31px] w-[51px] shrink-0 items-center rounded-full p-[2px] transition-colors duration-200 disabled:opacity-50',
-          checked ? 'bg-leaf-500' : 'bg-sand-deep',
+          // ligado leaf-600 (≈4.4:1), desligado pine-400 (≈3.3:1) — contra a página e contra o botão branco (WCAG 1.4.11)
+          checked ? 'bg-leaf-600' : 'bg-pine-400',
         )}
       >
         <span className={cn('inline-block size-[27px] rounded-full bg-white shadow-[0_3px_8px_rgba(0,0,0,0.15),0_1px_1px_rgba(0,0,0,0.16)] transition-transform duration-200', checked ? 'translate-x-5' : 'translate-x-0')} />

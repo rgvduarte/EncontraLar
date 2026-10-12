@@ -15,7 +15,8 @@ const ESTADO: Record<Candidatura['estado'], { tone: BadgeTone; texto: string }> 
   em_analise: { tone: 'neutral', texto: 'Em análise' },
   lista_espera: { tone: 'dusk', texto: 'Lista de espera' },
   vaga_proposta: { tone: 'sun', texto: 'Vaga proposta' },
-  aceite: { tone: 'leaf', texto: 'Entrada confirmada' },
+  aceite: { tone: 'leaf', texto: 'Vaga aceite' },
+  admitida: { tone: 'leaf', texto: 'Entrou' },
   recusada: { tone: 'neutral', texto: 'Não aceite' },
   cancelada: { tone: 'neutral', texto: 'Cancelado pela família' },
 }

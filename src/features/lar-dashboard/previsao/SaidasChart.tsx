@@ -25,7 +25,7 @@ export function SaidasChart({ valores, agora = new Date() }: { valores: number[]
   return (
     <figure ref={ref}>
       <figcaption className="sr-only">Saídas de residentes por mês, nos últimos 12 meses</figcaption>
-      <div className="relative grid grid-cols-[1.75rem_1fr] gap-x-2">
+      <div className="relative grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2">
         {/* eixo e grelha */}
         <div aria-hidden className="relative h-48">
           {ticks.map((t) => (
@@ -48,7 +48,7 @@ export function SaidasChart({ valores, agora = new Date() }: { valores: number[]
                 onMouseLeave={() => setAtivo(null)}
                 onFocus={() => setAtivo(i)}
                 onBlur={() => setAtivo(null)}
-                className="relative flex h-full flex-1 cursor-default items-end justify-center rounded-md outline-none focus-visible:bg-sand"
+                className="relative flex h-full min-w-0 flex-1 cursor-default items-end justify-center rounded-md outline-none focus-visible:bg-sand"
               >
                 <span
                   className={cn(
@@ -73,7 +73,7 @@ export function SaidasChart({ valores, agora = new Date() }: { valores: number[]
         <span />
         <ol aria-hidden className="mt-2 flex gap-0.5">
           {dados.map((d, i) => (
-            <li key={`${d.ano}-${d.mes}`} className="flex-1 text-center text-xs text-ink-mute">
+            <li key={`${d.ano}-${d.mes}`} className="min-w-0 flex-1 text-center text-xs text-ink-mute">
               <span className={cn((dados.length - 1 - i) % 2 === 1 && 'max-sm:invisible')}>{MESES_CURTOS[d.mes]}</span>
             </li>
           ))}

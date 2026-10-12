@@ -12,6 +12,7 @@ export const ESTADO_DOT: Record<EstadoCandidatura, string> = {
   lista_espera: 'bg-dusk-500',
   vaga_proposta: 'bg-terra-600',
   aceite: 'bg-leaf-500',
+  admitida: 'bg-leaf-500',
   recusada: 'bg-line-strong',
   cancelada: 'bg-line-strong',
 }
@@ -25,8 +26,9 @@ const PRIORIDADE: Record<EstadoCandidatura, number> = {
   lista_espera: 2,
   em_analise: 3,
   enviada: 4,
-  recusada: 5,
-  cancelada: 6,
+  admitida: 5,
+  recusada: 6,
+  cancelada: 7,
 }
 
 /** Vagas propostas primeiro; depois por atualização mais recente. */

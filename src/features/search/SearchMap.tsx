@@ -201,7 +201,13 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
   }
 
   return (
-    <div className={cn('el-map isolate overflow-hidden bg-sand', selecionado && 'el-map--peek', className)} role="region" aria-label="Mapa das instituições">
+    // data-lenis-prevent: a roda aproxima o mapa (e desloca a folha do marcador) em vez de mover a página
+    <div
+      className={cn('el-map isolate overflow-hidden bg-sand', selecionado && 'el-map--peek', className)}
+      role="region"
+      aria-label="Mapa das instituições"
+      data-lenis-prevent
+    >
       <p className="sr-only">O mapa repete a informação da lista. Cada marcador pode ser escolhido com a tecla Tab e aberto com Enter.</p>
       <MapContainer ref={setMap} center={[39.6, -8.0]} zoom={7} minZoom={5} maxZoom={18} zoomControl={false} className="h-full w-full bg-sand" attributionControl>
         <Basemap />

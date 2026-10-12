@@ -38,8 +38,10 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       autoRaf: true,
       anchors: false,
       allowNestedScroll: true,
-      prevent: (node: HTMLElement) =>
-        Boolean(node.closest?.('.leaflet-container, dialog, [data-lenis-prevent], [role="listbox"], [role="menu"]')),
+      // os mapas Leaflet NÃO entram aqui: com zoom pela roda (pesquisa), o próprio Leaflet trava a propagação do
+      // evento; sem ele (ficha do lar), a roda por cima do mapa deve mover a página com o mesmo scroll suave —
+      // ignorá-la aqui perdia parte do movimento (a animação em curso do Lenis sobrepunha-se ao scroll nativo).
+      prevent: (node: HTMLElement) => Boolean(node.closest?.('dialog, [data-lenis-prevent], [role="listbox"], [role="menu"]')),
     })
     setLenis(l)
     ;(window as unknown as { __lenis?: Lenis }).__lenis = l

@@ -140,8 +140,8 @@ export const MobileBar = forwardRef<HTMLDivElement, Props>(function MobileBar({ 
         ref={rowRef}
         role="group"
         aria-label="Filtros"
-        data-lenis-prevent
-        className="flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto overscroll-x-contain px-4 py-2.5 [mask-image:linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-2rem),transparent)] [scrollbar-width:none] sm:scroll-px-6 sm:px-6 [&::-webkit-scrollbar]:hidden [&>*]:snap-start"
+        data-lenis-prevent-horizontal
+        className="flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-auto! px-4 py-2.5 [mask-image:linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-2rem),transparent)] [scrollbar-width:none] sm:scroll-px-6 sm:px-6 [&::-webkit-scrollbar]:hidden [&>*]:snap-start"
       >
         <button type="button" onClick={onFiltros} aria-haspopup="dialog" className={pillClasses(n > 0)}>
           <SlidersHorizontal aria-hidden className="size-4" />

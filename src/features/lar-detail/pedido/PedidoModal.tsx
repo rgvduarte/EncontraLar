@@ -98,6 +98,21 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
     corpo.current?.closest('.overflow-y-auto')?.scrollTo({ top: 0 })
   }, [passo])
 
+  // ao mudar de vista, o foco vai para o novo título (o botão do rodapé onde estava deixa de existir ou muda de
+  // função) e a região viva anuncia o passo; a confirmação foca o seu próprio título (SucessoStep)
+  const tituloRef = useRef<HTMLSpanElement>(null)
+  const [anuncio, setAnuncio] = useState('')
+  const vistaFocada = useRef(vista)
+  useEffect(() => {
+    if (vistaFocada.current === vista) return
+    vistaFocada.current = vista
+    if (vista === 'sucesso') return
+    tituloRef.current?.focus({ preventScroll: true })
+    const idx = etapas.indexOf(vista as Etapa)
+    const texto = tituloRef.current?.textContent ?? ''
+    setAnuncio(idx >= 0 ? `Passo ${idx + 1} de ${etapas.length}: ${texto}` : texto)
+  }, [vista, etapas])
+
   // depois de entrar ou criar conta, a ficha reabre este pedido (LarPage lê ?acao=)
   const voltar = encodeURIComponent(`${location.pathname}?acao=${comVisita ? 'visita' : 'pedir'}`)
   const primeiro = perfil?.nome.split(' ')[0]
@@ -157,11 +172,11 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
     rodape = (
       <>
         {perfis.length > 0 && (
-          <Button className={GRANDE} variant="subtle" onClick={() => setPasso('compat')}>
+          <Button key="perfil-voltar" className={GRANDE} variant="subtle" onClick={() => setPasso('compat')}>
             Voltar
           </Button>
         )}
-        <Button className={GRANDE} type="submit" form={formPerfil}>
+        <Button key="perfil-guardar" className={GRANDE} type="submit" form={formPerfil}>
           Guardar e continuar
         </Button>
       </>
@@ -181,11 +196,11 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
       />
     )
     rodape = ja ? (
-      <ButtonLink className={GRANDE} to="/familia/pedidos">
+      <ButtonLink key="compat-ver" className={GRANDE} to="/familia/pedidos">
         Ver o pedido
       </ButtonLink>
     ) : (
-      <Button className={GRANDE} onClick={() => setPasso('mensagem')}>
+      <Button key="compat-continuar" className={GRANDE} onClick={() => setPasso('mensagem')}>
         Continuar
       </Button>
     )
@@ -195,10 +210,10 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
     conteudo = <MensagemStep lar={lar} perfil={perfil} user={user} formId={formPedido} comVisitaInicial={comVisita} onEnviar={enviar} />
     rodape = (
       <>
-        <Button className={GRANDE} variant="subtle" onClick={() => setPasso('compat')}>
+        <Button key="msg-voltar" className={GRANDE} variant="subtle" onClick={() => setPasso('compat')}>
           Voltar
         </Button>
-        <Button className={GRANDE} type="submit" form={formPedido}>
+        <Button key="msg-enviar" className={GRANDE} type="submit" form={formPedido}>
           Enviar pedido
         </Button>
       </>
@@ -224,7 +239,8 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
       open={open}
       onClose={onClose}
       title={
-        <span key={vista} className={cn('block', animar && 'ficha-troca')}>
+        // focável só por programação (tabIndex -1): recebe o foco quando o passo muda
+        <span key={vista} ref={tituloRef} tabIndex={-1} className={cn('block outline-none', animar && 'ficha-troca')}>
           {titulo}
         </span>
       }
@@ -233,6 +249,9 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
       size="lg"
     >
       <div ref={corpo}>
+        <p className="sr-only" aria-live="polite" aria-atomic="true">
+          {anuncio}
+        </p>
         {(vista === 'perfil' || vista === 'compat' || vista === 'mensagem') && <Etapas atual={vista} etapas={etapas} />}
         {/* a margem negativa deixa ver os anéis de foco; o recorte horizontal evita barra de scroll durante o deslize */}
         <div className="-mx-2 overflow-x-clip px-2">

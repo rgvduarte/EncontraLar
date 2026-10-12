@@ -111,7 +111,9 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
         onTexto(op.q)
         break
     }
-    inputRef.current?.blur()
+    // ecrã tátil: tira o foco para fechar o teclado do telemóvel; com teclado/rato o foco fica no campo
+    // (nunca cai no <body>: quem usa teclado ou leitor de ecrã continua onde estava)
+    if (window.matchMedia('(pointer: coarse)').matches) inputRef.current?.blur()
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -164,7 +166,10 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
         className={cn(
           'flex items-center rounded-full transition-[background-color,box-shadow] duration-200',
           compact ? 'min-h-12 pr-1 pl-4.5' : 'min-h-14 pr-1.5 pl-5',
-          open ? 'bg-white shadow-card ring-1 ring-line' : 'bg-sand hover:bg-sand-deep/70',
+          open
+            ? 'bg-white shadow-card ring-1 ring-line'
+            : // fechado mas com o foco no campo (ex.: depois de escolher com o teclado): anel de foco visível
+              'bg-sand hover:bg-sand-deep/70 has-[input:focus-visible]:outline-3 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-terra-500',
         )}
       >
         {geoAtivo ? (

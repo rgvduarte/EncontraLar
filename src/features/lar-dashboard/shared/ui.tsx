@@ -66,7 +66,7 @@ export function Stat({
   return (
     <Reveal delay={delay} className={cn('flex min-w-0 flex-col', className)}>
       <dt className="text-sm text-ink-mute">{label}</dt>
-      <dd className={cn('mt-1 leading-none font-semibold tracking-tight text-ink', hero ? 'text-5xl sm:text-6xl' : 'text-4xl sm:text-5xl')}>
+      <dd className={cn('mt-1 leading-none font-semibold tracking-tight text-ink', hero ? 'text-5xl sm:text-6xl' : 'text-[2.25rem] min-[360px]:text-4xl sm:text-5xl')}>
         {value}
       </dd>
       {children}

@@ -56,8 +56,21 @@ export function HorizontalScroll({
     return (
       <section aria-label={label} className={cn('py-4', className)}>
         {header}
+        {/* overflow-y-hidden: sem ele a faixa (cartões com Reveal/hover) tem uns px de scroll vertical e "agarra" o gesto
+            vertical — a página deixa de descer com o dedo ou a roda (com a regra global de index.css).
+            tabIndex 0 + nome: com o teclado (setas) também se percorre a faixa, mesmo em browsers que não tornam
+            os contentores com scroll focáveis (Safari); role="group" e não "region" para não duplicar o marco da secção.
+            pt-2: espaço para o anel de foco dos cartões (a faixa corta o que passa dos seus limites). */}
         <div
-          className={cn('relative flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] sm:px-8', trackClassName)}
+          tabIndex={0}
+          role="group"
+          aria-label={label ? `${label}: deslize ou use as setas para ver mais` : 'Deslize ou use as setas para ver mais'}
+          className={cn(
+            'relative flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto overflow-y-hidden px-5 pt-2 pb-4 [scrollbar-width:none] sm:px-8',
+            // anel de foco por dentro: a faixa ocupa a largura toda e um anel por fora ficava cortado nas margens do ecrã
+            'focus-visible:rounded-[1.75rem] focus-visible:outline-offset-[-3px]',
+            trackClassName,
+          )}
           data-lenis-prevent-horizontal
         >
           {children}

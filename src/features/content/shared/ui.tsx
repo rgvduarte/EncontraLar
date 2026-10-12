@@ -128,8 +128,10 @@ export function PageHero({
 export const SWIPE_ITEM = 'w-[84%] max-w-[24rem] shrink-0 snap-start md:w-auto md:max-w-none'
 export const SWIPE_ITEM_LG = 'w-[84%] max-w-[24rem] shrink-0 snap-start lg:w-auto lg:max-w-none'
 
+// overflow-y-hidden + overscroll-y-auto!: a faixa só desliza na horizontal; um gesto vertical que comece nela
+// passa para a página (o lenis.css põe overscroll-behavior: contain nos dois eixos)
 const SWIPE_BASE =
-  '-mx-5 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto overscroll-x-contain px-5 pt-1 pb-6 [scrollbar-width:none] sm:-mx-8 sm:scroll-px-8 sm:px-8 [&::-webkit-scrollbar]:hidden'
+  '-mx-5 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-auto! px-5 pt-1 pb-6 [scrollbar-width:none] sm:-mx-8 sm:scroll-px-8 sm:px-8 [&::-webkit-scrollbar]:hidden'
 const SWIPE_FIM = {
   md: 'md:mx-0 md:overflow-visible md:px-0 md:pt-0 md:pb-0',
   lg: 'lg:mx-0 lg:overflow-visible lg:px-0 lg:pt-0 lg:pb-0',
@@ -156,7 +158,7 @@ export function SwipeRow({
 }) {
   const faixa = useMediaQuery(ate === 'md' ? '(max-width: 767.98px)' : '(max-width: 1023.98px)')
   return (
-    <As aria-label={label} data-lenis-prevent={faixa ? '' : undefined} className={cn(SWIPE_BASE, SWIPE_FIM[ate], className)}>
+    <As aria-label={label} data-lenis-prevent-horizontal={faixa ? '' : undefined} className={cn(SWIPE_BASE, SWIPE_FIM[ate], className)}>
       {children}
     </As>
   )

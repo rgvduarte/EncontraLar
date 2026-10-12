@@ -78,7 +78,7 @@ export function QuietSelect({ label, onSand, wrapperClassName, className, childr
       <select
         id={id}
         className={cn(
-          'min-h-12 cursor-pointer appearance-none rounded-full bg-transparent py-2 pr-9 pl-1.5 text-sm font-medium text-ink [field-sizing:content] focus:outline-none',
+          'min-h-12 cursor-pointer appearance-none rounded-full bg-transparent py-2 pr-9 pl-1.5 text-sm font-medium text-ink [field-sizing:content]',
           'focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500',
           className,
         )}

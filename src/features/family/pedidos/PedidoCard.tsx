@@ -148,19 +148,16 @@ export function PedidoCard({
       {mostraEspera && <Espera c={c} lar={lar} />}
 
       <div className="mt-12 grid gap-10 md:grid-cols-2">
-        <section aria-labelledby={`${titleId}-hist`}>
-          <h3 id={`${titleId}-hist`} className="mb-5 text-sm font-semibold text-ink-mute">
-            Histórico
-          </h3>
+        {/* div e não section: cada pedido tem um Histórico e uma Visita — regiões com o mesmo nome repetiam-se na lista de marcos */}
+        <div>
+          <h3 className="mb-5 text-sm font-semibold text-ink-mute">Histórico</h3>
           <Historico c={c} />
-        </section>
+        </div>
         {ativa && (c.estado !== 'aceite' || c.visita) && (
-          <section aria-labelledby={`${titleId}-visita`}>
-            <h3 id={`${titleId}-visita`} className="mb-5 text-sm font-semibold text-ink-mute">
-              Visita
-            </h3>
+          <div>
+            <h3 className="mb-5 text-sm font-semibold text-ink-mute">Visita</h3>
             <VisitaBlock c={c} lar={lar} />
-          </section>
+          </div>
         )}
       </div>
 

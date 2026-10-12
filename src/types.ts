@@ -128,9 +128,21 @@ export interface Lar {
   ownerId?: string
   /** visualizações da ficha nos últimos 30 dias (painel do lar) */
   visualizacoes30d: number
+  /** link de confirmação rápida das vagas, sem login (enviado por SMS/email): /confirmar/:token */
+  confirmacaoToken?: string
 }
 
-export type Role = 'familia' | 'lar'
+/** familia = quem procura; lar = instituição; profissional = assistente social (hospital, centro de saúde…) */
+export type Role = 'familia' | 'lar' | 'profissional'
+
+export type TipoOrganizacao = 'hospital' | 'centro_saude' | 'autarquia' | 'outro'
+export interface Organizacao {
+  /** ex.: "Hospital de Santa Luzia" */
+  nome: string
+  tipo: TipoOrganizacao
+  /** ex.: "Serviço Social" */
+  servico?: string
+}
 
 export interface User {
   id: string
@@ -142,6 +154,8 @@ export interface User {
   criadoEm: string
   /** para role 'lar': instituição gerida */
   larId?: string
+  /** para role 'profissional': onde trabalha */
+  organizacao?: Organizacao
   /** utilizadores de demonstração (mostrados no login) */
   demo?: boolean
 }
@@ -181,6 +195,33 @@ export type EstadoCandidatura =
   | 'aceite'
   | 'recusada'
   | 'cancelada'
+  /** a pessoa entrou na instituição (confirmado pelo lar e/ou pela família) */
+  | 'admitida'
+
+/** Quem fez o pedido: a família, ou um profissional (ex.: serviço social do hospital) em nome da pessoa. */
+export type OrigemPedido = 'familia' | 'profissional'
+
+export interface Encaminhamento {
+  casoId: string
+  profissionalId: string
+  /** ex.: "Hospital de Santa Luzia · Serviço Social" */
+  organizacao: string
+  /** data prevista de alta hospitalar (AAAA-MM-DD) */
+  altaPrevista?: string
+}
+
+/** Só os lares privados pagam a taxa fixa por entrada; IPSS e Misericórdias estão isentas. */
+export type TaxaEntrada = 'aplicavel' | 'isenta'
+
+export interface Entrada {
+  /** dia da entrada (AAAA-MM-DD) */
+  data: string
+  /** ISO — a instituição marcou "Entrou" */
+  confirmadaLarEm?: string
+  /** ISO — a família (ou o profissional) confirmou a entrada */
+  confirmadaFamiliaEm?: string
+  taxa: TaxaEntrada
+}
 
 export interface Candidatura {
   id: string
@@ -201,6 +242,46 @@ export interface Candidatura {
   criadaEm: string
   atualizadaEm: string
   historico: { data: string; estado: EstadoCandidatura; nota?: string }[]
+  /** ausente = 'familia' */
+  origem?: OrigemPedido
+  encaminhamento?: Encaminhamento
+  /** ISO — a instituição aceitou o pedido e passou a ver o contacto e o perfil completo */
+  desbloqueadaEm?: string
+  /** entrada na instituição (base da taxa por entrada) */
+  entrada?: Entrada
+}
+
+export type EstadoCaso = 'aberto' | 'colocado' | 'fechado'
+
+/** Caso de um profissional: uma pessoa a precisar de resposta (ex.: alta hospitalar). */
+export interface Caso {
+  id: string
+  profissionalId: string
+  /** PerfilIdoso com userId = profissional */
+  perfilId: string
+  /** nº interno não identificativo (ex.: processo do serviço social) */
+  referencia?: string
+  /** AAAA-MM-DD */
+  altaPrevista?: string
+  /** a pessoa (ou o seu representante) autorizou a partilha do perfil com instituições */
+  consentimento: boolean
+  estado: EstadoCaso
+  criadoEm: string
+  atualizadoEm: string
+}
+
+/** Pesquisa sem vagas, guardada sem dados pessoais — mostra às instituições a procura por satisfazer. */
+export interface ProcuraAnonima {
+  id: string
+  criadaEm: string
+  distrito?: Distrito
+  /** label do lugar pesquisado (ex.: "Braga") */
+  lugar?: string
+  grau?: GrauDependencia
+  cuidados: Cuidado[]
+  orcamentoMax?: number
+  resultados: number
+  comVaga: number
 }
 
 export type TipoNotificacao = 'vaga' | 'candidatura' | 'visita' | 'sistema'
@@ -236,6 +317,8 @@ export interface DB {
   candidaturas: Candidatura[]
   favoritos: Favorito[]
   notificacoes: Notificacao[]
+  casos: Caso[]
+  procuras: ProcuraAnonima[]
 }
 
 /** Estado de disponibilidade calculado a partir das vagas e da previsão. */

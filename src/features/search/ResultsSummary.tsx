@@ -138,12 +138,12 @@ export function ResultsSummary({ model, desktop }: Props) {
       {(presentes.length > 0 || (total >= 2 && n > 0)) && (
         // telemóvel: uma só linha deslizante (com encaixe) de ponta a ponta; desktop: quebra de linha
         <div
-          data-lenis-prevent
+          data-lenis-prevent-horizontal={desktop ? undefined : ''}
           className={cn(
             'mt-1 flex items-center gap-x-2',
             desktop
               ? 'flex-wrap'
-              : '-mx-5 snap-x snap-mandatory scroll-px-5 overflow-x-auto overscroll-x-contain px-5 [mask-image:linear-gradient(to_right,transparent,#000_1.25rem,#000_calc(100%-2rem),transparent)] [scrollbar-width:none] sm:-mx-6 sm:scroll-px-6 sm:px-6 [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 [&>*]:snap-start',
+              : '-mx-5 snap-x snap-mandatory scroll-px-5 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-auto! px-5 [mask-image:linear-gradient(to_right,transparent,#000_1.25rem,#000_calc(100%-2rem),transparent)] [scrollbar-width:none] sm:-mx-6 sm:scroll-px-6 sm:px-6 [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 [&>*]:snap-start',
           )}
         >
           {pilulas.length > 0 && <span className="sr-only">Filtros ativos:</span>}

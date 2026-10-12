@@ -85,9 +85,10 @@ export const LarCard = memo(function LarCard({
       <div className={cn('flex flex-1 flex-col', horizontal ? 'gap-1.5 py-1 pr-2' : 'gap-1.5 px-1 pt-4')}>
         <div className="flex items-start justify-between gap-3">
           <H className="text-lg leading-snug font-semibold tracking-[-0.015em] text-ink">
+            {/* a ligação estica-se ao cartão todo (::after): o anel de foco desenha-se aí, à volta do cartão, e não no texto */}
             <Link
               to={`/lar/${lar.id}`}
-              className="after:absolute after:inset-0 after:z-0 after:rounded-[1.75rem] after:content-[''] focus-visible:outline-none"
+              className="after:absolute after:inset-0 after:z-0 after:rounded-[1.75rem] after:content-[''] focus-visible:outline-none focus-visible:after:outline-3 focus-visible:after:outline-offset-2 focus-visible:after:outline-terra-500"
             >
               {lar.nome}
             </Link>

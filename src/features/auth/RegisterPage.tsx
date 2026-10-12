@@ -17,6 +17,7 @@ import { destinoAposEntrar, intencaoDe, isInternalPath, motivoDoDestino } from '
 const DESCRICAO: Record<Role, string> = {
   familia: 'Gratuita. Guarde lares, peça vaga e receba alertas.',
   lar: 'Publique as vagas e receba pedidos de famílias.',
+  profissional: 'Para assistentes sociais: envie o mesmo pedido a várias instituições.',
 }
 
 export default function RegisterPage() {

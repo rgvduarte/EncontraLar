@@ -316,9 +316,11 @@ function Cena({ d, p }: { d: Dados; p: number }) {
               <li
                 key={x.t}
                 aria-current={i === atual ? 'step' : undefined}
-                className={cn('transition-opacity duration-500 ease-[cubic-bezier(.16,1,.3,1)]', i === atual ? 'opacity-100' : 'opacity-30')}
+                // inativos a 70%: continuam legíveis (AA, ~4,9:1 sobre preto); o ativo destaca-se pela opacidade total,
+                // pela calha de progresso e por aria-current
+                className={cn('transition-opacity duration-500 ease-[cubic-bezier(.16,1,.3,1)]', i === atual ? 'opacity-100' : 'opacity-70')}
               >
-                <p className="text-sm font-semibold text-pine-400 tabular">0{i + 1}</p>
+                <p className="text-sm font-semibold text-pine-300 tabular">0{i + 1}</p>
                 <h3 className="mt-1 text-2xl font-semibold text-white lg:text-3xl xl:text-4xl">{x.t}</h3>
                 <p className="mt-3 max-w-[36ch] text-base text-pine-300 lg:text-lg">{x.d}</p>
               </li>

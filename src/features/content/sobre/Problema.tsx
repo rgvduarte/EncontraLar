@@ -76,7 +76,8 @@ export function Problema() {
           label="Quatro problemas"
           header={titulo}
           className="pb-16 sm:pb-24 lg:pb-0"
-          trackClassName="scroll-px-5 sm:scroll-px-8 lg:pl-[max(2.5rem,calc((100vw-80rem)/2+2.5rem))] [&>*]:snap-start"
+          // com rato (768–1023px sem roda horizontal): barra de deslocamento fina e visível, para chegar aos cartões 2–4
+          trackClassName="scroll-px-5 sm:scroll-px-8 lg:pl-[max(2.5rem,calc((100vw-80rem)/2+2.5rem))] [&>*]:snap-start [@media(pointer:fine)]:[scrollbar-width:thin] [@media(pointer:fine)]:[scrollbar-color:rgb(255_255_255/0.35)_transparent]"
         >
           {PROBLEMAS.map((p, i) => (
             <Cartao key={p.t} i={i} t={p.t} d={p.d} className="h-[21rem] w-[80vw] max-w-[22rem] shrink-0 lg:h-[27rem] lg:w-[30rem] lg:max-w-none" />

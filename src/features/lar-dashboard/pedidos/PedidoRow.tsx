@@ -29,9 +29,9 @@ export function PedidoRow({ c, lar, agora, verHref, leaving = false }: { c: Cand
             </p>
             {c.estado !== 'enviada' && <EstadoTag c={c} />}
           </div>
-          <h3 id={`pedido-${c.id}`} className="mt-1 text-2xl font-semibold">
+          <h2 id={`pedido-${c.id}`} className="mt-1 text-2xl font-semibold">
             {p.nome}, {p.idade} anos
-          </h3>
+          </h2>
           <p className="mt-1 text-ink-soft">
             {relacaoTexto(c)} · {GRAU_LABEL[p.grau].toLowerCase()}
           </p>

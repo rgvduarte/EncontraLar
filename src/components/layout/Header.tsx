@@ -27,10 +27,10 @@ import { vagaParaNovos } from '@/lib/forecast'
 import { prefersReducedMotion } from '@/lib/motion'
 import { cn } from '@/lib/cn'
 import { DEMO_LAR_EMAIL } from '@/data/seed'
-import type { Distrito, Notificacao } from '@/types'
+import type { Distrito, Notificacao, Role } from '@/types'
 
-export function painelPath(role: 'familia' | 'lar') {
-  return role === 'lar' ? '/gestao' : '/familia'
+export function painelPath(role: Role) {
+  return role === 'lar' ? '/gestao' : role === 'profissional' ? '/casos' : '/familia'
 }
 
 // ————————————————————————————————————————— conteúdo dos menus

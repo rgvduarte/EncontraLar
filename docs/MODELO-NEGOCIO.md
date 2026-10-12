@@ -43,7 +43,7 @@ export type OrigemPedido = 'familia' | 'profissional'
 export interface Encaminhamento {
   casoId: string
   profissionalId: string
-  organizacao: string            // "Hospital de Santa Luzia (fictício) · Serviço Social"
+  organizacao: string            // "Hospital de Vale Formoso (fictício) · Serviço Social"
   altaPrevista?: string          // YYYY-MM-DD
 }
 export type TaxaEntrada = 'aplicavel' | 'isenta'   // isenta quando lar.natureza !== 'privado'
@@ -123,4 +123,4 @@ Hooks: `useCasos()`, `useCaso(id)`, `useCandidaturasDoCaso(casoId)`, `useProcura
 | `/gestao/entradas` | lar | `src/features/lar-dashboard` |
 | `/como-ordenamos` | público | `src/features/content` |
 
-Conta de demonstração: `social@exemplo.pt` / `demo1234`. É a Marta Correia, assistente social do Hospital de Santa Luzia (fictício), com 2 casos: um com alta prevista daqui a 4 dias e pedido enviado ao lar de demonstração, outro já colocado.
+Conta de demonstração: `social@exemplo.pt` / `demo1234`. É a Marta Correia, assistente social do Hospital de Vale Formoso (fictício), com 2 casos: um com alta prevista daqui a 4 dias e pedido enviado ao lar de demonstração, outro já colocado.
