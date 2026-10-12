@@ -7,8 +7,9 @@ export const euro = (v: number) => euroFmt.format(Math.round(v))
 export const num = (v: number) => numFmt.format(v)
 export const pct = (v: number) => pctFmt.format(v)
 
+/** distância com espaço inseparável ("15\u00a0km" não parte entre linhas) */
 export const km = (v: number) =>
-  v < 1 ? `${Math.round(v * 1000)} m` : `${v.toLocaleString('pt-PT', { maximumFractionDigits: v < 10 ? 1 : 0 })} km`
+  v < 1 ? `${Math.round(v * 1000)}\u00a0m` : `${v.toLocaleString('pt-PT', { maximumFractionDigits: v < 10 ? 1 : 0 })}\u00a0km`
 
 /** "12 de outubro de 2026" */
 export const dataLonga = (iso: string) =>

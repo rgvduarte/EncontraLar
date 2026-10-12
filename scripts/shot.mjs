@@ -57,8 +57,19 @@ if (login) {
   }, login)
 }
 await page.evaluate(() => sessionStorage.setItem('encontralar:banner-fechado', '0'))
+// mudar só o hash não recarrega a app — passar por about:blank garante que a sessão é lida de novo
+await page.goto('about:blank')
 await page.goto(`${base}/#${route}`, { waitUntil: 'networkidle' }).catch(() => {})
-await page.reload({ waitUntil: 'networkidle' }).catch(() => {})
+// percorrer a página com a roda do rato para disparar as animações de entrada (Reveal) antes da captura
+if (full) {
+  const h = await page.evaluate(() => document.documentElement.scrollHeight)
+  for (let y = 0; y < h; y += 500) {
+    await page.mouse.wheel(0, 500)
+    await page.waitForTimeout(90)
+  }
+  await page.waitForTimeout(700)
+  await page.evaluate(() => window.scrollTo(0, 0))
+}
 await page.waitForTimeout(wait)
 await page.screenshot({ path: out, fullPage: full })
 console.log(`ok ${out}${errors.length ? `\n${errors.join('\n')}` : ''}`)

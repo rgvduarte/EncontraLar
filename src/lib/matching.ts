@@ -87,6 +87,8 @@ export function avaliarLar(lar: Lar, perfil: PerfilMatch): MatchResult {
   } else {
     const excesso = (precoRef - perfil.orcamentoMax) / Math.max(1, perfil.orcamentoMax)
     orcamentoScore = Math.max(0, 1 - excesso / 0.3)
+    // muito acima do orçamento (> 50%) não é uma opção realista para a família
+    if (excesso > 0.5) compativel = false
     razoes.push({
       tipo: excesso <= 0.15 ? 'parcial' : 'falta',
       texto: `Acima do orçamento: desde ${euro(precoRef)}/mês`,
@@ -107,7 +109,7 @@ export function avaliarLar(lar: Lar, perfil: PerfilMatch): MatchResult {
   let distanciaScore: number
   if (distanciaKm <= raio) {
     distanciaScore = 1 - 0.4 * (distanciaKm / raio)
-    razoes.push({ tipo: 'ok', texto: `A ${km(distanciaKm)} de ${perfil.local.label}` })
+    razoes.push({ tipo: 'ok', texto: `A ${km(distanciaKm)} de distância` })
   } else {
     distanciaScore = Math.max(0, 0.6 * (1 - (distanciaKm - raio) / raio))
     razoes.push({ tipo: distanciaKm <= raio * 1.5 ? 'parcial' : 'falta', texto: `A ${km(distanciaKm)} (fora do raio de ${raio} km)` })

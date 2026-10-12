@@ -1,8 +1,9 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { Link, type LinkProps } from 'react-router'
+import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
-export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'subtle' | 'danger'
+export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'subtle' | 'danger' | 'inverse' | 'glass'
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 // Pílulas ao estilo Apple: preto = ação principal, azul = acento, cinza claro = secundária.
@@ -14,6 +15,9 @@ const VARIANTS: Record<ButtonVariant, string> = {
   ghost: 'bg-transparent text-terra-600 hover:bg-terra-50 active:bg-terra-100 disabled:text-ink-mute',
   subtle: 'bg-sand text-ink hover:bg-sand-deep active:bg-line-strong disabled:text-ink-mute',
   danger: 'bg-white text-alert-700 ring-1 ring-inset ring-alert-600/40 hover:bg-alert-50',
+  // para fundos pretos (blocos on-dark)
+  inverse: 'bg-white text-ink hover:bg-sand active:bg-sand-deep disabled:text-ink-mute',
+  glass: 'bg-white/12 text-white ring-1 ring-inset ring-white/20 backdrop-blur-md hover:bg-white/20 active:bg-white/25',
 }
 
 const SIZES: Record<ButtonSize, string> = {
@@ -67,6 +71,30 @@ export function ButtonLink({ variant, size, icon, iconRight, full, className, ch
       {icon}
       {children}
       {iconRight}
+    </Link>
+  )
+}
+
+/** Ligação de texto estilo Apple: azul com chevron — "Saber mais ›". Em fundos escuros use tone="light". */
+export function TextLink({
+  children,
+  className,
+  tone = 'blue',
+  ...rest
+}: LinkProps & { tone?: 'blue' | 'light' | 'ink' }) {
+  return (
+    <Link
+      className={cn(
+        'group inline-flex min-h-11 items-center gap-0.5 font-medium transition-colors',
+        tone === 'blue' && 'text-terra-600 hover:text-terra-700',
+        tone === 'light' && 'text-terra-300 hover:text-white',
+        tone === 'ink' && 'text-ink hover:text-ink-soft',
+        className,
+      )}
+      {...rest}
+    >
+      {children}
+      <ChevronRight aria-hidden className="size-[1.05em] transition-transform duration-200 group-hover:translate-x-0.5" />
     </Link>
   )
 }

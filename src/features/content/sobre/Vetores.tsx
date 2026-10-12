@@ -46,7 +46,7 @@ function Mapa() {
   const comVaga = useMemo(() => lares.filter((l) => vagasLivres(l) > 0).length, [lares])
   return (
     <div className="flex flex-col gap-5">
-      <PortugalMap lares={lares} className="mx-auto max-w-[19rem] sm:max-w-[26rem]" title={`Mapa de Portugal com ${num(lares.length)} instituições de demonstração`} />
+      <PortugalMap lares={lares} className="mx-auto max-w-[19rem] sm:max-w-[26rem] lg:max-w-[32rem]" title={`Mapa de Portugal com ${num(lares.length)} instituições de demonstração`} />
       <div className="flex flex-col items-center gap-3">
         <p className="text-center text-base text-ink">
           <span className="font-semibold tabular">{num(lares.length)}</span> instituições ·{' '}
