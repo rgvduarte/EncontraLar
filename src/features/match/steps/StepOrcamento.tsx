@@ -122,7 +122,7 @@ export function StepOrcamento({ r, patch, erros, lares, p }: StepProps) {
           <ToggleChip pressed={semLimite} onToggle={() => patch({ orcamentoMax: semLimite ? null : ORCAMENTO_MAX })}>
             Ainda não sei
           </ToggleChip>
-          <span className="text-sm text-ink-mute">Depende dos rendimentos? Mostramos todos os preços.</span>
+          {!semLimite && <span className="text-sm text-ink-mute">Depende dos rendimentos? Mostramos todos os preços.</span>}
         </div>
         {erros.orcamento && (
           <p id={errId} role="alert" className="mt-4 text-center text-sm font-medium text-alert-700">

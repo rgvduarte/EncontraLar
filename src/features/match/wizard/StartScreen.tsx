@@ -123,8 +123,9 @@ export function StartScreen({
         )}
 
         <Reveal variant="fade" delay={560} className="mt-14 sm:mt-16">
-          <p className="inline-flex items-center gap-2 text-sm text-ink-mute">
-            <span aria-hidden className="pulse-dot size-2 shrink-0 rounded-full bg-leaf-500" />
+          <p className="max-w-xs text-sm text-balance text-ink-mute sm:max-w-none">
+            {/* ponto em linha com o texto (não em flex): ao partir linha, fica junto do número */}
+            <span aria-hidden className="pulse-dot mr-2 mb-0.5 inline-block size-2 rounded-full bg-leaf-500 align-middle" />
             <span>
               <span aria-hidden>
                 <CountUp value={comVaga} duration={1200} className="font-medium text-ink tabular" />

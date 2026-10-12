@@ -1,7 +1,4 @@
-import { createElement, Fragment, useEffect, useState, type ReactNode } from 'react'
-import { useBlocker } from 'react-router'
-import { Modal } from '@/components/ui/Modal'
-import { Button } from '@/components/ui/Button'
+import { useEffect, useState } from 'react'
 
 /** Define o título do separador: "Título · EncontraLar". */
 export function useDocumentTitle(title: string | undefined) {
@@ -52,48 +49,3 @@ export function useDismiss(open: boolean, ref: React.RefObject<HTMLElement | nul
   }, [open, ref, onClose])
 }
 
-/**
- * Pede confirmação antes de sair de um formulário com alterações por guardar: ao mudar de página
- * dentro da app (barra lateral, pílulas, barra de abas) mostra "Sair sem guardar?", e ao fechar ou
- * recarregar o separador usa o aviso do navegador. Mudanças só de `?query` (ex.: trocar de perfil
- * com `?id=`) não são bloqueadas.
- *
- * Devolve o diálogo, para pôr na página: `const aviso = useConfirmarSaida(sujo)` … `{aviso}`.
- */
-export function useConfirmarSaida(sujo: boolean): ReactNode {
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => sujo && currentLocation.pathname !== nextLocation.pathname)
-
-  useEffect(() => {
-    if (!sujo) return
-    const aviso = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      e.returnValue = ''
-    }
-    window.addEventListener('beforeunload', aviso)
-    return () => window.removeEventListener('beforeunload', aviso)
-  }, [sujo])
-
-  // se as alterações forem guardadas com o diálogo aberto, deixa seguir
-  useEffect(() => {
-    if (blocker.state === 'blocked' && !sujo) blocker.proceed()
-  }, [blocker, sujo])
-
-  const ficar = () => {
-    if (blocker.state === 'blocked') blocker.reset()
-  }
-  const sair = () => {
-    if (blocker.state === 'blocked') blocker.proceed()
-  }
-  return createElement(Modal, {
-    open: blocker.state === 'blocked',
-    onClose: ficar,
-    title: 'Sair sem guardar?',
-    footer: createElement(
-      Fragment,
-      null,
-      createElement(Button, { variant: 'subtle', onClick: ficar }, 'Continuar a editar'),
-      createElement(Button, { variant: 'primary', onClick: sair }, 'Descartar alterações'),
-    ),
-    children: createElement('p', { className: 'text-ink-soft' }, 'As alterações que fez ainda não foram guardadas. Se sair agora, perdem-se.'),
-  })
-}
