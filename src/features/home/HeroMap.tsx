@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import type { Lar } from '@/types'
 import { MapLegend, PortugalMap } from '@/components/brand/PortugalMap'
 import { PT_VIEWBOX, projectPT } from '@/data/portugal-shape'
-import { disponibilidade, vagasLivres } from '@/lib/forecast'
+import { vagaParaNovos, vagasLivres } from '@/lib/forecast'
 import { measureProgress, prefersReducedMotion, subscribeScroll, useInView } from '@/lib/motion'
 import { useMediaQuery } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
@@ -29,7 +29,7 @@ function Pulsos({ lares, atraso, pausado }: { lares: Lar[]; atraso: number; paus
   const pontos = useMemo(
     () =>
       lares
-        .filter((l) => disponibilidade(l) === 'disponivel')
+        .filter((l) => vagaParaNovos(l))
         .map((l) => {
           const { x, y } = projectPT(l.lat, l.lng)
           return { id: l.id, left: ((x - PT_VIEWBOX.x) / PT_VIEWBOX.w) * 100, top: ((y - PT_VIEWBOX.y) / PT_VIEWBOX.h) * 100, fase: (x * 7 + y) % 2.8 }
@@ -109,11 +109,6 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
   // toque: pontos de 4–6px não são alvos tocáveis; aí o mapa é só imagem (as fichas abrem-se pelas etiquetas)
   const ponteiroFino = useMediaQuery('(hover: hover) and (pointer: fine)')
 
-  // O PortugalMap declara role="img" mas, com onSelect, contém ligações focáveis (um "img" não pode ter
-  // controlos lá dentro). Até o componente partilhado tratar disto, expomo-lo como grupo de ligações.
-  useEffect(() => {
-    mapaRef.current?.querySelector('svg[role="img"]')?.setAttribute('role', 'group')
-  }, [])
 
   // antes da primeira pintura com o mapa visível: se o mapa já está no ecrã ao abrir a página, espera que o
   // título acabe de entrar; se só aparece com o scroll, começa logo

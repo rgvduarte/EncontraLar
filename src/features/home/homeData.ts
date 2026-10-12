@@ -3,13 +3,14 @@
  * nada de estatísticas escritas à mão.
  */
 import type { Distrito, Lar } from '@/types'
-import { disponibilidade, estimarEspera, vagasLivres, type EstimativaEspera } from '@/lib/forecast'
+import { disponibilidade, estimarEspera, vagaParaNovos, type EstimativaEspera } from '@/lib/forecast'
 import { avaliarLar, type MatchResult } from '@/lib/matching'
 import { distanceKm } from '@/lib/geo'
 import { LUGARES, type LugarPesquisa } from '@/data/localidades'
 import { DEMO_LAR_ID } from '@/data/seed'
 
-export const temVaga = (l: Lar) => vagasLivres(l) > 0
+/** Vaga para quem pede hoje (um lugar livre que a lista de espera vai ocupar não conta). */
+export const temVaga = (l: Lar) => vagaParaNovos(l)
 
 /** Lares e residências (os centros de dia não têm "vaga" no mesmo sentido). */
 const residencial = (l: Lar) => l.tipo !== 'centro_dia'
