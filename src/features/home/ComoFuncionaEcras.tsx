@@ -19,6 +19,7 @@ import { resumoPrevisao, type EstimativaEspera } from '@/lib/forecast'
 import { NATUREZA_LABEL, QUARTO_CURTO, TIPO_LABEL } from '@/lib/labels'
 import { euro, num } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { useInView } from '@/lib/motion'
 
 export interface Historia {
   lar: Lar
@@ -78,11 +79,13 @@ export const EcraMapa = memo(function EcraMapa({ h, ativo }: { h: Historia; ativ
     transform: `translate(${ALVO.x - ox}%, ${ALVO.y - oy}%) scale(${ativo ? 2.6 : 1.8})`,
     transitionDuration: '900ms',
   }
+  // o mapa (~2000 nós) só é montado quando a cena se aproxima do ecrã — não pesa na abertura da página
+  const [ref, perto] = useInView<HTMLDivElement>({ rootMargin: '1200px 0px 1200px 0px', threshold: 0 })
   return (
-    <div className="absolute inset-0 bg-sand">
+    <div ref={ref} className="absolute inset-0 bg-sand">
       <div className="absolute inset-x-0 top-0 aspect-[435/560] overflow-hidden">
         <div className={cn(T, 'absolute inset-x-0 top-0')} style={zoom}>
-          <PortugalMap lares={lares} labels={false} pulse={false} title="" />
+          {perto && <PortugalMap lares={lares} labels={false} pulse={false} title="" />}
         </div>
         {/* a instituição escolhida */}
         <span style={{ left: `${ALVO.x}%`, top: `${ALVO.y}%` }} className="absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center">

@@ -8,7 +8,7 @@ import { useInView, usePrefersReducedMotion } from '@/lib/motion'
 import { useMediaQuery } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
 import { ECRAS, Telefone, type Historia } from './ComoFuncionaEcras'
-import { comVagaAgora, escolherPrevisao } from './homeData'
+import { comVagaAgora, type PrevisaoDestaque } from './homeData'
 
 const PASSOS = [
   {
@@ -49,13 +49,12 @@ function Cabecalho({ className }: { className?: string }) {
  * - Desktop: cena presa (280vh ≈ 1,9 ecrãs de scroll a mais); os passos acendem-se um a um e o ecrã do telemóvel muda.
  * - Telemóvel/tablet e movimento reduzido: passos empilhados, cada um com o seu ecrã a entrar ao aparecer.
  */
-export function ComoFunciona({ lares, agora }: { lares: Lar[]; agora: number }) {
+export function ComoFunciona({ lares, agora, previsao }: { lares: Lar[]; agora: number; previsao: PrevisaoDestaque | null }) {
   const historia = useMemo<Historia | null>(() => {
-    const prev = escolherPrevisao(lares)
-    if (prev) return { lar: prev.lar, est: prev.est, lares, agora }
+    if (previsao) return { lar: previsao.lar, est: previsao.est, lares, agora }
     const l = comVagaAgora(lares, 1)[0]
     return l ? { lar: l, est: estimarEspera(l), lares, agora } : null
-  }, [lares, agora])
+  }, [lares, agora, previsao])
   const desktop = useMediaQuery('(min-width: 1024px)')
   const reduzido = usePrefersReducedMotion()
   if (!historia) return null

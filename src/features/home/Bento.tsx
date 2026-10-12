@@ -8,7 +8,7 @@ import { ScrollZoom } from '@/components/motion/ScrollZoom'
 import { useLenis } from '@/components/motion/SmoothScroll'
 import { useMediaQuery } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
-import { escolherFichaPrecos, escolherPrevisao, exemploCompatibilidade, type HomeStats } from './homeData'
+import { escolherFichaPrecos, exemploCompatibilidade, type HomeStats, type PrevisaoDestaque } from './homeData'
 import { MatchCard, PrecosCard, PrevisaoCard, VerificacaoPeca } from './BentoPieces'
 import { abrirPergunta } from './FaqSection'
 
@@ -59,8 +59,17 @@ function Tile({
  * scroll (ScrollZoom) e as barras de cada mês enchem-se; os outros tiles entram a escalar, por colunas.
  * A lista "Atualizadas agora" roda sozinha (VagasBoard).
  */
-export function Bento({ lares, stats, agora }: { lares: Lar[]; stats: HomeStats; agora: number }) {
-  const previsao = useMemo(() => escolherPrevisao(lares), [lares])
+export function Bento({
+  lares,
+  stats,
+  agora,
+  previsao,
+}: {
+  lares: Lar[]
+  stats: HomeStats
+  agora: number
+  previsao: PrevisaoDestaque | null
+}) {
   const ficha = useMemo(() => escolherFichaPrecos(lares), [lares])
   const exemplo = useMemo(() => exemploCompatibilidade(lares), [lares])
   const lenis = useLenis()

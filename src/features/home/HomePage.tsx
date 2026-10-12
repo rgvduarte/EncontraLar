@@ -8,7 +8,7 @@ import { Bento } from './Bento'
 import { ComVagaSection } from './ComVagaSection'
 import { InstitutionsCta } from './InstitutionsCta'
 import { FaqSection } from './FaqSection'
-import { calcularStats } from './homeData'
+import { calcularStats, escolherPrevisao } from './homeData'
 import { useNow } from './useNow'
 
 /**
@@ -22,13 +22,15 @@ export default function HomePage() {
   const lares = useLares()
   const agora = useNow()
   const stats = useMemo(() => calcularStats(lares), [lares])
+  // a "história" da previsão (um lar sem vaga hoje, com vaga provável em breve) é usada no percurso e na grelha
+  const previsao = useMemo(() => escolherPrevisao(lares), [lares])
 
   return (
     <div className="flex flex-col">
       <Hero lares={lares} agora={agora} comVaga={stats.comVaga} />
       <Contexto stats={stats} />
-      <ComoFunciona lares={lares} agora={agora} />
-      <Bento lares={lares} stats={stats} agora={agora} />
+      <ComoFunciona lares={lares} agora={agora} previsao={previsao} />
+      <Bento lares={lares} stats={stats} agora={agora} previsao={previsao} />
       <ComVagaSection lares={lares} />
       <InstitutionsCta />
       <FaqSection />
