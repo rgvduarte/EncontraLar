@@ -1,0 +1,174 @@
+@import 'tailwindcss';
+@import 'leaflet/dist/leaflet.css';
+@import 'leaflet.markercluster/dist/MarkerCluster.css';
+
+/*
+ * EncontraLar — design tokens
+ * Público-alvo: familiares (45–70 anos) e os próprios idosos.
+ * Princípios: tipo grande e hiperlegível, contraste AA/AAA, alvos de toque ≥ 48px,
+ * paleta calma e calorosa (verde-pinho = confiança/saúde, terracota = calor humano).
+ * A escala de texto está deliberadamente deslocada para cima: text-sm = 16px, text-base = 18px.
+ */
+@theme {
+  --font-sans: 'Atkinson Hyperlegible', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Fraunces Variable', 'Fraunces', Georgia, 'Times New Roman', serif;
+
+  --text-xs: 0.875rem;   --text-xs--line-height: 1.35;
+  --text-sm: 1rem;       --text-sm--line-height: 1.5;
+  --text-base: 1.125rem; --text-base--line-height: 1.65;
+  --text-lg: 1.25rem;    --text-lg--line-height: 1.55;
+  --text-xl: 1.4375rem;  --text-xl--line-height: 1.4;
+  --text-2xl: 1.75rem;   --text-2xl--line-height: 1.3;
+  --text-3xl: 2.125rem;  --text-3xl--line-height: 1.2;
+  --text-4xl: 2.625rem;  --text-4xl--line-height: 1.12;
+  --text-5xl: 3.25rem;   --text-5xl--line-height: 1.06;
+  --text-6xl: 4rem;      --text-6xl--line-height: 1.02;
+
+  /* superfícies e texto */
+  --color-cream: #fbf8f3;
+  --color-sand: #f4ede2;
+  --color-sand-deep: #ebe0cf;
+  --color-line: #e2d8c8;
+  --color-line-strong: #cbbda7;
+  --color-ink: #1c2a29;
+  --color-ink-soft: #46524f;
+  --color-ink-mute: #5f6966;
+
+  /* primária — verde-pinho */
+  --color-pine-50: #eef6f4;
+  --color-pine-100: #d6ebe5;
+  --color-pine-200: #afd6cb;
+  --color-pine-300: #80bbac;
+  --color-pine-400: #4f9b8c;
+  --color-pine-500: #2f7f72;
+  --color-pine-600: #22695e;
+  --color-pine-700: #1d564e;
+  --color-pine-800: #1a4642;
+  --color-pine-900: #163a37;
+  --color-pine-950: #0b2321;
+
+  /* acento — terracota */
+  --color-terra-50: #fdf4ef;
+  --color-terra-100: #fbe4d9;
+  --color-terra-200: #f5c6b1;
+  --color-terra-300: #eea084;
+  --color-terra-400: #e37857;
+  --color-terra-500: #d25b3b;
+  --color-terra-600: #b9472f;
+  --color-terra-700: #993827;
+  --color-terra-800: #7e3125;
+  --color-terra-900: #682b22;
+
+  /* estados de disponibilidade (nunca usados sem texto/ícone) */
+  --color-leaf-50: #ecf8ee;
+  --color-leaf-100: #d1efd7;
+  --color-leaf-200: #a6dfb2;
+  --color-leaf-500: #2f8c4b;
+  --color-leaf-600: #24773d;
+  --color-leaf-700: #1d6033;
+  --color-sun-50: #fff8e8;
+  --color-sun-100: #fdedc6;
+  --color-sun-200: #f9d98a;
+  --color-sun-400: #f0b23a;
+  --color-sun-500: #dc9415;
+  --color-sun-700: #8f5a07;
+  --color-sun-800: #744807;
+  --color-dusk-50: #f3f2f8;
+  --color-dusk-100: #e5e3f0;
+  --color-dusk-200: #ccc8e0;
+  --color-dusk-500: #6a6489;
+  --color-dusk-600: #575176;
+  --color-dusk-700: #48435f;
+  --color-alert-50: #fdf0ee;
+  --color-alert-600: #b42318;
+  --color-alert-700: #912018;
+
+  --shadow-soft: 0 1px 2px rgb(70 50 20 / 0.05), 0 4px 14px -6px rgb(70 50 20 / 0.12);
+  --shadow-card: 0 1px 2px rgb(70 50 20 / 0.06), 0 12px 32px -14px rgb(70 50 20 / 0.22);
+  --shadow-lift: 0 2px 4px rgb(70 50 20 / 0.06), 0 22px 48px -18px rgb(70 50 20 / 0.32);
+
+  --radius-4xl: 2rem;
+
+  --animate-fade-up: fade-up 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-fade-in: fade-in 0.3s ease-out both;
+  --animate-pulse-ring: pulse-ring 2.2s ease-out infinite;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgb(47 140 75 / 0.45); }
+    70% { box-shadow: 0 0 0 10px rgb(47 140 75 / 0); }
+    100% { box-shadow: 0 0 0 0 rgb(47 140 75 / 0); }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-cream font-sans text-base text-ink antialiased;
+    min-height: 100dvh;
+  }
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    letter-spacing: -0.01em;
+  }
+  h1, h2, h3, h4 { text-wrap: balance; }
+  p { text-wrap: pretty; }
+  ::selection { background: var(--color-pine-200); color: var(--color-ink); }
+
+  /* foco sempre visível e generoso */
+  :focus-visible {
+    outline: 3px solid var(--color-terra-500);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  button, [role='button'], a, input, select, textarea, label { -webkit-tap-highlight-color: transparent; }
+  button:not(:disabled), [role='button'] { cursor: pointer; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+  .eyebrow {
+    @apply text-xs font-bold tracking-[0.12em] text-pine-700 uppercase;
+  }
+  .link {
+    @apply font-semibold text-pine-700 underline decoration-pine-300 decoration-2 underline-offset-4 transition-colors hover:text-pine-900 hover:decoration-pine-600;
+  }
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    @apply sr-only;
+  }
+}
+
+/* Leaflet: harmonizar com o design */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: #e8efe9;
+}
+.leaflet-container a.leaflet-popup-close-button { width: 32px; height: 32px; font-size: 22px; }
+.leaflet-popup-content-wrapper { border-radius: 16px; box-shadow: var(--shadow-lift); }
+.leaflet-popup-content { margin: 14px 16px; font-size: 1rem; line-height: 1.45; }
+.leaflet-control-zoom a { width: 40px !important; height: 40px !important; line-height: 38px !important; font-size: 22px !important; }
+.leaflet-control-attribution { font-size: 11px; }
+.leaflet-bar { border: 1px solid var(--color-line-strong) !important; box-shadow: var(--shadow-soft) !important; }
