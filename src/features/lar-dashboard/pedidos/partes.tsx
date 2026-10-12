@@ -174,12 +174,18 @@ export function OrigemBadges({ c, agora, className }: { c: Candidatura; agora: n
   )
 }
 
-/** Explicação curta do bloqueio: antes de aceitar, só o resumo anónimo. */
-export function AvisoBloqueio({ className }: { className?: string }) {
+/** Explicação curta do bloqueio: antes de aceitar, só o resumo anónimo (e, se nunca foi aceite, fica assim). */
+export function AvisoBloqueio({ c, className }: { c: Candidatura; className?: string }) {
+  const texto =
+    c.estado === 'enviada'
+      ? 'Os dados pessoais aparecem quando aceitar o pedido.'
+      : c.estado === 'cancelada'
+        ? 'O pedido foi cancelado antes de o aceitar: os dados pessoais não chegaram a ficar visíveis.'
+        : 'Recusou o pedido sem o aceitar: os dados pessoais não chegaram a ficar visíveis.'
   return (
     <p className={cn('flex items-start gap-2 text-sm text-ink-mute', className)}>
       <Lock aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
-      Os dados pessoais aparecem quando aceitar o pedido.
+      {texto}
     </p>
   )
 }

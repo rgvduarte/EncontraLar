@@ -69,7 +69,7 @@ export function PedidoRow({ c, lar, agora, verHref, leaving = false }: { c: Cand
           <VisitaLinha c={c} className="mt-6" />
           <PropostaLinha c={c} agora={agora} className="mt-6" />
 
-          {anonimo && <AvisoBloqueio className="mt-6" />}
+          {anonimo && <AvisoBloqueio c={c} className="mt-6" />}
           <ContactoLinks c={c} className="mt-4" />
           <div className="mt-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-3 max-sm:mt-6">
             <PedidoAcoes c={c} lar={lar} agora={agora} verHref={verHref} className="max-sm:w-full" />

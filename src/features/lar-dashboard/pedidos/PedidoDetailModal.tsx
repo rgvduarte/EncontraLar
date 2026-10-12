@@ -175,11 +175,11 @@ function ResumoAnonimoModal({ c, lar, agora, open, onClose }: { c: Candidatura; 
       size="lg"
       title={nomePedido(c)}
       description={`${relacaoTexto(c)} · recebido a ${dataLonga(c.criadaEm)}`}
-      footer={<PedidoAcoes c={c} lar={lar} agora={agora} variante="folha" className="w-full" />}
+      footer={acoesDoPedido(c, lar, agora).length > 0 ? <PedidoAcoes c={c} lar={lar} agora={agora} variante="folha" className="w-full" /> : undefined}
     >
       <div className="flex flex-col gap-5">
         <OrigemBadges c={c} agora={agora} />
-        <AvisoBloqueio className="text-base" />
+        <AvisoBloqueio c={c} className="text-base" />
         <VisitaLinha c={c} />
 
         <Bloco titulo="Saúde">
