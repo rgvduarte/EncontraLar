@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject }
 import { Link, useNavigate } from 'react-router'
 import type { Lar } from '@/types'
 import { MapLegend, PortugalMap } from '@/components/brand/PortugalMap'
-import { vagasLivres } from '@/lib/forecast'
+import { PT_VIEWBOX, projectPT } from '@/data/portugal-shape'
+import { disponibilidade, vagasLivres } from '@/lib/forecast'
 import { measureProgress, prefersReducedMotion, subscribeScroll, useInView } from '@/lib/motion'
 import { useMediaQuery } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
@@ -49,6 +50,35 @@ function acenderMapa(svg: SVGSVGElement, base: number) {
       el.style.animation = `hm-dot 700ms ease-out ${Math.round(base + VARRIMENTO * 0.7)}ms backwards`
     }
   }
+}
+
+/**
+ * Pulsação das instituições com vaga, desenhada por cima do SVG em HTML e animada só com transform/opacity
+ * (no compositor). O PortugalMap tem a sua própria pulsação em SMIL (<animate>), mas essa obriga a recalcular
+ * e repintar o SVG inteiro (~2000 nós) em cada frame, mesmo parado — por isso aqui usa-se pulse={false}.
+ */
+function Pulsos({ lares, atraso }: { lares: Lar[]; atraso: number }) {
+  const pontos = useMemo(
+    () =>
+      lares
+        .filter((l) => disponibilidade(l) === 'disponivel')
+        .map((l) => {
+          const { x, y } = projectPT(l.lat, l.lng)
+          return { id: l.id, left: ((x - PT_VIEWBOX.x) / PT_VIEWBOX.w) * 100, top: ((y - PT_VIEWBOX.y) / PT_VIEWBOX.h) * 100, fase: (x * 7 + y) % 2.8 }
+        }),
+    [lares],
+  )
+  return (
+    <div aria-hidden className="hm-in pointer-events-none absolute inset-0" style={entrada(atraso, 'hm-fade', 900)}>
+      {pontos.map((p) => (
+        <span
+          key={p.id}
+          className="hm-halo absolute aspect-square w-[1.84%] rounded-full bg-leaf-500/40"
+          style={{ left: `${p.left}%`, top: `${p.top}%`, animationDelay: `${p.fase.toFixed(2)}s` }}
+        />
+      ))}
+    </div>
+  )
 }
 
 /**
@@ -117,13 +147,15 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
   return (
     <figure ref={figRef} className="hm-map relative mx-auto w-full max-w-[19rem] sm:max-w-[30rem] lg:max-w-[34rem]">
       <div ref={camadaMapa} className={cn(largo && 'will-change-transform')}>
-        <div ref={mapaRef} className={cn(visto ? 'hm-in' : 'hm-wait')} style={entrada(base, 'hm-settle', 900)}>
+        <div ref={mapaRef} className={cn('relative', visto ? 'hm-in' : 'hm-wait')} style={entrada(base, 'hm-settle', 900)}>
           <PortugalMap
             lares={lares}
+            pulse={false}
             highlightId={destaque}
             onSelect={(l) => navigate(`/lar/${l.id}`)}
             title={`Mapa de Portugal com ${lares.length} instituições, ${comVaga} com vaga agora. Cada ponto abre a ficha da instituição.`}
           />
+          {visto && <Pulsos lares={lares} atraso={base + VARRIMENTO + 200} />}
         </div>
       </div>
 
