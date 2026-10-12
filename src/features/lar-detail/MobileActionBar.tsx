@@ -6,6 +6,7 @@ import { ESTADO_CANDIDATURA_LABEL } from '@/lib/labels'
 import { disponibilidadeTexto } from '@/components/lar/badges'
 import { cn } from '@/lib/cn'
 import { ctaPedido, precoResumo, type DadosLar } from './helpers'
+import { acaoDoPedido } from './CandidaturaAtiva'
 
 const PONTO = { disponivel: 'bg-leaf-500', breve: 'bg-sun-500', espera: 'bg-dusk-500' } as const
 
@@ -24,6 +25,7 @@ export function MobileActionBar({
   dados,
   ativa,
   minhaFicha,
+  profissional = false,
   visivel,
   onPedir,
   onVisita,
@@ -32,6 +34,8 @@ export function MobileActionBar({
   dados: DadosLar
   ativa?: Candidatura
   minhaFicha: boolean
+  /** serviço social: só a ação principal (o pedido parte de um caso) */
+  profissional?: boolean
   visivel: boolean
   onPedir: () => void
   onVisita: () => void
@@ -42,7 +46,7 @@ export function MobileActionBar({
   // o mesmo estado (e a mesma cor do ponto) que o cartão de vagas: lugar livre mas já prometido à lista de espera
   // (laranja, "lista à frente"), "Vaga em breve" ou "Lista de espera"
   const listaAFrente = livres > 0 && !dados.est.imediata
-  const ponto = ativa ? 'bg-terra-600' : PONTO[listaAFrente ? 'breve' : disp]
+  const ponto = ativa ? (ativa.estado === 'admitida' ? 'bg-leaf-500' : 'bg-terra-600') : PONTO[listaAFrente ? 'breve' : disp]
   const estado: ReactNode = ativa ? (
     ESTADO_CANDIDATURA_LABEL[ativa.estado]
   ) : listaAFrente ? (
@@ -111,7 +115,7 @@ export function MobileActionBar({
         <div key={chave} className={cn('mt-2.5 flex gap-2 sm:mt-0 sm:w-[28rem] sm:shrink-0', chave !== chave0 && 'ficha-troca')}>
           {ativa ? (
             <ButtonLink to="/familia/pedidos" className={botao}>
-              Acompanhar o pedido
+              {acaoDoPedido(ativa)}
             </ButtonLink>
           ) : minhaFicha ? (
             <ButtonLink to="/gestao/ficha" className={botao}>
@@ -119,11 +123,13 @@ export function MobileActionBar({
             </ButtonLink>
           ) : (
             <>
-              <Button variant="subtle" onClick={onVisita} className={botao}>
-                Marcar visita
-              </Button>
+              {!profissional && (
+                <Button variant="subtle" onClick={onVisita} className={botao}>
+                  Marcar visita
+                </Button>
+              )}
               <Button onClick={onPedir} className={botao}>
-                {ctaPedido(dados, true)}
+                {ctaPedido(dados, !profissional)}
               </Button>
             </>
           )}

@@ -1,13 +1,14 @@
-import { Check, Mail, Phone, X } from 'lucide-react'
+import { Check, Clock, Lock, Mail, Phone, X } from 'lucide-react'
 import type { Candidatura, Lar, PerfilIdoso } from '@/types'
 import { Badge, type BadgeTone } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
 import { confirmarVisita } from '@/lib/store'
+import { entradaVerificada } from '@/lib/negocio'
 import { cn } from '@/lib/cn'
 import { prazo, textoVisita, verificarCompatibilidade } from '../lib/derive'
 import { Barra, Troca } from '../shared/motion'
-import { telHref } from '../shared/pedidoBits'
+import { altaTexto, bloqueado, diaCurto, encaminhadoPor, nomeContacto, quemPediu, telHref } from '../shared/pedidoBits'
 import { capitalizar } from '../shared/ui'
 
 const ESTADO: Record<Candidatura['estado'], { tone: BadgeTone; texto: string }> = {
@@ -64,6 +65,8 @@ export function CompatLines({ lar, perfil, className }: { lar: Lar; perfil: Perf
 
 /** Telefone e email da família, como ligações diretas. */
 export function ContactoLinks({ c, className }: { c: Candidatura; className?: string }) {
+  // antes de aceitar o pedido, o contacto não existe para o lar (RGPD art. 9.º)
+  if (bloqueado(c)) return null
   return (
     <p className={cn('flex flex-wrap items-center gap-x-5', className)}>
       {c.contacto.telefone && (
@@ -90,6 +93,14 @@ export function VisitaLinha({ c, className }: { c: Candidatura; className?: stri
   const v = c.visita
   if (!v || ['recusada', 'cancelada'].includes(c.estado)) return null
   const quando = textoVisita(v)
+  if (v.estado === 'pedida' && bloqueado(c)) {
+    // para combinar a visita é preciso o contacto: primeiro aceitar o pedido
+    return (
+      <p className={className}>
+        <span className="font-semibold">Pediu uma visita:</span> <span className="text-ink-soft">{quando}. Aceite o pedido para a confirmar.</span>
+      </p>
+    )
+  }
   if (v.estado === 'pedida') {
     return (
       <div className={cn('flex flex-wrap items-center gap-x-5 gap-y-3', className)}>
@@ -100,7 +111,7 @@ export function VisitaLinha({ c, className }: { c: Candidatura; className?: stri
           className="max-sm:min-h-13 max-sm:w-full"
           onClick={() => {
             confirmarVisita(c.id)
-            toast.success('Visita confirmada', `${c.contacto.nome} recebeu a confirmação para ${quando}.`)
+            toast.success('Visita confirmada', `${capitalizar(quemPediu(c))} recebeu a confirmação para ${quando}.`)
           }}
         >
           Confirmar visita
@@ -139,6 +150,65 @@ export function PropostaLinha({ c, agora, className }: { c: Candidatura; agora: 
         )}
       </p>
       {p && !p.expirado && <Barra value={restante} className="mt-2 max-w-56" fillClassName={restante < 0.25 ? 'bg-alert-600' : 'bg-sun-500'} />}
+    </div>
+  )
+}
+
+/** Origem do pedido: "Encaminhado por <organização>" e, com alta prevista, "Alta em N dias" (a vermelho até 7 dias). */
+export function OrigemBadges({ c, agora, className }: { c: Candidatura; agora: number; className?: string }) {
+  const org = encaminhadoPor(c)
+  if (!org) return null
+  const alta = altaTexto(c.encaminhamento?.altaPrevista, agora)
+  return (
+    <p className={cn('flex flex-wrap items-center gap-2', className)}>
+      {/* nomes de organizações longos partem linha em vez de alargar a página no telemóvel */}
+      <Badge tone="terra" className="whitespace-normal">
+        {org}
+      </Badge>
+      {alta && (
+        <Badge tone={alta.dias >= 0 && alta.dias <= 7 ? 'alert' : 'neutral'} icon={<Clock aria-hidden strokeWidth={2} />}>
+          {alta.texto}
+        </Badge>
+      )}
+    </p>
+  )
+}
+
+/** Explicação curta do bloqueio: antes de aceitar, só o resumo anónimo. */
+export function AvisoBloqueio({ className }: { className?: string }) {
+  return (
+    <p className={cn('flex items-start gap-2 text-sm text-ink-mute', className)}>
+      <Lock aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
+      Os dados pessoais aparecem quando aceitar o pedido.
+    </p>
+  )
+}
+
+/** Estado das confirmações de uma entrada, em texto (nunca só por cor). */
+export function estadoEntrada(c: Candidatura): { texto: string; verificada: boolean; falta: 'familia' | 'lar' | null } {
+  if (entradaVerificada(c)) return { texto: 'Entrada verificada', verificada: true, falta: null }
+  if (c.entrada?.confirmadaLarEm) return { texto: 'A aguardar confirmação da família', verificada: false, falta: 'familia' }
+  return { texto: 'A família confirmou a entrada. Falta a sua confirmação', verificada: false, falta: 'lar' }
+}
+
+/** "Entrou a 2 de outubro" + "Entrada verificada" / "A aguardar confirmação da família". */
+export function EntradaLinha({ c, className }: { c: Candidatura; className?: string }) {
+  if (!c.entrada) return null
+  const e = estadoEntrada(c)
+  return (
+    <div className={cn('flex flex-col gap-1', className)}>
+      <p className="font-semibold">Entrou a {diaCurto(c.entrada.data)}</p>
+      <p className={cn('flex items-start gap-1.5 text-sm', e.verificada ? 'font-medium text-leaf-700' : 'text-ink-mute')}>
+        {e.verificada ? (
+          <Check aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={2.5} />
+        ) : (
+          <Clock aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
+        )}
+        <span>
+          {e.texto}
+          {e.falta === 'familia' && <span className="text-ink-mute">. Pedimos a {nomeContacto(c).split(' ')[0]} que confirme.</span>}
+        </span>
+      </p>
     </div>
   )
 }

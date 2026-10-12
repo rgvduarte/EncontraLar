@@ -11,6 +11,7 @@ import { PerfilRapidoForm } from './PerfilRapidoForm'
 import { CompatibilidadeStep } from './CompatibilidadeStep'
 import { MensagemStep, type DadosEnvio } from './MensagemStep'
 import { SucessoStep } from './SucessoStep'
+import { CasosProfissional, PEDIDOS_POR_CASO } from './CasosProfissional'
 import { OLar, oLar } from '../helpers'
 
 type Passo = 'perfil' | 'compat' | 'mensagem' | 'sucesso'
@@ -18,13 +19,14 @@ type Etapa = Exclude<Passo, 'sucesso'>
 const ETAPAS: Etapa[] = ['perfil', 'compat', 'mensagem']
 /** Quem já tem perfil salta esse passo: vê "Passo 1 de 2", não "Passo 2 de 3". */
 const ETAPAS_SEM_PERFIL: Etapa[] = ['compat', 'mensagem']
-const ATIVOS: Candidatura['estado'][] = ['enviada', 'em_analise', 'lista_espera', 'vaga_proposta', 'aceite']
+/** Pedidos que impedem repetir o pedido para a mesma pessoa (inclui quem já entrou). */
+const ATIVOS: Candidatura['estado'][] = ['enviada', 'em_analise', 'lista_espera', 'vaga_proposta', 'aceite', 'admitida']
 /** Botões do rodapé maiores na folha inferior do telemóvel (alvo confortável para o polegar). */
 const GRANDE = 'max-sm:min-h-14 max-sm:text-lg'
 
 /** Ordem das vistas, para saber para que lado desliza a transição. */
-type Vista = Passo | 'entrar' | 'so-familias'
-const ORDEM: Record<Vista, number> = { entrar: -1, 'so-familias': -1, perfil: 0, compat: 1, mensagem: 2, sucesso: 3 }
+type Vista = Passo | 'entrar' | 'so-familias' | 'profissional'
+const ORDEM: Record<Vista, number> = { entrar: -1, 'so-familias': -1, profissional: -1, perfil: 0, compat: 1, mensagem: 2, sucesso: 3 }
 
 /** Progresso discreto: traços finos que enchem (só transform) + "Passo 1 de 2". */
 function Etapas({ atual, etapas }: { atual: Passo; etapas: Etapa[] }) {
@@ -85,7 +87,15 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
   const etapas = comPerfil || passo === 'perfil' ? ETAPAS : ETAPAS_SEM_PERFIL
 
   // transição entre passos: desliza para a esquerda ao avançar e para a direita ao voltar
-  const vista: Vista = !user ? 'entrar' : user.role === 'lar' ? 'so-familias' : passo === 'perfil' || !perfil ? 'perfil' : passo
+  const vista: Vista = !user
+    ? 'entrar'
+    : user.role === 'lar'
+      ? 'so-familias'
+      : user.role === 'profissional'
+        ? 'profissional'
+        : passo === 'perfil' || !perfil
+          ? 'perfil'
+          : passo
   const [vistaAnterior, setVistaAnterior] = useState(vista)
   const [direcao, setDirecao] = useState<'frente' | 'tras' | null>(null)
   if (vistaAnterior !== vista) {
@@ -155,6 +165,21 @@ export function PedidoModal({ lar, open, onClose, comVisita }: { lar: Lar; open:
       <Button className={GRANDE} variant="subtle" onClick={onClose}>
         Fechar
       </Button>
+    )
+  } else if (user.role === 'profissional') {
+    // serviço social: o pedido parte de um caso (perfil de cuidados + alta prevista + consentimento), não do perfil de família
+    titulo = 'Pedir vaga'
+    descricao = PEDIDOS_POR_CASO
+    conteudo = <CasosProfissional lar={lar} />
+    rodape = (
+      <>
+        <Button key="pro-fechar" className={GRANDE} variant="subtle" onClick={onClose}>
+          Fechar
+        </Button>
+        <ButtonLink key="pro-novo" className={GRANDE} to={`/casos/novo?lar=${encodeURIComponent(lar.id)}`}>
+          Novo caso
+        </ButtonLink>
+      </>
     )
   } else if (passo === 'perfil' || !perfil) {
     titulo = 'Para quem é?'

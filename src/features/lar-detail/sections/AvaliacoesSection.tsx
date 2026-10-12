@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { BadgeCheck, ChevronRight } from 'lucide-react'
+import { BadgeCheck, ChevronRight, Info } from 'lucide-react'
 import type { Lar, Review } from '@/types'
 import { Stars } from '@/components/ui/Stars'
 import { Button } from '@/components/ui/Button'
@@ -19,16 +19,69 @@ const ASPETOS: { k: keyof Review['aspetos']; label: string }[] = [
 const mesExtenso = (iso: string) => new Date(iso).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
 const dec1 = (v: number) => v.toLocaleString('pt-PT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
+/** Porque é que uma avaliação é "verificada" (modelo de negócio: só quem confirmou a entrada pode deixá-la). */
+const VERIFICADA_EXPLICACAO = 'De uma família cuja entrada foi confirmada.'
+
+/**
+ * "Avaliação verificada" com a explicação numa dica: aparece com o ponteiro por cima, com o foco do teclado ou com
+ * um toque; fecha com Esc, ao sair ou ao tocar fora. A explicação é também a descrição acessível do botão.
+ */
+function SeloAvaliacao() {
+  const [aberta, setAberta] = useState(false)
+  const tipId = useId()
+  const raiz = useRef<HTMLSpanElement>(null)
+
+  // toque fora (no telemóvel o botão nem sempre perde o foco)
+  useEffect(() => {
+    if (!aberta) return
+    const fora = (e: PointerEvent) => {
+      if (!raiz.current?.contains(e.target as Node)) setAberta(false)
+    }
+    document.addEventListener('pointerdown', fora)
+    return () => document.removeEventListener('pointerdown', fora)
+  }, [aberta])
+
+  return (
+    <span ref={raiz} className="relative inline-flex" onMouseEnter={() => setAberta(true)} onMouseLeave={() => setAberta(false)}>
+      <button
+        type="button"
+        aria-describedby={tipId}
+        onClick={() => setAberta(true)}
+        onFocus={() => setAberta(true)}
+        onBlur={() => setAberta(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && aberta) {
+            e.stopPropagation()
+            setAberta(false)
+          }
+        }}
+        className="-my-2 inline-flex min-h-11 items-center gap-1 rounded-full text-sm font-medium text-terra-700 outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500"
+      >
+        <BadgeCheck aria-hidden className="size-4" />
+        Avaliação verificada
+        <Info aria-hidden className="ml-0.5 size-3.5 text-ink-mute" />
+      </button>
+      <span
+        id={tipId}
+        role="tooltip"
+        className={cn(
+          'absolute bottom-full left-0 z-10 mb-1 w-max max-w-[min(17rem,calc(100vw-3rem))] rounded-xl bg-ink px-3.5 py-2.5 text-sm leading-snug text-white shadow-lift',
+          'transition-[opacity,visibility,translate] duration-200 ease-[cubic-bezier(.25,.1,.25,1)] motion-reduce:transition-none',
+          aberta ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-1 opacity-0',
+        )}
+      >
+        {VERIFICADA_EXPLICACAO}
+      </span>
+    </span>
+  )
+}
+
 function Opiniao({ r, nova }: { r: Review; nova?: boolean }) {
   return (
     <li className={cn('border-b border-line py-7', nova && 'ficha-troca')}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <Stars value={r.nota} />
-        {r.verificada && (
-          <span className="inline-flex items-center gap-1 text-sm text-terra-700">
-            <BadgeCheck aria-hidden className="size-4" /> Verificada
-          </span>
-        )}
+        {r.verificada && <SeloAvaliacao />}
       </div>
       <blockquote className="mt-3 max-w-[65ch] text-lg leading-relaxed text-ink">
         <p>{r.texto}</p>
@@ -42,8 +95,13 @@ function Opiniao({ r, nova }: { r: Review; nova?: boolean }) {
 
 export function AvaliacoesSection({ lar }: { lar: Lar }) {
   const [todas, setTodas] = useState(false)
+  const [soVerificadas, setSoVerificadas] = useState(false)
   const reviews = lar.reviews
-  const mostradas = todas ? reviews : reviews.slice(0, 3)
+  const nVerificadas = reviews.filter((r) => r.verificada).length
+  // o filtro só aparece quando muda alguma coisa (há verificadas e não verificadas)
+  const comFiltro = nVerificadas > 0 && nVerificadas < reviews.length
+  const lista = comFiltro && soVerificadas ? reviews.filter((r) => r.verificada) : reviews
+  const mostradas = todas ? lista : lista.slice(0, 3)
   const medias = ASPETOS.map((a) => ({
     ...a,
     v: reviews.length ? reviews.reduce((s, r) => s + r.aspetos[a.k], 0) / reviews.length : 0,
@@ -99,14 +157,39 @@ export function AvaliacoesSection({ lar }: { lar: Lar }) {
 
       {reviews.length > 0 && (
         <>
-          <Cascata passo={110} className="mt-12 border-t border-line">
+          {comFiltro && (
+            <div className="mt-12 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <p className="text-sm text-ink-mute" aria-live="polite">
+                {soVerificadas
+                  ? `${plural(nVerificadas, 'avaliação verificada', 'avaliações verificadas')}, de famílias cuja entrada foi confirmada`
+                  : `${plural(reviews.length, 'opinião', 'opiniões')}, ${nVerificadas} ${nVerificadas === 1 ? 'verificada' : 'verificadas'}`}
+              </p>
+              <button
+                type="button"
+                aria-pressed={soVerificadas}
+                onClick={() => {
+                  setSoVerificadas((v) => !v)
+                  setTodas(false)
+                }}
+                className={cn(
+                  'inline-flex min-h-12 items-center gap-2 rounded-full px-4.5 text-sm font-medium transition-[background-color,color,scale] duration-200 select-none active:scale-[0.96]',
+                  'focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500',
+                  soVerificadas ? 'bg-ink text-white hover:bg-pine-600' : 'bg-sand text-ink hover:bg-sand-deep',
+                )}
+              >
+                <BadgeCheck aria-hidden className="size-4.5" />
+                Só verificadas
+              </button>
+            </div>
+          )}
+          <Cascata key={soVerificadas ? 'verificadas' : 'todas'} passo={110} className={cn('border-t border-line', comFiltro ? 'mt-4' : 'mt-12')}>
             {mostradas.map((r, i) => (
               <Opiniao key={r.id} r={r} nova={i >= 3} />
             ))}
           </Cascata>
-          {reviews.length > 3 && (
+          {lista.length > 3 && (
             <Button variant="subtle" className="mt-8 max-sm:w-full" onClick={() => setTodas((v) => !v)} aria-expanded={todas}>
-              {todas ? 'Mostrar menos' : `Ver as ${reviews.length} opiniões`}
+              {todas ? 'Mostrar menos' : soVerificadas ? `Ver as ${lista.length} verificadas` : `Ver as ${lista.length} opiniões`}
             </Button>
           )}
         </>

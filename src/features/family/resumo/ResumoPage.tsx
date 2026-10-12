@@ -6,6 +6,7 @@ import { usePedidos, usePerfisOrdenados, pesquisaUrl, visitasFuturas } from '../
 import { VagaProposta } from '../shared/VagaProposta'
 import { Enter } from '../shared/motion'
 import { primeiroNome } from '../shared/text'
+import { Entradas } from './Entradas'
 import { PedidosResumo } from './PedidosResumo'
 import { ProximaVisita } from './ProximaVisita'
 import { ProximosPassos } from './ProximosPassos'
@@ -17,7 +18,7 @@ export default function ResumoPage() {
   useDocumentTitle('O meu painel')
   const user = useCurrentUser()!
   const { principal } = usePerfisOrdenados()
-  const { ativos, terminados, todos } = usePedidos()
+  const { ativos, emCurso, terminados, todos } = usePedidos()
   const favoritos = useFavoritos()
   const notifs = useNotificacoes()
   const [params, setParams] = useSearchParams()
@@ -25,6 +26,8 @@ export default function ResumoPage() {
 
   const propostas = ativos.filter((p) => p.c.estado === 'vaga_proposta')
   const visitas = useMemo(() => visitasFuturas(ativos), [ativos])
+  // depois da entrada, a procura acabou: sem sugestões nem lista de passos a insistir
+  const jaEntrou = Boolean(principal) && todos.some((p) => p.c.perfilId === principal!.id && p.c.estado === 'admitida')
   const excluir = useMemo(() => new Set(todos.filter((p) => p.c.estado !== 'cancelada').map((p) => p.lar.id)), [todos])
   const pesquisa = principal ? pesquisaUrl(principal) : '/pesquisa'
 
@@ -54,6 +57,9 @@ export default function ResumoPage() {
         </div>
       )}
 
+      {/* entrada: "Já entrou?", "Confirma?" e o convite para avaliar — calmos, depois das vagas propostas */}
+      <Entradas pedidos={todos} />
+
       {/* sem perfil, o primeiro passo é descrevê-lo: vem antes de tudo */}
       {!principal && !bemvindo && (
         <Enter>
@@ -65,25 +71,27 @@ export default function ResumoPage() {
         <PedidosResumo ativos={ativos} terminados={terminados.length} pesquisa={pesquisa} />
       </Enter>
 
-      {(visitas.length > 0 || ativos.length > 0) && (
+      {(visitas.length > 0 || (emCurso.length > 0 && !jaEntrou)) && (
         <Enter>
-          <ProximaVisita visita={visitas[0]} outras={visitas.length - 1} temPedidos={ativos.length > 0} />
+          <ProximaVisita visita={visitas[0]} outras={visitas.length - 1} temPedidos={emCurso.length > 0} />
         </Enter>
       )}
 
-      {principal && (
+      {principal && !jaEntrou && (
         <Enter>
           <Sugestoes perfil={principal} excluir={excluir} />
         </Enter>
       )}
 
-      <div className="grid gap-16 xl:grid-cols-2 xl:gap-12">
+      <div className={jaEntrou ? 'max-w-3xl' : 'grid gap-16 xl:grid-cols-2 xl:gap-12'}>
         <Enter>
           <Novidades notifs={notifs} />
         </Enter>
-        <Enter delay={120}>
-          <ProximosPassos perfil={principal} guardados={favoritos.length} pedidos={todos.length} visita={visitas[0]} pesquisa={pesquisa} />
-        </Enter>
+        {!jaEntrou && (
+          <Enter delay={120}>
+            <ProximosPassos perfil={principal} guardados={favoritos.length} pedidos={todos.length} visita={visitas[0]} pesquisa={pesquisa} />
+          </Enter>
+        )}
       </div>
     </div>
   )

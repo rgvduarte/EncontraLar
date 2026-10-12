@@ -48,7 +48,8 @@ Vetores do produto: **geolocalização, perfil clínico, transparência** + **pr
 - Ícones `lucide-react` finos, pequenos, a acompanhar texto (nunca ícones dentro de círculos coloridos em grelha de 3).
 - Capas de instituição: `LarCover` (gradiente pastel + silhueta) — sem fotografias no protótipo.
 
-**Componentes de marca disponíveis** (`src/components/brand/`): `PortugalMap` (mapa em pontos, halftone), `MapLegend`, `VagasBoard` (lista "Atualizadas agora", tema claro/escuro), `ForecastStrip` (previsão mês a mês: % + barra fina; `variant="mini"`), `SeloVerificado` (roseta azul).
+**Componentes de marca disponíveis** (`src/components/brand/`): `PortugalMap` (mapa em pontos, halftone), `MapLegend`, `VagasBoard` (lista "Atualizadas agora", tema claro/escuro), `ForecastStrip` (previsão mês a mês: % + barra fina; `variant="mini"`), `SeloVerificado` (roseta azul) e
+`SeloNiveis` (os três níveis de verificação, ver §11).
 Os padrões da v1 (azulejo/calçada, `patterns.tsx`) foram **removidos**.
 `Reveal` (de `@/components/motion`): envolver blocos para entrada suave ao fazer scroll.
 
@@ -72,14 +73,18 @@ Proibido copy genérico de marketing ("Descubra", "inovador", "experiência perf
 Famílias                               Instituições                  Contas
 /              Início                  /para-lares                   /entrar  (inclui contas de demonstração)
 /pesquisa      Mapa de vagas           /registar?tipo=lar            /registar
-/lar/:id       Ficha da instituição
-/encontrar     Ajuda-me a escolher
+/lar/:id       Ficha da instituição    /profissionais (hospitais e serviço social)
+/encontrar     Ajuda-me a escolher     /confirmar/:token (confirmar vagas sem sessão)
 /guia          Guia e apoios (#tipos #escolher #visita #apoios #alerta #faq #linhas)
 /sobre (#previsao), /como-ordenamos, /privacidade
 
 Painel da família  /familia · /familia/pedidos · /familia/guardados · /familia/perfil · /familia/conta
-Painel do lar      /gestao · /gestao/vagas · /gestao/pedidos · /gestao/previsao · /gestao/ficha
+Painel do lar      /gestao · /gestao/vagas · /gestao/pedidos · /gestao/entradas · /gestao/previsao · /gestao/ficha
+Profissional       /casos · /casos/novo (?lar=<id>) · /casos/:id (?lar=<id>)
 ```
+O menu "Instituições" do cabeçalho tem também "Profissionais de saúde" e, só sem sessão, "Experimentar como assistente
+social" (entra na conta de demonstração e abre `/casos`). Tal como "Ver painel de demonstração", nunca termina a sessão de
+outra pessoa: com outra conta aberta leva à página de apresentação.
 Painéis usam `DashboardShell` (barra lateral discreta no desktop, pílulas no telemóvel) com `<Routes>` aninhadas.
 HashRouter: âncoras dentro da página fazem-se com `scrollIntoView`, nunca com `href="#id"`.
 
@@ -138,7 +143,9 @@ suspensos já são globais (Layout/Header).
 ## 8. Telemóvel primeiro (ergonomia)
 
 - **Barra de abas inferior** global (`MobileTabBar`, < 1024px) — Início, Mapa, Escolher, Guardados, Painel/Entrar (instituição: Resumo,
-  Vagas, Pedidos, Previsão, Ficha). Está escondida em `/lar/:id`, `/encontrar`, `/entrar`, `/registar` (fluxos com barra de ação própria).
+  Vagas, Pedidos, Previsão, Ficha; profissional: Casos, Novo caso, Mapa, Início). As colunas seguem o número de separadores.
+  Está escondida em `/lar/:id`, `/encontrar`, `/entrar`, `/registar` (fluxos com barra de ação própria) e em `/confirmar/:token`
+  (ecrã único aberto a partir de um SMS ou email, sem sessão).
 - A altura reservada está em `var(--tabbar-h)` (0 no desktop). Elementos fixos no fundo usam
   `bottom-[calc(var(--tabbar-h)+1rem)]` (ex.: botão Mapa/Lista) ou `bottom-0` + `pb-[calc(1rem+env(safe-area-inset-bottom))]`
   nas páginas sem barra de abas (barras "Pedir vaga", "Continuar").
@@ -199,6 +206,36 @@ Não inventar valores intermédios (ex.: 1050) — usar esta escala.
   `Parallax` e `ScrollZoom` escrevem `transform` diretamente; dentro de `StickyScene`, evitar ler `var(--p)` em subárvores grandes
   (preferir `useSceneProgress()` em poucos elementos).
 - **`PortugalMap`**: o pulso das vagas é opcional (`pulse`, desligado por omissão) e usa só transform/opacity. O SVG é sempre
-  `role="img"` com `title`; com `onSelect`, os pontos são só atalho para rato (`tabIndex=-1`, `aria-hidden`) — use-o só com
+  `role="img"` com `title`; com `onSelect`, os pontos são só atalho para rato: `<g>` com `onClick` e `cursor-pointer`,
+  `aria-hidden`, nunca `<a>` (nada interativo dentro de um `role="img"`, regra axe nested-interactive) — use-o só com
   ponteiro fino. Os nomes das cidades desenham-se por cima dos pontos, com contorno.
 - **Atribuição dos mapas Leaflet** em pílula afastada do canto (index.css): os contentores arredondados cortavam o texto.
+
+## 11. Modelo de negócio na interface
+
+Regras de interface para o modelo aprovado (pormenor em `docs/MODELO-NEGOCIO.md`).
+
+- **Sem preços da plataforma.** Estar no EncontraLar é gratuito para todas as instituições; só os lares privados pagam uma
+  taxa fixa por cada pessoa que entra. O valor fica no contrato: nunca mostrar montantes, percentagens nem "planos". As
+  mensalidades das instituições continuam visíveis (são informação para as famílias). Ninguém paga para aparecer primeiro.
+- **Pedido em duas fases (RGPD art. 9.º).** Antes de aceitar, a instituição vê só o resumo sem identificação (faixa etária,
+  grau, cuidados, zona, orçamento, urgência, origem). "Aceitar e ver contacto" mostra o nome, o contacto e o perfil completo.
+  Nunca desenhar o nome ou o contacto "desfocado" na primeira fase: simplesmente não aparecem.
+- **Palavras fixas** (usar exatamente estas):
+  - "Encaminhado por <organização>"
+  - "Alta prevista: <dia>" / "Alta em N dias"
+  - "Aceitar e ver contacto"
+  - "Entrou" / "Marcar entrada" (instituição)
+  - "Já entrou?" / "Confirmar entrada" (família ou profissional)
+  - "Entrada verificada" (as duas confirmações)
+  - "Taxa fixa por entrada · conforme contrato" (privado) / "Isenta — setor social" (IPSS e Misericórdias)
+  - "Avaliação verificada" (só de quem confirmou a entrada)
+- **Selo em três níveis.** `SeloNiveis({ lar })` (`components/brand/SeloVerificado`) lista "Licença confirmada",
+  "Visitada pela equipa" e "Avaliações verificadas", com visto ou círculo vazio e o estado em texto para leitores de ecrã.
+- **Área do profissional** (`role 'profissional'`, assistentes sociais de hospitais, centros de saúde e autarquias):
+  `/casos` com `RequireAuth role="profissional"` e o `DashboardShell`. O menu da conta diz "Os meus casos" e mostra a
+  organização por baixo do nome; no telemóvel, a barra de abas tem Casos, Novo caso, Mapa e Início. As notificações de um
+  profissional abrem o caso (`/casos/<id>`). Outra conta a abrir `/casos` vê "Esta área é para profissionais de saúde",
+  com atalho para o seu painel e "Entrar com outra conta".
+- **Encaminhamentos com alta próxima** (até 7 dias) aparecem primeiro na lista de pedidos da instituição, com a data de alta
+  em texto (nunca só por cor).

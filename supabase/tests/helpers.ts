@@ -22,18 +22,25 @@ const ler = (relativo: string) => readFileSync(join(DIR_SUPABASE, relativo), 'ut
 export interface OpcoesBase {
   /** carrega supabase/seed.sql (162 instituições de demonstração) */
   seed?: boolean
+  /** aplica só as migrações ANTERIORES a esta (ex.: '20261012190700') — para testar uma migração sobre dados existentes */
+  ate?: string
 }
 
-export async function criarBase(opcoes: OpcoesBase = {}): Promise<PGlite> {
-  const db = new PGlite()
-  await db.exec(ler('tests/bootstrap.sql'))
-  for (const f of MIGRACOES) {
+/** Aplica, por ordem, as migrações com nome em [desde, ate). */
+export async function aplicarMigracoes(db: PGlite, desde = '', ate = '~'): Promise<void> {
+  for (const f of MIGRACOES.filter((m) => m >= desde && m < ate)) {
     try {
       await db.exec(ler(`migrations/${f}`))
     } catch (e) {
       throw new Error(`A migração ${f} falhou: ${(e as Error).message}`)
     }
   }
+}
+
+export async function criarBase(opcoes: OpcoesBase = {}): Promise<PGlite> {
+  const db = new PGlite()
+  await db.exec(ler('tests/bootstrap.sql'))
+  await aplicarMigracoes(db, '', opcoes.ate)
   if (opcoes.seed) await db.exec(ler('seed.sql'))
   return db
 }

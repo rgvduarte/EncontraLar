@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router'
 import type { Candidatura, Lar } from '@/types'
 import { ButtonLink } from '@/components/ui/Button'
-import { FILTROS, filtroDoEstado, visitaPorConfirmar, type FiltroPedidos } from '../lib/derive'
+import { FILTROS, filtroDoEstado, ordenarNovos, visitaPorConfirmar, type FiltroPedidos } from '../lib/derive'
 import { useAgora } from '../lib/hooks'
 import { useFlip, usePresenca, useTroca } from '../shared/motion'
 import { Segmented } from '../shared/Segmented'
@@ -14,7 +14,7 @@ const ORDEM_DEFAULT: FiltroPedidos[] = ['novos', 'analise', 'proposta', 'lista',
 const ehFiltro = (s: string | null): s is FiltroPedidos => FILTROS.some((f) => f.id === s)
 
 const RESUMO_FILTRO: Record<FiltroPedidos, (n: number) => string> = {
-  novos: (n) => (n === 1 ? '1 pedido novo.' : `${n} pedidos novos. Os urgentes aparecem primeiro.`),
+  novos: (n) => (n === 1 ? '1 pedido novo.' : `${n} pedidos novos. Primeiro, os que têm alta hospitalar nos próximos 7 dias e os urgentes.`),
   analise: (n) => (n === 1 ? '1 pedido em análise.' : `${n} pedidos em análise.`),
   lista: () => '',
   proposta: (n) => (n === 1 ? '1 vaga proposta à espera de resposta.' : `${n} vagas propostas à espera de resposta.`),
@@ -76,13 +76,13 @@ export default function PedidosPage({ lar, cands }: { lar: Lar; cands: Candidatu
     480,
   )
 
-  const lista = cands
-    .filter((c) => def.estados.includes(c.estado))
-    .sort((a, b) =>
-      filtro === 'novos'
-        ? Number(b.perfil.urgencia === 'imediata') - Number(a.perfil.urgencia === 'imediata') || b.criadaEm.localeCompare(a.criadaEm)
-        : b.atualizadaEm.localeCompare(a.atualizadaEm),
-    )
+  const doFiltro = cands.filter((c) => def.estados.includes(c.estado))
+  // nos concluídos, primeiro o que ainda pede uma ação: vagas aceites à espera da entrada
+  const porMarcar = (c: Candidatura) => Number(c.estado === 'aceite' || (c.estado === 'admitida' && !c.entrada?.confirmadaLarEm))
+  const lista =
+    filtro === 'novos'
+      ? ordenarNovos(doFiltro, agora)
+      : doFiltro.sort((a, b) => (filtro === 'concluidos' ? porMarcar(b) - porMarcar(a) : 0) || b.atualizadaEm.localeCompare(a.atualizadaEm))
 
   const mudarFiltro = (f: FiltroPedidos) => {
     const next = new URLSearchParams(params)

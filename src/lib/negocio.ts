@@ -12,8 +12,11 @@ export const JANELA_ATRIBUICAO_DIAS = 365
 
 export const taxaPara = (lar: Pick<Lar, 'natureza'>): TaxaEntrada => (lar.natureza === 'privado' ? 'aplicavel' : 'isenta')
 
-/** O lar já vê o contacto e o perfil completo? (aceitou o pedido, ou já o fez avançar) */
-export const contactoVisivel = (c: Pick<Candidatura, 'estado' | 'desbloqueadaEm'>) => c.estado !== 'enviada' || !!c.desbloqueadaEm
+/**
+ * O lar já vê o contacto e o perfil completo? Só depois de aceitar o pedido (ou de o fazer avançar, que o aceita).
+ * Recusar sem aceitar, ou a família cancelar, nunca revela os dados — tal como a base de dados (Supabase) impõe.
+ */
+export const contactoVisivel = (c: Pick<Candidatura, 'desbloqueadaEm'>) => !!c.desbloqueadaEm
 
 export const origemDe = (c: Pick<Candidatura, 'origem'>) => c.origem ?? 'familia'
 

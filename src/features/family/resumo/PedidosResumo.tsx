@@ -4,7 +4,8 @@ import { LarCover } from '@/components/lar/LarCover'
 import type { PedidoComLar } from '../shared/data'
 import { AnimatedForecast } from '../shared/Forecast'
 import { useStagger } from '../shared/motion'
-import { estimativaPessoal, horaDe } from '../shared/estado'
+import { entradaVerificada } from '@/lib/negocio'
+import { diaMes, entradaPorConfirmar, estimativaPessoal, horaDe } from '../shared/estado'
 import { EstadoTag, MoreLink, SectionHeader } from '../shared/ui'
 import { nomeCurto, ordinal } from '../shared/text'
 
@@ -18,6 +19,17 @@ function Situacao({ c, lar }: { c: Candidatura; lar: Lar }) {
           {c.prazoResposta
             ? `${new Date(c.prazoResposta).toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric' })}, ${horaDe(c.prazoResposta)}`
             : 'o quanto antes'}
+        </span>
+      </p>
+    )
+  }
+  if (c.estado === 'admitida') {
+    const porConfirmar = entradaPorConfirmar(c)
+    return (
+      <p className="sm:text-right">
+        <span className="block text-sm text-ink-mute">{entradaVerificada(c) ? 'Entrada verificada' : 'Entrada'}</span>
+        <span className={porConfirmar ? 'font-semibold text-terra-700' : 'font-semibold'}>
+          {porConfirmar ? 'por confirmar' : c.entrada ? diaMes(c.entrada.data) : 'registada'}
         </span>
       </p>
     )

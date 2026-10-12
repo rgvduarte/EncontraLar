@@ -11,7 +11,10 @@ export function SucessoStep({ lar, c }: { lar: Lar; c: Candidatura }) {
   }, [])
   const nome = c.perfil.nome.split(' ')[0]
   const passos = [
-    { t: 'A equipa técnica recebe o pedido', d: `${OLar(lar.nome)} já tem o perfil de ${nome} e a sua mensagem.` },
+    {
+      t: 'A equipa técnica recebe o pedido',
+      d: `${OLar(lar.nome)} vê primeiro o perfil de cuidados de ${nome}, sem dados pessoais. O seu contacto só é partilhado quando aceitar o pedido.`,
+    },
     {
       t: 'Responde-lhe em poucos dias úteis',
       d: 'Por aqui, por telefone ou por email. Recebe uma notificação no seu painel.',

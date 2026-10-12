@@ -13,6 +13,7 @@ import { QUARTO_CURTO } from '@/lib/labels'
 import { cn } from '@/lib/cn'
 import { ctaPedido, esperaEstimada, oLar, precoResumo, precoSocial, telHref, type DadosLar } from './helpers'
 import { CandidaturaAtiva } from './CandidaturaAtiva'
+import { CasosEnviadosAqui } from './pedido/CasosProfissional'
 import { useIrParaSecao } from './hooks'
 
 /** Preço em destaque: "desde 1550 €/mês" (privado) ou intervalo conforme rendimentos (IPSS/Misericórdia). */
@@ -87,6 +88,7 @@ export function VagasCard({
   lar,
   dados,
   ativa,
+  profissional = false,
   onPedir,
   onVisita,
   onVisitaExistente,
@@ -95,6 +97,8 @@ export function VagasCard({
   lar: Lar
   dados: DadosLar
   ativa?: Candidatura
+  /** conta de serviço social: o pedido parte de um caso (PedidoModal) e não há "Marcar visita" */
+  profissional?: boolean
   onPedir: () => void
   onVisita: () => void
   onVisitaExistente: (c: Candidatura) => void
@@ -169,10 +173,13 @@ export function VagasCard({
               <Button size="lg" full onClick={onPedir}>
                 {ctaLabel}
               </Button>
-              <Button variant="subtle" size="lg" full onClick={onVisita}>
-                Marcar visita
-              </Button>
+              {!profissional && (
+                <Button variant="subtle" size="lg" full onClick={onVisita}>
+                  Marcar visita
+                </Button>
+              )}
             </div>
+            {profissional && <CasosEnviadosAqui larId={lar.id} />}
           </>
         )}
       </div>

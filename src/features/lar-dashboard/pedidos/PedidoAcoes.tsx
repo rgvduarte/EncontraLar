@@ -1,12 +1,30 @@
 import { useState } from 'react'
-import { Check, Ellipsis } from 'lucide-react'
+import { useNavigate } from 'react-router'
+import { Ellipsis } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
 import { Button } from '@/components/ui/Button'
+import { toast } from '@/components/ui/Toast'
+import { aceitarPedido } from '@/lib/store'
 import { cn } from '@/lib/cn'
+import { nomePedido } from '../shared/pedidoBits'
 import { MoreLink } from '../shared/ui'
 import { acoesDoPedido, type Acao } from './acoes'
 import { AcoesFolha } from './AcoesFolha'
+import { EntradaModal } from './EntradaModal'
 import { EstadoModal } from './EstadoModal'
+
+/**
+ * "Aceitar e ver contacto": regista o desbloqueio e abre logo o pedido completo (no separador "Em análise"),
+ * com o nome e o contacto, para poder telefonar de seguida.
+ */
+export function useAceitar() {
+  const navigate = useNavigate()
+  return (c: Candidatura, a: Acao) => {
+    aceitarPedido(c.id)
+    toast.success(a.sucesso.titulo, a.sucesso.texto)
+    navigate(`/gestao/pedidos?filtro=analise&pedido=${encodeURIComponent(c.id)}`)
+  }
+}
 
 /**
  * Ações de um pedido + diálogo de confirmação com nota para a família.
@@ -39,20 +57,15 @@ export function PedidoAcoes({
   const [acao, setAcao] = useState<Acao | null>(null)
   const [aberta, setAberta] = useState(false)
   const [folha, setFolha] = useState(false)
+  const aceitar = useAceitar()
   const todas = acoesDoPedido(c, lar, agora)
   const acoes = apenasPrincipal ? todas.slice(0, 1) : todas
 
-  if (c.estado === 'aceite') {
-    return (
-      <p className={cn('inline-flex min-h-12 items-center gap-2 font-medium text-leaf-700', className)}>
-        <Check aria-hidden className="size-5" strokeWidth={2.5} /> Entrada confirmada
-      </p>
-    )
-  }
   if (!acoes.length) return null
   const bloqueada = acoes.find((a) => a.bloqueio)
   const principal = acoes[0]!
   const escolher = (a: Acao) => {
+    if (a.tipo === 'aceitar') return aceitar(c, a)
     setAcao(a)
     setAberta(true)
   }
@@ -83,7 +96,7 @@ export function PedidoAcoes({
           <Button
             variant="subtle"
             onClick={() => setFolha(true)}
-            aria-label={`Mais ações para o pedido de ${c.perfil.nome}`}
+            aria-label={`Mais ações para o pedido: ${nomePedido(c)}`}
             aria-haspopup="dialog"
             className="min-h-13 w-13 shrink-0 px-0"
             icon={<Ellipsis aria-hidden className="size-6!" />}
@@ -100,7 +113,11 @@ export function PedidoAcoes({
         </p>
       )}
 
-      {acao && <EstadoModal c={c} acao={acao} open={aberta} onClose={() => setAberta(false)} />}
+      {acao?.tipo === 'entrada' ? (
+        <EntradaModal c={c} lar={lar} acao={acao} open={aberta} onClose={() => setAberta(false)} />
+      ) : (
+        acao && <EstadoModal c={c} acao={acao} open={aberta} onClose={() => setAberta(false)} />
+      )}
       {variante === 'linha' && (
         <AcoesFolha
           open={folha}

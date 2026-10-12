@@ -26,6 +26,15 @@ import './ficha.css'
 
 const ATIVOS: Candidatura['estado'][] = ['enviada', 'em_analise', 'lista_espera', 'vaga_proposta', 'aceite']
 
+/**
+ * Pedido da família a mostrar no cartão (em vez de "Pedir vaga"): um pedido em curso tem prioridade;
+ * sem nenhum, a entrada já registada ('admitida') — "Entrou a <dia>", confirmar a entrada, avaliar.
+ */
+function pedidoDaFamilia(minhas: Candidatura[], larId: string): Candidatura | undefined {
+  const aqui = minhas.filter((c) => c.larId === larId)
+  return aqui.find((c) => ATIVOS.includes(c.estado)) ?? aqui.find((c) => c.estado === 'admitida')
+}
+
 /** Ficha da instituição — /lar/:id */
 export default function LarPage() {
   const { id } = useParams()
@@ -39,11 +48,10 @@ function Ficha({ lar }: { lar: Lar }) {
   const dados = useDadosLar(lar)
   const user = useCurrentUser()
   const minhas = useMinhasCandidaturas()
-  const ativa = useMemo(
-    () => (user?.role === 'familia' ? minhas.find((c) => c.larId === lar.id && ATIVOS.includes(c.estado)) : undefined),
-    [user, minhas, lar.id],
-  )
+  const ativa = useMemo(() => (user?.role === 'familia' ? pedidoDaFamilia(minhas, lar.id) : undefined), [user, minhas, lar.id])
   const minhaFicha = user?.role === 'lar' && user.larId === lar.id
+  // serviço social: "Pedir vaga" abre a escolha de um caso (PedidoModal); não marca visitas pela família
+  const profissional = user?.role === 'profissional'
 
   const [pedido, setPedido] = useState({ n: 0, aberto: false, visita: false })
   const abrirPedido = (visita: boolean) => setPedido((p) => ({ n: p.n + 1, aberto: true, visita }))
@@ -81,6 +89,7 @@ function Ficha({ lar }: { lar: Lar }) {
                   lar={lar}
                   dados={dados}
                   ativa={ativa}
+                  profissional={profissional}
                   ctaRef={ctaRef}
                   onPedir={() => abrirPedido(false)}
                   onVisita={() => abrirPedido(true)}
@@ -110,6 +119,7 @@ function Ficha({ lar }: { lar: Lar }) {
         dados={dados}
         ativa={ativa}
         minhaFicha={minhaFicha}
+        profissional={profissional}
         visivel={!ctaVisivel && !fimVisivel}
         onPedir={() => abrirPedido(false)}
         onVisita={() => abrirPedido(true)}

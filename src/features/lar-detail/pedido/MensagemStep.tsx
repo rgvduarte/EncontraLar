@@ -5,6 +5,8 @@ import { Checkbox, Switch, TextareaField } from '@/components/ui/Field'
 import { mensagemSugerida, oLar } from '../helpers'
 import { VisitFields, validarVisita, type VisitaEscolha } from './VisitFields'
 
+const primeiroNome = (nome: string) => nome.split(' ')[0]
+
 export interface DadosEnvio {
   mensagem: string
   visita?: VisitaEscolha
@@ -84,9 +86,13 @@ export function MensagemStep({
       </div>
 
       <div className="border-t border-line pt-5">
-        <p className="font-medium text-ink">A instituição vai receber</p>
-        <p className="mt-1 text-ink-mute">
-          O perfil de {perfil.nome} (dependência, cuidados, orçamento e urgência) e o seu contacto: {user.email}
+        <p className="font-medium text-ink">O que a instituição vê</p>
+        {/* privacidade em duas fases (RGPD art. 9.º): resumo anónimo primeiro, identificação só depois de aceitar */}
+        <p className="mt-1 text-ink-soft">
+          A instituição vê primeiro o perfil de cuidados sem dados pessoais; o seu contacto só é partilhado quando aceitar o pedido.
+        </p>
+        <p className="mt-2 text-sm text-ink-mute">
+          Ao aceitar, passa a ver o nome de {primeiroNome(perfil.nome)}, esta mensagem e o seu contacto: {user.email}
           {user.telefone ? ` · ${user.telefone}` : ''}.
         </p>
         <div ref={consentRef} className="mt-3">

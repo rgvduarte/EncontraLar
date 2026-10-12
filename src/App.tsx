@@ -19,6 +19,10 @@ const GuidePage = lazy(() => import('@/features/content/GuidePage'))
 const AboutPage = lazy(() => import('@/features/content/AboutPage'))
 const PrivacyPage = lazy(() => import('@/features/content/PrivacyPage'))
 const ComoOrdenamosPage = lazy(() => import('@/features/content/ComoOrdenamosPage'))
+// canal profissional (assistentes sociais) e confirmação rápida de vagas sem login (docs/MODELO-NEGOCIO.md)
+const CasosApp = lazy(() => import('@/features/pro/CasosApp'))
+const ProfissionaisPage = lazy(() => import('@/features/pro/ProfissionaisPage'))
+const ConfirmarPage = lazy(() => import('@/features/confirmar/ConfirmarPage'))
 const NotFoundPage = lazy(() => import('@/features/content/NotFoundPage'))
 
 // HashRouter: URLs do tipo /#/pesquisa — funciona no GitHub Pages sem configuração de servidor.
@@ -53,6 +57,16 @@ const router = createHashRouter([
               </RequireAuth>
             ),
           },
+          {
+            path: 'casos/*',
+            element: (
+              <RequireAuth role="profissional">
+                <CasosApp />
+              </RequireAuth>
+            ),
+          },
+          { path: 'profissionais', element: <ProfissionaisPage /> },
+          { path: 'confirmar/:token', element: <ConfirmarPage /> },
           { path: 'para-lares', element: <ForLaresPage /> },
           { path: 'guia', element: <GuidePage /> },
           { path: 'sobre', element: <AboutPage /> },

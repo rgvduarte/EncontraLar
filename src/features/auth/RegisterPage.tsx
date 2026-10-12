@@ -7,12 +7,23 @@ import { TextLink } from '@/components/ui/Button'
 import { AccountSwitch } from './register/AccountSwitch'
 import { FamilyForm } from './register/FamilyForm'
 import { InstitutionForm } from './register/InstitutionForm'
+import { ProfissionalForm } from './register/ProfissionalForm'
 import { AuthShell } from './shared/AuthShell'
 import { PrototypeNote } from './shared/PrototypeNote'
 import { SignedInNotice } from './shared/SignedInNotice'
 import { SlideSwitch } from './shared/SlideSwitch'
 import { Appear, cascade } from './shared/Appear'
-import { destinoAposEntrar, intencaoDe, isInternalPath, motivoDoDestino } from './shared/redirect'
+import { destinoAposEntrar, intencaoDe, isInternalPath, motivoDoDestino, roleDoCaminho } from './shared/redirect'
+
+const ROLES: Role[] = ['familia', 'lar', 'profissional']
+const TITULO: Record<Role, string> = { familia: 'Criar conta', lar: 'Registar instituição', profissional: 'Criar conta profissional' }
+
+/** `?tipo=` explícito; senão, o tipo de conta da área para onde ia (ex.: `voltar=/casos/…` → profissional); senão, família. */
+function tipoDe(params: URLSearchParams): Role {
+  const t = params.get('tipo')
+  if (ROLES.includes(t as Role)) return t as Role
+  return roleDoCaminho(params.get('voltar')) ?? 'familia'
+}
 
 const DESCRICAO: Record<Role, string> = {
   familia: 'Gratuita. Guarde lares, peça vaga e receba alertas.',
@@ -22,7 +33,7 @@ const DESCRICAO: Record<Role, string> = {
 
 export default function RegisterPage() {
   const [params, setParams] = useSearchParams()
-  const tipoUrl: Role = params.get('tipo') === 'lar' ? 'lar' : 'familia'
+  const tipoUrl = tipoDe(params)
   // estado imediato (a pílula e os formulários mudam no mesmo frame do toque); o URL acompanha a seguir
   const [tipo, setTipo] = useState<Role>(tipoUrl)
   const [tipoUrlAnterior, setTipoUrlAnterior] = useState(tipoUrl)
@@ -30,7 +41,7 @@ export default function RegisterPage() {
     setTipoUrlAnterior(tipoUrl)
     setTipo(tipoUrl)
   }
-  useDocumentTitle(tipo === 'lar' ? 'Registar instituição' : 'Criar conta')
+  useDocumentTitle(TITULO[tipo])
   const user = useCurrentUser()
   const lares = useLares()
   const voltar = params.get('voltar')
@@ -69,12 +80,13 @@ export default function RegisterPage() {
         </p>
       </Appear>
 
-      {/* os dois formulários ficam montados: mudar de separador não apaga o que já escreveu */}
+      {/* os três formulários ficam montados: mudar de separador não apaga o que já escreveu */}
       <SlideSwitch
         active={tipo}
         panels={[
           { key: 'familia', content: <FamilyForm voltar={voltar} onPending={setACriar} /> },
           { key: 'lar', content: <InstitutionForm onPending={setACriar} /> },
+          { key: 'profissional', content: <ProfissionalForm voltar={voltar} onPending={setACriar} /> },
         ]}
       />
 

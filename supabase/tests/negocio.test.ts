@@ -6,7 +6,7 @@
  */
 import type { PGlite } from '@electric-sql/pglite'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { admin, cenarioBase, codigoErro, criarBase, criarUtilizador, erro, json, q } from './helpers'
+import { admin, aplicarMigracoes, cenarioBase, codigoErro, criarBase, criarUtilizador, erro, json, q } from './helpers'
 
 let db: PGlite
 const adm = <T = Record<string, unknown>>(sql: string, params: unknown[] = []) => admin<T>(db, sql, params)
@@ -224,6 +224,8 @@ describe('profissionais e casos', () => {
     const [r] = await q<{ role: string; organizacao: unknown }>(db, pro, 'select role, organizacao from public.perfis_utilizador')
     expect(r).toEqual({ role: 'profissional', organizacao: { nome: 'Centro de Saúde X', tipo: 'centro_saude' } })
     expect(await erro(db, pro, `update public.perfis_utilizador set organizacao = '{"nome":"Hospital de Santa Maria","tipo":"hospital"}' where id = $1`, [pro])).toMatch(/permission denied/)
+    // o nome e o telefone continuam editáveis (a restrição da organização só usa funções do sistema)
+    expect(await q(db, pro, "update public.perfis_utilizador set nome = 'Marta C.' where id = $1 returning nome", [pro])).toEqual([{ nome: 'Marta C.' }])
     // organização inválida no registo → nenhuma (fica "Serviço social" nos pedidos)
     const mal = await criarUtilizador(db, { email: 'registo-pro2@x.pt', roleRegisto: 'profissional', metadados: { organizacao: { nome: 'X'.repeat(500), tipo: 'hospital' } } })
     expect((await adm<{ o: unknown }>('select organizacao o from public.perfis_utilizador where id = $1', [mal]))[0]!.o).toBeNull()
@@ -472,4 +474,33 @@ describe('link de confirmação das vagas (sem sessão)', () => {
     const cols = await adm<{ c: string }>("select column_name c from information_schema.columns where table_name = 'instituicoes_publicas'")
     expect(cols.map((x) => x.c).filter((c) => c.includes('token'))).toEqual([])
   })
+})
+
+describe('migração sobre dados existentes (projeto já em uso antes do modelo de negócio)', () => {
+  it('pedidos que já avançaram ficam desbloqueados (sem mexer em updated_at); os por aceitar fecham-se e os avisos perdem os nomes', async () => {
+    const antiga = await criarBase({ ate: '20261012190700' })
+    const b = await cenarioBase(antiga, { sufixo: 'm' })
+    const perfil2 = (await q<{ id: string }>(antiga, b.familia, `insert into public.perfis_cuidados (nome, idade, grau, local_lat, local_lng)
+      values ('Rosa Antiga', 77, 'ligeira', 41.1, -8.6) returning id`))[0]!.id
+    const porAceitar = (await q<{ id: string }>(antiga, b.familia, 'select id from public.candidatar($1, $2, true)', [b.instituicao, b.perfil]))[0]!.id
+    const emAnalise = (await q<{ id: string }>(antiga, b.familia, 'select id from public.candidatar($1, $2, true)', [b.instituicao, perfil2]))[0]!.id
+    await q(antiga, b.lar, "select public.atualizar_estado_candidatura($1, 'em_analise')", [emAnalise])
+    const antes = await admin<{ id: string; u: string }>(antiga, 'select id, updated_at::text u from public.candidaturas order by id')
+
+    await aplicarMigracoes(antiga, '20261012190700')
+
+    const [d] = await admin<{ a: string | null; b: boolean }>(antiga, `select
+        (select desbloqueada_em::text from public.candidaturas where id = $1) a,
+        (select desbloqueada_em = (select e.created_at from public.candidatura_eventos e where e.candidatura_id = $2 and e.estado = 'em_analise')
+           from public.candidaturas where id = $2) b`, [porAceitar, emAnalise])
+    expect(d).toEqual({ a: null, b: true })
+    expect(await admin(antiga, 'select id, updated_at::text u from public.candidaturas order by id')).toEqual(antes)
+    expect((await q<{ id: string }>(antiga, b.lar, 'select id from public.candidaturas')).map((x) => x.id)).toEqual([emAnalise])
+    const avisos = await q<{ texto: string }>(antiga, b.lar, "select texto from public.notificacoes where titulo = 'Novo pedido de vaga' order by id")
+    expect(avisos.map((a) => a.texto)).toEqual([
+      'Pedido de vaga de uma família (pessoa de 80–84 anos). Abra o pedido para o aceitar e ver o contacto.',
+      'Famíliam enviou um pedido para Rosa Antiga (77 anos).',
+    ])
+    await antiga.close()
+  }, 120_000) // cria uma segunda base (todas as migrações) dentro do teste
 })

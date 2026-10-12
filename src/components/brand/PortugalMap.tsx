@@ -117,20 +117,17 @@ export const PortugalMap = memo(function PortugalMap({
 
       {pontos.map(({ lar, x, y, d }) => {
         const isAtivo = ativo === lar.id
-        const Comp = onSelect ? 'a' : 'g'
         return (
-          <Comp
+          // com onSelect, o ponto é só um atalho para rato: um <g> com clique (não uma ligação) — dentro de um role="img"
+          // não pode haver nada interativo (axe nested-interactive); o leitor de ecrã e o teclado usam as listas
+          <g
             key={lar.id}
             {...(onSelect
               ? {
-                  href: `#/lar/${lar.id}`,
-                  onClick: (e: React.MouseEvent) => {
-                    e.preventDefault()
-                    onSelect(lar)
-                  },
+                  onClick: () => onSelect(lar),
                   onMouseEnter: () => setHover(lar.id),
                   onMouseLeave: () => setHover(null),
-                  tabIndex: -1,
+                  className: 'cursor-pointer',
                   'aria-hidden': true,
                 }
               : {})}
@@ -148,7 +145,7 @@ export const PortugalMap = memo(function PortugalMap({
               stroke={dark ? '#000' : '#fff'}
               strokeWidth={isAtivo ? 2 : 1.2}
             />
-          </Comp>
+          </g>
         )
       })}
 

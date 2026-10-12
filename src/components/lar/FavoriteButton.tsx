@@ -10,7 +10,8 @@ export function FavoriteButton({ larId, larNome, variant = 'overlay', className 
   const fav = useFavorito(larId)
   const navigate = useNavigate()
   const location = useLocation()
-  if (user?.role === 'lar') return null
+  // os guardados vivem no painel da família: instituições e profissionais não os têm
+  if (user && user.role !== 'familia') return null
   const saved = Boolean(fav)
 
   const onClick = (e: React.MouseEvent) => {

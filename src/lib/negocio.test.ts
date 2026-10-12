@@ -34,9 +34,8 @@ describe('regras do modelo de negócio', () => {
   })
 
   it('o contacto só fica visível depois de o lar aceitar o pedido', () => {
-    expect(contactoVisivel({ estado: 'enviada' })).toBe(false)
-    expect(contactoVisivel({ estado: 'enviada', desbloqueadaEm: '2026-10-01T10:00:00Z' })).toBe(true)
-    expect(contactoVisivel({ estado: 'em_analise' })).toBe(true)
+    expect(contactoVisivel({})).toBe(false)
+    expect(contactoVisivel({ desbloqueadaEm: '2026-10-01T10:00:00Z' })).toBe(true)
   })
 
   it('a entrada conta até 12 meses depois do pedido', () => {
@@ -110,9 +109,21 @@ describe('fluxos (store)', () => {
     login(DEMO_PRO_EMAIL, DEMO_PASSWORD)
     confirmarEntradaFamilia(c.id, '2026-10-20')
     expect(entradaVerificada(cand(c.id))).toBe(true)
-    const r = avaliarLar(c.id, { nota: 4, texto: 'Bom acolhimento.', aspetos: { cuidados: 4, alimentacao: 4, instalacoes: 4, comunicacao: 4 } })
-    expect(r?.verificada).toBe(true)
-    expect(avaliarLar(c.id, { nota: 4, texto: 'outra', aspetos: { cuidados: 4, alimentacao: 4, instalacoes: 4, comunicacao: 4 } })).toBeNull()
+    // só famílias avaliam
+    expect(avaliarLar(c.id, { nota: 4, texto: 'Bom acolhimento.', aspetos: { cuidados: 4, alimentacao: 4, instalacoes: 4, comunicacao: 4 } })).toBeNull()
+  })
+
+  it('a família confirma a entrada e deixa uma avaliação verificada (uma só)', () => {
+    // a família de demonstração aceita uma vaga proposta pelo lar de demonstração
+    login(DEMO_LAR_EMAIL, DEMO_PASSWORD)
+    atualizarCandidatura('c-ana-1', 'vaga_proposta')
+    login('familia@exemplo.pt', DEMO_PASSWORD)
+    responderVaga('c-ana-1', true)
+    confirmarEntradaFamilia('c-ana-1', '2026-10-20')
+    expect(cand('c-ana-1').estado).toBe('admitida')
+    const aspetos = { cuidados: 4, alimentacao: 4, instalacoes: 4, comunicacao: 4 }
+    expect(avaliarLar('c-ana-1', { nota: 4, texto: 'Bom acolhimento.', aspetos })?.verificada).toBe(true)
+    expect(avaliarLar('c-ana-1', { nota: 4, texto: 'outra', aspetos })).toBeNull()
   })
 
   it('a família não pode confirmar a entrada de um pedido que não é seu', () => {

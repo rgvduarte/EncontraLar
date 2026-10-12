@@ -16,6 +16,7 @@ const COLS = [
     links: [
       { to: '/para-lares', label: 'Porquê o EncontraLar' },
       { to: '/registar?tipo=lar', label: 'Registar instituição' },
+      { to: '/profissionais', label: 'Profissionais de saúde' },
       { to: '/entrar', label: 'Entrar no painel' },
     ],
   },

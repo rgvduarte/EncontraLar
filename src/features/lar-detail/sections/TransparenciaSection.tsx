@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import { ChevronRight } from 'lucide-react'
 import type { Lar } from '@/types'
-import { SeloVerificado } from '@/components/brand/SeloVerificado'
+import { SeloNiveis, SeloVerificado } from '@/components/brand/SeloVerificado'
 import { dataLonga, tempoRelativo } from '@/lib/format'
 import { NATUREZA_LABEL } from '@/lib/labels'
 import { Reveal } from '@/components/motion'
@@ -39,12 +39,21 @@ export function TransparenciaSection({ lar }: { lar: Lar }) {
         </Reveal>
       </div>
 
+      {/* os três níveis (licença · visita · avaliações de quem entrou), do mais básico ao mais exigente */}
+      <Bloco delay={180} className="mt-10">
+        <SeloNiveis lar={lar} className="sm:flex-row sm:flex-wrap sm:gap-x-8" />
+      </Bloco>
+
       <Cascata as="dl" passo={80} className="mt-12 border-t border-line">
         <Linha termo="Licença de funcionamento" valor={v.licenca ? `n.º ${v.licenca}` : 'Por indicar'} />
         <Linha termo="Natureza" valor={`${NATUREZA_LABEL[lar.natureza]}${lar.acordoSS ? ', com acordo da Segurança Social' : ''}`} />
         <Linha termo="Última inspeção conhecida" valor={v.ultimaInspecao ? dataLonga(v.ultimaInspecao) : 'Sem informação'} />
         <Linha termo="Vagas atualizadas" valor={`${dataLonga(lar.atualizadoEm)} (${tempoRelativo(lar.atualizadoEm)})`} />
-        <Linha termo="Avaliações verificadas" valor={lar.reviews.length ? `${revVerificadas} de ${lar.reviews.length} publicadas` : 'Sem avaliações'} />
+        <Linha
+          termo="Avaliações verificadas"
+          nota="De famílias cuja entrada foi confirmada"
+          valor={lar.reviews.length ? `${revVerificadas} de ${lar.reviews.length} publicadas` : 'Sem avaliações'}
+        />
       </Cascata>
 
       <Bloco>

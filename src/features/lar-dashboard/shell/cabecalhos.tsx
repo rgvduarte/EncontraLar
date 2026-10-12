@@ -3,11 +3,11 @@ import type { Lar, User } from '@/types'
 import { extenso, saudacao, type Assuntos } from '../lib/derive'
 import { Troca } from '../shared/motion'
 
-export type Seccao = 'resumo' | 'vagas' | 'pedidos' | 'previsao' | 'ficha'
+export type Seccao = 'resumo' | 'vagas' | 'pedidos' | 'entradas' | 'previsao' | 'ficha'
 
 export function seccaoDoCaminho(pathname: string): Seccao {
   const s = pathname.replace(/^\/gestao\/?/, '').split('/')[0]
-  return s === 'vagas' || s === 'pedidos' || s === 'previsao' || s === 'ficha' ? s : 'resumo'
+  return s === 'vagas' || s === 'pedidos' || s === 'entradas' || s === 'previsao' || s === 'ficha' ? s : 'resumo'
 }
 
 interface Cabecalho {
@@ -69,8 +69,15 @@ function textos(seccao: Seccao, lar: Lar, user: User | null, a: Assuntos, passos
       return {
         eyebrow,
         title: 'Pedidos',
-        subtitle: 'Cada pedido chega com o perfil e a compatibilidade já verificados.',
+        subtitle: 'Cada pedido chega com o resumo do perfil e a compatibilidade já verificados.',
         doc: 'Pedidos das famílias',
+      }
+    case 'entradas':
+      return {
+        eyebrow,
+        title: 'Entradas',
+        subtitle: 'Quem entrou através do EncontraLar, com as confirmações da casa e da família.',
+        doc: 'Entradas',
       }
     case 'previsao':
       return {

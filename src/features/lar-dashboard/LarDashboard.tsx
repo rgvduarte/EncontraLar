@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router'
-import { BarChart3, Building2, FileText, Inbox, LayoutGrid, SlidersHorizontal } from 'lucide-react'
+import { BarChart3, Building2, DoorOpen, FileText, Inbox, LayoutGrid, SlidersHorizontal } from 'lucide-react'
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell'
 import { ButtonLink } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/misc'
@@ -16,6 +16,7 @@ import VagasPage from './vagas/VagasPage'
 import PedidosPage from './pedidos/PedidosPage'
 import PrevisaoPage from './previsao/PrevisaoPage'
 import FichaPage from './ficha/FichaPage'
+import EntradasPage from './entradas/EntradasPage'
 
 /**
  * Painel da instituição (/gestao/*).
@@ -56,7 +57,9 @@ export default function LarDashboard() {
   const nav: DashboardNavItem[] = [
     { to: '/gestao', label: 'Resumo', icon: LayoutGrid, end: true },
     { to: '/gestao/vagas', label: 'Vagas', icon: SlidersHorizontal },
-    { to: '/gestao/pedidos', label: 'Pedidos', icon: Inbox, badge: porTratar },
+    { to: '/gestao/pedidos', label: 'Pedidos', icon: Inbox, badge: porTratar, badgeLabel: 'por tratar' },
+    // no telemóvel a barra de abas tem 5 separadores fixos: o Resumo tem um atalho para as Entradas
+    { to: '/gestao/entradas', label: 'Entradas', icon: DoorOpen },
     { to: '/gestao/previsao', label: 'Previsão', icon: BarChart3 },
     { to: '/gestao/ficha', label: 'Ficha pública', icon: FileText },
   ]
@@ -75,6 +78,7 @@ export default function LarDashboard() {
           <Route index element={<ResumoPage lar={lar} cands={cands} user={user} n={n} />} />
           <Route path="vagas" element={<VagasPage lar={lar} />} />
           <Route path="pedidos" element={<PedidosPage lar={lar} cands={cands} />} />
+          <Route path="entradas" element={<EntradasPage lar={lar} cands={cands} />} />
           <Route path="previsao" element={<PrevisaoPage lar={lar} n={n} />} />
           <Route path="ficha" element={<FichaPage lar={lar} />} />
           <Route path="*" element={<Navigate to="/gestao" replace />} />

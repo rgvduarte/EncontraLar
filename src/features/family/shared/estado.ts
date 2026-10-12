@@ -3,6 +3,7 @@
  */
 import type { Candidatura, EstadoCandidatura, Lar, PerfilIdoso, RoomOffer } from '@/types'
 import { estimarEspera, type EstimativaEspera } from '@/lib/forecast'
+import { dataLocal } from '@/lib/format'
 import { diaPorExtenso } from './text'
 
 /** Cor do ponto de estado — sempre acompanhado do texto do estado. Só os momentos-chave têm cor. */
@@ -18,22 +19,52 @@ export const ESTADO_DOT: Record<EstadoCandidatura, string> = {
 }
 
 export const TERMINADOS: EstadoCandidatura[] = ['recusada', 'cancelada']
+/** Não terminado: inclui "admitida" (fim feliz), que não vai para "Terminados". */
 export const isAtiva = (c: Pick<Candidatura, 'estado'>) => !TERMINADOS.includes(c.estado)
+/** Ainda à procura: ativo e sem entrada. */
+export const emCurso = (c: Pick<Candidatura, 'estado'>) => isAtiva(c) && c.estado !== 'admitida'
 
-const PRIORIDADE: Record<EstadoCandidatura, number> = {
-  vaga_proposta: 0,
-  aceite: 1,
-  lista_espera: 2,
-  em_analise: 3,
-  enviada: 4,
-  admitida: 5,
-  recusada: 6,
-  cancelada: 7,
+/** A família já confirmou a entrada ("Já entrou"). */
+export const familiaConfirmou = (c: Pick<Candidatura, 'entrada'>) => Boolean(c.entrada?.confirmadaFamiliaEm)
+/** A instituição registou a entrada e falta a confirmação da família. */
+export const entradaPorConfirmar = (c: Pick<Candidatura, 'estado' | 'entrada'>) =>
+  c.estado === 'admitida' && Boolean(c.entrada?.confirmadaLarEm) && !c.entrada?.confirmadaFamiliaEm
+
+/**
+ * Ordem no painel: o que pede resposta primeiro (vaga proposta, entrada registada por confirmar),
+ * depois a vaga aceite e os pedidos à espera. A entrada já confirmada é um fim feliz: fica no fim
+ * dos ativos, sem insistir; os terminados vêm por último.
+ */
+function prioridade(c: Candidatura): number {
+  switch (c.estado) {
+    case 'vaga_proposta':
+      return 0
+    case 'admitida':
+      return entradaPorConfirmar(c) ? 1 : 6
+    case 'aceite':
+      return 2
+    case 'lista_espera':
+      return 3
+    case 'em_analise':
+      return 4
+    case 'enviada':
+      return 5
+    case 'recusada':
+      return 7
+    case 'cancelada':
+      return 8
+  }
 }
 
-/** Vagas propostas primeiro; depois por atualização mais recente. */
+/** Primeiro o que pede resposta; depois por atualização mais recente. */
 export function ordenarPedidos(cs: Candidatura[]): Candidatura[] {
-  return [...cs].sort((a, b) => PRIORIDADE[a.estado] - PRIORIDADE[b.estado] || b.atualizadaEm.localeCompare(a.atualizadaEm))
+  return [...cs].sort((a, b) => prioridade(a) - prioridade(b) || b.atualizadaEm.localeCompare(a.atualizadaEm))
+}
+
+/** "9 de outubro" (com o ano quando não é o atual) a partir de "AAAA-MM-DD". */
+export function diaMes(ymd: string, agora = new Date()): string {
+  const d = dataLocal(ymd)
+  return d.toLocaleDateString('pt-PT', d.getFullYear() === agora.getFullYear() ? { day: 'numeric', month: 'long' } : { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export const horaDe = (iso: string) => new Date(iso).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
@@ -42,7 +73,7 @@ export const horaDe = (iso: string) => new Date(iso).toLocaleTimeString('pt-PT',
 export function proximoPasso(c: Candidatura): string | null {
   switch (c.estado) {
     case 'enviada':
-      return 'A instituição analisa o perfil e pode telefonar-lhe.'
+      return 'Se a instituição aceitar o pedido, passa a ver os seus contactos e pode telefonar-lhe.'
     case 'em_analise':
       return 'A instituição decide se inscreve na lista de espera ou se propõe já uma vaga.'
     case 'lista_espera':
@@ -53,6 +84,8 @@ export function proximoPasso(c: Candidatura): string | null {
         : 'Responder à instituição o mais depressa possível.'
     case 'aceite':
       return 'Combinar com a instituição o dia de entrada e a documentação.'
+    case 'admitida':
+      return entradaPorConfirmar(c) ? 'Confirmar a entrada aqui no painel.' : null
     default:
       return null
   }

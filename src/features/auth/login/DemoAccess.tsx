@@ -4,7 +4,7 @@ import type { Role, User } from '@/types'
 import { loginDemo } from '@/lib/store'
 import { prefersReducedMotion, useInView } from '@/lib/motion'
 import { toast } from '@/components/ui/Toast'
-import { DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_PASSWORD } from '@/data/seed'
+import { DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_PASSWORD, DEMO_PRO_EMAIL } from '@/data/seed'
 import { cn } from '@/lib/cn'
 import { InlineSpinner } from '../shared/InlineSpinner'
 import { Appear } from '../shared/Appear'
@@ -23,6 +23,12 @@ const CONTAS: { role: Role; titulo: string; descricao: string; email: string }[]
     titulo: 'Entrar como instituição',
     descricao: 'Vagas, pedidos recebidos e previsão.',
     email: DEMO_LAR_EMAIL,
+  },
+  {
+    role: 'profissional',
+    titulo: 'Entrar como assistente social',
+    descricao: 'Casos com alta prevista, enviados a várias instituições.',
+    email: DEMO_PRO_EMAIL,
   },
 ]
 
@@ -103,7 +109,7 @@ function Divisoria() {
   )
 }
 
-/** "ou experimente sem conta": duas contas fictícias, um toque e está dentro. */
+/** "ou experimente sem conta": três contas fictícias (família, instituição, assistente social), um toque e está dentro. */
 export function DemoAccess({
   onSuccess,
   onPending,

@@ -6,6 +6,8 @@ import { TextareaField } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/components/ui/Toast'
 import { atualizarCandidatura } from '@/lib/store'
+import { origemDe } from '@/lib/negocio'
+import { bloqueado, encaminhadoPor, nomeContacto, pessoaAnonima } from '../shared/pedidoBits'
 import type { Acao } from './acoes'
 
 const MAX_NOTA = 400
@@ -33,7 +35,7 @@ export function EstadoModal({ c, acao, open, onClose }: { c: Candidatura; acao: 
       open={open}
       onClose={onClose}
       title={acao.titulo}
-      description={`Pedido de ${c.contacto.nome}`}
+      description={bloqueado(c) ? `${pessoaAnonima(c)} · ${encaminhadoPor(c) ?? 'pedido de uma família'}` : `Pedido de ${nomeContacto(c)}`}
       footer={
         <>
           <Button variant="subtle" onClick={onClose} className="max-sm:min-h-13">
@@ -69,9 +71,9 @@ export function EstadoModal({ c, acao, open, onClose }: { c: Candidatura; acao: 
         )}
 
         <TextareaField
-          label="Nota para a família"
+          label={origemDe(c) === 'profissional' ? 'Nota para quem encaminhou' : 'Nota para a família'}
           optional
-          hint={`Aparece na notificação que ${c.contacto.nome.split(' ')[0]} recebe.`}
+          hint={`Aparece na notificação que ${bloqueado(c) ? 'quem fez o pedido' : nomeContacto(c).split(' ')[0]} recebe.`}
           rows={3}
           maxLength={MAX_NOTA}
           value={nota}

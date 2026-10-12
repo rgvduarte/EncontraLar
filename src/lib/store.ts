@@ -1030,7 +1030,8 @@ const relacaoReview = (relacao: string) => (relacao === 'Eu próprio(a)' ? 'Resi
 export function avaliarLar(candidaturaId: string, input: AvaliacaoInput): Review | null {
   const user = getCurrentUser()
   const c = db.candidaturas.find((x) => x.id === candidaturaId)
-  if (!user || !c || c.userId !== user.id || !c.entrada?.confirmadaFamiliaEm) return null
+  // só famílias avaliam (um profissional confirma a entrada em nome da pessoa, mas não avalia)
+  if (!user || user.role !== 'familia' || !c || c.userId !== user.id || !c.entrada?.confirmadaFamiliaEm) return null
   const lar = db.lares.find((l) => l.id === c.larId)
   const id = `r-${c.id}`
   if (!lar || lar.reviews.some((r) => r.id === id)) return null

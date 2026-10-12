@@ -765,6 +765,8 @@ export function createSeed(agora = Date.now()): DB {
       atualizadaEm: historico[historico.length - 1]!.data,
       historico,
       entrada,
+      // fazer avançar o pedido equivale a aceitá-lo (data do primeiro passo depois de "enviada")
+      desbloqueadaEm: o.estado !== 'enviada' ? historico[1]?.data : undefined,
     })
   })
 
@@ -797,6 +799,7 @@ export function createSeed(agora = Date.now()): DB {
       contacto: { nome: 'Ana Ferreira', email: DEMO_FAMILIA_EMAIL, telefone: '912 000 101' },
       estado: 'lista_espera',
       posicao: 3,
+      desbloqueadaEm: iso(17),
       mensagem: 'A minha mãe tem Alzheimer em fase inicial e gostaríamos muito que pudesse ficar perto de nós, em Paranhos.',
       criadaEm: iso(19),
       atualizadaEm: iso(15),
@@ -814,6 +817,7 @@ export function createSeed(agora = Date.now()): DB {
       perfil: maria,
       contacto: { nome: 'Ana Ferreira', email: DEMO_FAMILIA_EMAIL, telefone: '912 000 101' },
       estado: 'em_analise',
+      desbloqueadaEm: iso(1),
       mensagem: 'Gostaria de visitar as instalações com o meu irmão.',
       visita: { data: futuro(5), hora: '11:00', estado: 'confirmada' },
       criadaEm: iso(6),

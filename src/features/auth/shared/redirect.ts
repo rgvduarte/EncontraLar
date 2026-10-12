@@ -5,6 +5,7 @@ import { painelPath } from '@/components/layout/Header'
 const AREA: { prefix: string; role: Role }[] = [
   { prefix: '/familia', role: 'familia' },
   { prefix: '/gestao', role: 'lar' },
+  { prefix: '/casos', role: 'profissional' },
 ]
 
 /** Só aceitamos caminhos internos ("/…"), nunca "//…" nem "/\…" (que o navegador trataria como outro domínio). */
@@ -35,6 +36,20 @@ export function voltarPublico(voltar: string | null): string | null {
   return roleDoCaminho(voltar) ? null : voltar
 }
 
+/** Páginas de apresentação que não são um destino depois de criar a conta: o painel serve melhor. */
+const APRESENTACAO = ['/profissionais', '/para-lares']
+
+/**
+ * Depois de criar uma conta profissional: o `voltar` quando é da área dos casos (ex.: `/casos/novo?lar=x`)
+ * ou uma página pública com algo a retomar (ex.: a ficha de um lar); caso contrário, a lista de casos.
+ */
+export function destinoAposRegistoProfissional(voltar: string | null): string {
+  if (roleDoCaminho(voltar) === 'profissional') return voltar!
+  const publico = voltarPublico(voltar)
+  if (!publico || APRESENTACAO.includes(publico.split(/[?#]/)[0]!)) return painelPath('profissional')
+  return publico
+}
+
 /** Tipo de conta exigido pelo caminho (ou null se for público). */
 export function roleDoCaminho(path: string | null): Role | null {
   if (!isInternalPath(path)) return null
@@ -54,6 +69,9 @@ const DESTINOS: [RegExp, string][] = [
   [/^\/gestao\/previsao/, 'a previsão de vagas'],
   [/^\/gestao\/ficha/, 'a ficha da instituição'],
   [/^\/gestao/, 'o painel da instituição'],
+  [/^\/casos\/novo/, 'um caso novo'],
+  [/^\/casos\/[^/?#]+/, 'a ficha do caso'],
+  [/^\/casos/, 'os seus casos'],
   [/^\/encontrar/, 'o questionário "Ajuda-me a escolher"'],
   [/^\/pesquisa/, 'a pesquisa que estava a fazer'],
 ]

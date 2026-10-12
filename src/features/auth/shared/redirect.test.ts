@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { Lar } from '@/types'
-import { descreverDestino, destinoAposEntrar, intencaoDe, motivoDoDestino, voltarPublico } from './redirect'
+import {
+  descreverDestino,
+  destinoAposEntrar,
+  destinoAposRegistoProfissional,
+  intencaoDe,
+  motivoDoDestino,
+  roleDoCaminho,
+  voltarPublico,
+} from './redirect'
 
 const lares = [
   { id: 'lar-jardins-do-douro', nome: 'Casa de Repouso Jardins do Douro' },
@@ -36,5 +44,39 @@ describe('voltar com intenção', () => {
     expect(motivoDoDestino('/lar/lar-jardins-do-douro', lares)).toBe('abrir a ficha da Casa de Repouso Jardins do Douro')
     expect(motivoDoDestino('/familia/pedidos', lares)).toBe('abrir os seus pedidos de vaga')
     expect(descreverDestino('/', lares)).toBeNull()
+  })
+})
+
+describe('área dos casos (profissional)', () => {
+  it('só um profissional segue para um caso', () => {
+    expect(roleDoCaminho('/casos/caso-1')).toBe('profissional')
+    expect(destinoAposEntrar('/casos/caso-1', 'profissional')).toBe('/casos/caso-1')
+    expect(destinoAposEntrar('/casos/novo?lar=lar-sao-bento', 'profissional')).toBe('/casos/novo?lar=lar-sao-bento')
+    expect(destinoAposEntrar('/casos/caso-1', 'familia')).toBe('/familia')
+    expect(destinoAposEntrar('/casos', 'lar')).toBe('/gestao')
+    expect(voltarPublico('/casos/caso-1')).toBeNull()
+  })
+
+  it('leva o profissional aos casos, por omissão', () => {
+    expect(destinoAposEntrar(null, 'profissional')).toBe('/casos')
+    expect(destinoAposEntrar('/familia/pedidos', 'profissional')).toBe('/casos')
+    expect(destinoAposEntrar('/gestao', 'profissional')).toBe('/casos')
+  })
+
+  it('depois do registo profissional', () => {
+    expect(destinoAposRegistoProfissional(null)).toBe('/casos')
+    expect(destinoAposRegistoProfissional('/')).toBe('/casos')
+    expect(destinoAposRegistoProfissional('/profissionais')).toBe('/casos')
+    expect(destinoAposRegistoProfissional('/registar?tipo=profissional')).toBe('/casos')
+    expect(destinoAposRegistoProfissional('/gestao/pedidos')).toBe('/casos')
+    expect(destinoAposRegistoProfissional('//exemplo.com')).toBe('/casos')
+    expect(destinoAposRegistoProfissional('/casos/caso-1')).toBe('/casos/caso-1')
+    expect(destinoAposRegistoProfissional('/lar/lar-sao-bento?acao=pedir')).toBe('/lar/lar-sao-bento?acao=pedir')
+  })
+
+  it('descreve o destino', () => {
+    expect(motivoDoDestino('/casos/caso-1', lares)).toBe('abrir a ficha do caso')
+    expect(motivoDoDestino('/casos/novo?lar=lar-sao-bento', lares)).toBe('abrir um caso novo')
+    expect(motivoDoDestino('/casos', lares)).toBe('abrir os seus casos')
   })
 })

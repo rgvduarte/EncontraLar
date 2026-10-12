@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
 import { loginDemo } from '@/lib/store'
@@ -30,7 +31,13 @@ export function AuthGate({ lar, comVisita = false }: { lar: Lar; comVisita?: boo
           </li>
         ))}
       </ul>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <p className="mt-5 text-sm text-ink-mute">
+        Trabalha num serviço social? Os pedidos seguem a partir de um caso.{' '}
+        <Link to="/profissionais" className="text-terra-600 hover:underline">
+          Conta para profissionais
+        </Link>
+      </p>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <p className="text-sm text-ink-mute">Só quer experimentar o protótipo?</p>
         <Button variant="ghost" onClick={experimentar} className="-mx-4">
           Usar a conta de demonstração

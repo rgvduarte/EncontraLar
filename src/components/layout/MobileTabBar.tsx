@@ -5,11 +5,13 @@ import {
   CircleUserRound,
   Compass,
   FileText,
+  FolderOpen,
   Heart,
   House,
   Inbox,
   LayoutGrid,
   Map,
+  SquarePlus,
   SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
@@ -31,8 +33,11 @@ interface Tab {
   ativo?: (pathname: string) => boolean
 }
 
-/** Rotas de fluxo focado (têm a sua própria barra de ação no fundo) — sem barra de abas. */
-const ESCONDER = [/^\/lar\//, /^\/encontrar/, /^\/entrar/, /^\/registar/]
+/**
+ * Rotas de fluxo focado (têm a sua própria barra de ação no fundo) — sem barra de abas.
+ * /confirmar/:token é o link de confirmação de vagas, aberto sem sessão a partir de um SMS ou email: um só ecrã, sem navegação.
+ */
+const ESCONDER = [/^\/lar\//, /^\/encontrar/, /^\/entrar/, /^\/registar/, /^\/confirmar(\/|$)/]
 
 export function useTabBarVisible() {
   const { pathname } = useLocation()
@@ -79,7 +84,16 @@ export function MobileTabBar() {
   if (!visible) return null
 
   const tabs: Tab[] =
-    user?.role === 'lar'
+    user?.role === 'profissional'
+      ? [
+          // Casos fica ativo na lista e no detalhe de um caso, mas não em "Novo caso" (que tem separador próprio)
+          { to: '/casos', label: 'Casos', icon: FolderOpen, end: true, ativo: (p: string) => /^\/casos(\/|$)/.test(p) && !/^\/casos\/novo(\/|$)/.test(p) },
+          { to: '/casos/novo', label: 'Novo caso', icon: SquarePlus },
+          // a pesquisa serve para escolher instituições a quem enviar o caso: volta à última desta sessão
+          { to: ultimaPesquisa(), label: 'Mapa', icon: Map },
+          { to: '/', label: 'Início', icon: House, end: true },
+        ]
+      : user?.role === 'lar'
       ? [
           { to: '/gestao', label: 'Resumo', icon: LayoutGrid, end: true },
           { to: '/gestao/vagas', label: 'Vagas', icon: SlidersHorizontal },
@@ -109,7 +123,8 @@ export function MobileTabBar() {
       data-fundo-do-menu
       className="fixed inset-x-0 bottom-0 z-[1000] border-t border-black/[0.08] bg-white/88 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 lg:hidden"
     >
-      <ul className="mx-auto grid h-[4.25rem] max-w-xl grid-cols-5">
+      {/* uma coluna por separador (5 para famílias e instituições, 4 para profissionais) */}
+      <ul className="mx-auto grid h-[4.25rem] max-w-xl" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((t) => {
           const raiz = t.to.split('?')[0]!
           // um só estado ativo (visual e aria-current), calculado uma vez

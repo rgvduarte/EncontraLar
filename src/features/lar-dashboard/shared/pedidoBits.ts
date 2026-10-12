@@ -1,6 +1,7 @@
 import type { Candidatura, Urgencia } from '@/types'
 import { CUIDADO_FRASE, GRAU_LABEL } from '@/lib/labels'
-import { euro } from '@/lib/format'
+import { dataLocal, euro } from '@/lib/format'
+import { contactoVisivel, diasAteAlta, faixaEtaria, origemDe } from '@/lib/negocio'
 import { minuscula, nomeQuarto } from '../lib/derive'
 import { capitalizar } from './ui'
 
@@ -12,8 +13,48 @@ export const URGENCIA_CURTA: Record<Urgencia, string> = {
   planeamento: 'A planear com tempo',
 }
 
+// ————————————————————————————————————————— privacidade em duas fases (RGPD art. 9.º)
+
+/** Pedido novo ainda não aceite: o lar vê só o resumo anónimo (sem nome, contacto, notas nem mensagem). */
+export const bloqueado = (c: Candidatura) => !contactoVisivel(c)
+
+/** "Pessoa de 80–84 anos" — como se nomeia um pedido ainda não aceite. */
+export const pessoaAnonima = (c: Candidatura) => `Pessoa de ${faixaEtaria(c.perfil.idade)} anos`
+
+/** "Albano Teixeira, 83 anos" ou, antes de aceitar, "Pessoa de 80–84 anos". */
+export const nomePedido = (c: Candidatura) => (bloqueado(c) ? pessoaAnonima(c) : `${c.perfil.nome}, ${c.perfil.idade} anos`)
+
+/** Nome de quem fez o pedido sem a organização ("Marta Correia (Hospital …)" → "Marta Correia"). */
+export const nomeContacto = (c: Candidatura) => c.contacto.nome.replace(/\s*\(.*\)\s*$/, '')
+
+/** A quem se escreve na nota: o nome de quem fez o pedido ou, antes de aceitar, "quem fez o pedido". */
+export const quemPediu = (c: Candidatura) => (bloqueado(c) ? 'quem fez o pedido' : nomeContacto(c))
+
+/** "Encaminhado por Hospital … · Serviço Social" (encaminhamentos de profissionais) ou null. */
+export const encaminhadoPor = (c: Candidatura) =>
+  origemDe(c) === 'profissional' && c.encaminhamento ? `Encaminhado por ${c.encaminhamento.organizacao}` : null
+
+/** "Alta em 4 dias" · "Alta amanhã" · "Alta hoje" · "Alta prevista: 2 de outubro" (já passou). */
+export function altaTexto(altaPrevista: string | undefined, agora = Date.now()): { texto: string; dias: number } | null {
+  const d = diasAteAlta(altaPrevista, agora)
+  if (d == null || !altaPrevista) return null
+  if (d === 0) return { texto: 'Alta hoje', dias: d }
+  if (d === 1) return { texto: 'Alta amanhã', dias: d }
+  if (d > 1) return { texto: `Alta em ${d} dias`, dias: d }
+  return { texto: `Alta prevista: ${diaCurto(altaPrevista, agora)}`, dias: d }
+}
+
+/** "2 de outubro" (com o ano, se não for o ano corrente) a partir de "AAAA-MM-DD". */
+export function diaCurto(ymd: string, agora = Date.now()): string {
+  const d = dataLocal(ymd)
+  const outroAno = d.getFullYear() !== new Date(agora).getFullYear()
+  return d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', ...(outroAno ? { year: 'numeric' } : {}) })
+}
+
 /** "Pai de Rui Sousa" — relação do perfil com quem fez o pedido. */
 export function relacaoTexto(c: Candidatura): string {
+  if (bloqueado(c)) return encaminhadoPor(c) ?? 'Pedido de uma família'
+  if (origemDe(c) === 'profissional') return `Pedido feito por ${nomeContacto(c)}`
   const r = c.perfil.relacao
   if (!r || r === 'Eu próprio(a)') return 'Pedido feito pela própria pessoa'
   return `${r} de ${c.contacto.nome}`

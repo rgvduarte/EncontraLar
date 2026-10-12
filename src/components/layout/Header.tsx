@@ -8,10 +8,12 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  FolderOpen,
   Info,
   LayoutDashboard,
   LogOut,
   Search,
+  type LucideIcon,
 } from 'lucide-react'
 import { Logo } from './Logo'
 import { terminarSessao } from './RequireAuth'
@@ -20,17 +22,30 @@ import { ButtonLink, buttonClasses } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/misc'
 import { toast } from '@/components/ui/Toast'
 import { useLenis } from '@/components/motion/SmoothScroll'
-import { loginDemo, marcarNotificacaoLida, marcarTodasLidas, useCurrentUser, useLares, useNotificacoes } from '@/lib/store'
+import { getDB, loginDemo, marcarNotificacaoLida, marcarTodasLidas, useCurrentUser, useLares, useNotificacoes } from '@/lib/store'
 import { useDismiss, useMediaQuery } from '@/lib/hooks'
 import { tempoRelativo } from '@/lib/format'
 import { vagaParaNovos } from '@/lib/forecast'
 import { prefersReducedMotion } from '@/lib/motion'
 import { cn } from '@/lib/cn'
-import { DEMO_LAR_EMAIL } from '@/data/seed'
-import type { Distrito, Notificacao, Role } from '@/types'
+import { DEMO_LAR_EMAIL, DEMO_PRO_EMAIL } from '@/data/seed'
+import type { Distrito, Notificacao, Role, User } from '@/types'
 
 export function painelPath(role: Role) {
   return role === 'lar' ? '/gestao' : role === 'profissional' ? '/casos' : '/familia'
+}
+
+/** Atalho para o painel de cada tipo de conta (menu da conta e menu móvel). */
+const PAINEL: Record<Role, { label: string; icon: LucideIcon }> = {
+  familia: { label: 'O meu painel', icon: LayoutDashboard },
+  lar: { label: 'Painel da instituição', icon: LayoutDashboard },
+  profissional: { label: 'Os meus casos', icon: FolderOpen },
+}
+
+/** "Hospital de Vale Formoso · Serviço Social" (só contas de profissional). */
+function organizacaoDe(user: User): string | undefined {
+  const o = user.organizacao
+  return o ? [o.nome, o.servico].filter(Boolean).join(' · ') : undefined
 }
 
 // ————————————————————————————————————————— conteúdo dos menus
@@ -40,7 +55,12 @@ interface MenuLink {
   label: string
   /** texto secundário (ex.: contagem) */
   meta?: string
-  action?: 'demo-lar'
+  /** ação em vez de ligação: entrar na conta de demonstração (instituição ou assistente social) */
+  action?: 'demo-lar' | 'demo-pro'
+  /** só para quem não tem sessão ("Experimentar como assistente social") */
+  soSemSessao?: boolean
+  /** esconder de contas que não são de família (ex.: comparar guardados, que vive no painel da família) */
+  soFamilia?: boolean
 }
 interface MenuColumn {
   titulo: string
@@ -59,6 +79,8 @@ const DISTRITOS_MENU: Distrito[] = ['Porto', 'Lisboa', 'Braga', 'Coimbra', 'Set�
 
 function useMenus(): MenuDef[] {
   const lares = useLares()
+  const user = useCurrentUser()
+  const papel = user?.role ?? null
   return useMemo(() => {
     // o mesmo critério do filtro "Com vaga agora" da pesquisa: lugar livre para quem pede hoje
     const comVaga = lares.filter((l) => vagaParaNovos(l)).length
@@ -107,7 +129,7 @@ function useMenus(): MenuDef[] {
             big: true,
             links: [
               { to: '/encontrar', label: 'Responder a 6 perguntas' },
-              { to: '/familia/guardados', label: 'Comparar guardados' },
+              { to: '/familia/guardados', label: 'Comparar guardados', soFamilia: true },
             ],
           },
           {
@@ -158,11 +180,25 @@ function useMenus(): MenuDef[] {
               { to: '/gestao', label: 'Ver painel de demonstração', action: 'demo-lar' },
             ],
           },
+          {
+            titulo: 'Hospitais e serviço social',
+            links: [
+              { to: '/profissionais', label: 'Profissionais de saúde' },
+              { to: '/casos', label: 'Experimentar como assistente social', action: 'demo-pro', soSemSessao: true },
+            ],
+          },
           { titulo: 'Já tem conta?', links: [{ to: '/entrar', label: 'Entrar no painel' }] },
         ],
       },
     ]
-  }, [lares])
+      .map((m) => ({
+        ...m,
+        columns: m.columns.map((c) => ({
+          ...c,
+          links: c.links.filter((l: MenuLink) => !(l.soSemSessao && papel) && !(l.soFamilia && papel && papel !== 'familia')),
+        })),
+      }))
+  }, [lares, papel])
 }
 
 // ————————————————————————————————————————— notificações e conta
@@ -174,14 +210,23 @@ const NOTIF_ICON: Record<Notificacao['tipo'], typeof Bell> = {
   sistema: Info,
 }
 
-/** As notificações do lar apontam para /gestao: com um pedido associado, abre-se o próprio pedido. */
-function destinoDaNotificacao(n: Notificacao): string | undefined {
+/**
+ * Para onde leva uma notificação. As do lar apontam para /gestao: com um pedido associado, abre-se o próprio pedido.
+ * As de um profissional apontam para o caso (/casos/<id>); um aviso que aponte para outro painel (ex.: /familia)
+ * leva ao caso do pedido, ou à lista de casos — nunca a uma área de outro tipo de conta.
+ */
+function destinoDaNotificacao(n: Notificacao, role: Role | undefined): string | undefined {
   if (n.link === '/gestao' && n.candidaturaId) return `/gestao/pedidos?pedido=${encodeURIComponent(n.candidaturaId)}`
+  if (role === 'profissional' && n.link && /^\/(familia|gestao)(\/|\?|$)/.test(n.link)) {
+    const casoId = n.candidaturaId ? getDB().candidaturas.find((c) => c.id === n.candidaturaId)?.encaminhamento?.casoId : undefined
+    return casoId ? `/casos/${encodeURIComponent(casoId)}` : '/casos'
+  }
   return n.link
 }
 
 function NotificationBell() {
   const notifs = useNotificacoes()
+  const user = useCurrentUser()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
@@ -230,7 +275,7 @@ function NotificationBell() {
                       onClick={() => {
                         marcarNotificacaoLida(n.id)
                         setOpen(false)
-                        const destino = destinoDaNotificacao(n)
+                        const destino = destinoDaNotificacao(n, user?.role)
                         if (destino) navigate(destino)
                       }}
                       className="flex w-full gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-sand"
@@ -265,6 +310,8 @@ function UserMenu() {
   const navigate = useNavigate()
   const close = useCallback(() => setOpen(false), [])
   useDismiss(open, ref, close)
+  const painel = PAINEL[user.role]
+  const org = organizacaoDe(user)
   return (
     // Esc dentro do menu: o foco volta ao botão da conta
     <div ref={ref} className="relative" onKeyDown={(e) => e.key === 'Escape' && open && ref.current?.querySelector('button')?.focus()}>
@@ -284,11 +331,12 @@ function UserMenu() {
         <div className="absolute right-0 z-[1100] mt-2 w-72 origin-top-right animate-pop-in overflow-hidden rounded-[1.5rem] bg-white/95 p-2 shadow-lift ring-1 ring-black/5 backdrop-blur-2xl">
           <div className="px-4 py-3">
             <p className="font-semibold">{user.nome}</p>
+            {org && <p className="text-sm text-ink-soft">{org}</p>}
             <p className="truncate text-sm text-ink-mute">{user.email}</p>
           </div>
           <Link to={painelPath(user.role)} onClick={() => setOpen(false)} className="flex min-h-12 items-center gap-3 rounded-2xl px-4 hover:bg-sand">
-            <LayoutDashboard aria-hidden className="size-5 text-ink-mute" />
-            {user.role === 'lar' ? 'Painel da instituição' : 'O meu painel'}
+            <painel.icon aria-hidden className="size-5 text-ink-mute" />
+            {painel.label}
           </Link>
           <button
             type="button"
@@ -502,6 +550,24 @@ export function Header() {
       }
       return
     }
+    if (l.action === 'demo-pro') {
+      // a mesma regra: nunca trocar às escondidas a sessão de outra pessoa
+      if (!user) {
+        const r = loginDemo('profissional')
+        if (!r.ok) {
+          toast.error('Não foi possível abrir a conta de demonstração', 'Experimente repor os dados de demonstração no rodapé.')
+          navigate('/profissionais')
+          return
+        }
+        toast.success('Entrou como assistente social (demonstração)', 'Os casos e as pessoas são fictícios. Pode explorar à vontade.')
+        navigate('/casos')
+      } else if (user.email === DEMO_PRO_EMAIL) {
+        navigate('/casos')
+      } else {
+        navigate('/profissionais')
+      }
+      return
+    }
     navigate(l.to)
   }
 
@@ -577,6 +643,8 @@ export function Header() {
 
   const menuAtivo = menus.find((m) => m.id === aberto)
   const visivel = aberto ?? ultimo
+  const orgUser = user ? organizacaoDe(user) : undefined
+  const PainelIcon = PAINEL[user?.role ?? 'familia'].icon
 
   return (
     <>
@@ -795,10 +863,11 @@ export function Header() {
               <>
                 <p className="text-sm text-ink-mute">
                   Sessão iniciada como <span className="font-medium text-ink">{user.nome}</span>
+                  {orgUser && <span className="mt-0.5 block text-ink-soft">{orgUser}</span>}
                 </p>
                 <Link to={painelPath(user.role)} onClick={fecharMenus} className={buttonClasses('primary', 'lg', 'w-full')}>
-                  <LayoutDashboard aria-hidden />
-                  {user.role === 'lar' ? 'Painel da instituição' : 'O meu painel'}
+                  <PainelIcon aria-hidden />
+                  {PAINEL[user.role].label}
                 </Link>
                 <button
                   type="button"

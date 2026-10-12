@@ -433,6 +433,20 @@ begin
 end;
 $$;
 
+-- Avisos já enviados ao lar sobre pedidos que, com esta migração, ficam por aceitar: passam a ter o
+-- texto sem identificação dos avisos novos (o lar deixa de ler a linha; o aviso não pode ficar a contar).
+update public.notificacoes n
+   set texto = case n.titulo
+         when 'Pedido de visita' then private.maiuscula(private.texto_pedido_anonimo(c)) || ' pediu uma visita.'
+         when 'Pedido cancelado' then format('O pedido de %s foi cancelado.', private.texto_pedido_anonimo(c))
+         else format('Pedido de vaga de %s. Abra o pedido para o aceitar e ver o contacto.', private.texto_pedido_anonimo(c))
+       end
+  from public.candidaturas c
+  join public.instituicoes i on i.id = c.instituicao_id
+ where n.candidatura_id = c.id
+   and n.user_id = i.owner_id
+   and c.desbloqueada_em is null;
+
 -- ————————————————————————————————————————————————————————————————— 6. avaliações verificadas
 
 -- Cada avaliação de utilizador fica ligada ao pedido que a justifica (uma por pedido). As importadas

@@ -7,6 +7,7 @@ import { FATOR_LISTA_EFETIVA, ocupados, poissonQuantile, previsaoMensal, taxaOcu
 import { precoReferencia } from '@/lib/matching'
 import { CUIDADO_FRASE, CUIDADOS_CRITICOS, GRAU_PESSOAS } from '@/lib/labels'
 import { dataLocal, euro } from '@/lib/format'
+import { prioridadePedido } from '@/lib/negocio'
 
 // "2026-10-16" → Date local (sem o desvio de fuso de new Date('YYYY-MM-DD')); a versão comum vive em lib/format
 export { dataLocal }
@@ -32,11 +33,16 @@ export const pedidosPorTratar = (cands: Candidatura[]): number => cands.filter((
 export type FiltroPedidos = 'novos' | 'analise' | 'lista' | 'proposta' | 'concluidos'
 
 export const FILTROS: { id: FiltroPedidos; label: string; estados: EstadoCandidatura[]; vazio: string }[] = [
-  { id: 'novos', label: 'Novos', estados: ['enviada'], vazio: 'Não há pedidos novos. Quando uma família pedir vaga, o pedido aparece aqui com o perfil já preenchido.' },
-  { id: 'analise', label: 'Em análise', estados: ['em_analise'], vazio: 'Nenhum pedido em análise. Os pedidos novos que abrir com «Analisar» passam para aqui.' },
+  {
+    id: 'novos',
+    label: 'Novos',
+    estados: ['enviada'],
+    vazio: 'Não há pedidos novos. Quando uma família ou um serviço social pedir vaga, o pedido aparece aqui com o resumo do perfil.',
+  },
+  { id: 'analise', label: 'Em análise', estados: ['em_analise'], vazio: 'Nenhum pedido em análise. Os pedidos novos que aceitar passam para aqui.' },
   { id: 'lista', label: 'Lista de espera', estados: ['lista_espera'], vazio: 'Ainda não inscreveu ninguém da plataforma na lista de espera.' },
   { id: 'proposta', label: 'Vaga proposta', estados: ['vaga_proposta'], vazio: 'Não há propostas à espera de resposta. Quando propuser uma vaga, a família tem 48 horas para responder.' },
-  { id: 'concluidos', label: 'Concluídos', estados: ['aceite', 'recusada', 'cancelada'], vazio: 'Ainda não há pedidos concluídos.' },
+  { id: 'concluidos', label: 'Concluídos', estados: ['aceite', 'admitida', 'recusada', 'cancelada'], vazio: 'Ainda não há pedidos concluídos.' },
 ]
 
 export const filtroDoEstado = (e: EstadoCandidatura): FiltroPedidos =>
@@ -97,12 +103,20 @@ export interface Assuntos {
   novos: Candidatura[]
   visitas: Candidatura[]
   propostas: Candidatura[]
-  /** vagas propostas que a família aceitou nos últimos dias: falta combinar a data de entrada */
+  /** vagas aceites à espera da entrada: falta combinar o dia ou marcar a entrada */
   entradas: Candidatura[]
   /** há lugares livres sem proposta e famílias da plataforma na lista */
   vagaPorPreencher: boolean
   desatualizada: boolean
   total: number
+}
+
+/**
+ * Pedidos novos pela ordem de tratar: encaminhamentos com alta nos próximos 7 dias, depois os urgentes,
+ * depois os restantes; dentro de cada grupo, os mais recentes primeiro.
+ */
+export function ordenarNovos(cands: Candidatura[], agora = Date.now()): Candidatura[] {
+  return [...cands].sort((a, b) => prioridadePedido(a, agora) - prioridadePedido(b, agora) || b.criadaEm.localeCompare(a.criadaEm))
 }
 
 /** Quanto tempo uma vaga aceite fica em "Precisa da sua atenção" (para combinar a entrada). */
@@ -117,14 +131,16 @@ export function vagaAceiteHaPouco(c: Candidatura, agora = Date.now()): boolean {
 }
 
 export function assuntosPendentes(lar: Lar, cands: Candidatura[], agora = Date.now()): Assuntos {
-  const novos = cands
-    .filter((c) => c.estado === 'enviada')
-    .sort((a, b) => Number(b.perfil.urgencia === 'imediata') - Number(a.perfil.urgencia === 'imediata') || b.criadaEm.localeCompare(a.criadaEm))
+  const novos = ordenarNovos(
+    cands.filter((c) => c.estado === 'enviada'),
+    agora,
+  )
   const visitas = cands
     .filter(visitaPorConfirmar)
     .sort((a, b) => dataLocal(a.visita!.data, a.visita!.hora).getTime() - dataLocal(b.visita!.data, b.visita!.hora).getTime())
   const propostas = cands.filter((c) => c.estado === 'vaga_proposta')
-  const entradas = cands.filter((c) => vagaAceiteHaPouco(c, agora)).sort((a, b) => b.atualizadaEm.localeCompare(a.atualizadaEm))
+  // todas as vagas aceites: até a pessoa entrar e a entrada ser marcada, é um assunto em aberto
+  const entradas = cands.filter((c) => c.estado === 'aceite').sort((a, b) => b.atualizadaEm.localeCompare(a.atualizadaEm))
   const vagaPorPreencher = vagasLivres(lar) > propostas.length && cands.some((c) => c.estado === 'lista_espera')
   const desatualizada = frescura(lar.atualizadoEm, agora) === 'desatualizada'
   return {
@@ -368,4 +384,24 @@ export function passosArranque(lar: Lar, user: User | null): PassoArranque[] {
       feito: lar.quartos.length > 0 && lar.quartos.every((q) => q.precoMin > 0 && q.precoMax >= q.precoMin),
     },
   ]
+}
+
+// ————————————————————————————————————————— entradas (base da taxa por entrada; docs/MODELO-NEGOCIO.md)
+
+/** Pedidos com entrada registada (pelo lar e/ou pela família), da mais recente para a mais antiga. */
+export function entradasDoLar(cands: Candidatura[]): Candidatura[] {
+  return cands.filter((c) => c.entrada).sort((a, b) => b.entrada!.data.localeCompare(a.entrada!.data))
+}
+
+/** Entradas com o dia nos últimos 12 meses. */
+export function entradasUltimos12Meses(cands: Candidatura[], agora = Date.now()): Candidatura[] {
+  const desde = new Date(agora)
+  desde.setFullYear(desde.getFullYear() - 1)
+  return entradasDoLar(cands).filter((c) => dataLocal(c.entrada!.data).getTime() >= desde.getTime())
+}
+
+/** Entradas com o dia no ano civil corrente. */
+export function entradasEsteAno(cands: Candidatura[], agora = Date.now()): Candidatura[] {
+  const ano = String(new Date(agora).getFullYear())
+  return entradasDoLar(cands).filter((c) => c.entrada!.data.startsWith(ano))
 }
