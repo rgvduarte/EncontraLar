@@ -172,3 +172,17 @@
 .leaflet-control-zoom a { width: 40px !important; height: 40px !important; line-height: 38px !important; font-size: 22px !important; }
 .leaflet-control-attribution { font-size: 11px; }
 .leaflet-bar { border: 1px solid var(--color-line-strong) !important; box-shadow: var(--shadow-soft) !important; }
+
+/* Ênfase editorial: palavras em itálico nos títulos ficam em terracota (ex.: "O lar certo, <em>perto</em> de si") */
+@layer base {
+  :is(h1, h2, h3, .font-display) em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--color-terra-600);
+  }
+  .on-dark :is(h1, h2, h3, .font-display) em,
+  :is(h1, h2, h3, .font-display).on-dark em {
+    color: var(--color-terra-300);
+  }
+  .tabular { font-variant-numeric: tabular-nums; }
+}

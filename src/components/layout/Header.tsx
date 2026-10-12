@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router'
 import {
   Bell,
+  Building2,
   BellRing,
   CalendarCheck,
   ChevronDown,
@@ -22,11 +23,11 @@ import { tempoRelativo } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import type { Notificacao } from '@/types'
 
+/** Navegação para famílias (público principal). A área das instituições fica à parte, à direita. */
 const NAV = [
-  { to: '/pesquisa', label: 'Pesquisar no mapa' },
-  { to: '/encontrar', label: 'Encontrar o lar ideal' },
-  { to: '/guia', label: 'Guia para famílias' },
-  { to: '/para-lares', label: 'Para instituições' },
+  { to: '/pesquisa', label: 'Mapa de vagas' },
+  { to: '/encontrar', label: 'Ajuda-me a escolher' },
+  { to: '/guia', label: 'Guia e apoios' },
 ]
 
 export function painelPath(role: 'familia' | 'lar') {
@@ -222,6 +223,9 @@ export function Header() {
             </>
           ) : (
             <div className="hidden items-center gap-2 xl:flex">
+              <Link to="/para-lares" className="mr-2 inline-flex min-h-12 items-center gap-2 rounded-full px-3 text-sm font-semibold text-ink-soft hover:text-pine-800">
+                <Building2 aria-hidden className="size-4.5" /> Sou uma instituição
+              </Link>
               <ButtonLink to="/entrar" variant="ghost">
                 Entrar
               </ButtonLink>
@@ -247,7 +251,7 @@ export function Header() {
         <div id="menu-movel" className="animate-fade-in border-t border-line bg-cream xl:hidden">
           <nav aria-label="Principal (móvel)" className="container-page flex flex-col gap-1 py-4">
             <Link to="/pesquisa" className={buttonClasses('primary', 'lg', 'mb-2 w-full')}>
-              <Search aria-hidden className="size-5" /> Pesquisar lares
+              <Search aria-hidden className="size-5" /> Procurar no mapa de vagas
             </Link>
             {NAV.map((n) => (
               <NavLink
@@ -260,6 +264,14 @@ export function Header() {
                 {n.label}
               </NavLink>
             ))}
+            <NavLink
+              to="/para-lares"
+              className={({ isActive }) =>
+                cn('flex min-h-14 items-center gap-3 rounded-2xl px-4 text-lg font-semibold', isActive ? 'bg-pine-50 text-pine-800' : 'text-ink-soft hover:bg-sand')
+              }
+            >
+              <Building2 aria-hidden className="size-5" /> Sou uma instituição
+            </NavLink>
             <div className="mt-3 border-t border-line pt-4">
               {user ? (
                 <div className="flex flex-col gap-2">

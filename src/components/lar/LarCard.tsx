@@ -1,12 +1,13 @@
 import { memo, useMemo } from 'react'
 import { Link } from 'react-router'
-import { MapPin, TrendingUp } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import type { Lar } from '@/types'
 import { LarCover } from './LarCover'
 import { AvailabilityBadge, VerifiedBadge } from './badges'
 import { FavoriteButton } from './FavoriteButton'
 import { CUIDADO_ICON } from './icons'
 import { Stars } from '@/components/ui/Stars'
+import { ForecastStrip } from '@/components/brand/ForecastStrip'
 import { disponibilidade, estimarEspera, resumoPrevisao } from '@/lib/forecast'
 import { CUIDADO_LABEL, NATUREZA_LABEL, TIPO_LABEL } from '@/lib/labels'
 import { euro, km } from '@/lib/format'
@@ -122,24 +123,25 @@ export const LarCard = memo(function LarCard({
           </ul>
         )}
 
-        <div className="mt-auto flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-t border-line pt-3">
-          <p>
-            <span className="text-sm text-ink-soft">{lar.natureza === 'privado' ? 'Desde' : 'Mensalidade'} </span>
-            <span className="text-lg font-bold text-ink">
+        <div className="mt-auto flex flex-wrap items-end justify-between gap-x-4 gap-y-3 border-t border-dashed border-line-strong pt-3.5">
+          <p className="leading-tight">
+            <span className="block text-sm text-ink-soft">{lar.natureza === 'privado' ? 'Mensalidade desde' : 'Mensalidade (conforme rendimentos)'}</span>
+            <span className="font-display text-2xl font-semibold text-ink tabular">
               {lar.natureza === 'privado' ? euro(lar.mensalidadeMin) : `${euro(lar.mensalidadeMin)}–${euro(lar.mensalidadeMax)}`}
             </span>
-            <span className="text-sm text-ink-soft">/mês</span>
           </p>
           {!centroDia && (
-            <p
-              className={cn(
-                'inline-flex items-center gap-1.5 text-sm font-semibold',
-                disp === 'disponivel' ? 'text-leaf-700' : disp === 'breve' ? 'text-sun-800' : 'text-dusk-700',
-              )}
-            >
-              <TrendingUp aria-hidden className="size-4" />
-              {previsao}
-            </p>
+            <div className="flex items-end gap-2.5">
+              <p
+                className={cn(
+                  'max-w-36 text-right text-sm leading-snug font-semibold',
+                  disp === 'disponivel' ? 'text-leaf-700' : disp === 'breve' ? 'text-sun-800' : 'text-dusk-700',
+                )}
+              >
+                {previsao}
+              </p>
+              {disp !== 'disponivel' && <ForecastStrip curva={est.curva} meses={6} variant="mini" />}
+            </div>
           )}
         </div>
       </div>
