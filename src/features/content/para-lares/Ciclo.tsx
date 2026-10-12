@@ -383,15 +383,15 @@ export function Ciclo({ lar }: { lar: Lar }) {
   return (
     <div className="on-dark bg-pine-950 text-white">
       <div className="container-page flex flex-col items-center pt-20 pb-6 text-center sm:pt-28 lg:pt-32 lg:pb-0">
-        <Reveal variant="blur">
+        <Reveal variant="up">
           <p className="text-sm font-semibold text-pine-400">Como funciona</p>
         </Reveal>
-        <Reveal variant="blur" delay={100}>
+        <Reveal variant="up" delay={100}>
           <h2 id="pl-ciclo" className="headline mt-3 max-w-[16ch] text-white">
             Da saída à nova entrada.
           </h2>
         </Reveal>
-        <Reveal variant="blur" delay={200}>
+        <Reveal variant="up" delay={200}>
           <p className="mt-4 flex items-center gap-2 text-lg text-pine-300 sm:text-xl">
             <BellRing aria-hidden className="size-5 shrink-0" strokeWidth={1.75} /> Três momentos, sem telefonemas.
           </p>

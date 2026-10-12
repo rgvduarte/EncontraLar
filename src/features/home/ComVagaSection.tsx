@@ -148,7 +148,10 @@ export function ComVagaSection({ lares }: { lares: Lar[] }) {
     >
       {lista.map((l, i) => (
         <div key={l.id} ref={i === 0 ? setas.primeiro : undefined} className={item} onFocus={presa ? seguirFoco : undefined}>
-          <LarCard lar={l} className="w-full" />
+          {/* os cartões entram (sobem e aparecem) à medida que chegam ao ecrã — também os que deslizam da direita */}
+          <Reveal delay={Math.min(i, 3) * 90} duration={900} className="flex w-full">
+            <LarCard lar={l} className="w-full" />
+          </Reveal>
         </div>
       ))}
       <div className={item} onFocus={presa ? seguirFoco : undefined}>

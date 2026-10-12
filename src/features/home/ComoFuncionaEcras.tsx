@@ -74,7 +74,7 @@ export const EcraMapa = memo(function EcraMapa({ h, ativo }: { h: Historia; ativ
   const zoom: CSSProperties = {
     transformOrigin: `${ox}% ${oy}%`,
     transform: `translate(${ALVO.x - ox}%, ${ALVO.y - oy}%) scale(${ativo ? 2.6 : 1.8})`,
-    transitionDuration: '1600ms',
+    transitionDuration: '900ms',
   }
   return (
     <div className="absolute inset-0 bg-sand">
@@ -222,7 +222,7 @@ export const EcraAlerta = memo(function EcraAlerta({ h, ativo }: { h: Historia; 
         className={cn(T, 'absolute inset-x-2.5 top-11 z-20')}
         style={{
           transitionDelay: ativo ? '750ms' : '0ms',
-          transitionDuration: '1000ms',
+          transitionDuration: '800ms',
           opacity: ativo ? 1 : 0,
           transform: ativo ? 'none' : 'translate3d(0, -130%, 0) scale(0.96)',
         }}

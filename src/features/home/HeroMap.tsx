@@ -87,7 +87,7 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
   return (
     <figure ref={figRef} className="hm-map relative mx-auto w-full max-w-[19rem] sm:max-w-[30rem] lg:max-w-[34rem]">
       <Parallax speed={largo ? -18 : 0}>
-        <div ref={mapaRef} className={cn(visto ? 'hm-in' : 'hm-wait')} style={entrada(base, 'hm-settle', 1500)}>
+        <div ref={mapaRef} className={cn(visto ? 'hm-in' : 'hm-wait')} style={entrada(base, 'hm-settle', 900)}>
           <PortugalMap
             lares={lares}
             highlightId={destaque}

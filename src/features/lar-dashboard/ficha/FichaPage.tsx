@@ -49,12 +49,13 @@ export default function FichaPage({ lar }: { lar: Lar }) {
   }
 
   return (
-    <div className={cn('grid items-start gap-14 xl:grid-cols-[minmax(0,1fr)_19rem] xl:gap-12', form.sujo && 'max-xl:pb-20')}>
+    <>
+    <div className={cn('grid items-start gap-14 xl:grid-cols-[minmax(0,1fr)_19rem] xl:gap-12', form.sujo && 'pb-24')}>
       <div className="flex min-w-0 flex-col gap-10">
         <Reveal variant="blur">
           <Verificacao lar={lar} />
         </Reveal>
-        <form onSubmit={submeter} noValidate className="flex flex-col gap-10">
+        <form id="ficha-form" onSubmit={submeter} noValidate className="flex flex-col gap-10">
           <Apresentacao {...form} />
           <Contactos {...form} />
           <QuemRecebe {...form} />
@@ -63,31 +64,9 @@ export default function FichaPage({ lar }: { lar: Lar }) {
           <Mensalidade {...form} />
           <Equipa {...form} />
 
-          {/* o texto de apoio e a barra partilham o mesmo lugar no fim do formulário */}
-          <p className={cn('flex min-h-16 items-center text-sm text-ink-mute transition-opacity duration-300', form.sujo && 'opacity-0')}>
+          <p className={cn('text-sm text-ink-mute transition-opacity duration-300', form.sujo && 'opacity-0')}>
             As alterações aparecem na ficha pública assim que as guardar.
           </p>
-          <div
-            role="region"
-            aria-label="Alterações por guardar"
-            inert={!form.sujo}
-            aria-hidden={!form.sujo || undefined}
-            className={cn(
-              'sticky bottom-[calc(var(--tabbar-h)+1rem)] z-10 -mt-[6.5rem] flex items-center justify-between gap-3 rounded-full bg-white/90 py-2 pr-2 pl-6 shadow-lift ring-1 ring-black/5 backdrop-blur-xl backdrop-saturate-150 max-sm:pl-2',
-              'transition-[transform,opacity] duration-500 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
-              form.sujo ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-[calc(100%+2rem)] opacity-0',
-            )}
-          >
-            <p className="text-sm whitespace-nowrap text-ink-mute max-sm:sr-only">Alterações por guardar</p>
-            <div className="flex gap-2 max-sm:w-full">
-              <Button variant="subtle" onClick={form.repor} className="max-sm:min-h-13 max-sm:px-5">
-                Repor
-              </Button>
-              <Button type="submit" disabled={!form.sujo} className="max-sm:min-h-13 max-sm:flex-1 max-sm:px-4">
-                Guardar alterações
-              </Button>
-            </div>
-          </div>
         </form>
       </div>
 
@@ -101,5 +80,34 @@ export default function FichaPage({ lar }: { lar: Lar }) {
         </MoreLink>
       </aside>
     </div>
+
+    {/*
+      Barra "Guardar": âncora de altura zero, presa ao fundo do ecrã (por cima da barra de abas) em toda a
+      página — formulário e pré-visualização. Sobe quando há alterações e desce depois de guardar.
+    */}
+    <div className="sticky bottom-[calc(var(--tabbar-h)+1rem)] z-20 h-0">
+      <div
+        role="region"
+        aria-label="Alterações por guardar"
+        inert={!form.sujo}
+        aria-hidden={!form.sujo || undefined}
+        className={cn(
+          'absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 rounded-full bg-white/90 py-2 pr-2 pl-6 shadow-lift ring-1 ring-black/5 backdrop-blur-xl backdrop-saturate-150 max-sm:pl-2',
+          'transition-[transform,opacity] duration-500 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none',
+          form.sujo ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-[calc(100%+var(--tabbar-h)+2rem)] opacity-0',
+        )}
+      >
+        <p className="text-sm whitespace-nowrap text-ink-mute max-sm:sr-only">Alterações por guardar</p>
+        <div className="flex gap-2 max-sm:w-full">
+          <Button variant="subtle" onClick={form.repor} className="max-sm:min-h-13 max-sm:px-5">
+            Repor
+          </Button>
+          <Button type="submit" form="ficha-form" disabled={!form.sujo} className="max-sm:min-h-13 max-sm:flex-1 max-sm:px-4">
+            Guardar alterações
+          </Button>
+        </div>
+      </div>
+    </div>
+    </>
   )
 }

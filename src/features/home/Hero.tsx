@@ -38,7 +38,7 @@ function Palavras({ texto, de, enfase }: { texto: string; de: number; enfase?: b
     <span ref={ref}>
       {palavras.map((p, i) => (
         <Fragment key={i}>
-          <span className="hm-in inline-block" style={entrada(120 + (de + i) * 85, 'hm-blur-up', 1100)}>
+          <span className="hm-in inline-block" style={entrada(120 + (de + i) * 85, 'hm-blur-up', 900)}>
             {enfase ? <em>{p}</em> : p}
           </span>
           {i < palavras.length - 1 && ' '}
@@ -70,11 +70,11 @@ export function Hero({ lares, agora, comVaga }: { lares: Lar[]; agora: number; c
             <Palavras texto="Com vaga real." de={3} enfase />
           </span>
         </h1>
-        <p className="hm-in mx-auto mt-5 max-w-2xl text-lg text-ink-mute sm:mt-6 sm:text-2xl" style={entrada(560, 'hm-rise', 1000)}>
+        <p className="hm-in mx-auto mt-5 max-w-2xl text-lg text-ink-mute sm:mt-6 sm:text-2xl" style={entrada(560, 'hm-rise', 900)}>
           Vagas atualizadas pelas próprias instituições e a previsão de quando abre a próxima.
         </p>
 
-        <div className="hm-in relative z-20 mt-8 w-full sm:mt-12" style={entrada(700, 'hm-rise', 1100)}>
+        <div className="hm-in relative z-20 mt-8 w-full sm:mt-12" style={entrada(700, 'hm-rise', 900)}>
           <SearchPill lares={lares} />
         </div>
         <p className="hm-in mt-4 text-ink-mute sm:mt-5" style={entrada(840, 'hm-fade', 900)}>

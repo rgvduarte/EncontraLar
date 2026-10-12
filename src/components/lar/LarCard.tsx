@@ -117,7 +117,8 @@ export const LarCard = memo(function LarCard({
             <span className="text-lg font-semibold tabular">
               {lar.natureza === 'privado' ? euro(lar.mensalidadeMin) : `${euro(lar.mensalidadeMin)}–${euro(lar.mensalidadeMax)}`}
             </span>
-            <span className="text-sm text-ink-mute"> /mês{lar.natureza !== 'privado' && ' · conforme rendimentos'}</span>
+            <span className="text-sm text-ink-mute"> /mês</span>
+            {lar.natureza !== 'privado' && <span className="block text-sm text-ink-mute">Conforme os rendimentos</span>}
           </p>
           {!centroDia && disp !== 'disponivel' && <p className="text-sm text-ink-mute">{previsao}</p>}
         </div>

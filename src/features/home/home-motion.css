@@ -88,7 +88,7 @@
 
 .hm-in {
   animation-name: var(--hm-a, hm-blur-up);
-  animation-duration: var(--hm-t, 1000ms);
+  animation-duration: var(--hm-t, 900ms);
   animation-delay: var(--hm-d, 0ms);
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   animation-fill-mode: both;

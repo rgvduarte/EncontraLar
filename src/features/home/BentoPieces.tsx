@@ -35,7 +35,7 @@ function NomeLar({ lar, className }: { lar: Lar; className?: string }) {
  */
 const ENCHER = cn(
   '[&_li]:transition-[opacity,translate] [&_li]:duration-700 [&_li]:ease-[cubic-bezier(.16,1,.3,1)]',
-  '[&_.h-1>span]:origin-left [&_.h-1>span]:transition-transform [&_.h-1>span]:duration-[1400ms] [&_.h-1>span]:ease-[cubic-bezier(.16,1,.3,1)]',
+  '[&_.h-1>span]:origin-left [&_.h-1>span]:transition-transform [&_.h-1>span]:duration-[900ms] [&_.h-1>span]:ease-[cubic-bezier(.16,1,.3,1)]',
   '[&_li:nth-child(2)]:delay-[90ms] [&_li:nth-child(3)]:delay-[180ms] [&_li:nth-child(4)]:delay-[270ms] [&_li:nth-child(5)]:delay-[360ms] [&_li:nth-child(6)]:delay-[450ms]',
   '[&_li:nth-child(2)_.h-1>span]:delay-[90ms] [&_li:nth-child(3)_.h-1>span]:delay-[180ms] [&_li:nth-child(4)_.h-1>span]:delay-[270ms] [&_li:nth-child(5)_.h-1>span]:delay-[360ms] [&_li:nth-child(6)_.h-1>span]:delay-[450ms]',
 )

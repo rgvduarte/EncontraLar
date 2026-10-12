@@ -46,7 +46,7 @@ function Cabecalho({ className }: { className?: string }) {
 /**
  * Percurso: "Como funciona" em três passos, sempre com o mesmo lar real (sem vaga hoje, com vaga prevista),
  * para contar uma história: encontrá-lo no mapa → comparar → pedir vaga e ser avisado quando abre.
- * - Desktop: cena presa (~2 ecrãs de scroll); os passos acendem-se um a um e o ecrã do telemóvel muda.
+ * - Desktop: cena presa (280vh ≈ 1,9 ecrãs de scroll a mais); os passos acendem-se um a um e o ecrã do telemóvel muda.
  * - Telemóvel/tablet e movimento reduzido: passos empilhados, cada um com o seu ecrã a entrar ao aparecer.
  */
 export function ComoFunciona({ lares, agora }: { lares: Lar[]; agora: number }) {
@@ -84,7 +84,7 @@ function CenaFixa({ h }: { h: Historia }) {
 
   return (
     <div ref={wrap}>
-      <StickyScene length="300vh" label="Como funciona" className="bg-sand" innerClassName="flex items-center">
+      <StickyScene length="280vh" label="Como funciona" className="bg-sand" innerClassName="flex items-center">
         {(p) => <Palco ativo={passoDe(p)} h={h} irPara={irPara} />}
       </StickyScene>
     </div>
@@ -145,7 +145,7 @@ const Palco = memo(function Palco({ ativo, h, irPara }: { ativo: number; h: Hist
         </Reveal>
       </div>
 
-      <Reveal variant="scale" duration={1200} className="flex justify-center">
+      <Reveal variant="scale" duration={900} className="flex justify-center">
         <Telefone className="h-[min(40rem,calc(100dvh-9rem))]">
           {ECRAS.map((Ecra, i) => (
             <Camada key={i} estado={i === ativo ? 0 : i < ativo ? -1 : 1}>
@@ -202,7 +202,7 @@ function PassoEmpilhado({ i, h }: { i: number; h: Historia }) {
         <p className="mx-auto mt-2 max-w-md text-lg text-ink-mute md:mx-0">{s.texto}</p>
       </Reveal>
       <div ref={ref} className="flex justify-center">
-        <Reveal variant="scale" duration={1100}>
+        <Reveal variant="scale" duration={900}>
           <Telefone className="h-[35rem] sm:h-[38rem]">
             <Ecra h={h} ativo={visto} />
           </Telefone>

@@ -42,7 +42,7 @@ function Tile({
   return (
     <Reveal
       variant="scale"
-      duration={1100}
+      duration={900}
       delay={delay}
       className={cn('flex min-w-0 flex-col rounded-[1.75rem] bg-sand p-6 sm:p-10', className)}
     >
@@ -134,7 +134,7 @@ export function Bento({ lares, stats, agora }: { lares: Lar[]; stats: HomeStats;
           {exemplo && (
             <Reveal
               variant="scale"
-              duration={1100}
+              duration={900}
               delay={d(140)}
               className="grid min-w-0 grid-cols-1 gap-6 rounded-[1.75rem] bg-sand p-6 sm:gap-8 sm:p-10 md:col-span-1 lg:col-span-2 lg:grid-cols-[minmax(0,4fr)_minmax(0,6fr)] lg:items-center lg:gap-8"
             >

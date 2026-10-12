@@ -129,3 +129,18 @@ suspensos já são globais (Layout/Header).
   empilhados ou `overflow-x-auto` com `data-lenis-prevent`).
 - Inputs com `type`/`inputMode`/`autoComplete` corretos (email, tel, numeric) para o teclado certo.
 - Testar sempre a 390×844 (`--mobile`) e confirmar que nada fica por baixo da barra de abas.
+
+## 9. Camadas (z-index)
+
+| Camada | z-index |
+|---|---|
+| Controlos flutuantes da página (botão Mapa/Lista, cartões de marcador) | 999 |
+| Véu do menu suspenso (desktop) | 990 |
+| Barra de abas inferior | 1000 |
+| Cabeçalho / menu móvel | 1000 / 1001 |
+| Popovers do cabeçalho (notificações, conta) | 1100 |
+| Toasts | 2000 |
+| Ligação "Saltar para o conteúdo" | 3000 |
+| Modais (`<dialog>`) | camada superior nativa (acima de tudo) |
+
+Não inventar valores intermédios (ex.: 1050) — usar esta escala.
