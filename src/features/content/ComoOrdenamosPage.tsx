@@ -36,6 +36,16 @@ const FATORES: { k: keyof typeof PESOS; t: string; d: string }[] = [
   { k: 'preferencias', t: 'Preferências', d: 'Comodidades e tipo de quarto.' },
 ]
 
+/** Os três níveis do selo (os mesmos nomes do SeloNiveis, na ficha da instituição). */
+const NIVEIS = [
+  { t: 'Licença confirmada', d: 'Confirmámos a licença de funcionamento na Carta Social e no Instituto da Segurança Social.' },
+  {
+    t: 'Visitada pela equipa',
+    d: 'A equipa EncontraLar visitou a casa e comparou os preços publicados com os entregues às famílias. A visita repete-se todos os anos e a ficha mostra a data.',
+  },
+  { t: 'Avaliações verificadas', d: 'Tem avaliações de famílias cuja entrada foi confirmada.' },
+] as const
+
 const CHAVE_ULTIMA_PESQUISA = 'encontralar:ultima-pesquisa'
 
 /** A última pesquisa da sessão (ex.: "/pesquisa?lugar=Porto"), para voltar aos mesmos resultados. */
@@ -136,21 +146,41 @@ export default function ComoOrdenamosPage() {
               </span>
             }
           >
-            <p>
-              Visitámos a instituição, confirmámos a licença de funcionamento emitida pela Segurança Social e comparámos os preços publicados com os
-              entregues às famílias. O selo mostra a data da visita e renova-se todos os anos.
-            </p>
+            <p>O selo tem três níveis, e a ficha de cada instituição mostra quais já cumpre:</p>
+            <ol className="flex flex-col gap-3">
+              {NIVEIS.map((n, i) => (
+                <li key={n.t} className="flex gap-3">
+                  <span aria-hidden className="w-5 shrink-0 font-semibold text-ink tabular">
+                    {i + 1}
+                  </span>
+                  <span>
+                    <strong>{n.t}.</strong> {n.d}
+                  </span>
+                </li>
+              ))}
+            </ol>
             <p>O selo não se compra. Sem ele, a informação da ficha é a que a própria instituição nos deu.</p>
           </Bloco>
 
           <Bloco titulo="Como funcionam as avaliações">
             <p>
-              Só avaliam famílias que fizeram um pedido ou têm um familiar na instituição. A marca <strong>Verificada</strong> indica que a entrada do
-              familiar foi confirmada através do EncontraLar.
+              A marca <strong>Avaliação verificada</strong> só aparece nas avaliações de famílias cuja entrada foi confirmada através do
+              EncontraLar. Só quem confirmou a entrada do familiar a pode escrever, uma vez por pedido. As opiniões sem essa confirmação
+              aparecem sem a marca, e na ficha pode escolher ver só as verificadas.
             </p>
             <p>
               Cada avaliação dá uma nota de 1 a 5 e avalia quatro aspetos: cuidados, alimentação, instalações e comunicação. As instituições não
               escolhem que avaliações aparecem.
+            </p>
+          </Bloco>
+
+          <Bloco titulo="Encaminhamentos com alta próxima">
+            <p>
+              Quando um hospital ou centro de saúde envia um pedido com a data prevista de alta para os próximos 7 dias, esse pedido aparece
+              primeiro na <strong>lista de pedidos da instituição</strong> que o recebe, para ser visto a tempo.
+            </p>
+            <p>
+              É só isso: acontece dentro do painel de cada instituição e nunca mexe na ordem pública dos resultados que as famílias veem.
             </p>
           </Bloco>
 

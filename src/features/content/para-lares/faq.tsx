@@ -27,7 +27,7 @@ export const LARES_FAQ: FaqItem[] = [
         </p>
         <p>
           Conta a entrada que acontece até 12 meses depois desse primeiro pedido. Só a família que confirmou a entrada pode deixar uma
-          avaliação verificada, por isso tem razões para o fazer. Nos lares privados, é esta entrada que dá lugar à taxa fixa; IPSS e
+          avaliação verificada. Nos lares privados, é esta entrada que dá lugar à taxa fixa; IPSS e
           Misericórdias ficam isentas.
         </p>
       </>
