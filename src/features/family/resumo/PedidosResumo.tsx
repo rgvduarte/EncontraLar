@@ -1,122 +1,87 @@
 import { Link } from 'react-router'
-import { ArrowRight, FileText, Phone } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
 import { ButtonLink } from '@/components/ui/Button'
 import { LarCover } from '@/components/lar/LarCover'
 import { ForecastStrip } from '@/components/brand/ForecastStrip'
-import { cn } from '@/lib/cn'
 import type { PedidoComLar } from '../shared/data'
 import { estimativaPessoal, horaDe } from '../shared/estado'
-import { PedidoRail } from '../shared/PedidoRail'
-import { BlockHeading, EstadoBadge } from '../shared/ui'
-import { diaPorExtenso, nomeCurto, ordinal, telHref } from '../shared/text'
+import { EstadoTag, MoreLink, SectionHeader } from '../shared/ui'
+import { nomeCurto, ordinal } from '../shared/text'
 
-/** Faixa inferior de cada pedido: o número que importa para aquele estado. */
+/** O número que importa para cada estado, à direita da linha. */
 function Situacao({ c, lar }: { c: Candidatura; lar: Lar }) {
-  if (c.estado === 'aceite') {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-leaf-50 px-4 py-3">
-        <p className="text-sm">
-          <strong className="text-leaf-700">Entrada a combinar.</strong> A instituição vai ligar-lhe para marcar o dia.
-        </p>
-        {lar.telefone && (
-          <a href={telHref(lar.telefone)} className="link inline-flex min-h-11 items-center gap-1.5 text-sm">
-            <Phone aria-hidden className="size-4" />
-            {lar.telefone}
-          </a>
-        )}
-      </div>
-    )
-  }
   if (c.estado === 'vaga_proposta') {
     return (
-      <div className="rounded-2xl bg-terra-50 px-4 py-3 text-sm">
-        <strong className="text-terra-800">Tem uma vaga à espera de resposta</strong>
-        {c.prazoResposta && (
-          <>
-            {' '}
-            — até {diaPorExtenso(new Date(c.prazoResposta))}, às {horaDe(c.prazoResposta)}.
-          </>
-        )}{' '}
-        <a href="#vaga-proposta" className="link">
-          Responder
-        </a>
-      </div>
+      <p className="text-right">
+        <span className="block text-sm text-ink-mute">Responder até</span>
+        <span className="font-semibold text-terra-700">
+          {c.prazoResposta
+            ? `${new Date(c.prazoResposta).toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric' })}, ${horaDe(c.prazoResposta)}`
+            : 'o quanto antes'}
+        </span>
+      </p>
+    )
+  }
+  if (c.estado === 'aceite') {
+    return (
+      <p className="text-right">
+        <span className="block text-sm text-ink-mute">Entrada</span>
+        <span className="font-semibold">a combinar</span>
+      </p>
     )
   }
   const { est, texto, pessoal } = estimativaPessoal(lar, c.posicao)
   return (
-    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 rounded-2xl bg-sand/70 px-4 py-3">
-      <dl className="flex flex-wrap gap-x-7 gap-y-2">
-        <div>
-          <dt className="text-xs font-semibold text-ink-soft">Lugar na lista</dt>
-          <dd className="font-display text-2xl leading-tight font-semibold tabular">
-            {c.posicao ? (
-              <>
-                {ordinal(c.posicao)}
-                <span className="ml-1 font-sans text-sm font-normal text-ink-soft">de {Math.max(lar.listaEspera, c.posicao)}</span>
-              </>
-            ) : (
-              <span className="font-sans text-base font-semibold text-ink-soft">ainda sem lugar</span>
-            )}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs font-semibold text-ink-soft">{pessoal ? 'Estimativa para si' : 'Se entrar hoje na lista'}</dt>
-          <dd className="text-base leading-tight font-bold first-letter:uppercase">{texto}</dd>
-        </div>
-      </dl>
+    <div className="flex items-center gap-5">
+      <p className="sm:text-right">
+        <span className="block text-sm text-ink-mute">{pessoal ? 'Estimativa' : 'Se entrar na lista hoje'}</span>
+        <span className="font-semibold first-letter:uppercase">{texto}</span>
+      </p>
       {!est.imediata && <ForecastStrip curva={est.curva} meses={6} variant="mini" />}
     </div>
   )
 }
 
-export function PedidosResumo({ ativos, terminados }: { ativos: PedidoComLar[]; terminados: number }) {
+/** "Os seus pedidos": linhas compactas — instituição, estado, lugar e estimativa pessoal. */
+export function PedidosResumo({ ativos, terminados, pesquisa }: { ativos: PedidoComLar[]; terminados: number; pesquisa: string }) {
+  const visiveis = ativos.slice(0, 5)
   return (
-    <section aria-labelledby="resumo-pedidos" className="rounded-[1.75rem] border border-line bg-white shadow-card">
-      <div className="px-5 pt-6 pb-2 sm:px-7">
-        <BlockHeading
-          id="resumo-pedidos"
-          kicker="Pedidos de vaga"
-          title={ativos.length ? `${ativos.length === 1 ? 'Um pedido' : `${ativos.length} pedidos`} em curso` : 'Nenhum pedido em curso'}
-          action={ativos.length ? { to: '/familia/pedidos', label: 'Ver em detalhe' } : undefined}
-        />
-      </div>
+    <section aria-labelledby="resumo-pedidos">
+      <SectionHeader
+        id="resumo-pedidos"
+        title="Os seus pedidos"
+        action={ativos.length > 0 || terminados > 0 ? <MoreLink to="/familia/pedidos">Ver todos</MoreLink> : undefined}
+      />
 
       {ativos.length === 0 ? (
-        <div className="px-5 pb-7 sm:px-7">
-          <p className="max-w-prose text-ink-soft">
-            Pode pedir vaga em várias instituições ao mesmo tempo: as listas de espera andam a ritmos diferentes e um pedido não
-            obriga a nada. Se surgir uma vaga, decide nessa altura.
+        <div className="mt-6 tile">
+          <p className="max-w-xl text-lg text-ink-soft">
+            Ainda sem pedidos em curso. Pode pedir vaga em várias instituições ao mesmo tempo — um pedido não obriga a nada.
           </p>
-          <ButtonLink to="/pesquisa?vaga=breve" className="mt-4" icon={<FileText aria-hidden className="size-5" />}>
+          <ButtonLink to={`${pesquisa}${pesquisa.includes('?') ? '&' : '?'}vaga=breve`} className="mt-6">
             Encontrar instituições com vaga
           </ButtonLink>
         </div>
       ) : (
-        <ul className="divide-y divide-line">
-          {ativos.slice(0, 4).map(({ c, lar }) => (
-            <li key={c.id} className="px-5 py-5 sm:px-7">
-              <div className="flex items-start gap-4">
-                <div aria-hidden className="size-14 shrink-0 overflow-hidden rounded-2xl border border-line">
-                  <LarCover hue={lar.capa.hue} variante={lar.capa.variante} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-                    <h3 className="font-display text-lg leading-snug font-semibold">
-                      <Link to={`/familia/pedidos#pedido-${c.id}`} className="hover:underline">
-                        {lar.nome}
-                      </Link>
-                    </h3>
-                    <EstadoBadge estado={c.estado} />
-                  </div>
-                  <p className="text-sm text-ink-soft">
-                    {lar.localidade} · para {nomeCurto(c.perfil.nome)}
-                  </p>
-                </div>
+        <ul className="mt-6 divide-y divide-line border-y border-line">
+          {visiveis.map(({ c, lar }) => (
+            <li key={c.id} className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-3 py-5 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto] sm:gap-x-6">
+              <div aria-hidden className="size-14 overflow-hidden rounded-xl">
+                <LarCover hue={lar.capa.hue} variante={lar.capa.variante} />
               </div>
-              <PedidoRail c={c} className="mt-5" />
-              <div className="mt-4">
+              <div className="min-w-0">
+                <h3 className="text-lg leading-snug font-semibold">
+                  <Link to={`/familia/pedidos#pedido-${c.id}`} className="hover:underline">
+                    {lar.nome}
+                  </Link>
+                </h3>
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-ink-mute">
+                  <EstadoTag estado={c.estado} className="text-ink-soft" />
+                  {c.posicao != null && c.estado === 'lista_espera' && <span>· {ordinal(c.posicao)} lugar</span>}
+                  <span>· {nomeCurto(c.perfil.nome)}</span>
+                </p>
+              </div>
+              <div className="col-start-2 sm:col-start-3">
                 <Situacao c={c} lar={lar} />
               </div>
             </li>
@@ -124,14 +89,10 @@ export function PedidosResumo({ ativos, terminados }: { ativos: PedidoComLar[]; 
         </ul>
       )}
 
-      {(ativos.length > 4 || terminados > 0) && (
-        <p className={cn('border-t border-line px-5 py-4 text-sm text-ink-soft sm:px-7')}>
-          {ativos.length > 4 && <>Mais {ativos.length - 4} em curso. </>}
-          {terminados > 0 && <>{terminados === 1 ? '1 pedido terminado' : `${terminados} pedidos terminados`} no histórico. </>}
-          <Link to="/familia/pedidos" className="link inline-flex items-center gap-1">
-            Ver todos
-            <ArrowRight aria-hidden className="size-4" />
-          </Link>
+      {(ativos.length > visiveis.length || terminados > 0) && (
+        <p className="mt-4 text-sm text-ink-mute">
+          {ativos.length > visiveis.length && `Mais ${ativos.length - visiveis.length} em curso. `}
+          {terminados > 0 && (terminados === 1 ? '1 pedido terminado.' : `${terminados} pedidos terminados.`)}
         </p>
       )}
     </section>

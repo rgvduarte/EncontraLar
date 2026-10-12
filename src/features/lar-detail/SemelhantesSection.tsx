@@ -1,11 +1,13 @@
 import { useMemo } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { Link } from 'react-router'
+import { ChevronRight } from 'lucide-react'
 import type { Lar } from '@/types'
 import { LarCard } from '@/components/lar/LarCard'
-import { ButtonLink } from '@/components/ui/Button'
-import { CalcadaDivider } from '@/components/brand/patterns'
+import { Reveal } from '@/components/ui/Reveal'
 import { useLares } from '@/lib/store'
 import { distanceKm } from '@/lib/geo'
+
+const PLURAL: Record<Lar['tipo'], string> = { erpi: 'lares', residencia: 'residências', centro_dia: 'centros de dia' }
 
 /** Três instituições do mesmo tipo, as mais próximas desta. */
 export function SemelhantesSection({ lar }: { lar: Lar }) {
@@ -21,38 +23,28 @@ export function SemelhantesSection({ lar }: { lar: Lar }) {
   )
   if (!perto.length) return null
 
-  const tipoPlural = lar.tipo === 'erpi' ? 'lares' : lar.tipo === 'residencia' ? 'residências seniores' : 'centros de dia'
-  const tipoFrase = lar.tipo === 'residencia' ? 'As residências seniores' : `Os ${tipoPlural}`
-  const pesquisa = `/pesquisa?distrito=${encodeURIComponent(lar.distrito)}&tipo=${lar.tipo}`
+  const pesquisa = `/pesquisa?lat=${lar.lat.toFixed(4)}&lng=${lar.lng.toFixed(4)}&raio=15&tipo=${lar.tipo}`
 
   return (
-    <section aria-labelledby="semelhantes-titulo" className="mt-20">
-      <CalcadaDivider color="#f4ede2" height={20} />
-      <div className="bg-sand pt-12 pb-16 sm:pt-14 sm:pb-20">
-        <div className="container-page">
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <div className="max-w-2xl">
-              <p className="eyebrow">Comparar antes de decidir</p>
-              <h2 id="semelhantes-titulo" className="mt-2 text-3xl font-semibold sm:text-4xl">
-                Outras opções <em>perto</em>
-              </h2>
-              <p className="mt-3 text-lg text-ink-soft">
-                {tipoFrase} mais {lar.tipo === 'residencia' ? 'próximas' : 'próximos'} de {lar.nome}, com as vagas e a previsão de hoje. As distâncias
-                contam a partir desta instituição.
-              </p>
-            </div>
-            <ButtonLink to={pesquisa} variant="secondary" iconRight={<ArrowRight aria-hidden className="size-5" />}>
-              Ver {tipoPlural} no mapa
-            </ButtonLink>
-          </div>
-          <ul className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {perto.map(({ l, d }) => (
-              <li key={l.id} className="flex">
-                <LarCard lar={l} distanciaKm={d} className="w-full" />
-              </li>
-            ))}
-          </ul>
-        </div>
+    <section aria-labelledby="semelhantes-titulo" className="bg-sand py-24 sm:py-32">
+      <div className="container-page">
+        <Reveal className="mx-auto max-w-4xl text-center">
+          <h2 id="semelhantes-titulo" className="headline">
+            Outras opções perto
+          </h2>
+          <p className="mt-4 text-xl text-ink-mute">Compare antes de decidir. Distâncias a partir desta instituição.</p>
+          <Link to={pesquisa} className="mt-5 inline-flex min-h-12 items-center gap-0.5 text-lg text-terra-600 hover:underline">
+            Ver {PLURAL[lar.tipo]} no mapa
+            <ChevronRight aria-hidden className="size-5" />
+          </Link>
+        </Reveal>
+        <ul className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {perto.map(({ l, d }, i) => (
+            <Reveal as="li" key={l.id} delay={i * 90} className="flex">
+              <LarCard lar={l} distanciaKm={d} className="w-full p-3 pb-5" headingLevel="h3" />
+            </Reveal>
+          ))}
+        </ul>
       </div>
     </section>
   )

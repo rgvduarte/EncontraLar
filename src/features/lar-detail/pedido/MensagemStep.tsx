@@ -1,6 +1,5 @@
 import { Link } from 'react-router'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ShieldCheck } from 'lucide-react'
 import type { Lar, PerfilIdoso, User } from '@/types'
 import { Checkbox, Switch, TextareaField } from '@/components/ui/Field'
 import { mensagemSugerida } from '../helpers'
@@ -11,7 +10,7 @@ export interface DadosEnvio {
   visita?: VisitaEscolha
 }
 
-/** Mensagem para a instituição, visita opcional e consentimento RGPD. */
+/** Mensagem para a instituição, visita opcional e consentimento RGPD (obrigatório). */
 export function MensagemStep({
   lar,
   perfil,
@@ -37,6 +36,7 @@ export function MensagemStep({
   const consentRef = useRef<HTMLDivElement>(null)
   const visitaRef = useRef<HTMLDivElement>(null)
 
+  // depois de uma tentativa falhada, leva o foco ao primeiro campo por corrigir
   useEffect(() => {
     if (!tentativa) return
     if (erroVisita) visitaRef.current?.querySelector<HTMLElement>('input')?.focus()
@@ -56,46 +56,40 @@ export function MensagemStep({
   }
 
   return (
-    <form id={formId} onSubmit={submeter} noValidate className="flex flex-col gap-6">
+    <form id={formId} onSubmit={submeter} noValidate className="flex flex-col gap-8">
       <TextareaField
         label={`Mensagem para ${lar.nome}`}
-        hint="Já escrevemos um rascunho com base no perfil. Acrescente o que a equipa deve saber (por exemplo, uma alta hospitalar)."
-        rows={9}
+        hint="Escrevemos um rascunho a partir do perfil. Acrescente o que a equipa deve saber, como uma alta hospitalar."
+        rows={8}
         value={mensagem}
         onChange={(e) => setMensagem(e.target.value)}
         maxLength={1500}
       />
 
-      <div ref={visitaRef} className="rounded-2xl border border-line bg-white p-4 sm:p-5">
+      <div ref={visitaRef} className="border-t border-line pt-4">
         <Switch
           checked={comVisita}
           onChange={(v) => {
             setComVisita(v)
             if (!v) setErroVisita(null)
           }}
-          label="Quero também marcar uma visita"
+          label="Marcar também uma visita"
           description="Conhecer a casa antes de decidir é o passo mais importante."
         />
         {comVisita && (
-          <div className="mt-4 border-t border-line pt-4">
-            <VisitFields value={visita} onChange={(v) => setVisita(v)} erro={erroVisita} />
+          <div className="mt-5">
+            <VisitFields value={visita} onChange={setVisita} erro={erroVisita} />
           </div>
         )}
       </div>
 
-      <div className="rounded-2xl border border-line bg-sand/60 p-4 sm:p-5">
-        <p className="text-sm font-bold text-ink">A instituição vai receber</p>
-        <ul className="mt-2 space-y-1 text-sm text-ink-soft">
-          <li>
-            O perfil de <strong className="text-ink">{perfil.nome}</strong> ({perfil.idade} anos): grau de dependência, cuidados necessários, orçamento e
-            urgência.
-          </li>
-          <li>
-            O seu contacto: {user.nome} · {user.email}
-            {user.telefone ? ` · ${user.telefone}` : ''}.
-          </li>
-        </ul>
-        <div ref={consentRef} className="mt-3 border-t border-line pt-2">
+      <div className="border-t border-line pt-5">
+        <p className="font-medium text-ink">A instituição vai receber</p>
+        <p className="mt-1 text-ink-mute">
+          O perfil de {perfil.nome} (dependência, cuidados, orçamento e urgência) e o seu contacto: {user.email}
+          {user.telefone ? ` · ${user.telefone}` : ''}.
+        </p>
+        <div ref={consentRef} className="mt-3">
           <Checkbox
             checked={consentimento}
             onChange={(e) => {
@@ -107,16 +101,15 @@ export function MensagemStep({
             label="Autorizo a partilha do perfil de saúde com esta instituição"
             description={
               <>
-                Só para avaliar este pedido. Pode retirá-lo a qualquer momento.{' '}
-                <Link to="/privacidade" className="link text-sm" target="_blank">
-                  Privacidade e dados<span className="sr-only"> (abre numa nova janela)</span>
+                Só para avaliar este pedido. Pode retirar a autorização a qualquer momento.{' '}
+                <Link to="/privacidade" className="text-terra-600 hover:underline" target="_blank">
+                  Privacidade<span className="sr-only"> (abre numa nova janela)</span>
                 </Link>
               </>
             }
           />
           {erroConsent && (
-            <p id={`${formId}-consent-erro`} role="alert" className="mt-1 flex items-center gap-2 text-sm font-bold text-alert-700">
-              <ShieldCheck aria-hidden className="size-4" />
+            <p id={`${formId}-consent-erro`} role="alert" className="mt-1 text-sm font-medium text-alert-700">
               Para enviar o pedido precisamos da sua autorização.
             </p>
           )}

@@ -1,17 +1,17 @@
-import { CalendarCheck, CalendarClock, Hourglass, Mail, Phone } from 'lucide-react'
-import type { Candidatura, Lar } from '@/types'
+import { Check, Mail, Phone, X } from 'lucide-react'
+import type { Candidatura, Lar, PerfilIdoso } from '@/types'
 import { Badge, type BadgeTone } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
-import { CUIDADO_ICON } from '@/components/lar/icons'
 import { confirmarVisita } from '@/lib/store'
-import { CUIDADO_LABEL, CUIDADOS_CRITICOS } from '@/lib/labels'
 import { cn } from '@/lib/cn'
-import { prazo, textoVisita } from '../lib/derive'
+import { prazo, textoVisita, verificarCompatibilidade } from '../lib/derive'
+import { telHref } from '../shared/pedidoBits'
+import { capitalizar } from '../shared/ui'
 
 const ESTADO: Record<Candidatura['estado'], { tone: BadgeTone; texto: string }> = {
   enviada: { tone: 'terra', texto: 'Novo' },
-  em_analise: { tone: 'pine', texto: 'Em análise' },
+  em_analise: { tone: 'neutral', texto: 'Em análise' },
   lista_espera: { tone: 'dusk', texto: 'Lista de espera' },
   vaga_proposta: { tone: 'sun', texto: 'Vaga proposta' },
   aceite: { tone: 'leaf', texto: 'Entrada confirmada' },
@@ -19,91 +19,82 @@ const ESTADO: Record<Candidatura['estado'], { tone: BadgeTone; texto: string }> 
   cancelada: { tone: 'neutral', texto: 'Cancelado pela família' },
 }
 
-export function EstadoTag({ c, size = 'md' }: { c: Candidatura; size?: 'sm' | 'md' }) {
+export function EstadoTag({ c }: { c: Candidatura }) {
   const e = ESTADO[c.estado]
   return (
-    <Badge tone={e.tone} size={size}>
+    <Badge tone={e.tone}>
       {e.texto}
       {(c.estado === 'lista_espera' || c.estado === 'vaga_proposta') && c.posicao != null && <span className="font-normal">· n.º {c.posicao}</span>}
     </Badge>
   )
 }
 
-/** Necessidades de saúde, marcadas conforme a instituição as assegura ou não. */
-export function NecessidadesChips({ lar, c, className }: { lar: Lar; c: Candidatura; className?: string }) {
-  const nec = c.perfil.necessidades
-  if (!nec.length) return <p className={cn('text-sm text-ink-soft', className)}>Sem necessidades de saúde específicas indicadas.</p>
+/** Verificação automática do pedido contra a ficha: linhas curtas "cumpre / falta", sempre com texto. */
+export function CompatLines({ lar, perfil, className }: { lar: Lar; perfil: PerfilIdoso; className?: string }) {
+  const checks = verificarCompatibilidade(lar, perfil)
+  const faltas = checks.filter((c) => c.estado === 'falta').length
   return (
-    <ul className={cn('flex flex-wrap gap-2', className)} aria-label="Necessidades de saúde">
-      {nec.map((n) => {
-        const Icon = CUIDADO_ICON[n]
-        const ok = lar.cuidados.includes(n)
-        const critico = CUIDADOS_CRITICOS.includes(n)
-        return (
-          <li
-            key={n}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-sm font-semibold',
-              ok ? 'border-pine-100 bg-pine-50 text-pine-900' : 'border-alert-600/30 bg-alert-50 text-alert-700',
+    <div className={className}>
+      <p className={cn('text-sm font-semibold', faltas ? 'text-alert-700' : 'text-ink')}>
+        {faltas ? `${faltas} ${faltas === 1 ? 'ponto a verificar' : 'pontos a verificar'}` : 'Compatível com a sua ficha'}
+      </p>
+      <ul className="mt-2 grid gap-x-8 gap-y-1.5 text-sm sm:grid-cols-2">
+        {checks.map((c) => (
+          <li key={c.id} className="flex items-start gap-2">
+            {c.estado === 'ok' ? (
+              <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-leaf-600" strokeWidth={2.5} />
+            ) : (
+              <X aria-hidden className="mt-0.5 size-4 shrink-0 text-alert-600" strokeWidth={2.5} />
             )}
-          >
-            <Icon aria-hidden className={cn('size-4', ok ? 'text-pine-700' : 'text-alert-600')} />
-            {CUIDADO_LABEL[n]}
-            {!ok && <span className="font-bold">· não assegura</span>}
-            {critico && ok && <span className="sr-only">(essencial, assegurado)</span>}
+            <span className={c.estado === 'ok' ? 'text-ink-soft' : 'text-alert-700'}>
+              <span className="sr-only">{c.estado === 'ok' ? 'Cumpre — ' : 'Falta — '}</span>
+              {c.texto}
+            </span>
           </li>
-        )
-      })}
-    </ul>
-  )
-}
-
-export function ContactoLinks({ c, className }: { c: Candidatura; className?: string }) {
-  return (
-    <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      {c.contacto.telefone && (
-        <a
-          href={`tel:${c.contacto.telefone.replace(/\s/g, '')}`}
-          className="inline-flex min-h-12 items-center gap-2 rounded-2xl border-2 border-line-strong bg-white px-4 font-bold text-ink transition-colors hover:border-pine-600 hover:text-pine-800"
-        >
-          <Phone aria-hidden className="size-5 text-pine-700" />
-          <span>
-            <span className="sr-only">Ligar para {c.contacto.nome}: </span>
-            {c.contacto.telefone}
-          </span>
-        </a>
-      )}
-      <a
-        href={`mailto:${c.contacto.email}?subject=${encodeURIComponent(`Pedido de vaga — ${c.perfil.nome}`)}`}
-        className="inline-flex min-h-12 min-w-0 items-center gap-2 rounded-2xl px-3 font-semibold text-pine-800 underline decoration-pine-300 decoration-2 underline-offset-4 hover:decoration-pine-600"
-      >
-        <Mail aria-hidden className="size-5 shrink-0" />
-        <span className="truncate">{c.contacto.email}</span>
-      </a>
+        ))}
+      </ul>
     </div>
   )
 }
 
-/** Pedido de visita: pedida → um toque para confirmar; confirmada → lembrete. */
-export function VisitaCallout({ c, className }: { c: Candidatura; className?: string }) {
+/** Telefone e email da família, como ligações diretas. */
+export function ContactoLinks({ c, className }: { c: Candidatura; className?: string }) {
+  return (
+    <p className={cn('flex flex-wrap items-center gap-x-5', className)}>
+      {c.contacto.telefone && (
+        <a href={telHref(c.contacto.telefone)} className="link inline-flex min-h-11 items-center gap-1.5">
+          <Phone aria-hidden className="size-4" strokeWidth={1.75} />
+          <span className="sr-only">Ligar para {c.contacto.nome}: </span>
+          {c.contacto.telefone}
+        </a>
+      )}
+      <a
+        href={`mailto:${c.contacto.email}?subject=${encodeURIComponent(`Pedido de vaga — ${c.perfil.nome}`)}`}
+        className="link inline-flex min-h-11 min-w-0 items-center gap-1.5"
+      >
+        <Mail aria-hidden className="size-4 shrink-0" strokeWidth={1.75} />
+        <span className="sr-only">Escrever a {c.contacto.nome}: </span>
+        <span className="truncate">{c.contacto.email}</span>
+      </a>
+    </p>
+  )
+}
+
+/** Visita: pedida → um toque para confirmar; confirmada → lembrete. */
+export function VisitaLinha({ c, className }: { c: Candidatura; className?: string }) {
   const v = c.visita
   if (!v || ['recusada', 'cancelada'].includes(c.estado)) return null
+  const quando = textoVisita(v)
   if (v.estado === 'pedida') {
     return (
-      <div className={cn('flex flex-col gap-3 rounded-2xl border-2 border-pine-200 bg-pine-50 p-4 sm:flex-row sm:items-center sm:justify-between', className)}>
-        <p className="flex items-start gap-2.5">
-          <CalendarClock aria-hidden className="mt-0.5 size-5 shrink-0 text-pine-700" />
-          <span>
-            <strong>Pediu uma visita</strong> para {textoVisita(v)}.
-          </span>
+      <div className={cn('flex flex-wrap items-center gap-x-5 gap-y-3', className)}>
+        <p>
+          <span className="font-semibold">Pediu uma visita:</span> <span className="text-ink-soft">{quando}.</span>
         </p>
         <Button
-          variant="primary"
-          icon={<CalendarCheck aria-hidden className="size-5" />}
-          className="shrink-0"
           onClick={() => {
             confirmarVisita(c.id)
-            toast.success('Visita confirmada', `${c.contacto.nome} recebeu a confirmação para ${textoVisita(v)}.`)
+            toast.success('Visita confirmada', `${c.contacto.nome} recebeu a confirmação para ${quando}.`)
           }}
         >
           Confirmar visita
@@ -112,40 +103,38 @@ export function VisitaCallout({ c, className }: { c: Candidatura; className?: st
     )
   }
   return (
-    <p className={cn('flex items-start gap-2.5 rounded-2xl bg-leaf-50 p-4 text-leaf-700', className)}>
-      <CalendarCheck aria-hidden className="mt-0.5 size-5 shrink-0" />
+    <p className={cn('flex items-start gap-2', className)}>
+      <Check aria-hidden className="mt-1 size-4 shrink-0 text-leaf-600" strokeWidth={2.5} />
       <span>
-        <strong>Visita {v.estado === 'realizada' ? 'realizada' : 'confirmada'}</strong> — {textoVisita(v)}.
+        <span className="font-semibold">Visita {v.estado === 'realizada' ? 'realizada' : 'confirmada'}:</span> <span className="text-ink-soft">{quando}.</span>
       </span>
     </p>
   )
 }
 
-/** Vaga proposta: contagem do prazo de 48 horas. */
-export function PropostaCallout({ c, agora, className }: { c: Candidatura; agora: number; className?: string }) {
+/** Vaga proposta: contagem do prazo de 48 horas, com barra fina. */
+export function PropostaLinha({ c, agora, className }: { c: Candidatura; agora: number; className?: string }) {
   if (c.estado !== 'vaga_proposta') return null
   const p = prazo(c.prazoResposta, agora)
-  const pctRestante = p && !p.expirado ? Math.max(0, Math.min(1, p.horas / 48)) : 0
+  const restante = p && !p.expirado ? Math.max(0, Math.min(1, p.horas / 48)) : 0
   return (
-    <div className={cn('rounded-2xl border-2 p-4', p?.expirado ? 'border-alert-600/30 bg-alert-50' : 'border-sun-200 bg-sun-50', className)}>
-      <p className="flex items-start gap-2.5">
-        <Hourglass aria-hidden className={cn('mt-0.5 size-5 shrink-0', p?.expirado ? 'text-alert-600' : 'text-sun-700')} />
-        <span>
-          {p?.expirado ? (
-            <>
-              <strong>O prazo de resposta {p.texto}.</strong> Ligue à família ou retire a proposta para a passar à pessoa seguinte da lista.
-            </>
-          ) : (
-            <>
-              <strong>À espera da resposta da família</strong>
-              {p ? ` — ${p.texto}.` : '.'} A resposta chega aqui e no sino de notificações.
-            </>
-          )}
-        </span>
+    <div className={className}>
+      <p>
+        {p?.expirado ? (
+          <>
+            <span className="font-semibold text-alert-700">O prazo de resposta {p.texto}.</span>{' '}
+            <span className="text-ink-soft">Ligue à família ou retire a proposta para a passar à pessoa seguinte.</span>
+          </>
+        ) : (
+          <>
+            <span className="font-semibold">À espera da resposta da família.</span>{' '}
+            <span className="text-ink-soft">{p ? `${capitalizar(p.texto)}.` : ''}</span>
+          </>
+        )}
       </p>
       {p && !p.expirado && (
-        <span className="mt-3 block h-2 overflow-hidden rounded-full bg-sun-100" aria-hidden>
-          <span className="block h-full rounded-full bg-sun-500" style={{ width: `${pctRestante * 100}%` }} />
+        <span aria-hidden className="mt-2 block h-1 max-w-56 overflow-hidden rounded-full bg-sand-deep">
+          <span className={cn('block h-full rounded-full', restante < 0.25 ? 'bg-alert-600' : 'bg-sun-500')} style={{ width: `${restante * 100}%` }} />
         </span>
       )}
     </div>

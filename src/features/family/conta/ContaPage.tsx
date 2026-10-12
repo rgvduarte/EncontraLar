@@ -1,6 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Download, FlaskConical, LogOut, RotateCcw, Save } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { InputField, Switch } from '@/components/ui/Field'
 import { toast } from '@/components/ui/Toast'
@@ -21,26 +20,24 @@ import { descarregarFicheiro } from '../shared/ics'
 import { ConfirmModal } from '../shared/ui'
 
 const AVISOS = [
-  { id: 'vaga', label: 'Nova vaga numa instituição guardada', desc: 'Assim que a instituição indicar um lugar livre.', on: true },
-  { id: 'pedidos', label: 'Mudanças nos pedidos', desc: 'Análise, lista de espera, vaga proposta e respostas.', on: true },
-  { id: 'visitas', label: 'Lembrete de visita na véspera', desc: 'Com a morada e o guia da visita.', on: true },
-  { id: 'semanal', label: 'Resumo semanal', desc: 'Novas instituições e vagas na sua zona, às segundas-feiras.', on: false },
-] as const
-const CANAIS = [
-  { id: 'email', label: 'Email', on: true },
-  { id: 'sms', label: 'SMS para o telemóvel', on: false },
+  { id: 'vaga', label: 'Nova vaga numa instituição guardada', on: true },
+  { id: 'pedidos', label: 'Mudanças nos pedidos', on: true },
+  { id: 'visitas', label: 'Lembrete na véspera da visita', on: true },
+  { id: 'email', label: 'Enviar também por email', on: true },
+  { id: 'sms', label: 'Enviar também por SMS', on: false },
 ] as const
 
+/** Linha de definições ao estilo Apple: título à esquerda, conteúdo à direita, separadas por linhas finas. */
 function Bloco({ id, titulo, texto, children }: { id: string; titulo: string; texto?: string; children: ReactNode }) {
   return (
-    <section aria-labelledby={id} className="grid gap-6 rounded-[1.75rem] border border-line bg-white p-5 shadow-card sm:p-7 lg:grid-cols-[15rem_minmax(0,1fr)]">
+    <section aria-labelledby={id} className="grid gap-6 border-t border-line py-10 first:border-t-0 first:pt-0 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
       <div>
-        <h2 id={id} className="font-display text-2xl font-semibold">
+        <h2 id={id} className="text-2xl font-semibold">
           {titulo}
         </h2>
-        {texto && <p className="mt-1 text-sm text-ink-soft">{texto}</p>}
+        {texto && <p className="mt-1.5 text-sm text-ink-mute">{texto}</p>}
       </div>
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 max-w-xl">{children}</div>
     </section>
   )
 }
@@ -57,7 +54,7 @@ export default function ContaPage() {
   const [telefone, setTelefone] = useState(user.telefone ?? '')
   const [erroNome, setErroNome] = useState<string | null>(null)
   const [erroTel, setErroTel] = useState<string | null>(null)
-  const [avisos, setAvisos] = useState<Record<string, boolean>>(() => Object.fromEntries([...AVISOS, ...CANAIS].map((a) => [a.id, a.on])))
+  const [avisos, setAvisos] = useState<Record<string, boolean>>(() => Object.fromEntries(AVISOS.map((a) => [a.id, a.on])))
   const [repor, setRepor] = useState(false)
   const alterado = nome.trim() !== user.nome || telefone.trim() !== (user.telefone ?? '')
 
@@ -65,18 +62,13 @@ export default function ContaPage() {
     e.preventDefault()
     const n = nome.trim()
     const t = telefone.trim()
-    let ok = true
-    if (!n) {
-      setErroNome('Indique o seu nome.')
-      ok = false
-    }
-    if (t && !/^\+?[\d\s]{9,15}$/.test(t)) {
-      setErroTel('Use só algarismos, por exemplo 912 345 678.')
-      ok = false
-    }
-    if (!ok) return
+    const eNome = n ? null : 'Indique o seu nome.'
+    const eTel = t && !/^\+?[\d\s]{9,15}$/.test(t) ? 'Use só algarismos, por exemplo 912 345 678.' : null
+    setErroNome(eNome)
+    setErroTel(eTel)
+    if (eNome || eTel) return
     updateUser({ nome: n, telefone: t || undefined })
-    toast.success('Dados guardados', 'Os próximos pedidos de vaga já levam estes contactos.')
+    toast.success('Contactos guardados', 'Os próximos pedidos de vaga já levam estes dados.')
   }
 
   const exportar = () => {
@@ -90,17 +82,25 @@ export default function ContaPage() {
       notificacoes: notifs,
     }
     descarregarFicheiro('encontralar-os-meus-dados.json', JSON.stringify(dados, null, 2), 'application/json;charset=utf-8')
-    toast.success('Ficheiro descarregado', 'Contém todos os dados associados à sua conta.')
+    toast.success('Ficheiro descarregado', 'Contém todos os dados da sua conta.')
   }
 
-  const sair = () => {
-    logout()
-    navigate('/')
+  const confirmarRepor = () => {
+    const id = user.id
+    setRepor(false)
+    resetDemo()
+    if (!getDB().users.some((u) => u.id === id)) {
+      toast.info('Dados de demonstração repostos', 'A sua conta não fazia parte do exemplo e foi removida.')
+      navigate('/')
+    } else {
+      toast.success('Dados de demonstração repostos')
+      navigate('/familia')
+    }
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <Bloco id="conta-contactos" titulo="Contactos" texto="É por aqui que as instituições lhe ligam ou escrevem sobre vagas e visitas.">
+    <div>
+      <Bloco id="conta-contactos" titulo="Contactos" texto="É por aqui que as instituições lhe respondem.">
         <form onSubmit={guardar} noValidate className="flex flex-col gap-5">
           <InputField
             label="Nome"
@@ -112,151 +112,96 @@ export default function ContaPage() {
             }}
             error={erroNome ?? undefined}
           />
-          <div className="grid gap-5 sm:grid-cols-2">
-            <InputField
-              label="Telemóvel"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              optional
-              value={telefone}
-              onChange={(e) => {
-                setTelefone(e.target.value)
-                setErroTel(null)
-              }}
-              error={erroTel ?? undefined}
-              hint="Recomendado: numa vaga proposta, as instituições preferem ligar."
-            />
-            <InputField label="Email" type="email" value={user.email} readOnly aria-readonly hint="É o seu identificador de acesso e não pode ser alterado." className="bg-sand" />
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <Button type="submit" disabled={!alterado} icon={<Save aria-hidden className="size-5" />}>
-              Guardar contactos
+          <InputField
+            label="Telemóvel"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            optional
+            value={telefone}
+            onChange={(e) => {
+              setTelefone(e.target.value)
+              setErroTel(null)
+            }}
+            error={erroTel ?? undefined}
+            hint="Numa vaga proposta, as instituições preferem ligar."
+          />
+          <InputField label="Email" type="email" value={user.email} readOnly aria-readonly hint="Serve para entrar e não pode ser alterado." className="bg-sand" />
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Button type="submit" disabled={!alterado}>
+              Guardar
             </Button>
-            <p className="text-sm text-ink-soft">Conta criada a {dataLonga(user.criadoEm)}.</p>
+            <p className="text-sm text-ink-mute">Conta criada a {dataLonga(user.criadoEm)}.</p>
           </div>
         </form>
       </Bloco>
 
-      <Bloco id="conta-avisos" titulo="Avisos" texto="Escolha o que quer receber e por onde. Os avisos de vaga também aparecem no sino, no topo da página.">
-        <div className="divide-y divide-line">
+      <Bloco id="conta-avisos" titulo="Avisos" texto="Também aparecem no sino, no topo da página.">
+        <div className="divide-y divide-line border-y border-line">
           {AVISOS.map((a) => (
             <Switch
               key={a.id}
-              className="py-3"
-              checked={avisos[a.id] ?? false}
-              onChange={(v) => setAvisos((s) => ({ ...s, [a.id]: v }))}
-              label={a.label}
-              description={a.desc}
-            />
-          ))}
-        </div>
-        <p className="mt-5 text-sm font-bold">Enviar também por</p>
-        <div className="divide-y divide-line">
-          {CANAIS.map((a) => (
-            <Switch
-              key={a.id}
-              className="py-3"
+              className="py-2"
               checked={avisos[a.id] ?? false}
               disabled={a.id === 'sms' && !user.telefone}
               onChange={(v) => setAvisos((s) => ({ ...s, [a.id]: v }))}
               label={a.label}
-              description={a.id === 'sms' ? (user.telefone ? `Para ${user.telefone}` : 'Indique primeiro o telemóvel, acima.') : `Para ${user.email}`}
+              description={a.id === 'email' ? user.email : a.id === 'sms' ? (user.telefone ?? 'Indique primeiro o telemóvel.') : undefined}
             />
           ))}
         </div>
-        <p className="mt-4 flex items-start gap-2 rounded-2xl bg-sun-50 px-4 py-3 text-sm text-sun-800">
-          <FlaskConical aria-hidden className="mt-0.5 size-4 shrink-0" />
-          Nesta demonstração não são enviados emails nem SMS, e estas escolhas não ficam guardadas: os avisos aparecem só no painel e
-          no sino.
+        <p className="mt-4 text-sm text-ink-mute">
+          Protótipo: não são enviados emails nem SMS, e estas escolhas não ficam guardadas.
         </p>
       </Bloco>
 
-      <Bloco id="conta-dados" titulo="Os seus dados" texto="Pode descarregar tudo o que guardámos sobre si (RGPD, art. 15.º e 20.º).">
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {[
-            [perfis.length, perfis.length === 1 ? 'perfil de cuidados' : 'perfis de cuidados'],
-            [cands.length, cands.length === 1 ? 'pedido de vaga' : 'pedidos de vaga'],
-            [favs.length, favs.length === 1 ? 'instituição guardada' : 'instituições guardadas'],
-            [notifs.length, notifs.length === 1 ? 'notificação' : 'notificações'],
-          ].map(([n, t]) => (
-            <div key={t as string} className="rounded-2xl bg-sand/60 px-4 py-3">
-              <dt className="sr-only">{t}</dt>
-              <dd>
-                <span className="block font-display text-3xl font-semibold tabular">{n}</span>
-                <span aria-hidden className="text-sm text-ink-soft">
-                  {t}
-                </span>
-              </dd>
-            </div>
-          ))}
-        </dl>
-        <div className="mt-5 flex flex-wrap items-center gap-4">
-          <Button variant="secondary" icon={<Download aria-hidden className="size-5" />} onClick={exportar}>
+      <Bloco id="conta-dados" titulo="Os seus dados" texto="RGPD, artigos 15.º e 20.º.">
+        <p className="text-ink-soft">
+          {perfis.length} {perfis.length === 1 ? 'perfil' : 'perfis'} · {cands.length} {cands.length === 1 ? 'pedido' : 'pedidos'} ·{' '}
+          {favs.length} {favs.length === 1 ? 'guardada' : 'guardadas'} · {notifs.length} {notifs.length === 1 ? 'notificação' : 'notificações'}
+        </p>
+        <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+          <Button variant="subtle" onClick={exportar}>
             Descarregar os meus dados
           </Button>
-          <Link to="/privacidade" className="link inline-flex min-h-12 items-center text-sm">
-            Como tratamos os seus dados
+          <Link to="/privacidade" className="link inline-flex min-h-12 items-center">
+            Como tratamos os dados
           </Link>
         </div>
       </Bloco>
 
-      <Bloco id="conta-sessao" titulo="Sessão" texto="Num computador partilhado, termine sempre a sessão no fim.">
-        <div className="flex flex-col gap-5">
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line p-4">
-            <p>
-              <strong className="block">Terminar sessão</strong>
-              <span className="text-sm text-ink-soft">Os seus dados ficam guardados para a próxima vez.</span>
-            </p>
-            <Button variant="secondary" icon={<LogOut aria-hidden className="size-5" />} onClick={sair}>
-              Terminar sessão
-            </Button>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-alert-600/25 bg-alert-50/60 p-4">
-            <p className="max-w-md">
-              <strong className="block">Repor dados de demonstração</strong>
-              <span className="text-sm text-ink-soft">
-                Apaga as alterações feitas neste navegador (perfis, pedidos, guardados) e volta ao exemplo inicial.
-              </span>
-            </p>
-            <Button variant="danger" icon={<RotateCcw aria-hidden className="size-5" />} onClick={() => setRepor(true)}>
-              Repor demonstração
-            </Button>
-          </div>
-        </div>
+      <Bloco id="conta-demo" titulo="Demonstração" texto="Afeta apenas este navegador.">
+        <p className="text-ink-soft">Volta ao exemplo inicial: perfis, pedidos, guardados e notificações.</p>
+        <Button variant="subtle" className="mt-5" onClick={() => setRepor(true)}>
+          Repor dados de demonstração
+        </Button>
+      </Bloco>
+
+      <Bloco id="conta-sessao" titulo="Sessão">
+        <p className="text-ink-soft">Num computador partilhado, termine sempre a sessão.</p>
+        <Button
+          className="mt-5"
+          onClick={() => {
+            logout()
+            navigate('/')
+          }}
+        >
+          Terminar sessão
+        </Button>
       </Bloco>
 
       <ConfirmModal
         open={repor}
         onClose={() => setRepor(false)}
-        onConfirm={() => {
-          const id = user.id
-          resetDemo()
-          setRepor(false)
-          if (!getDB().users.some((u) => u.id === id)) {
-            toast.info('Dados de demonstração repostos', 'A sua conta não fazia parte do exemplo e foi removida.')
-            navigate('/')
-          } else {
-            toast.success('Dados de demonstração repostos')
-            navigate('/familia')
-          }
-        }}
+        onConfirm={confirmarRepor}
         title="Repor os dados de demonstração?"
         description="Afeta apenas este navegador."
-        confirmLabel="Sim, repor"
+        confirmLabel="Repor"
         cancelLabel="Cancelar"
         confirmVariant="danger"
-        confirmIcon={<RotateCcw aria-hidden className="size-5" />}
       >
-        <p>
-          Todas as alterações feitas neste protótipo — perfis, pedidos, visitas, guardados e notificações, incluindo as do painel das
-          instituições — são substituídas pelos dados de exemplo.
-        </p>
-        {!user.demo && (
-          <p className="mt-3 rounded-2xl bg-sun-50 p-4 text-sm text-sun-800">
-            A sua conta ({user.email}) foi criada por si e não faz parte do exemplo: será apagada e a sessão termina.
-          </p>
-        )}
+        <p>Todas as alterações feitas neste protótipo, incluindo as do painel das instituições, são substituídas pelo exemplo inicial.</p>
+        {!user.demo && <p className="mt-3">A sua conta ({user.email}) não faz parte do exemplo: será apagada e a sessão termina.</p>}
       </ConfirmModal>
     </div>
   )

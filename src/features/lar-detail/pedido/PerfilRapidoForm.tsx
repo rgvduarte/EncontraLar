@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Euro } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import type { Cuidado, GrauDependencia, Lar, PerfilIdoso, TipoQuarto, Urgencia } from '@/types'
 import { Checkbox, ChoiceCard, InputField, SelectField } from '@/components/ui/Field'
 import { toast } from '@/components/ui/Toast'
@@ -84,17 +84,14 @@ export function PerfilRapidoForm({ lar, formId, onGuardado }: { lar: Lar; formId
       toast.error('Não foi possível guardar o perfil', 'A sessão pode ter terminado. Entre de novo e tente outra vez.')
       return
     }
-    toast.success('Perfil guardado', `Pode editá-lo quando quiser no seu painel.`)
+    toast.success('Perfil guardado', 'Pode editá-lo quando quiser no seu painel.')
     onGuardado(perfil)
   }
 
   return (
-    <form id={formId} onSubmit={submeter} noValidate className="flex flex-col gap-6">
-      <p className="text-ink-soft">
-        Para a instituição avaliar o pedido, precisamos de saber um pouco sobre a pessoa. Fica guardado para outros pedidos — e pode completá-lo mais tarde.
-      </p>
+    <form id={formId} onSubmit={submeter} noValidate className="flex flex-col gap-7">
       <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
-        <InputField label="Nome da pessoa" autoComplete="off" value={nome} onChange={(e) => setNome(e.target.value)} error={erros.nome} />
+        <InputField label="Nome" autoComplete="off" value={nome} onChange={(e) => setNome(e.target.value)} error={erros.nome} />
         <InputField label="Idade" type="number" inputMode="numeric" min={50} max={115} value={idade} onChange={(e) => setIdade(e.target.value)} error={erros.idade} />
       </div>
       <SelectField label="Quem é para si?" value={relacao} onChange={(e) => setRelacao(e.target.value)}>
@@ -106,8 +103,7 @@ export function PerfilRapidoForm({ lar, formId, onGuardado }: { lar: Lar; formId
       </SelectField>
 
       <fieldset data-erro={Boolean(erros.grau)} aria-describedby={erros.grau ? `${formId}-grau-erro` : undefined}>
-        <legend className="text-base font-bold text-ink">Como é o dia a dia?</legend>
-        <p className="mt-1 text-sm text-ink-soft">Escolha o grau de dependência mais próximo.</p>
+        <legend className="text-base font-medium text-ink">Como é o dia a dia?</legend>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {GRAUS_ORDEM.map((g) => (
             <ChoiceCard
@@ -122,15 +118,15 @@ export function PerfilRapidoForm({ lar, formId, onGuardado }: { lar: Lar; formId
           ))}
         </div>
         {erros.grau && (
-          <p id={`${formId}-grau-erro`} role="alert" className="mt-2 text-sm font-bold text-alert-700">
+          <p id={`${formId}-grau-erro`} role="alert" className="mt-2 text-sm font-medium text-alert-700">
             {erros.grau}
           </p>
         )}
       </fieldset>
 
       <fieldset>
-        <legend className="text-base font-bold text-ink">Precisa de algum destes cuidados?</legend>
-        <p className="mt-1 text-sm text-ink-soft">Assinale os que se aplicam. Se nenhum se aplicar, avance.</p>
+        <legend className="text-base font-medium text-ink">Precisa de algum destes cuidados?</legend>
+        <p className="mt-1 text-sm text-ink-mute">Assinale os que se aplicam.</p>
         <div className="mt-2 grid gap-x-6 sm:grid-cols-2">
           {NECESSIDADES.map((c) => (
             <Checkbox
@@ -144,16 +140,8 @@ export function PerfilRapidoForm({ lar, formId, onGuardado }: { lar: Lar; formId
       </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField label="Quarto preferido" value={quarto} onChange={(e) => setQuarto(e.target.value as TipoQuarto | 'indiferente')}>
-          <option value="indiferente">Indiferente</option>
-          {(['individual', 'duplo', 'casal'] as TipoQuarto[]).map((q) => (
-            <option key={q} value={q}>
-              {QUARTO_LABEL[q]}
-            </option>
-          ))}
-        </SelectField>
         <InputField
-          label="Orçamento mensal máximo"
+          label="Orçamento mensal máximo (€)"
           type="number"
           inputMode="numeric"
           min={200}
@@ -161,10 +149,7 @@ export function PerfilRapidoForm({ lar, formId, onGuardado }: { lar: Lar; formId
           value={orcamento}
           onChange={(e) => setOrcamento(e.target.value)}
           error={erros.orcamento}
-          leading={<Euro aria-hidden />}
         />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
         <SelectField label="Para quando?" value={urgencia} onChange={(e) => setUrgencia(e.target.value as Urgencia)}>
           {(Object.keys(URGENCIA_LABEL) as Urgencia[]).map((u) => (
             <option key={u} value={u}>
@@ -172,21 +157,40 @@ export function PerfilRapidoForm({ lar, formId, onGuardado }: { lar: Lar; formId
             </option>
           ))}
         </SelectField>
-        <SelectField label="Zona onde procura" value={lugar} onChange={(e) => setLugar(e.target.value)}>
-          {!inicial && <option value="">{lar.localidade}</option>}
-          {LUGARES.map((l) => (
-            <option key={l.label} value={l.label}>
-              {l.label}
-            </option>
-          ))}
-        </SelectField>
       </div>
-      <Checkbox
-        label="Precisa de vaga comparticipada pela Segurança Social"
-        description="Assinale se a mensalidade tiver de depender dos rendimentos."
-        checked={ss}
-        onChange={(e) => setSS(e.target.checked)}
-      />
+
+      <details className="group border-t border-line pt-2">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between text-terra-600 [&::-webkit-details-marker]:hidden">
+          Mais preferências (opcional)
+          <ChevronDown aria-hidden className="size-5 transition-transform duration-200 group-open:rotate-180" />
+        </summary>
+        <div className="mt-3 flex flex-col gap-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SelectField label="Quarto preferido" value={quarto} onChange={(e) => setQuarto(e.target.value as TipoQuarto | 'indiferente')}>
+              <option value="indiferente">Indiferente</option>
+              {(['individual', 'duplo', 'casal'] as TipoQuarto[]).map((q) => (
+                <option key={q} value={q}>
+                  {QUARTO_LABEL[q]}
+                </option>
+              ))}
+            </SelectField>
+            <SelectField label="Zona onde procura" value={lugar} onChange={(e) => setLugar(e.target.value)}>
+              {!inicial && <option value="">{lar.localidade}</option>}
+              {LUGARES.map((l) => (
+                <option key={l.label} value={l.label}>
+                  {l.label}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+          <Checkbox
+            label="Precisa de vaga comparticipada pela Segurança Social"
+            description="Se a mensalidade tiver de depender dos rendimentos."
+            checked={ss}
+            onChange={(e) => setSS(e.target.checked)}
+          />
+        </div>
+      </details>
     </form>
   )
 }

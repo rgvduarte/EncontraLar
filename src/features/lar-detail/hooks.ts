@@ -2,10 +2,10 @@ import { useEffect, useState, type RefObject } from 'react'
 
 /**
  * Scroll-spy: devolve o id da última secção cujo topo já passou a linha `offset` (px a partir do topo).
- * No fim da página, a última secção fica ativa.
+ * Antes da primeira secção devolve '' (nenhuma ativa).
  */
 export function useScrollSpy(ids: readonly string[], offset = 180): string {
-  const [ativo, setAtivo] = useState<string>(ids[0] ?? '')
+  const [ativo, setAtivo] = useState<string>('')
   const chave = ids.join('|')
 
   useEffect(() => {
@@ -13,7 +13,7 @@ export function useScrollSpy(ids: readonly string[], offset = 180): string {
     let raf = 0
     const atualizar = () => {
       raf = 0
-      let atual = lista[0] ?? ''
+      let atual = ''
       for (const id of lista) {
         const el = document.getElementById(id)
         if (el && el.getBoundingClientRect().top - offset <= 0) atual = id
@@ -53,7 +53,7 @@ export function useInView(ref: RefObject<Element | null>, rootMargin = '0px'): b
  * `top` para um elemento sticky que pode ser mais alto do que o ecrã: se couber, fica a `base` px do topo;
  * se não couber, cola pelo fundo (top negativo), para que nunca fique uma parte inalcançável.
  */
-export function useStickyTop(ref: RefObject<HTMLElement | null>, base = 96, margem = 16): number {
+export function useStickyTop(ref: RefObject<HTMLElement | null>, base = 140, margem = 16): number {
   const [top, setTop] = useState(base)
   useEffect(() => {
     const el = ref.current

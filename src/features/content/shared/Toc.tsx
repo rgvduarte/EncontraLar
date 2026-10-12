@@ -1,12 +1,16 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+/**
+ * Índice de uma página longa: lista de texto fixa ao lado (desktop) e barra compacta
+ * que abre uma lista (telemóvel), com a secção atual destacada (scroll-spy).
+ */
+import { useCallback, useId, useRef, useState } from 'react'
 import { Link } from 'react-router'
+import { ChevronDown } from 'lucide-react'
+import { useDismiss } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
 
 export interface TocItem {
   id: string
   label: string
-  /** etiqueta curta para as pílulas no telemóvel */
-  short?: string
 }
 
 interface TocProps {
@@ -14,84 +18,89 @@ interface TocProps {
   active: string | null
   onGo: (id: string) => void
   pathname: string
+  label: string
 }
 
-/** Índice lateral fixo (desktop), com a secção atual destacada. */
-export function TocSidebar({ items, active, onGo, pathname, title = 'Neste guia', footer }: TocProps & { title?: string; footer?: ReactNode }) {
+function TocLink({ item, active, onGo, pathname, className }: { item: TocItem; active: boolean; onGo: (id: string) => void; pathname: string; className?: string }) {
   return (
-    <nav aria-label={title} className="sticky top-28 flex flex-col gap-5 print:hidden">
-      <p className="eyebrow">{title}</p>
-      <ol className="relative flex flex-col border-l-2 border-line">
-        {items.map((it, i) => {
-          const isActive = active === it.id
-          return (
-            <li key={it.id}>
-              <Link
-                to={{ pathname, hash: it.id }}
-                onClick={(e) => {
-                  e.preventDefault()
-                  onGo(it.id)
-                }}
-                aria-current={isActive ? 'location' : undefined}
-                className={cn(
-                  '-ml-0.5 flex min-h-12 items-center gap-3 border-l-2 py-1.5 pr-2 pl-4 leading-snug transition-colors',
-                  isActive
-                    ? 'border-terra-500 font-bold text-ink'
-                    : 'border-transparent text-ink-soft hover:border-line-strong hover:text-ink',
-                )}
-              >
-                <span aria-hidden className={cn('font-display w-6 shrink-0 text-sm tabular', isActive ? 'text-terra-600' : 'text-ink-mute')}>
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                {it.label}
-              </Link>
-            </li>
-          )
-        })}
-      </ol>
-      {footer}
+    <Link
+      to={{ pathname, hash: item.id }}
+      onClick={(e) => {
+        e.preventDefault()
+        onGo(item.id)
+      }}
+      aria-current={active ? 'location' : undefined}
+      className={cn('flex min-h-11 items-center transition-colors duration-200', active ? 'font-medium text-ink' : 'text-ink-mute hover:text-ink', className)}
+    >
+      {item.label}
+    </Link>
+  )
+}
+
+/** Desktop: lista de texto fixa, sem caixas. */
+export function TocSidebar({ items, active, onGo, pathname, label }: TocProps) {
+  return (
+    <nav aria-label={label} className="sticky top-24 hidden self-start lg:block print:hidden">
+      <p className="mb-3 text-sm font-semibold text-ink">{label}</p>
+      <ul className="flex flex-col border-l border-line text-sm">
+        {items.map((it) => (
+          <li key={it.id}>
+            <TocLink
+              item={it}
+              active={active === it.id}
+              onGo={onGo}
+              pathname={pathname}
+              className={cn('-ml-px border-l pl-4', active === it.id ? 'border-ink' : 'border-transparent')}
+            />
+          </li>
+        ))}
+      </ul>
     </nav>
   )
 }
 
-/** Pílulas horizontais fixas por baixo do cabeçalho (telemóvel e tablet). */
-export function TocChips({ items, active, onGo, pathname, label = 'Secções desta página' }: TocProps & { label?: string }) {
-  const scroller = useRef<HTMLOListElement>(null)
-
-  useEffect(() => {
-    const box = scroller.current
-    if (!box || !active) return
-    const chip = box.querySelector<HTMLElement>(`[data-id="${active}"]`)
-    if (!chip) return
-    const left = chip.offsetLeft - box.clientWidth / 2 + chip.clientWidth / 2
-    box.scrollTo({ left: Math.max(0, left), behavior: 'smooth' })
-  }, [active])
+/** Telemóvel e tablet: barra fixa por baixo do cabeçalho que mostra a secção atual e abre o índice. */
+export function TocBar({ items, active, onGo, pathname, label }: TocProps) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const listId = useId()
+  const close = useCallback(() => setOpen(false), [])
+  useDismiss(open, ref, close)
+  const atual = items.find((i) => i.id === active)
 
   return (
-    <nav aria-label={label} className="sticky top-18 z-[900] -mx-4 border-b border-line bg-cream/95 backdrop-blur-md sm:-mx-6 lg:hidden print:hidden">
-      <ol ref={scroller} className="flex gap-2 overflow-x-auto px-4 py-2.5 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden">
-        {items.map((it) => {
-          const isActive = active === it.id
-          return (
-            <li key={it.id} data-id={it.id} className="shrink-0">
-              <Link
-                to={{ pathname, hash: it.id }}
-                onClick={(e) => {
-                  e.preventDefault()
-                  onGo(it.id)
+    <div ref={ref} className="sticky top-16 z-[900] -mx-5 border-b border-line bg-white/85 backdrop-blur-xl backdrop-saturate-150 sm:-mx-8 lg:hidden print:hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={listId}
+        className="flex min-h-13 w-full items-center justify-between gap-3 px-5 text-left sm:px-8"
+      >
+        <span className="min-w-0 truncate text-sm">
+          <span className="font-semibold text-ink">{label}</span>
+          {atual && <span className="text-ink-mute"> · {atual.label}</span>}
+        </span>
+        <ChevronDown aria-hidden className={cn('size-5 shrink-0 text-ink-mute transition-transform duration-300', open && 'rotate-180')} />
+      </button>
+      <nav id={listId} aria-label={label} hidden={!open} className="animate-pop-in border-t border-line px-5 pt-1 pb-3 sm:px-8">
+        <ul className="flex flex-col">
+          {items.map((it) => (
+            <li key={it.id}>
+              <TocLink
+                item={it}
+                active={active === it.id}
+                pathname={pathname}
+                className="min-h-12 text-base"
+                onGo={(id) => {
+                  setOpen(false)
+                  onGo(id)
                 }}
-                aria-current={isActive ? 'location' : undefined}
-                className={cn(
-                  'inline-flex min-h-12 items-center rounded-full border px-4 text-sm font-bold whitespace-nowrap transition-colors',
-                  isActive ? 'border-pine-800 bg-pine-800 text-white' : 'border-line-strong bg-white text-ink-soft hover:border-pine-600',
-                )}
-              >
-                {it.short ?? it.label}
-              </Link>
+              />
             </li>
-          )
-        })}
-      </ol>
-    </nav>
+          ))}
+        </ul>
+      </nav>
+    </div>
   )
 }

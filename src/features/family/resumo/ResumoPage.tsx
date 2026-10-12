@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router'
+import { Reveal } from '@/components/ui/Reveal'
 import { useCurrentUser, useFavoritos, useNotificacoes } from '@/lib/store'
 import { useDocumentTitle } from '@/lib/hooks'
 import { usePedidos, usePerfisOrdenados, pesquisaUrl, visitasFuturas } from '../shared/data'
 import { VagaProposta } from '../shared/VagaProposta'
-import { VisitTicket } from '../shared/VisitTicket'
-import { HelpCard } from '../shared/SidebarBits'
 import { primeiroNome } from '../shared/text'
 import { PedidosResumo } from './PedidosResumo'
+import { ProximaVisita } from './ProximaVisita'
 import { ProximosPassos } from './ProximosPassos'
 import { Novidades } from './Novidades'
 import { Sugestoes } from './Sugestoes'
@@ -29,19 +29,12 @@ export default function ResumoPage() {
   const pesquisa = principal ? pesquisaUrl(principal) : '/pesquisa'
 
   return (
-    <div className="flex flex-col gap-8">
-      {propostas.map((p, i) => (
-        <div key={p.c.id} id={i === 0 ? 'vaga-proposta' : undefined} className="scroll-mt-28">
-          <VagaProposta c={p.c} lar={p.lar} />
-        </div>
-      ))}
-
+    <div className="flex flex-col gap-16 sm:gap-20">
       {bemvindo && (
         <WelcomeCard
           nome={primeiroNome(user.nome)}
           temPerfil={Boolean(principal)}
-          guardados={favoritos.length}
-          pedidos={todos.length}
+          pesquisa={pesquisa}
           onClose={() => {
             const next = new URLSearchParams(params)
             next.delete('bemvindo')
@@ -50,20 +43,36 @@ export default function ResumoPage() {
         />
       )}
 
-      <div className="grid gap-8 xl:grid-cols-12">
-        <div className="flex min-w-0 flex-col gap-8 xl:col-span-7">
-          <PedidosResumo ativos={ativos} terminados={terminados.length} />
+      {propostas.length > 0 && (
+        <div className="flex flex-col gap-6">
+          {propostas.map((p, i) => (
+            <div key={p.c.id} id={i === 0 ? 'vaga-proposta' : undefined} className="scroll-mt-40">
+              <VagaProposta c={p.c} lar={p.lar} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Reveal>
+        <PedidosResumo ativos={ativos} terminados={terminados.length} pesquisa={pesquisa} />
+      </Reveal>
+
+      <Reveal>
+        <ProximaVisita visita={visitas[0]} outras={visitas.length - 1} temPedidos={ativos.length > 0} />
+      </Reveal>
+
+      <Reveal>
+        <Sugestoes perfil={principal} excluir={excluir} />
+      </Reveal>
+
+      <div className="grid gap-16 xl:grid-cols-2 xl:gap-12">
+        <Reveal>
           <Novidades notifs={notifs} />
-        </div>
-        <div className="flex min-w-0 flex-col gap-8 xl:col-span-5">
-          <VisitTicket visita={visitas[0]} outras={visitas.length - 1} temPedidos={ativos.length > 0} />
-          <ProximosPassos perfil={principal} guardados={favoritos.length} visita={visitas[0]} pesquisa={pesquisa} />
-        </div>
+        </Reveal>
+        <Reveal delay={120}>
+          <ProximosPassos perfil={principal} guardados={favoritos.length} pedidos={todos.length} visita={visitas[0]} pesquisa={pesquisa} />
+        </Reveal>
       </div>
-
-      <Sugestoes perfil={principal} excluir={excluir} />
-
-      <HelpCard className="lg:hidden" />
     </div>
   )
 }

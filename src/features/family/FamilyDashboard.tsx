@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router'
-import { FileText, Heart, LayoutDashboard, Settings, UserRoundPen } from 'lucide-react'
+import { FileText, Heart, LayoutGrid, Settings, UserRound } from 'lucide-react'
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell'
 import { useCurrentUser } from '@/lib/store'
-import { usePedidos, usePerfisOrdenados, visitasFuturas } from './shared/data'
+import { usePedidos, usePerfisOrdenados } from './shared/data'
 import { DraftBanner } from './shared/DraftBanner'
-import { FamilyIdentity, HelpCard } from './shared/SidebarBits'
-import { comArtigo, diaPorExtenso, primeiroNome, saudacao } from './shared/text'
+import { FamilyIdentity, SidebarHelp } from './shared/Identity'
+import { comArtigo, primeiroNome, saudacao } from './shared/text'
 import ResumoPage from './resumo/ResumoPage'
 import PedidosPage from './pedidos/PedidosPage'
 import GuardadosPage from './guardados/GuardadosPage'
@@ -14,6 +14,13 @@ import PerfilPage from './perfil/PerfilPage'
 import ContaPage from './conta/ContaPage'
 
 type Seccao = '' | 'pedidos' | 'guardados' | 'perfil' | 'conta'
+
+const TITULOS: Record<Exclude<Seccao, ''>, { title: string; subtitle: string }> = {
+  pedidos: { title: 'Pedidos', subtitle: 'Em que ponto está cada pedido e quanto deverá esperar.' },
+  guardados: { title: 'Guardados', subtitle: 'Compare lado a lado e saiba logo quando abre vaga.' },
+  perfil: { title: 'Perfil de cuidados', subtitle: 'Quem precisa de cuidados, de quais e onde.' },
+  conta: { title: 'Conta', subtitle: 'Contactos, avisos e sessão.' },
+}
 
 /** Painel da família: rotas aninhadas em /familia/*, dentro do DashboardShell (que desenha o h1). */
 export default function FamilyDashboard() {
@@ -25,65 +32,29 @@ export default function FamilyDashboard() {
   const propostas = ativos.filter((p) => p.c.estado === 'vaga_proposta').length
 
   const nav: DashboardNavItem[] = [
-    { to: '/familia', label: 'Resumo', icon: LayoutDashboard, end: true },
+    { to: '/familia', label: 'Resumo', icon: LayoutGrid, end: true },
     { to: '/familia/pedidos', label: 'Pedidos', icon: FileText, badge: propostas || undefined },
     { to: '/familia/guardados', label: 'Guardados', icon: Heart },
-    { to: '/familia/perfil', label: 'Perfil de cuidados', icon: UserRoundPen },
+    { to: '/familia/perfil', label: 'Perfil de cuidados', icon: UserRound },
     { to: '/familia/conta', label: 'Conta', icon: Settings },
   ]
 
   let title: ReactNode
   let subtitle: ReactNode
-  switch (seccao) {
-    case 'pedidos':
-      title = (
-        <>
-          Os seus <em>pedidos</em>
-        </>
-      )
-      subtitle = 'Em que ponto está cada pedido de vaga, o lugar na lista de espera e quanto tempo deverá esperar.'
-      break
-    case 'guardados':
-      title = (
-        <>
-          Instituições <em>guardadas</em>
-        </>
-      )
-      subtitle = 'Compare-as lado a lado e receba um aviso assim que abrir vaga numa delas.'
-      break
-    case 'perfil':
-      title = (
-        <>
-          Perfil de <em>cuidados</em>
-        </>
-      )
-      subtitle = 'Quem precisa de cuidados, de quais, onde e com que orçamento. É daqui que saem a compatibilidade e as sugestões.'
-      break
-    case 'conta':
-      title = (
-        <>
-          A sua <em>conta</em>
-        </>
-      )
-      subtitle = 'Contactos, avisos e os seus dados.'
-      break
-    default: {
-      title = (
-        <>
-          {saudacao()}, <em>{primeiroNome(user.nome)}</em>.
-        </>
-      )
-      const prox = visitasFuturas(ativos)[0]
-      const partes: string[] = []
-      if (propostas) partes.push(propostas === 1 ? 'Tem uma vaga à espera de resposta.' : `Tem ${propostas} vagas à espera de resposta.`)
-      if (ativos.length && principal) {
-        partes.push(`Está a acompanhar ${ativos.length === 1 ? 'um pedido' : `${ativos.length} pedidos`} para ${comArtigo(principal)}.`)
-      } else if (principal) {
-        partes.push(`A procurar lar para ${comArtigo(principal)}, ${principal.idade} anos.`)
-      }
-      if (prox) partes.push(`A próxima visita é ${diaPorExtenso(prox.quando)}, às ${prox.c.visita!.hora}.`)
-      subtitle = partes.length ? partes.join(' ') : 'Comece por descrever a pessoa de quem cuida — o resto do painel organiza-se a partir daí.'
-    }
+  if (seccao && seccao in TITULOS) {
+    title = TITULOS[seccao].title
+    subtitle = TITULOS[seccao].subtitle
+  } else {
+    title = (
+      <>
+        {saudacao()}, <em>{primeiroNome(user.nome)}</em>.
+      </>
+    )
+    if (propostas) subtitle = propostas === 1 ? 'Há uma vaga à espera da sua resposta.' : `Há ${propostas} vagas à espera da sua resposta.`
+    else if (principal && ativos.length)
+      subtitle = `${ativos.length === 1 ? 'Um pedido' : `${ativos.length} pedidos`} em curso para ${comArtigo(principal)}.`
+    else if (principal) subtitle = `A procurar lar para ${comArtigo(principal)}.`
+    else subtitle = 'Comece por descrever a pessoa de quem cuida.'
   }
 
   return (
@@ -93,7 +64,7 @@ export default function FamilyDashboard() {
       subtitle={subtitle}
       nav={nav}
       identity={<FamilyIdentity user={user} perfil={principal} />}
-      aside={<HelpCard />}
+      aside={<SidebarHelp />}
     >
       <DraftBanner />
       <Routes>

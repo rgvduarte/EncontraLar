@@ -1,10 +1,10 @@
 /**
- * Filtragem, ordenação, agrupamento e sugestões de "alívio" de filtros — funções puras.
+ * Filtragem, ordenação, divisão da lista e sugestões de "alívio" de filtros — funções puras.
  */
 import type { Disponibilidade, Lar } from '@/types'
 import type { EstimativaEspera } from '@/lib/forecast'
 import { distanceKm, type LatLng } from '@/lib/geo'
-import { CUIDADO_LABEL, DISPONIBILIDADE_DESCRICAO, GRAU_LABEL, NATUREZA_LABEL } from '@/lib/labels'
+import { CUIDADO_LABEL, GRAU_LABEL, NATUREZA_LABEL } from '@/lib/labels'
 import { euro } from '@/lib/format'
 import {
   centroDe,
@@ -97,66 +97,28 @@ export function ordenar(lista: Entrada[], ordem: Ordem): Entrada[] {
   }
 }
 
-// ————————————————————————————————————————— grupos editoriais da lista
+// ————————————————————————————————————————— divisão da lista
 
 export interface Grupo {
-  id: string
+  id: 'agora' | 'resto'
   titulo: string
-  descricao?: string
-  /** estado (para o símbolo do grupo) */
-  disp?: Disponibilidade
   itens: Entrada[]
   /** total do grupo em todos os resultados (a lista pode estar paginada) */
   total: number
 }
 
-const DISP_TITULO: Record<Disponibilidade, string> = {
-  disponivel: 'Com vaga agora',
-  breve: 'Vaga prevista em breve',
-  espera: 'Em lista de espera',
-}
-
-function chaveGrupo(e: Entrada, ordem: Ordem): { id: string; titulo: string; descricao?: string; disp?: Disponibilidade } | null {
-  if (ordem === 'relevancia' || ordem === 'disponibilidade') {
-    return { id: e.disp, titulo: DISP_TITULO[e.disp], descricao: DISPONIBILIDADE_DESCRICAO[e.disp], disp: e.disp }
-  }
-  if (ordem === 'distancia') {
-    const d = e.distanciaKm ?? 0
-    if (d <= 2) return { id: 'd2', titulo: 'A menos de 2 km' }
-    if (d <= 5) return { id: 'd5', titulo: 'Entre 2 e 5 km' }
-    if (d <= 10) return { id: 'd10', titulo: 'Entre 5 e 10 km' }
-    if (d <= 25) return { id: 'd25', titulo: 'Entre 10 e 25 km' }
-    return { id: 'dmais', titulo: 'A mais de 25 km' }
-  }
-  if (ordem === 'preco') {
-    const p = e.lar.mensalidadeMin
-    if (p < 800) return { id: 'p1', titulo: `Desde menos de ${euro(800)}`, descricao: 'Sobretudo IPSS e Misericórdias, onde a mensalidade depende dos rendimentos, e centros de dia.' }
-    if (p < 1500) return { id: 'p2', titulo: `Entre ${euro(800)} e ${euro(1500)}` }
-    if (p < 2500) return { id: 'p3', titulo: `Entre ${euro(1500)} e ${euro(2500)}` }
-    return { id: 'p4', titulo: `${euro(2500)} ou mais` }
-  }
-  return null
-}
-
-/** Agrupa a parte visível da lista; `todos` serve para os totais de cada grupo. */
-export function agrupar(visiveis: Entrada[], todos: Entrada[], ordem: Ordem): Grupo[] | null {
-  if (ordem === 'avaliacao' || !visiveis.length) return null
-  const totais = new Map<string, number>()
-  for (const e of todos) {
-    const k = chaveGrupo(e, ordem)
-    if (k) totais.set(k.id, (totais.get(k.id) ?? 0) + 1)
-  }
-  const grupos: Grupo[] = []
-  for (const e of visiveis) {
-    const k = chaveGrupo(e, ordem)
-    if (!k) return null
-    let g = grupos[grupos.length - 1]
-    if (!g || g.id !== k.id) {
-      g = { ...k, itens: [], total: totais.get(k.id) ?? 0 }
-      grupos.push(g)
-    }
-    g.itens.push(e)
-  }
+/**
+ * "Com vaga agora" / "Sem vaga hoje" — só na ordem por relevância (vagas primeiro) e se houver dos dois.
+ * `visiveis` é a parte paginada; `todos` dá os totais.
+ */
+export function dividir(visiveis: Entrada[], todos: Entrada[], ordem: Ordem): Grupo[] | null {
+  if (ordem !== 'relevancia') return null
+  const nAgora = todos.filter((e) => e.disp === 'disponivel').length
+  if (nAgora === 0 || nAgora === todos.length) return null
+  const agora = visiveis.filter((e) => e.disp === 'disponivel')
+  const resto = visiveis.filter((e) => e.disp !== 'disponivel')
+  const grupos: Grupo[] = [{ id: 'agora', titulo: 'Com vaga agora', itens: agora, total: nAgora }]
+  if (resto.length) grupos.push({ id: 'resto', titulo: 'Sem vaga hoje', itens: resto, total: todos.length - nAgora })
   return grupos
 }
 

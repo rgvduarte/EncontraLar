@@ -1,12 +1,10 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
-import { ArrowRight, Check } from 'lucide-react'
+import { Check } from 'lucide-react'
 import type { PerfilIdoso } from '@/types'
-import { Meter } from '@/components/ui/misc'
-import { tempoRelativo } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import type { VisitaMarcada } from '../shared/data'
-import { diaPorExtenso, nomeCurto } from '../shared/text'
+import { MoreLink, SectionHeader } from '../shared/ui'
+import { nomeCurto } from '../shared/text'
 
 const GUIA_KEY = 'encontralar:guia-visita-lido'
 
@@ -21,20 +19,22 @@ function lerGuiaLido(): boolean {
 interface Passo {
   id: string
   titulo: string
-  feito: boolean
   detalhe: string
+  feito: boolean
   acao: { to: string; label: string; onClick?: () => void }
 }
 
-/** Lista de verificação calculada a partir do estado real da conta. */
+/** Lista curta de verificação, calculada a partir do estado real da conta. */
 export function ProximosPassos({
   perfil,
   guardados,
+  pedidos,
   visita,
   pesquisa,
 }: {
   perfil: PerfilIdoso | undefined
   guardados: number
+  pedidos: number
   visita: VisitaMarcada | undefined
   pesquisa: string
 }) {
@@ -44,7 +44,7 @@ export function ProximosPassos({
     try {
       localStorage.setItem(GUIA_KEY, '1')
     } catch {
-      /* sem armazenamento: fica só nesta sessão */
+      /* sem armazenamento: fica só nesta visita à página */
     }
   }
 
@@ -52,82 +52,66 @@ export function ProximosPassos({
     {
       id: 'perfil',
       titulo: 'Descrever a pessoa de quem cuida',
+      detalhe: perfil ? `${nomeCurto(perfil.nome)}, ${perfil.idade} anos.` : 'As sugestões e os avisos passam a ser à medida.',
       feito: Boolean(perfil),
-      detalhe: perfil
-        ? `${nomeCurto(perfil.nome)}, ${perfil.idade} anos — atualizado ${tempoRelativo(perfil.atualizadoEm)}.`
-        : 'Com o perfil de cuidados, as sugestões e os alertas passam a ser à medida.',
-      acao: { to: '/familia/perfil', label: perfil ? 'Rever perfil' : 'Criar perfil' },
+      acao: { to: '/familia/perfil', label: 'Criar perfil' },
     },
     {
-      id: 'guardados',
-      titulo: 'Guardar pelo menos 3 instituições',
+      id: 'guardar',
+      titulo: 'Guardar três instituições',
+      detalhe: guardados >= 3 ? `${guardados} guardadas.` : `Tem ${guardados} de 3. Comparar ajuda a decidir.`,
       feito: guardados >= 3,
-      detalhe:
-        guardados >= 3
-          ? `${guardados} guardadas — já pode compará-las lado a lado.`
-          : `Tem ${guardados} de 3. Comparar várias ajuda a decidir com calma.`,
-      acao: guardados >= 3 ? { to: '/familia/guardados', label: 'Comparar' } : { to: pesquisa, label: 'Procurar no mapa' },
+      acao: { to: pesquisa, label: 'Abrir o mapa' },
+    },
+    {
+      id: 'pedir',
+      titulo: 'Pedir vaga em duas ou mais',
+      detalhe: pedidos >= 2 ? `${pedidos} pedidos feitos.` : 'As listas de espera andam a ritmos diferentes.',
+      feito: pedidos >= 2,
+      acao: { to: '/familia/guardados', label: 'Ver guardados' },
     },
     {
       id: 'visita',
       titulo: 'Marcar uma visita',
+      detalhe: visita ? `${visita.lar.nome}.` : 'O melhor teste antes de decidir.',
       feito: Boolean(visita),
-      detalhe: visita
-        ? `${visita.lar.nome}, ${diaPorExtenso(visita.quando)}.`
-        : 'Ver o lar ao vivo é o melhor teste antes de decidir.',
-      acao: { to: '/familia/pedidos', label: visita ? 'Ver pedidos' : 'Marcar visita' },
+      acao: { to: '/familia/pedidos', label: 'Marcar visita' },
     },
     {
       id: 'guia',
-      titulo: 'Ler o guia da visita',
+      titulo: 'Preparar a visita',
+      detalhe: guiaLido ? 'Guia lido.' : 'O que observar, o que perguntar e que documentos levar.',
       feito: guiaLido,
-      detalhe: guiaLido ? 'Leve-o consigo no telemóvel no dia da visita.' : 'O que observar, o que perguntar e que documentos levar.',
-      acao: { to: '/guia#visita', label: guiaLido ? 'Abrir guia' : 'Ler o guia', onClick: marcarGuia },
+      acao: { to: '/guia#visita', label: 'Ler o guia', onClick: marcarGuia },
     },
   ]
   const feitos = passos.filter((p) => p.feito).length
 
   return (
-    <section aria-labelledby="proximos-passos" className="rounded-[1.75rem] border border-line bg-white p-6 shadow-card">
-      <p className="eyebrow">Próximos passos</p>
-      <div className="mt-1 flex items-baseline justify-between gap-3">
-        <h2 id="proximos-passos" className="font-display text-2xl font-semibold">
-          {feitos === passos.length ? (
-            <>
-              Tudo <em>em dia</em>
-            </>
-          ) : (
-            'O que falta fazer'
-          )}
-        </h2>
-        <p className="shrink-0 text-sm font-bold text-ink-soft tabular">
-          {feitos} de {passos.length}
-        </p>
-      </div>
-      <Meter value={feitos / passos.length} tone="leaf" className="mt-3" label={`${feitos} de ${passos.length} passos feitos`} />
-      <ol className="mt-4">
-        {passos.map((p, i) => (
-          <li key={p.id} className="flex gap-4 border-t border-dashed border-line py-4 first:border-t-0">
-            <span aria-hidden className="flex w-8 shrink-0 justify-center pt-0.5">
-              {p.feito ? (
-                <span className="flex size-7 items-center justify-center rounded-full bg-pine-700 text-white">
-                  <Check strokeWidth={3} className="size-4" />
-                </span>
-              ) : (
-                <span className="font-display text-3xl leading-none font-semibold text-terra-600 tabular">{i + 1}</span>
+    <section aria-labelledby="proximos-passos">
+      <SectionHeader id="proximos-passos" title="Próximos passos" sub={`${feitos} de ${passos.length} feitos`} />
+      <ol className="mt-6 divide-y divide-line border-y border-line">
+        {passos.map((p) => (
+          <li key={p.id} className="flex gap-4 py-5">
+            <span
+              aria-hidden
+              className={cn(
+                'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full',
+                p.feito ? 'bg-ink text-white' : 'ring-[1.5px] ring-line-strong ring-inset',
               )}
+            >
+              {p.feito && <Check strokeWidth={3} className="size-3.5" />}
             </span>
             <div className="min-w-0 flex-1">
-              <p className={cn('leading-snug font-bold', p.feito ? 'text-ink-soft' : 'text-ink')}>
+              <p className={cn('font-medium', p.feito ? 'text-ink-mute' : 'text-ink')}>
                 {p.titulo}
                 <span className="sr-only">{p.feito ? ' — feito' : ' — por fazer'}</span>
               </p>
-              <p className="mt-0.5 text-sm text-ink-soft">{p.detalhe}</p>
+              <p className="text-sm text-ink-mute">{p.detalhe}</p>
               {!p.feito && (
-                <Link to={p.acao.to} onClick={p.acao.onClick} className="link mt-1 inline-flex min-h-11 items-center gap-1 text-sm">
+                <MoreLink to={p.acao.to} onClick={p.acao.onClick} className="text-sm">
                   {p.acao.label}
-                  <ArrowRight aria-hidden className="size-4" />
-                </Link>
+                </MoreLink>
               )}
             </div>
           </li>

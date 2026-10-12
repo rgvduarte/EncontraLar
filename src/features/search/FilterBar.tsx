@@ -1,127 +1,142 @@
-import { forwardRef, useMemo } from 'react'
-import { Crosshair, LoaderCircle, Ruler, SlidersHorizontal, X } from 'lucide-react'
-import { tempoRelativo } from '@/lib/format'
+import { forwardRef } from 'react'
+import { LoaderCircle, Navigation, SlidersHorizontal } from 'lucide-react'
+import { Checkbox } from '@/components/ui/Field'
+import { TIPO_LABEL } from '@/lib/labels'
 import { cn } from '@/lib/cn'
-import { BudgetChip } from './BudgetControl'
-import { chipClasses, CountBadge, DispGlyph, PillSelect, ToggleChip } from './Chips'
+import { BudgetPill } from './BudgetControl'
+import { Count, DispDot, pillClasses, QuietSelect, TogglePill } from './Chips'
+import { PillPopover } from './PillPopover'
 import { PlaceCombobox } from './PlaceCombobox'
 import type { SearchModel } from './useSearch'
 import type { GeoEstado } from './useGeolocation'
-import { centroDe, contarTodosFiltros, contarMaisFiltros, FILTROS_VAZIOS, opcoesRaio, TIPO_CURTO, TIPOS, type VagaFiltro } from './searchState'
+import { centroDe, contarMaisFiltros, opcoesRaio, TIPO_CURTO, TIPOS, type VagaFiltro } from './searchState'
+
+export interface Geo {
+  estado: GeoEstado
+  localizar: () => void
+}
+
+const TIPO_RESUMO = {
+  erpi: 'Alojamento permanente, com cuidados diários.',
+  residencia: 'Para quem ainda é autónomo.',
+  centro_dia: 'Passa o dia e regressa a casa.',
+} as const
+
+/** "Com vaga agora" e "Vaga em breve" — usados na barra do desktop e do telemóvel. */
+export function VagaPills({ model }: { model: SearchModel }) {
+  const { state, update } = model
+  const setVaga = (v: VagaFiltro) => update({ vaga: state.vaga === v ? null : v })
+  return (
+    <>
+      <TogglePill pressed={state.vaga === 'agora'} onClick={() => setVaga('agora')}>
+        <DispDot disp="disponivel" />
+        Com vaga agora
+      </TogglePill>
+      <TogglePill pressed={state.vaga === 'breve'} onClick={() => setVaga('breve')} title="Com vaga agora ou vaga provável nos próximos 3 meses">
+        <DispDot disp="breve" />
+        Vaga em breve
+      </TogglePill>
+    </>
+  )
+}
+
+function TipoPill({ model }: { model: SearchModel }) {
+  const { state, update } = model
+  const n = state.tipos.length
+  const label = n === 0 ? 'Tipo' : n === 1 ? TIPO_CURTO[state.tipos[0]!] : `${n} tipos`
+  return (
+    <PillPopover active={n > 0} label={label} panelLabel="Tipo de resposta">
+      <fieldset>
+        <legend className="mb-2 text-sm text-ink-mute">Tipo de resposta</legend>
+        {TIPOS.map((t) => (
+          <Checkbox
+            key={t}
+            checked={state.tipos.includes(t)}
+            onChange={() => update({ tipos: state.tipos.includes(t) ? state.tipos.filter((x) => x !== t) : [...state.tipos, t] })}
+            label={TIPO_LABEL[t]}
+            description={TIPO_RESUMO[t]}
+          />
+        ))}
+      </fieldset>
+    </PillPopover>
+  )
+}
+
+/** Raio + "Perto de mim", dentro da pílula de pesquisa. */
+function PesquisaExtras({ model, geo }: { model: SearchModel; geo: Geo }) {
+  const { state, update } = model
+  const centro = centroDe(state.local)
+  const perto = state.local.tipo === 'coords'
+  const aLocalizar = geo.estado === 'a-localizar'
+  return (
+    <>
+      {centro && (
+        <>
+          <span aria-hidden className="mx-1 h-6 w-px shrink-0 bg-line-strong" />
+          <QuietSelect label="Raio" onSand value={state.raio} onChange={(e) => update({ raio: Number(e.target.value) })} className="tabular">
+            {opcoesRaio(state.local).map((km) => (
+              <option key={km} value={km}>
+                {km} km
+              </option>
+            ))}
+          </QuietSelect>
+        </>
+      )}
+      <button
+        type="button"
+        onClick={geo.localizar}
+        disabled={aLocalizar}
+        aria-pressed={perto}
+        className={cn(
+          'ml-1 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors duration-200 disabled:opacity-70',
+          perto ? 'bg-ink text-white' : 'text-ink hover:bg-white',
+        )}
+      >
+        {aLocalizar ? (
+          <LoaderCircle aria-hidden className="size-4 animate-spin" />
+        ) : (
+          <Navigation aria-hidden className={cn('size-4', !perto && 'text-terra-600')} strokeWidth={2} />
+        )}
+        {aLocalizar ? 'A localizar…' : 'Perto de mim'}
+      </button>
+    </>
+  )
+}
 
 interface Props {
   model: SearchModel
-  geo: { estado: GeoEstado; localizar: () => void }
+  geo: Geo
   precos: number[]
   onMaisFiltros: () => void
 }
 
-/** Barra de filtros fixa sob o cabeçalho (desktop ≥ 1024px). */
+/** Barra fixa do desktop: uma pílula de pesquisa e uma linha discreta de filtros. */
 export const FilterBar = forwardRef<HTMLDivElement, Props>(function FilterBar({ model, geo, precos, onMaisFiltros }, ref) {
   const { state, entradas, update } = model
-  const centro = centroDe(state.local)
   const nMais = contarMaisFiltros(state)
-  const nTodos = contarTodosFiltros(state)
-  const ultima = useMemo(() => entradas.reduce((m, e) => (e.lar.atualizadoEm > m ? e.lar.atualizadoEm : m), ''), [entradas])
-
-  const setVaga = (v: VagaFiltro) => update({ vaga: state.vaga === v ? null : v })
-
   return (
-    <div ref={ref} className="sticky top-18 z-[900] border-b border-line bg-cream/96 backdrop-blur-md">
-      <div className="flex flex-col gap-2.5 px-6 py-3 xl:px-8">
-        <div className="flex items-center gap-3">
-          <div className="flex items-stretch gap-2 rounded-[1.25rem]">
-            <PlaceCombobox
-              className="w-[26rem] xl:w-[30rem]"
-              local={state.local}
-              entradas={entradas}
-              geoEstado={geo.estado}
-              onLocal={(local) => update({ local })}
-              onGeo={geo.localizar}
-              onTexto={(q) => update({ q })}
-            />
-            {centro && (
-              <PillSelect
-                label="Raio"
-                icon={<Ruler aria-hidden />}
-                value={state.raio}
-                onChange={(e) => update({ raio: Number(e.target.value) })}
-                wrapperClassName="self-center"
-              >
-                {opcoesRaio(state.local).map((km) => (
-                  <option key={km} value={km}>
-                    {km} km
-                  </option>
-                ))}
-              </PillSelect>
-            )}
-            <button
-              type="button"
-              onClick={geo.localizar}
-              disabled={geo.estado === 'a-localizar'}
-              aria-pressed={state.local.tipo === 'coords'}
-              className={chipClasses(state.local.tipo === 'coords', 'self-center disabled:opacity-70')}
-            >
-              {geo.estado === 'a-localizar' ? <LoaderCircle aria-hidden className="animate-spin" /> : <Crosshair aria-hidden />}
-              {geo.estado === 'a-localizar' ? 'A localizar…' : 'Perto de mim'}
-            </button>
-          </div>
-
-          {ultima && (
-            <p className="ml-auto hidden items-center gap-2.5 text-sm text-ink-soft xl:flex">
-              <DispGlyph disp="disponivel" />
-              <span>
-                <strong className="text-ink">Vagas em direto</strong> · última atualização {tempoRelativo(ultima)}
-              </span>
-            </p>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div role="group" aria-label="Disponibilidade" className="flex gap-2">
-            <ToggleChip pressed={state.vaga === 'agora'} onClick={() => setVaga('agora')} icon={<DispGlyph disp="disponivel" onDark={state.vaga === 'agora'} />}>
-              Com vaga agora
-            </ToggleChip>
-            <ToggleChip
-              pressed={state.vaga === 'breve'}
-              onClick={() => setVaga('breve')}
-              icon={<DispGlyph disp="breve" onDark={state.vaga === 'breve'} />}
-              title="Com vaga agora ou com vaga provável nos próximos 3 meses"
-            >
-              Vaga em breve
-            </ToggleChip>
-          </div>
-          <span aria-hidden className="mx-1 h-7 w-px bg-line-strong" />
-          <div role="group" aria-label="Tipo de resposta" className="flex gap-2">
-            {TIPOS.map((t) => (
-              <ToggleChip
-                key={t}
-                pressed={state.tipos.includes(t)}
-                onClick={() => update({ tipos: state.tipos.includes(t) ? state.tipos.filter((x) => x !== t) : [...state.tipos, t] })}
-              >
-                {TIPO_CURTO[t]}
-              </ToggleChip>
-            ))}
-          </div>
-          <span aria-hidden className="mx-1 h-7 w-px bg-line-strong" />
-          <BudgetChip value={state.max} onChange={(max) => update({ max })} precos={precos} />
-          <button type="button" onClick={onMaisFiltros} className={chipClasses(nMais > 0)} aria-haspopup="dialog">
-            <SlidersHorizontal aria-hidden />
+    <div ref={ref} className="sticky top-16 z-[900] border-b border-black/[0.06] bg-white/90 backdrop-blur-xl backdrop-saturate-150">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-6 py-3 xl:px-8">
+        <PlaceCombobox
+          className="min-w-[26rem] max-w-[38rem] flex-1"
+          local={state.local}
+          entradas={entradas}
+          geoEstado={geo.estado}
+          onLocal={(local) => update({ local })}
+          onGeo={geo.localizar}
+          onTexto={(q) => update({ q })}
+          trailing={<PesquisaExtras model={model} geo={geo} />}
+        />
+        <div role="group" aria-label="Filtros" className="flex flex-wrap items-center gap-2">
+          <VagaPills model={model} />
+          <TipoPill model={model} />
+          <BudgetPill value={state.max} onChange={(max) => update({ max })} precos={precos} />
+          <button type="button" onClick={onMaisFiltros} aria-haspopup="dialog" className={pillClasses(nMais > 0)}>
+            <SlidersHorizontal aria-hidden className="size-4" />
             Mais filtros
-            {nMais > 0 && <CountBadge n={nMais} className={cn(nMais > 0 && 'bg-terra-500')} />}
+            <Count n={nMais} onDark={nMais > 0} />
             {nMais > 0 && <span className="sr-only">ativos</span>}
           </button>
-
-          {nTodos > 0 && (
-            <button
-              type="button"
-              onClick={() => update({ ...FILTROS_VAZIOS, q: state.q })}
-              className="ml-auto inline-flex min-h-12 items-center gap-1.5 rounded-full px-3 text-sm font-bold text-terra-700 hover:bg-terra-50"
-            >
-              <X aria-hidden className="size-4.5" />
-              Limpar filtros
-            </button>
-          )}
         </div>
       </div>
     </div>

@@ -1,4 +1,3 @@
-import { CalendarDays, Info } from 'lucide-react'
 import { InputField, SelectField } from '@/components/ui/Field'
 import { HORAS_VISITA, amanhaISO, diaPorExtenso, fimDeSemana } from '../helpers'
 
@@ -23,13 +22,12 @@ export function VisitFields({ value, onChange, erro }: { value: VisitaEscolha; o
       <div className="grid gap-4 sm:grid-cols-[1.4fr_1fr]">
         <InputField
           type="date"
-          label="Dia da visita"
+          label="Dia"
           min={amanhaISO()}
           value={value.data}
           onChange={(e) => onChange({ ...value, data: e.target.value })}
           hint="A partir de amanhã."
           error={erro ?? undefined}
-          leading={<CalendarDays aria-hidden />}
         />
         <SelectField label="Hora" hint="Das 10:00 às 17:30." value={value.hora} onChange={(e) => onChange({ ...value, hora: e.target.value })}>
           {HORAS_VISITA.map((h) => (
@@ -39,14 +37,11 @@ export function VisitFields({ value, onChange, erro }: { value: VisitaEscolha; o
           ))}
         </SelectField>
       </div>
-      <p className="min-h-6 text-sm font-semibold text-pine-800" aria-live="polite">
-        {extenso && !erro ? `Pede visita para ${extenso}, às ${value.hora}.` : ''}
+      <p className="min-h-6 text-ink" aria-live="polite">
+        {extenso && !erro ? `Visita para ${extenso}, às ${value.hora}.` : ''}
       </p>
       {value.data && fimDeSemana(value.data) && (
-        <p className="flex gap-2 text-sm text-ink-soft">
-          <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-sun-700" />
-          Ao fim de semana algumas instituições não recebem visitas — se for o caso, propõem-lhe outro dia.
-        </p>
+        <p className="text-sm text-ink-mute">Ao fim de semana algumas instituições não recebem visitas. Se for o caso, propõem outro dia.</p>
       )}
     </div>
   )

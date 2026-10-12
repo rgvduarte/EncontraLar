@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
+import { Reveal } from '@/components/ui/Reveal'
 import { cn } from '@/lib/cn'
 
 /**
- * Secção da ficha com cabeçalho editorial: filete duplo, número em itálico e título com ênfase.
- * O id é usado pela navegação interna (scrollIntoView) — não usar links '#id' por causa do HashRouter.
+ * Secção da ficha: etiqueta curta (igual à navegação), um título grande e, no máximo, uma frase de apoio.
+ * O id serve a navegação interna (scrollIntoView) — nunca usar links '#id' por causa do HashRouter.
  */
 export function Secao({
   id,
-  numero,
   rotulo,
   titulo,
   intro,
@@ -15,7 +15,6 @@ export function Secao({
   className,
 }: {
   id: string
-  numero: number
   rotulo: string
   titulo: ReactNode
   intro?: ReactNode
@@ -24,49 +23,46 @@ export function Secao({
 }) {
   return (
     <section id={id} aria-labelledby={`${id}-titulo`} tabIndex={-1} className={cn('scroll-mt-36 outline-none', className)}>
-      <header className="mb-8 sm:mb-10">
-        <div aria-hidden className="border-t-2 border-ink" />
-        <div aria-hidden className="mt-[3px] border-t border-ink" />
-        <p className="mt-4 flex items-baseline gap-3">
-          <span aria-hidden className="font-display text-xl text-terra-600 italic tabular">
-            {String(numero).padStart(2, '0')}
-          </span>
-          <span className="eyebrow">{rotulo}</span>
-        </p>
-        <h2 id={`${id}-titulo`} className="mt-2 text-3xl font-semibold text-ink sm:text-4xl">
+      <Reveal as="header" className="mb-10 sm:mb-14">
+        <p className="eyebrow">{rotulo}</p>
+        <h2 id={`${id}-titulo`} className="mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
           {titulo}
         </h2>
-        {intro && <p className="mt-3 max-w-2xl text-lg text-ink-soft">{intro}</p>}
-      </header>
-      {children}
+        {intro && <p className="mt-4 max-w-2xl text-xl leading-relaxed text-ink-mute">{intro}</p>}
+      </Reveal>
+      <Reveal delay={60}>{children}</Reveal>
     </section>
   )
 }
 
 /** Subtítulo dentro de uma secção. */
 export function Subtitulo({ children, className }: { children: ReactNode; className?: string }) {
-  return <h3 className={cn('text-xl font-semibold text-ink sm:text-2xl', className)}>{children}</h3>
+  return <h3 className={cn('text-xl font-semibold tracking-tight text-ink sm:text-2xl', className)}>{children}</h3>
 }
 
-/** Linha "nome ........ valor" (estilo ementa / registo), com pontos de ligação. */
-export function LinhaPontilhada({ termo, valor, className }: { termo: ReactNode; valor: ReactNode; className?: string }) {
+/** Número grande com legenda (estilo "ficha técnica" da Apple). */
+export function Numero({ valor, unidade, rotulo, nota }: { valor: ReactNode; unidade?: ReactNode; rotulo: ReactNode; nota?: ReactNode }) {
   return (
-    <div className={cn('flex items-baseline gap-3 py-2.5', className)}>
-      <dt className="flex min-w-0 flex-1 items-baseline gap-3 text-ink-soft">
-        <span className="min-w-0">{termo}</span>
-        <span aria-hidden className="min-w-6 flex-1 translate-y-[-0.3em] border-b-2 border-dotted border-line-strong" />
-      </dt>
-      <dd className="max-w-[60%] text-right font-semibold text-ink">{valor}</dd>
+    <div className="flex flex-col">
+      <dt className="order-2 mt-2 text-base text-ink">{rotulo}</dt>
+      <dd className="order-1 text-5xl font-semibold tracking-tight text-ink tabular sm:text-6xl">
+        {valor}
+        {unidade && <span className="ml-1 text-2xl tracking-tight sm:text-3xl">{unidade}</span>}
+      </dd>
+      {nota && <dd className="order-3 mt-1 text-sm text-ink-mute">{nota}</dd>}
     </div>
   )
 }
 
-/** Nota de rodapé discreta (fontes, ressalvas). */
-export function Nota({ children, className, icon }: { children: ReactNode; className?: string; icon?: ReactNode }) {
+/** Linha "termo — valor" com divisória fina. Usar dentro de <dl>. */
+export function Linha({ termo, valor, nota, className }: { termo: ReactNode; valor: ReactNode; nota?: ReactNode; className?: string }) {
   return (
-    <p className={cn('flex gap-2.5 text-sm text-ink-soft [&_svg]:mt-0.5 [&_svg]:size-4.5 [&_svg]:shrink-0', className)}>
-      {icon}
-      <span>{children}</span>
-    </p>
+    <div className={cn('flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-line py-4', className)}>
+      <dt className="text-ink-soft">
+        {termo}
+        {nota && <span className="block text-sm text-ink-mute">{nota}</span>}
+      </dt>
+      <dd className="text-right font-medium text-ink">{valor}</dd>
+    </div>
   )
 }

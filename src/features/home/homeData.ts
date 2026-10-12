@@ -1,143 +1,73 @@
 /**
- * Cálculos da página inicial. Tudo o que aparece como número ou exemplo na página vem daqui,
- * a partir do store — nada de estatísticas escritas à mão.
+ * Cálculos da página inicial. Todos os números e exemplos da página vêm daqui, a partir do store —
+ * nada de estatísticas escritas à mão.
  */
-import type { Distrito, Lar, Regiao } from '@/types'
+import type { Distrito, Lar } from '@/types'
 import { disponibilidade, estimarEspera, vagasLivres, type EstimativaEspera } from '@/lib/forecast'
 import { avaliarLar, type MatchResult } from '@/lib/matching'
 import { distanceKm } from '@/lib/geo'
 import { LUGARES, type LugarPesquisa } from '@/data/localidades'
 import { DEMO_LAR_ID } from '@/data/seed'
 
-const HORA = 3_600_000
-
 export const temVaga = (l: Lar) => vagasLivres(l) > 0
 
-// ————————————————————————————————————————— números do topo
+/** Lares e residências (os centros de dia não têm "vaga" no mesmo sentido). */
+const residencial = (l: Lar) => l.tipo !== 'centro_dia'
+
+const maisRecente = (a: Lar, b: Lar) => b.atualizadoEm.localeCompare(a.atualizadoEm)
+
+// ————————————————————————————————————————— números
 
 export interface HomeStats {
   total: number
   comVaga: number
   /** distritos e regiões autónomas com pelo menos uma instituição */
   distritos: number
-  /** ISO da atualização de vagas mais recente */
-  ultima: string | null
-  /** fichas com vagas confirmadas nos últimos 7 dias */
-  atualizadasSemana: number
   verificadas: number
-  /** pessoas inscritas em listas de espera (soma) */
-  listaEspera: number
-  /** visitas a fichas nos últimos 30 dias (soma) */
-  visualizacoes: number
-  /** mensalidade média de referência (média dos preços por tipo de quarto) */
-  mensalidadeMedia: number
 }
 
-export function calcularStats(lares: Lar[], agora = Date.now()): HomeStats {
-  let comVaga = 0
-  let atualizadasSemana = 0
-  let verificadas = 0
-  let listaEspera = 0
-  let visualizacoes = 0
-  let ultima: string | null = null
-  let somaPreco = 0
-  let nPreco = 0
+export function calcularStats(lares: Lar[]): HomeStats {
   const distritos = new Set<Distrito>()
+  let comVaga = 0
+  let verificadas = 0
   for (const l of lares) {
-    if (temVaga(l)) comVaga++
-    if (agora - new Date(l.atualizadoEm).getTime() <= 7 * 24 * HORA) atualizadasSemana++
-    if (l.verificacao.estado === 'verificado') verificadas++
-    listaEspera += l.listaEspera
-    visualizacoes += l.visualizacoes30d
     distritos.add(l.distrito)
-    if (!ultima || l.atualizadoEm > ultima) ultima = l.atualizadoEm
-    if (l.tipo !== 'centro_dia') {
-      for (const q of l.quartos) {
-        somaPreco += (q.precoMin + q.precoMax) / 2
-        nPreco++
-      }
-    }
+    if (temVaga(l)) comVaga++
+    if (l.verificacao.estado === 'verificado') verificadas++
   }
-  return {
-    total: lares.length,
-    comVaga,
-    distritos: distritos.size,
-    ultima,
-    atualizadasSemana,
-    verificadas,
-    listaEspera,
-    visualizacoes,
-    mensalidadeMedia: nPreco ? somaPreco / nPreco : 0,
-  }
+  return { total: lares.length, comVaga, distritos: distritos.size, verificadas }
 }
 
-/** "agora", "12 min", "3 h", "2 dias" — para numerais grandes. */
-export function tempoCurto(iso: string | null, agora = Date.now()): string {
-  if (!iso) return '—'
+/** "agora", "há 12 min", "há 3 h", "há 2 dias" — versão curta para etiquetas pequenas. */
+export function tempoCurto(iso: string, agora = Date.now()): string {
   const min = Math.max(0, Math.round((agora - new Date(iso).getTime()) / 60000))
   if (min < 1) return 'agora'
-  if (min < 60) return `${min} min`
+  if (min < 60) return `há ${min} min`
   const h = Math.round(min / 60)
-  if (h < 24) return `${h} h`
+  if (h < 24) return `há ${h} h`
   const d = Math.round(h / 24)
-  return d === 1 ? '1 dia' : `${d} dias`
+  return d === 1 ? 'ontem' : `há ${d} dias`
 }
 
-// ————————————————————————————————————————— regiões e distritos
+// ————————————————————————————————————————— vagas
 
-export type RegiaoTabId = 'norte' | 'centro' | 'lvt' | 'alentejo' | 'algarve' | 'ilhas'
-
-export const REGIAO_TABS: { id: RegiaoTabId; label: string; /** "no Norte", "na Madeira e nos Açores" */ em: string; regioes: Regiao[] }[] = [
-  { id: 'norte', label: 'Norte', em: 'no Norte', regioes: ['Norte'] },
-  { id: 'centro', label: 'Centro', em: 'no Centro', regioes: ['Centro'] },
-  { id: 'lvt', label: 'Lisboa e Vale do Tejo', em: 'em Lisboa e Vale do Tejo', regioes: ['Lisboa e Vale do Tejo'] },
-  { id: 'alentejo', label: 'Alentejo', em: 'no Alentejo', regioes: ['Alentejo'] },
-  { id: 'algarve', label: 'Algarve', em: 'no Algarve', regioes: ['Algarve'] },
-  { id: 'ilhas', label: 'Ilhas', em: 'na Madeira e nos Açores', regioes: ['Madeira', 'Açores'] },
-]
-
-/** Agrupamento de apresentação dos distritos (de norte para sul, ilhas no fim). */
-export const GRUPOS_DISTRITO: { grupo: string; distritos: Distrito[] }[] = [
-  { grupo: 'Norte', distritos: ['Viana do Castelo', 'Braga', 'Porto', 'Vila Real', 'Bragança'] },
-  { grupo: 'Centro', distritos: ['Aveiro', 'Viseu', 'Guarda', 'Coimbra', 'Leiria', 'Castelo Branco'] },
-  { grupo: 'Lisboa e Vale do Tejo', distritos: ['Santarém', 'Lisboa', 'Setúbal'] },
-  { grupo: 'Alentejo', distritos: ['Portalegre', 'Évora', 'Beja'] },
-  { grupo: 'Algarve', distritos: ['Faro'] },
-  { grupo: 'Regiões autónomas', distritos: ['Madeira', 'Açores'] },
-]
-
-export interface ContagemDistrito {
-  distrito: Distrito
-  total: number
-  comVaga: number
-  /** mensalidade mais baixa entre as instituições do distrito */
-  desde: number | null
+/** As vagas atualizadas mais recentemente (para as etiquetas à volta do mapa). */
+export function ultimasVagas(lares: Lar[], n = 3): Lar[] {
+  return lares.filter((l) => residencial(l) && temVaga(l)).sort(maisRecente).slice(0, n)
 }
 
-export function contarPorDistrito(lares: Lar[]): Map<Distrito, ContagemDistrito> {
-  const m = new Map<Distrito, ContagemDistrito>()
-  for (const l of lares) {
-    const c = m.get(l.distrito) ?? { distrito: l.distrito, total: 0, comVaga: 0, desde: null }
-    c.total++
-    if (temVaga(l)) c.comVaga++
-    if (l.mensalidadeMin > 0) c.desde = c.desde == null ? l.mensalidadeMin : Math.min(c.desde, l.mensalidadeMin)
-    m.set(l.distrito, c)
-  }
-  return m
-}
-
-/** Instituições com vaga numa região: verificadas primeiro, depois as atualizadas mais recentemente. */
-export function comVagaNaRegiao(lares: Lar[], regioes: Regiao[]): Lar[] {
+/** "Com vaga agora": verificadas primeiro, depois as que atualizaram as vagas há menos tempo. */
+export function comVagaAgora(lares: Lar[], limite = 12): Lar[] {
   return lares
-    .filter((l) => regioes.includes(l.regiao) && l.tipo !== 'centro_dia' && temVaga(l))
+    .filter((l) => residencial(l) && temVaga(l))
     .sort(
       (a, b) =>
-        Number(b.verificacao.estado === 'verificado') - Number(a.verificacao.estado === 'verificado') ||
-        b.atualizadoEm.localeCompare(a.atualizadoEm),
+        Number(b.verificacao.estado === 'verificado') - Number(a.verificacao.estado === 'verificado') || maisRecente(a, b),
     )
+    .slice(0, limite)
 }
 
-// ————————————————————————————————————————— previsão em destaque
+// ————————————————————————————————————————— exemplos reais para a grelha
 
 export interface PrevisaoDestaque {
   lar: Lar
@@ -145,18 +75,18 @@ export interface PrevisaoDestaque {
 }
 
 /**
- * Escolhe uma instituição real sem vaga hoje mas com vaga prevista em breve, cuja curva conta uma boa
- * história: começa incerta no primeiro mês e torna-se provável ao fim de alguns meses.
+ * Uma instituição real sem vaga hoje mas com vaga prevista em breve, cuja curva conta uma boa história:
+ * incerta no primeiro mês e provável ao fim de alguns meses.
  */
 export function escolherPrevisao(lares: Lar[]): PrevisaoDestaque | null {
   let melhor: PrevisaoDestaque | null = null
   let melhorScore = -Infinity
   for (const lar of lares) {
-    if (lar.tipo === 'centro_dia' || temVaga(lar) || lar.listaEspera < 3) continue
+    if (!residencial(lar) || temVaga(lar) || lar.listaEspera < 3) continue
     const est = estimarEspera(lar)
-    if (est.imediata) continue
+    if (est.imediata || disponibilidade(lar, est) !== 'breve') continue
     const c = est.curva
-    let s = disponibilidade(lar, est) === 'breve' ? 5 : 0
+    let s = 0
     if (lar.verificacao.estado === 'verificado') s += 2
     if (lar.tipo === 'erpi') s += 1
     s -= Math.abs((c[0] ?? 0) - 0.3) * 4
@@ -171,42 +101,16 @@ export function escolherPrevisao(lares: Lar[]): PrevisaoDestaque | null {
   return melhor
 }
 
-// ————————————————————————————————————————— ficha de exemplo (transparência)
-
-/** Uma ficha verificada e completa — de preferência a instituição de demonstração. */
-export function escolherFichaExemplo(lares: Lar[]): Lar | null {
-  const completa = (l: Lar) =>
-    l.verificacao.estado === 'verificado' &&
-    l.tipo === 'erpi' &&
-    l.quartos.length >= 2 &&
-    Boolean(l.verificacao.ultimaInspecao) &&
-    l.equipa.cuidadoresPor10 > 0
+/** Uma ficha verificada com vários tipos de quarto — de preferência a instituição de demonstração. */
+export function escolherFichaPrecos(lares: Lar[]): Lar | null {
+  const serve = (l: Lar) => residencial(l) && l.verificacao.estado === 'verificado' && l.quartos.length >= 2
   const demo = lares.find((l) => l.id === DEMO_LAR_ID)
-  if (demo && completa(demo)) return demo
-  return lares.filter(completa).sort((a, b) => b.numAvaliacoes - a.numAvaliacoes)[0] ?? null
+  if (demo && serve(demo)) return demo
+  return lares.filter(serve).sort((a, b) => b.numAvaliacoes - a.numAvaliacoes)[0] ?? null
 }
 
-// ————————————————————————————————————————— "Como funciona": exemplos reais
-
-export const lugarPorNome = (label: string): LugarPesquisa | undefined => LUGARES.find((l) => l.label === label)
-
-export interface ResultadoPerto {
-  lar: Lar
-  distancia: number
-}
-
-/** As instituições mais próximas de um lugar, com as que têm vaga primeiro. */
-export function pertoDe(lares: Lar[], lugar: LugarPesquisa, limite = 3): ResultadoPerto[] {
-  return lares
-    .filter((l) => l.tipo !== 'centro_dia')
-    .map((lar) => ({ lar, distancia: distanceKm(lugar, lar) }))
-    .filter((r) => r.distancia <= lugar.raio)
-    .sort((a, b) => Number(temVaga(b.lar)) - Number(temVaga(a.lar)) || a.distancia - b.distancia)
-    .slice(0, limite)
-}
-
-/** Perfil fictício usado para mostrar como funciona a compatibilidade (identificado como exemplo na página). */
-export function perfilExemplo(lugar: LugarPesquisa) {
+/** Perfil fictício usado para mostrar a compatibilidade (identificado como exemplo na página). */
+function perfilExemplo(lugar: LugarPesquisa) {
   return {
     grau: 'moderada' as const,
     necessidades: ['demencia' as const, 'fisioterapia' as const],
@@ -214,28 +118,31 @@ export function perfilExemplo(lugar: LugarPesquisa) {
     quarto: 'individual' as const,
     local: { label: lugar.label, lat: lugar.lat, lng: lugar.lng },
     raioKm: 15,
-    orcamentoMax: 1900,
+    orcamentoMax: 2000,
     urgencia: '1-3meses' as const,
     precisaAcordoSS: false,
   }
 }
 
-/** Melhor correspondência compatível para o perfil de exemplo (com razões legíveis). */
-export function exemploCompatibilidade(lares: Lar[], lugar: LugarPesquisa): { lar: Lar; match: MatchResult } | null {
-  const perfil = perfilExemplo(lugar)
-  const candidatos: { lar: Lar; match: MatchResult }[] = []
-  for (const lar of lares) {
-    if (lar.tipo === 'centro_dia') continue
-    if (distanceKm(lugar, lar) > perfil.raioKm * 1.5) continue
-    const match = avaliarLar(lar, perfil)
-    if (match.compativel) candidatos.push({ lar, match })
+export interface ExemploMatch {
+  lar: Lar
+  match: MatchResult
+  lugar: LugarPesquisa
+}
+
+/** A melhor correspondência compatível para o perfil de exemplo, perto da primeira cidade que tenha uma. */
+export function exemploCompatibilidade(lares: Lar[]): ExemploMatch | null {
+  for (const nome of ['Porto', 'Lisboa', 'Braga', 'Coimbra']) {
+    const lugar = LUGARES.find((l) => l.label === nome)
+    if (!lugar) continue
+    const perfil = perfilExemplo(lugar)
+    let melhor: ExemploMatch | null = null
+    for (const lar of lares) {
+      if (!residencial(lar) || distanceKm(lugar, lar) > perfil.raioKm) continue
+      const match = avaliarLar(lar, perfil)
+      if (match.compativel && (!melhor || match.score > melhor.match.score)) melhor = { lar, match, lugar }
+    }
+    if (melhor && melhor.match.score >= 70) return melhor
   }
-  // um exemplo honesto: boa compatibilidade, mas com pelo menos uma ressalva visível
-  const ressalvas = (m: MatchResult) => m.razoes.filter((r) => r.tipo !== 'ok').length
-  const porScore = (a: { match: MatchResult }, b: { match: MatchResult }) => b.match.score - a.match.score
-  return (
-    candidatos.filter((c) => c.match.score >= 70 && ressalvas(c.match) >= 1).sort(porScore)[0] ??
-    candidatos.sort(porScore)[0] ??
-    null
-  )
+  return null
 }

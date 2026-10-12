@@ -1,11 +1,11 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import { Building2, Crosshair, Globe2, Hash, Landmark, LoaderCircle, MapPin, Search, Type, X } from 'lucide-react'
+import { Building2, Globe2, Hash, Landmark, LoaderCircle, MapPin, Navigation, Search, Type, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import type { Entrada } from './filtering'
 import { construirOpcoes, type Opcao } from './placeOptions'
 import { rotuloLocal, type Local } from './searchState'
-import { DispGlyph } from './Chips'
+import { DispDot } from './Chips'
 import type { GeoEstado } from './useGeolocation'
 
 interface Props {
@@ -15,13 +15,13 @@ interface Props {
   onLocal: (local: Local) => void
   onGeo: () => void
   onTexto: (q: string) => void
-  /** compacto (barra do telemóvel) */
-  compact?: boolean
+  /** controlos dentro da pílula, à direita do campo (raio, "Perto de mim") */
+  trailing?: ReactNode
   className?: string
 }
 
 const ICON: Record<Opcao['kind'], typeof MapPin> = {
-  geo: Crosshair,
+  geo: Navigation,
   pais: Globe2,
   lugar: MapPin,
   distrito: Landmark,
@@ -30,21 +30,23 @@ const ICON: Record<Opcao['kind'], typeof MapPin> = {
 }
 
 function Meta({ n, vagas }: { n: number; vagas: number }) {
-  if (n === 0) return <span className="text-xs text-ink-mute">sem instituições</span>
+  if (n === 0) return <span>sem instituições</span>
   return (
-    <span className="flex shrink-0 items-center gap-1.5 text-xs text-ink-soft tabular">
+    <span className="inline-flex items-center gap-1.5 tabular">
       {n} {n === 1 ? 'instituição' : 'instituições'}
       {vagas > 0 && (
-        <span className="inline-flex items-center gap-1 font-bold text-leaf-700">
-          · <DispGlyph disp="disponivel" className="size-3 [&_svg]:size-3" /> {vagas} com vaga
-        </span>
+        <>
+          <span aria-hidden>·</span>
+          <DispDot disp="disponivel" className="size-2.5" />
+          {vagas} com vaga
+        </>
       )}
     </span>
   )
 }
 
-/** Campo "Onde" — combobox acessível (padrão ARIA 1.2) com localidades, distritos, códigos postais e nomes. */
-export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTexto, compact, className }: Props) {
+/** Campo "Onde" — combobox acessível (padrão ARIA 1.2): localidades, distritos, códigos postais e nomes. */
+export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTexto, trailing, className }: Props) {
   const uid = useId()
   const inputId = `${uid}-input`
   const listId = `${uid}-list`
@@ -69,10 +71,8 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
   const ativoId = open && planas[ativo] ? `${uid}-${planas[ativo]!.id}` : undefined
 
   useEffect(() => setAtivo(0), [consulta])
-
   useEffect(() => {
-    if (!open || !ativoId) return
-    document.getElementById(ativoId)?.scrollIntoView({ block: 'nearest' })
+    if (open && ativoId) document.getElementById(ativoId)?.scrollIntoView({ block: 'nearest' })
   }, [open, ativoId])
 
   const fechar = (repor = true) => {
@@ -115,11 +115,8 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      if (!open) {
-        setOpen(true)
-        return
-      }
-      setAtivo((a) => Math.min(planas.length - 1, a + 1))
+      if (!open) setOpen(true)
+      else setAtivo((a) => Math.min(planas.length - 1, a + 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setAtivo((a) => Math.max(0, a - 1))
@@ -140,14 +137,8 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
   }
 
   const limpar = () => {
-    if (editando && texto) {
-      setTexto('')
-      inputRef.current?.focus()
-      setOpen(true)
-      return
-    }
+    if (!(editando && texto)) onLocal({ tipo: 'pais' })
     setTexto('')
-    onLocal({ tipo: 'pais' })
     setEditando(true)
     setOpen(true)
     inputRef.current?.focus()
@@ -168,59 +159,57 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
     >
       <div
         className={cn(
-          'flex items-center gap-3 rounded-2xl border-2 bg-white pr-1.5 pl-4 transition-colors',
-          open ? 'border-pine-600 shadow-card' : 'border-line-strong hover:border-pine-500',
-          compact ? 'min-h-13' : 'min-h-15',
+          'flex min-h-14 items-center rounded-full pr-1.5 pl-5 transition-[background-color,box-shadow] duration-200',
+          open ? 'bg-white shadow-card ring-1 ring-line' : 'bg-sand hover:bg-sand-deep/70',
         )}
       >
         {geoAtivo ? (
-          <LoaderCircle aria-hidden className="size-5 shrink-0 animate-spin text-pine-700" />
+          <LoaderCircle aria-hidden className="size-5 shrink-0 animate-spin text-ink-mute" />
         ) : (
-          <Search aria-hidden className="size-5 shrink-0 text-pine-700" />
+          <Search aria-hidden className="size-5 shrink-0 text-ink-mute" />
         )}
-        <div className="flex min-w-0 flex-1 flex-col justify-center py-1">
-          <label htmlFor={inputId} className={cn('text-xs leading-tight font-bold tracking-[0.08em] text-pine-700 uppercase', compact && 'sr-only')}>
-            Onde procura
-          </label>
-          <input
-            ref={inputRef}
-            id={inputId}
-            type="text"
-            role="combobox"
-            aria-expanded={open}
-            aria-controls={listId}
-            aria-autocomplete="list"
-            aria-activedescendant={ativoId}
-            autoComplete="off"
-            spellCheck={false}
-            enterKeyHint="search"
-            placeholder={geoAtivo ? 'A localizar…' : 'Localidade, distrito ou código postal'}
-            value={texto}
-            onChange={(e) => {
-              setTexto(e.target.value)
-              setEditando(true)
-              setOpen(true)
-            }}
-            onFocus={(e) => {
-              setEditando(true)
-              setOpen(true)
-              e.currentTarget.select()
-            }}
-            onClick={() => setOpen(true)}
-            onKeyDown={onKeyDown}
-            className="w-full min-w-0 truncate bg-transparent text-base font-semibold text-ink placeholder:font-normal placeholder:text-ink-mute focus:outline-none"
-          />
-        </div>
+        <label htmlFor={inputId} className="sr-only">
+          Onde procura
+        </label>
+        <input
+          ref={inputRef}
+          id={inputId}
+          type="text"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={ativoId}
+          autoComplete="off"
+          spellCheck={false}
+          enterKeyHint="search"
+          placeholder={geoAtivo ? 'A localizar…' : 'Localidade, distrito ou código postal'}
+          value={texto}
+          onChange={(e) => {
+            setTexto(e.target.value)
+            setEditando(true)
+            setOpen(true)
+          }}
+          onFocus={(e) => {
+            setEditando(true)
+            setOpen(true)
+            e.currentTarget.select()
+          }}
+          onClick={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          className="min-h-12 w-full min-w-0 flex-1 truncate bg-transparent pl-3 text-base font-medium text-ink placeholder:font-normal placeholder:text-ink-mute focus:outline-none"
+        />
         {temValor && (
           <button
             type="button"
             onClick={limpar}
             aria-label={editando && texto ? 'Apagar o texto escrito' : 'Retirar a localidade e procurar em todo o país'}
-            className="flex size-11 shrink-0 items-center justify-center rounded-full text-ink-soft hover:bg-sand hover:text-ink"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full text-ink-mute transition-colors hover:bg-white hover:text-ink"
           >
-            <X aria-hidden className="size-5" />
+            <X aria-hidden className="size-4.5" />
           </button>
         )}
+        {trailing}
       </div>
 
       <div
@@ -228,47 +217,33 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
         role="listbox"
         aria-label="Sugestões de localidade"
         hidden={!open}
-        className={cn(
-          'absolute top-full left-0 z-50 mt-2 max-h-[min(65vh,34rem)] w-full overflow-y-auto overscroll-contain rounded-2xl border border-line bg-white p-2 shadow-lift',
-          !compact && 'min-w-[30rem]',
-        )}
+        className="absolute top-full left-0 z-50 mt-2 max-h-[min(65vh,32rem)] w-full min-w-[min(28rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain rounded-[1.5rem] bg-white p-2 shadow-lift ring-1 ring-black/5"
       >
         {open && planas.length === 0 && (
-          <p className="px-3 py-4 text-sm text-ink-soft">
-            Não encontrámos «{texto.trim()}». Experimente o nome do concelho (ex.: Sintra), o distrito ou os 4 primeiros dígitos do código postal.
+          <p className="px-3 py-4 text-sm text-ink-mute">
+            Não encontrámos «{texto.trim()}». Experimente o concelho (ex.: Sintra), o distrito ou os 4 primeiros dígitos do código postal.
           </p>
         )}
         {grupos.map((g) => (
           <div key={g.id} role="group" aria-labelledby={`${uid}-${g.id}`} className="py-1">
-            <div id={`${uid}-${g.id}`} role="presentation" className="px-3 pt-1.5 pb-1 text-xs font-bold tracking-[0.1em] text-ink-mute uppercase">
+            <div id={`${uid}-${g.id}`} role="presentation" className="px-3 pt-1.5 pb-1 text-xs font-medium text-ink-mute">
               {g.titulo}
             </div>
             {g.opcoes.map((op) => {
               const idx = planas.indexOf(op)
               const Icon = op.kind === 'lugar' && op.cp ? Hash : ICON[op.kind]
-              const sel = idx === ativo
               return (
                 <div
                   key={op.id}
                   id={`${uid}-${op.id}`}
                   role="option"
-                  aria-selected={sel}
+                  aria-selected={idx === ativo}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => escolher(op)}
                   onMouseMove={() => idx !== ativo && setAtivo(idx)}
-                  className={cn(
-                    'flex min-h-13 cursor-pointer items-center gap-3 rounded-xl px-3 py-2',
-                    sel ? 'bg-pine-50 ring-1 ring-pine-200' : 'hover:bg-sand/60',
-                  )}
+                  className={cn('flex min-h-13 cursor-pointer items-center gap-3 rounded-2xl px-3 py-2', idx === ativo && 'bg-sand')}
                 >
-                  <span
-                    className={cn(
-                      'flex size-9 shrink-0 items-center justify-center rounded-lg',
-                      op.kind === 'geo' ? 'bg-pine-700 text-white' : 'bg-sand text-pine-700',
-                    )}
-                  >
-                    <Icon aria-hidden className="size-4.5" />
-                  </span>
+                  <Icon aria-hidden className={cn('size-5 shrink-0', op.kind === 'geo' ? 'text-terra-600' : 'text-ink-mute')} strokeWidth={1.75} />
                   <span className="flex min-w-0 flex-1 flex-col">
                     <OpcaoTexto op={op} />
                   </span>
@@ -283,34 +258,35 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
 }
 
 function OpcaoTexto({ op }: { op: Opcao }) {
+  const sub = 'text-sm text-ink-mute'
   switch (op.kind) {
     case 'geo':
       return (
         <>
-          <span className="font-bold text-ink">Perto de mim</span>
-          <span className="text-xs text-ink-soft">Usar a localização deste dispositivo</span>
+          <span className="font-medium text-terra-600">Perto de mim</span>
+          <span className={sub}>Usar a localização deste dispositivo</span>
         </>
       )
     case 'pais':
       return (
         <>
-          <span className="font-bold text-ink">Todo o país</span>
-          <Meta n={op.n} vagas={op.vagas} />
+          <span className="font-medium text-ink">Todo o país</span>
+          <span className={sub}>
+            <Meta n={op.n} vagas={op.vagas} />
+          </span>
         </>
       )
     case 'lugar': {
       const [cidade, zona] = op.lugar.label.split(' — ')
       return (
         <>
-          <span className="truncate font-bold text-ink">
+          <span className="truncate font-medium text-ink">
             {op.cp && <span className="mr-1.5 font-normal text-ink-mute tabular">{op.cp}</span>}
             {cidade}
-            {zona && <span className="font-normal text-ink-soft"> — {zona}</span>}
+            {zona && <span className="font-normal text-ink-mute"> — {zona}</span>}
           </span>
-          <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-ink-mute">
-            <span>
-              {op.lugar.distrito !== cidade && `${op.lugar.distrito} · `}raio de {op.lugar.raio} km ·
-            </span>
+          <span className={sub}>
+            {op.lugar.distrito !== cidade && `${op.lugar.distrito} · `}
             <Meta n={op.n} vagas={op.vagas} />
           </span>
         </>
@@ -319,16 +295,18 @@ function OpcaoTexto({ op }: { op: Opcao }) {
     case 'distrito':
       return (
         <>
-          <span className="font-bold text-ink">Distrito de {op.distrito}</span>
-          <Meta n={op.n} vagas={op.vagas} />
+          <span className="font-medium text-ink">Distrito de {op.distrito}</span>
+          <span className={sub}>
+            <Meta n={op.n} vagas={op.vagas} />
+          </span>
         </>
       )
     case 'lar':
       return (
         <>
-          <span className="truncate font-bold text-ink">{op.lar.nome}</span>
-          <span className="flex items-center gap-1.5 text-xs text-ink-soft">
-            <DispGlyph disp={op.disp} className="size-3 [&_svg]:size-3" />
+          <span className="truncate font-medium text-ink">{op.lar.nome}</span>
+          <span className={cn(sub, 'inline-flex items-center gap-1.5')}>
+            <DispDot disp={op.disp} className="size-2.5" />
             {op.lar.localidade} · abrir a ficha
           </span>
         </>
@@ -336,8 +314,8 @@ function OpcaoTexto({ op }: { op: Opcao }) {
     case 'texto':
       return (
         <>
-          <span className="truncate font-bold text-ink">Instituições com «{op.q}» no nome</span>
-          <span className="text-xs text-ink-soft">Mantém a localidade escolhida</span>
+          <span className="truncate font-medium text-ink">Nome com «{op.q}»</span>
+          <span className={sub}>Procurar instituições pelo nome, nesta zona</span>
         </>
       )
   }

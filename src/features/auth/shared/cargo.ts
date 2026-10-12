@@ -14,11 +14,3 @@ export function guardarCargo(userId: string, cargo: string) {
     /* modo privado: o cargo não é essencial para o funcionamento */
   }
 }
-
-export function lerCargo(userId: string): string | undefined {
-  try {
-    return (JSON.parse(localStorage.getItem(KEY) ?? '{}') as Record<string, string>)[userId]
-  } catch {
-    return undefined
-  }
-}

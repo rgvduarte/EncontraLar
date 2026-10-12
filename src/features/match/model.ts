@@ -26,7 +26,7 @@ export interface Rascunho {
   genero: '' | 'F' | 'M'
   grau: GrauDependencia | ''
   necessidades: Cuidado[]
-  /** escolheu explicitamente "Nenhuma necessidade especial" */
+  /** escolheu explicitamente "Nenhuma em especial" */
   semNecessidades: boolean
   local: Local | null
   raioKm: number
@@ -63,7 +63,7 @@ export const PASSOS = [
   { id: 'saude', nome: 'Saúde' },
   { id: 'local', nome: 'Onde' },
   { id: 'orcamento', nome: 'Orçamento' },
-  { id: 'quando', nome: 'Quando e prioridades' },
+  { id: 'quando', nome: 'Quando' },
 ] as const
 export type PassoId = (typeof PASSOS)[number]['id']
 export const TOTAL_PASSOS = PASSOS.length
@@ -112,17 +112,17 @@ export function validarPasso(passo: number, r: Rascunho): Erros {
       break
     }
     case 1:
-      if (!r.grau) e.grau = 'Escolha a opção que melhor descreve o dia a dia — pode mudar depois.'
+      if (!r.grau) e.grau = 'Escolha a opção mais próxima. Pode mudar depois.'
       break
     case 2:
       if (!r.necessidades.length && !r.semNecessidades)
-        e.necessidades = 'Escolha pelo menos uma necessidade, ou "Nenhuma necessidade especial".'
+        e.necessidades = 'Escolha pelo menos uma opção, ou "Nenhuma em especial".'
       break
     case 3:
-      if (!r.local) e.local = 'Escolha uma localidade da lista, ou use a sua localização atual.'
+      if (!r.local) e.local = 'Escolha uma localidade da lista, ou toque em "Perto de mim".'
       break
     case 5:
-      if (!r.urgencia) e.urgencia = 'Diga-nos para quando precisa de vaga.'
+      if (!r.urgencia) e.urgencia = 'Escolha para quando precisa de vaga.'
       break
   }
   return e

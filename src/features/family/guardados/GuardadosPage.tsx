@@ -1,34 +1,26 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { Columns3, Heart, HeartOff, Map, X } from 'lucide-react'
-import type { Disponibilidade } from '@/types'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { Checkbox, Switch } from '@/components/ui/Field'
 import { EmptyState } from '@/components/ui/misc'
+import { Reveal } from '@/components/ui/Reveal'
 import { toast } from '@/components/ui/Toast'
 import { LarCard } from '@/components/lar/LarCard'
 import { setAlerta, toggleFavorito, useFavoritos, useMinhasCandidaturas } from '@/lib/store'
-import { disponibilidade } from '@/lib/forecast'
+import { vagasLivres } from '@/lib/forecast'
 import { distanceKm } from '@/lib/geo'
 import { useDocumentTitle } from '@/lib/hooks'
 import { tempoRelativo } from '@/lib/format'
-import { cn } from '@/lib/cn'
+import { ESTADO_CANDIDATURA_LABEL } from '@/lib/labels'
 import { useLarIndex, usePerfisOrdenados, pesquisaUrl } from '../shared/data'
 import { isAtiva } from '../shared/estado'
-import { EstadoBadge } from '../shared/ui'
-import { nomeCurto } from '../shared/text'
+import { MoreLink } from '../shared/ui'
 import { CompareTable } from './CompareTable'
 
 const MAX_COMPARAR = 3
 
-const DISP: { k: Disponibilidade; label: string; bar: string; dot: string }[] = [
-  { k: 'disponivel', label: 'com vaga agora', bar: 'bg-leaf-500', dot: 'bg-leaf-500' },
-  { k: 'breve', label: 'vaga prevista em breve', bar: 'bg-sun-400', dot: 'bg-sun-400' },
-  { k: 'espera', label: 'em lista de espera', bar: 'bg-dusk-500', dot: 'bg-dusk-500' },
-]
-
 export default function GuardadosPage() {
-  useDocumentTitle('Instituições guardadas')
+  useDocumentTitle('Guardados')
   const favoritos = useFavoritos()
   const idx = useLarIndex()
   const cands = useMinhasCandidaturas()
@@ -39,18 +31,22 @@ export default function GuardadosPage() {
   const itens = useMemo(
     () =>
       favoritos
-        .map((f) => ({ f, lar: idx.get(f.larId)! }))
-        .filter((x) => x.lar)
-        .map((x) => ({ ...x, disp: disponibilidade(x.lar) }))
+        .flatMap((f) => {
+          const lar = idx.get(f.larId)
+          return lar ? [{ f, lar }] : []
+        })
         .sort((a, b) => b.f.criadoEm.localeCompare(a.f.criadoEm)),
     [favoritos, idx],
   )
-  const contagem = Object.fromEntries(DISP.map((d) => [d.k, itens.filter((x) => x.disp === d.k).length])) as Record<Disponibilidade, number>
+  const comVaga = itens.filter((x) => vagasLivres(x.lar) > 0).length
   const comAlerta = itens.filter((x) => x.f.alerta).length
-  const comVaga = itens.filter((x) => x.disp === 'disponivel')
-  const selecionados = sel.map((id) => idx.get(id)).filter((l) => l != null)
+  const selecionados = sel.flatMap((id) => {
+    const l = idx.get(id)
+    return l ? [l] : []
+  })
+  const pesquisa = principal ? pesquisaUrl(principal) : '/pesquisa'
 
-  const entrarComparacao = () => {
+  const abrirComparacao = () => {
     setComparar(true)
     setSel(itens.slice(0, MAX_COMPARAR).map((x) => x.lar.id))
   }
@@ -58,140 +54,84 @@ export default function GuardadosPage() {
   const remover = (id: string, nome: string) => {
     toggleFavorito(id)
     setSel((s) => s.filter((x) => x !== id))
-    toast.info('Removida dos guardados', `${nome} deixou de estar na sua lista e não vai receber avisos de vaga.`)
+    toast.info('Removida dos guardados', nome)
   }
 
   if (itens.length === 0) {
     return (
       <EmptyState
-        icon={<Heart />}
         title="Ainda não guardou instituições"
-        text="No mapa de vagas ou na ficha de cada lar, toque no coração para guardar. Aqui pode compará-las lado a lado e receber um aviso quando abrir vaga."
-        action={
-          <ButtonLink to={principal ? pesquisaUrl(principal) : '/pesquisa'} icon={<Map aria-hidden className="size-5" />}>
-            Abrir o mapa de vagas
-          </ButtonLink>
-        }
+        text="No mapa de vagas ou na ficha de cada lar, toque no coração para guardar. Aqui compara-as e recebe um aviso quando abrir vaga."
+        action={<ButtonLink to={pesquisa}>Abrir o mapa de vagas</ButtonLink>}
       />
     )
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* resumo */}
-      <section aria-labelledby="guardados-resumo" className="rounded-[1.75rem] border border-line bg-white p-5 shadow-card sm:p-7">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div className="max-w-xl">
-            <h2 id="guardados-resumo" className="font-display text-2xl leading-snug font-semibold sm:text-3xl">
-              {itens.length === 1 ? '1 instituição guardada' : `${itens.length} instituições guardadas`}
-              {comVaga.length > 0 ? (
-                <>
-                  , <em>{comVaga.length === 1 ? '1 com vaga agora' : `${comVaga.length} com vaga agora`}</em>.
-                </>
-              ) : (
-                '.'
-              )}
-            </h2>
-            <p className="mt-2 text-ink-soft" aria-live="polite">
-              {comAlerta === itens.length
-                ? 'Avisamos assim que abrir vaga em qualquer uma delas.'
-                : comAlerta === 0
-                  ? 'Os avisos de vaga estão desligados em todas.'
-                  : `Avisos de vaga ligados em ${comAlerta} de ${itens.length}.`}
-              {comVaga.length > 0 && (
-                <>
-                  {' '}
-                  Com vaga:{' '}
-                  {comVaga.map((x, i) => (
-                    <span key={x.lar.id}>
-                      {i > 0 && ', '}
-                      <Link to={`/lar/${x.lar.id}`} className="link">
-                        {x.lar.nome}
-                      </Link>
-                    </span>
-                  ))}
-                  .
-                </>
-              )}
-            </p>
-          </div>
-          {itens.length >= 2 &&
-            (comparar ? (
-              <Button variant="secondary" icon={<X aria-hidden className="size-5" />} onClick={() => setComparar(false)}>
-                Fechar comparação
-              </Button>
-            ) : (
-              <Button icon={<Columns3 aria-hidden className="size-5" />} onClick={entrarComparacao}>
-                Comparar lado a lado
-              </Button>
-            ))}
+    <div className="flex flex-col gap-14">
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div aria-live="polite">
+          <p className="text-2xl font-semibold sm:text-3xl">
+            {itens.length === 1 ? '1 guardada' : `${itens.length} guardadas`}
+            <span className="text-ink-mute"> · </span>
+            <span className={comVaga > 0 ? 'text-leaf-700' : 'text-ink-mute'}>{comVaga} com vaga agora</span>
+          </p>
+          <p className="mt-1.5 text-ink-mute">
+            {comAlerta === itens.length
+              ? 'Avisamos assim que abrir vaga em qualquer uma.'
+              : comAlerta === 0
+                ? 'Avisos de vaga desligados.'
+                : `Avisos de vaga ligados em ${comAlerta} de ${itens.length}.`}
+          </p>
         </div>
+        {itens.length >= 2 &&
+          (comparar ? (
+            <Button variant="subtle" onClick={() => setComparar(false)}>
+              Fechar comparação
+            </Button>
+          ) : (
+            <Button onClick={abrirComparacao}>Comparar</Button>
+          ))}
+      </div>
 
-        {/* barra de disponibilidade — cor + texto */}
-        <div className="mt-5">
-          <div aria-hidden className="flex h-3 overflow-hidden rounded-full bg-sand-deep">
-            {DISP.map((d) =>
-              contagem[d.k] ? <span key={d.k} className={cn('h-full border-r-2 border-white last:border-r-0', d.bar)} style={{ width: `${(contagem[d.k] / itens.length) * 100}%` }} /> : null,
-            )}
-          </div>
-          <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
-            {DISP.map((d) => (
-              <li key={d.k} className="inline-flex items-center gap-2">
-                <span aria-hidden className={cn('size-2.5 rounded-full', d.dot)} />
-                <strong className="tabular">{contagem[d.k]}</strong> {d.label}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* comparação */}
       {comparar && (
         <section aria-labelledby="comparar-titulo" className="animate-fade-up">
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="eyebrow">Comparar</p>
-              <h2 id="comparar-titulo" className="font-display text-2xl font-semibold sm:text-3xl">
-                Lado a lado
-                {principal && (
-                  <>
-                    , a pensar {principal.genero === 'F' ? 'na' : principal.genero === 'M' ? 'no' : 'em'} <em>{nomeCurto(principal.nome)}</em>
-                  </>
-                )}
-              </h2>
-            </div>
-            <p className="text-sm text-ink-soft" aria-live="polite">
-              {selecionados.length} de {MAX_COMPARAR} escolhidas · marque ou desmarque nos cartões abaixo
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+            <h2 id="comparar-titulo" className="text-2xl font-semibold sm:text-3xl">
+              Lado a lado
+            </h2>
+            <p className="text-sm text-ink-mute" aria-live="polite">
+              {selecionados.length} de {MAX_COMPARAR} escolhidas · marque “Comparar” em cada uma
             </p>
           </div>
-          {selecionados.length >= 2 ? (
-            <CompareTable lares={selecionados} perfil={principal} pedidos={cands} />
-          ) : (
-            <p className="rounded-3xl border-2 border-dashed border-line-strong bg-white/60 p-6 text-ink-soft">
-              Escolha pelo menos duas instituições nos cartões abaixo (“Incluir na comparação”).
-            </p>
-          )}
+          <div className="mt-8">
+            {selecionados.length >= 2 ? (
+              <CompareTable lares={selecionados} perfil={principal} pedidos={cands} />
+            ) : (
+              <p className="tile text-ink-mute">Escolha pelo menos duas instituições abaixo.</p>
+            )}
+          </div>
         </section>
       )}
 
-      {/* grelha */}
       <section aria-labelledby="guardados-lista">
         <h2 id="guardados-lista" className="sr-only">
-          Lista de instituições guardadas
+          Instituições guardadas
         </h2>
-        <ul className="grid gap-x-6 gap-y-8 md:grid-cols-2">
-          {itens.map(({ f, lar }) => {
+        <ul className="grid gap-x-6 gap-y-14 md:grid-cols-2 2xl:grid-cols-3">
+          {itens.map(({ f, lar }, i) => {
             const pedido = cands.find((c) => c.larId === lar.id && isAtiva(c))
             const escolhido = sel.includes(lar.id)
             return (
-              <li key={lar.id} className="flex flex-col">
-                <LarCard lar={lar} distanciaKm={principal ? distanceKm(principal.local, lar) : undefined} className={cn('z-[1] flex-1', comparar && escolhido && 'ring-2 ring-pine-600')} />
-                <div className="-mt-6 rounded-b-3xl border border-t-0 border-line bg-sand px-5 pt-9 pb-3">
+              <Reveal as="li" key={lar.id} delay={Math.min(i, 5) * 60} className="flex flex-col">
+                <LarCard lar={lar} distanciaKm={principal ? distanceKm(principal.local, lar) : undefined} />
+                <div className="mt-3 flex flex-col px-1">
                   {pedido && (
-                    <p className="mb-2 flex flex-wrap items-center gap-2 text-sm">
-                      <EstadoBadge estado={pedido.estado} />
-                      <Link to={`/familia/pedidos#pedido-${pedido.id}`} className="link inline-flex min-h-11 items-center">
-                        Ver o seu pedido
+                    <p className="text-sm text-ink-mute">
+                      Pedido: {ESTADO_CANDIDATURA_LABEL[pedido.estado].toLowerCase()}
+                      {' · '}
+                      <Link to={`/familia/pedidos#pedido-${pedido.id}`} className="link">
+                        Ver pedido
                       </Link>
                     </p>
                   )}
@@ -199,47 +139,39 @@ export default function GuardadosPage() {
                     checked={f.alerta}
                     onChange={(v) => {
                       setAlerta(lar.id, v)
-                      toast.success(v ? 'Aviso de vaga ligado' : 'Aviso de vaga desligado', v ? `Avisamos assim que ${lar.nome} abrir vaga.` : undefined)
+                      toast.success(v ? 'Aviso de vaga ligado' : 'Aviso de vaga desligado', lar.nome)
                     }}
-                    label="Avisar-me quando houver vaga"
-                    description={f.alerta ? 'Notificação no painel e no sino.' : 'Sem avisos para esta instituição.'}
+                    label="Avisar-me de vagas"
+                    className="border-b border-line"
                   />
-                  <div className="mt-1 flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-line-strong pt-1">
+                  <div className="flex items-center justify-between gap-4">
                     {comparar ? (
                       <Checkbox
-                        label="Incluir na comparação"
+                        label="Comparar"
                         checked={escolhido}
                         disabled={!escolhido && sel.length >= MAX_COMPARAR}
                         onChange={(e) => alternar(lar.id, e.target.checked)}
                       />
                     ) : (
-                      <span className="text-sm text-ink-soft">Guardada {tempoRelativo(f.criadoEm)}</span>
+                      <span className="text-sm text-ink-mute">Guardada {tempoRelativo(f.criadoEm)}</span>
                     )}
-                    <Button variant="ghost" icon={<HeartOff aria-hidden className="size-4.5" />} onClick={() => remover(lar.id, lar.nome)} aria-label={`Remover ${lar.nome} dos guardados`}>
+                    <button
+                      type="button"
+                      onClick={() => remover(lar.id, lar.nome)}
+                      className="inline-flex min-h-12 items-center text-ink-mute hover:text-alert-700 hover:underline"
+                      aria-label={`Remover ${lar.nome} dos guardados`}
+                    >
                       Remover
-                    </Button>
+                    </button>
                   </div>
                 </div>
-              </li>
+              </Reveal>
             )
           })}
-          <li>
-            <Link
-              to={principal ? pesquisaUrl(principal) : '/pesquisa'}
-              className="group flex h-full min-h-48 flex-col items-start justify-end gap-2 rounded-3xl border-2 border-dashed border-line-strong p-6 transition-colors hover:border-pine-500 hover:bg-white"
-            >
-              <span aria-hidden className="flex size-12 items-center justify-center rounded-2xl bg-sand text-pine-700 group-hover:bg-pine-50">
-                <Map className="size-6" />
-              </span>
-              <span className="font-display text-xl font-semibold">Guardar mais instituições</span>
-              <span className="text-sm text-ink-soft">
-                {principal
-                  ? `No mapa, já filtrado para o perfil de ${nomeCurto(principal.nome)}. Comparar três ou quatro ajuda a decidir com calma.`
-                  : 'No mapa de vagas, toque no coração de cada instituição que lhe interessar.'}
-              </span>
-            </Link>
-          </li>
         </ul>
+        <MoreLink to={pesquisa} className="mt-10">
+          Guardar mais instituições no mapa
+        </MoreLink>
       </section>
     </div>
   )

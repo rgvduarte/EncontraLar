@@ -1,16 +1,13 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
-/** Opção em forma de "pastilha" (rádio ou caixa) — alvo ≥ 48px, estado com cor + visto. */
-export function Chip({
+/** Opção em pílula (rádio ou caixa): cinza → preta quando escolhida, com visto (nunca só cor). Alvo ≥ 48px. */
+export function Pill({
   type = 'checkbox',
   name,
   checked,
   onChange,
-  icon,
-  tag,
-  compact,
   children,
   className,
 }: {
@@ -18,78 +15,49 @@ export function Chip({
   name?: string
   checked: boolean
   onChange: (v: boolean) => void
-  icon?: ReactNode
-  /** etiqueta discreta por baixo do texto (ex.: "essencial") */
-  tag?: ReactNode
-  /** versão curta (sem caixa de verificação; visto antes do texto quando escolhido) */
-  compact?: boolean
   children: ReactNode
   className?: string
 }) {
   return (
     <label
       className={cn(
-        'group relative flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border-2 border-line bg-white py-2 transition-colors',
-        compact ? 'px-3' : 'px-4',
-        'hover:border-pine-400 has-[:checked]:border-pine-700 has-[:checked]:bg-pine-50',
+        'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-5 font-medium select-none',
+        'transition-[background-color,color] duration-200 ease-[cubic-bezier(.25,.1,.25,1)]',
         'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
+        checked ? 'bg-ink text-white' : 'bg-sand text-ink hover:bg-sand-deep',
         className,
       )}
     >
-      <input type={type} name={name} checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
-      {compact ? (
-        <span className="flex flex-1 items-center justify-center gap-1.5 text-center leading-snug font-semibold text-ink">
-          <Check aria-hidden strokeWidth={3} className="hidden size-4 shrink-0 text-pine-700 group-has-[:checked]:inline-block" />
-          {children}
-        </span>
-      ) : (
-        <>
-          {icon && <span className="text-pine-700 [&_svg]:size-5">{icon}</span>}
-          <span className="flex-1">
-            <span className="block leading-snug font-semibold text-ink">{children}</span>
-            {tag && <span className="mt-0.5 block">{tag}</span>}
-          </span>
-          <span
-            aria-hidden
-            className={cn(
-              'flex size-6 shrink-0 items-center justify-center border-2 border-line-strong bg-white text-white transition-colors',
-              'group-has-[:checked]:border-pine-700 group-has-[:checked]:bg-pine-700',
-              type === 'radio' ? 'rounded-full' : 'rounded-md',
-            )}
-          >
-            <Check strokeWidth={3} className="size-3.5" />
-          </span>
-        </>
-      )}
+      <input type={type} name={name} checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only" />
+      {checked && <Check aria-hidden strokeWidth={2.5} className="-ml-1 size-4 shrink-0" />}
+      {children}
     </label>
   )
 }
 
-/** Secção numerada do formulário (fieldset + legenda editorial). */
-export function Seccao({ n, titulo, texto, children }: { n: number; titulo: ReactNode; texto?: ReactNode; children: ReactNode }) {
+/** Grupo de pílulas com rótulo (role group/radiogroup). */
+export function PillGroup({ label, hint, radio, children }: { label: ReactNode; hint?: ReactNode; radio?: boolean; children: ReactNode }) {
+  const id = useId()
   return (
-    <fieldset className="border-t border-line pt-7 first-of-type:border-t-0 first-of-type:pt-0">
-      <legend className="float-left mb-5 flex w-full items-baseline gap-4">
-        <span aria-hidden className="font-display text-3xl leading-none font-semibold text-terra-600 tabular">
-          {String(n).padStart(2, '0')}
-        </span>
-        <span>
-          <span className="block font-display text-2xl leading-tight font-semibold text-ink">{titulo}</span>
-          {texto && <span className="mt-1 block text-sm text-ink-soft">{texto}</span>}
-        </span>
-      </legend>
-      <div className="clear-both flex flex-col gap-5">{children}</div>
-    </fieldset>
+    <div role={radio ? 'radiogroup' : 'group'} aria-labelledby={id}>
+      <p id={id} className="font-medium text-ink">
+        {label}
+      </p>
+      {hint && <p className="mt-0.5 text-sm text-ink-mute">{hint}</p>}
+      <div className="mt-3 flex flex-wrap gap-2">{children}</div>
+    </div>
   )
 }
 
-/** Grupo de opções com rótulo (para rádios/caixas fora de FieldShell). */
-export function Grupo({ label, hint, children, className }: { label: ReactNode; hint?: ReactNode; children: ReactNode; className?: string }) {
+/** Secção do formulário: título curto, frase de apoio opcional, campos. */
+export function FormSection({ title, hint, children }: { title: ReactNode; hint?: ReactNode; children: ReactNode }) {
   return (
-    <div role="group" aria-label={typeof label === 'string' ? label : undefined} className={className}>
-      <p className="text-base font-bold text-ink">{label}</p>
-      {hint && <p className="mt-0.5 text-sm text-ink-soft">{hint}</p>}
-      <div className="mt-3">{children}</div>
-    </div>
+    <fieldset className="border-t border-line pt-10 first-of-type:border-t-0 first-of-type:pt-0">
+      <legend className="float-left w-full">
+        <span className="block text-2xl font-semibold text-ink">{title}</span>
+        {hint && <span className="mt-1 block text-ink-mute">{hint}</span>}
+      </legend>
+      <div className="clear-both flex flex-col gap-7 pt-7">{children}</div>
+    </fieldset>
   )
 }

@@ -1,4 +1,4 @@
-import type { ChangeEvent, ReactNode } from 'react'
+import { useId, type ChangeEvent, type ReactNode } from 'react'
 import { Checkbox } from '@/components/ui/Field'
 
 export interface ConsentItem {
@@ -15,25 +15,19 @@ export interface ConsentItem {
   }
 }
 
-/** Consentimentos (caixas grandes, com o erro ligado por aria-describedby). */
+/** Consentimentos: caixas grandes, com o erro por baixo e ligado por aria-describedby. */
 export function ConsentFields({ items, legend }: { items: ConsentItem[]; legend: string }) {
+  const id = useId()
   return (
-    <fieldset className="flex flex-col gap-3">
+    <fieldset className="flex flex-col gap-1">
       <legend className="sr-only">{legend}</legend>
       {items.map((it) => {
-        const errId = `consent-${it.key}-err`
+        const errId = `${id}-${it.key}-err`
         return (
-          <div
-            key={it.key}
-            className={
-              it.error
-                ? 'rounded-2xl border-2 border-alert-600/40 bg-alert-50/60 px-4 py-2'
-                : 'rounded-2xl border-2 border-transparent px-4 py-2 transition-colors hover:bg-sand/60'
-            }
-          >
+          <div key={it.key}>
             <Checkbox {...it.props} label={it.label} description={it.description} aria-describedby={it.error ? errId : undefined} />
             {it.error && (
-              <p id={errId} className="pb-1 pl-10 text-sm font-bold text-alert-700">
+              <p id={errId} className="pb-1 pl-10 text-sm font-medium text-alert-700">
                 {it.error}
               </p>
             )}

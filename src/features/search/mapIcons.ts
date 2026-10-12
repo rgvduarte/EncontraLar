@@ -1,6 +1,6 @@
 /**
- * Ícones do mapa (L.divIcon): "pílulas de preço" por instituição e círculos de agrupamento.
- * Estilos em search.css. Sem imagens de marcador do Leaflet.
+ * Ícones do mapa (L.divIcon): pílulas brancas com ponto de estado + preço, e círculos de agrupamento.
+ * Estilos em search.css (o HTML dos marcadores é gerado fora do React).
  */
 import L from 'leaflet'
 import type { Disponibilidade, Lar } from '@/types'
@@ -9,7 +9,7 @@ import { euro } from '@/lib/format'
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 
-/** Texto da pílula: preço nos privados; tipo de instituição nas sociais (preço conforme rendimentos). */
+/** Texto da pílula: preço nos privados; nas sociais a mensalidade depende dos rendimentos. */
 export function rotuloMarcador(lar: Lar): string {
   if (lar.natureza === 'ipss') return 'IPSS'
   if (lar.natureza === 'misericordia') return 'Santa Casa'
@@ -29,9 +29,9 @@ export function pinIcon(lar: Lar, disp: Disponibilidade, ativo: boolean): L.DivI
   const hit = cache.get(key)
   if (hit) return hit
   const html =
-    `<span class="el-pin el-pin--${disp}${ativo ? ' is-active' : ''}${lar.natureza !== 'privado' ? ' is-social' : ''}">` +
-    `<span class="el-pin__glyph" aria-hidden="true"></span>` +
-    `<span class="el-pin__label" aria-hidden="true">${esc(rotulo)}</span>` +
+    `<span class="el-pin el-pin--${disp}${ativo ? ' is-active' : ''}">` +
+    `<span class="el-pin__dot" aria-hidden="true"></span>` +
+    `<span aria-hidden="true">${esc(rotulo)}</span>` +
     `<span class="el-sr">${esc(descricaoMarcador(lar, disp))}</span>` +
     `</span>`
   const icon = L.divIcon({ html, className: `el-marker el-marker--${disp}`, iconSize: [0, 0], iconAnchor: [0, 0] })
@@ -44,14 +44,14 @@ export interface ClusterLike {
   getAllChildMarkers(): L.Marker[]
 }
 
-/** Círculo verde-pinho com o total e um arco com a proporção de instituições com vaga agora. */
+/** Círculo branco com o total e um anel fino (verde) com a proporção de instituições com vaga agora. */
 export function clusterIcon(cluster: ClusterLike): L.DivIcon {
   const filhos = cluster.getAllChildMarkers()
   const n = filhos.length
   const vagas = filhos.filter((m) => String(m.options.icon?.options.className ?? '').includes('el-marker--disponivel')).length
-  const size = n < 10 ? 48 : n < 30 ? 56 : 64
+  const size = n < 10 ? 40 : n < 30 ? 46 : 52
   const c = size / 2
-  const r = c - 3.5
+  const r = c - 2.5
   const perimetro = 2 * Math.PI * r
   const arco = n ? (vagas / n) * perimetro : 0
   const titulo = `${n} instituições, ${vagas} com vaga agora`

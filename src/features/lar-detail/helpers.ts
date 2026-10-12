@@ -63,9 +63,6 @@ export function frescura(iso: string, agora = Date.now()): Frescura {
   return dias <= 7 ? 'recente' : dias <= 30 ? 'normal' : 'antiga'
 }
 
-export const dataHora = (iso: string) =>
-  new Date(iso).toLocaleString('pt-PT', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
-
 // ————————————————————————————————————————— preços
 
 export const semPreco = (q: Pick<RoomOffer, 'precoMin' | 'precoMax'>) => q.precoMin <= 0 && q.precoMax <= 0
@@ -94,11 +91,24 @@ export const QUARTO_TABELA: Record<TipoQuarto, string> = {
 
 // ————————————————————————————————————————— previsão
 
-/** "2 a 7 meses", "mais de 2 anos", "imediata" — espera estimada a partir da estimativa. */
+/** "2 a 7 meses", "mais de 2 anos", "sem espera" — espera estimada a partir da estimativa. */
 export function esperaEstimada(est: EstimativaEspera): string {
-  if (est.imediata) return 'sem espera — há lugar livre'
+  if (est.imediata) return 'sem espera'
   if (est.diasOtimista == null) return 'mais de 2 anos'
   return intervaloMeses(est.diasOtimista, est.diasPessimista ?? 24 * 31)
+}
+
+/** Preço para cartões e barras: "desde 1550 €" (privado) ou "450–1100 €" (IPSS/Misericórdia). */
+export function precoResumo(lar: Lar): { valor: string; desde: boolean } | null {
+  if (precoSocial(lar)) {
+    const com = lar.quartos.filter((q) => !semPreco(q))
+    const min = com.length ? Math.min(...com.map((q) => q.precoMin)) : lar.mensalidadeMin
+    const max = com.length ? Math.max(...com.map((q) => q.precoMax)) : lar.mensalidadeMax
+    if (min <= 0 && max <= 0) return null
+    return { valor: intervaloPreco(min, max), desde: false }
+  }
+  const d = precoDesde(lar)
+  return d == null ? null : { valor: euro(d), desde: true }
 }
 
 export interface DadosLar {

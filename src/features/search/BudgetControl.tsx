@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { ChevronDown, Wallet } from 'lucide-react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { euro } from '@/lib/format'
-import { useDebounced, useDismiss } from '@/lib/hooks'
+import { useDebounced } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
-import { chipClasses } from './Chips'
+import { pillClasses } from './Chips'
+import { PillPopover } from './PillPopover'
 
 export const TETO = 5000
 const PISO = 300
@@ -14,12 +14,12 @@ const BIN = 250
 interface SliderProps {
   value: number | null
   onChange: (v: number | null) => void
-  /** mensalidades mínimas das instituições na zona (para o histograma) */
+  /** mensalidades mínimas das instituições na zona (histograma real) */
   precos: number[]
   className?: string
 }
 
-/** Orçamento: histograma real dos preços na zona + régua + atalhos. */
+/** Orçamento: histograma dos preços na zona + régua + atalhos. */
 export function BudgetSlider({ value, onChange, precos, className }: SliderProps) {
   const id = useId()
   const v = value ?? TETO
@@ -31,148 +31,106 @@ export function BudgetSlider({ value, onChange, precos, className }: SliderProps
   }, [precos])
   const maxBin = Math.max(1, ...bins)
   const dentro = precos.filter((p) => p <= v).length
-  const pctPos = ((v - PISO) / (TETO - PISO)) * 100
+  const pct = ((v - PISO) / (TETO - PISO)) * 100
 
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
+    <div className={cn('flex flex-col gap-5', className)}>
       <div className="flex items-end justify-between gap-4">
         <div>
-          <label htmlFor={id} className="text-sm font-bold text-ink">
+          <label htmlFor={id} className="text-sm text-ink-mute">
             Mensalidade máxima
           </label>
-          <p className="font-display text-4xl leading-none font-semibold text-ink tabular" aria-hidden>
+          <p aria-hidden className="mt-0.5 text-3xl leading-none font-semibold tracking-tight text-ink tabular">
             {value == null ? 'Sem limite' : euro(v)}
           </p>
         </div>
-        <p className="pb-1 text-right text-sm text-ink-soft tabular">
-          <strong className="text-ink">{dentro}</strong> de {precos.length}
+        <p className="text-right text-sm text-ink-mute tabular">
+          {dentro} de {precos.length}
           <br />
-          na zona
+          nesta zona
         </p>
       </div>
 
       <div>
-        <div aria-hidden className="flex h-14 items-end gap-[2px]">
+        <div aria-hidden className="flex h-12 items-end gap-[2px]">
           {bins.map((b, i) => (
             <span
               key={i}
-              className={cn('flex-1 rounded-t-[3px] transition-colors', i * BIN < v ? 'bg-pine-600' : 'bg-sand-deep')}
-              style={{ height: `${b ? Math.max(8, (b / maxBin) * 100) : 0}%` }}
+              className={cn('flex-1 rounded-t-[2px] transition-colors duration-200', i * BIN < v ? 'bg-ink' : 'bg-sand-deep')}
+              style={{ height: `${b ? Math.max(6, (b / maxBin) * 100) : 0}%` }}
             />
           ))}
         </div>
-        <div className="relative -mt-1">
-          <input
-            id={id}
-            type="range"
-            min={PISO}
-            max={TETO}
-            step={PASSO}
-            value={v}
-            onChange={(e) => {
-              const n = Number(e.target.value)
-              onChange(n >= TETO ? null : n)
-            }}
-            aria-valuetext={value == null ? 'Sem limite' : `Até ${euro(v)} por mês`}
-            className="budget-range w-full"
-            style={{ ['--pct' as string]: `${pctPos}%` }}
-          />
-        </div>
-        <div aria-hidden className="mt-1 flex justify-between text-xs text-ink-mute tabular">
-          <span>{euro(PISO)}</span>
-          <span>{euro(TETO)}+</span>
-        </div>
+        <input
+          id={id}
+          type="range"
+          min={PISO}
+          max={TETO}
+          step={PASSO}
+          value={v}
+          onChange={(e) => {
+            const n = Number(e.target.value)
+            onChange(n >= TETO ? null : n)
+          }}
+          aria-valuetext={value == null ? 'Sem limite' : `Até ${euro(v)} por mês`}
+          className="el-range -mt-1 w-full"
+          style={{ ['--pct' as string]: `${pct}%` }}
+        />
       </div>
 
       <div role="group" aria-label="Valores rápidos" className="flex flex-wrap gap-2">
         {PRESETS.map((p) => (
-          <button
-            key={p}
-            type="button"
-            aria-pressed={value === p}
-            onClick={() => onChange(p)}
-            className={chipClasses(value === p, 'min-h-11 px-3.5 tabular')}
-          >
+          <button key={p} type="button" aria-pressed={value === p} onClick={() => onChange(p)} className={pillClasses(value === p, 'px-4 tabular')}>
             {euro(p)}
           </button>
         ))}
-        <button type="button" aria-pressed={value == null} onClick={() => onChange(null)} className={chipClasses(value == null, 'min-h-11 px-3.5')}>
+        <button type="button" aria-pressed={value == null} onClick={() => onChange(null)} className={pillClasses(value == null, 'px-4')}>
           Sem limite
         </button>
       </div>
 
-      <p className="rounded-xl bg-sand/70 px-3 py-2.5 text-sm text-ink-soft">
-        Nas IPSS e Misericórdias a mensalidade depende dos rendimentos. Contamos o valor mais baixo indicado pela instituição.
-      </p>
+      <p className="text-sm text-ink-mute">Nas IPSS e Misericórdias conta o valor mais baixo; o final depende dos rendimentos.</p>
     </div>
   )
 }
 
-/** Pílula "Até X €" que abre um pequeno painel com o BudgetSlider. */
-export function BudgetChip({ value, onChange, precos }: { value: number | null; onChange: (v: number | null) => void; precos: number[] }) {
-  const [open, setOpen] = useState(false)
+/** Pílula "Orçamento" / "Até 1200 €" com o BudgetSlider num painel. Aplica após uma pausa curta. */
+export function BudgetPill({ value, onChange, precos }: { value: number | null; onChange: (v: number | null) => void; precos: number[] }) {
   const [local, setLocal] = useState(value)
   const tocado = useRef(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const btnRef = useRef<HTMLButtonElement>(null)
-  const panelId = useId()
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
 
   useEffect(() => setLocal(value), [value])
   const deb = useDebounced(local, 280)
   useEffect(() => {
     if (!tocado.current) return
     tocado.current = false
-    onChange(deb)
-    // só reage ao valor estabilizado (onChange muda a cada render do pai)
-  }, [deb]) // eslint-disable-line react-hooks/exhaustive-deps
+    onChangeRef.current(deb)
+  }, [deb])
 
-  const close = useCallback(() => {
-    setOpen(false)
-    btnRef.current?.focus()
-  }, [])
-  useDismiss(open, ref, close)
-
-  useEffect(() => {
-    if (open) ref.current?.querySelector<HTMLInputElement>('input[type=range]')?.focus()
-  }, [open])
-
-  const ativo = value != null
   return (
-    <div ref={ref} className="relative">
-      <button
-        ref={btnRef}
-        type="button"
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen((o) => !o)}
-        className={chipClasses(ativo, 'tabular')}
-      >
-        <Wallet aria-hidden />
-        {ativo ? `Até ${euro(value)}` : 'Orçamento'}
-        <ChevronDown aria-hidden className={cn('transition-transform', open && 'rotate-180')} />
-      </button>
-      {open && (
-        <div
-          id={panelId}
-          role="dialog"
-          aria-label="Mensalidade máxima"
-          className="absolute top-full left-0 z-50 mt-2 w-[24rem] animate-fade-up rounded-3xl border border-line bg-white p-5 shadow-lift"
-        >
-          <BudgetSlider
-            value={local}
-            onChange={(v) => {
-              tocado.current = true
-              setLocal(v)
-            }}
-            precos={precos}
-          />
-          <div className="mt-4 flex justify-end border-t border-line pt-4">
-            <button type="button" onClick={close} className="link min-h-11 px-2 text-sm">
-              Fechar
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    <PillPopover
+      active={value != null}
+      label={<span className="tabular">{value != null ? `Até ${euro(value)}` : 'Orçamento'}</span>}
+      panelLabel="Mensalidade máxima"
+      panelClassName="w-[24rem]"
+      onClose={() => {
+        // aplicar já o que estiver pendente
+        if (tocado.current) {
+          tocado.current = false
+          onChangeRef.current(local)
+        }
+      }}
+    >
+      <BudgetSlider
+        value={local}
+        onChange={(v) => {
+          tocado.current = true
+          setLocal(v)
+        }}
+        precos={precos}
+      />
+    </PillPopover>
   )
 }

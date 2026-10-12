@@ -1,11 +1,11 @@
 import { forwardRef, type InputHTMLAttributes } from 'react'
 import { cn } from '@/lib/cn'
 
-/** Diâmetro do cursor (px). Exportado para alinhar gráficos por cima da régua. */
-export const THUMB = 32
+/** Diâmetro do cursor (px). */
+const THUMB = 28
 
 /** Posição horizontal (CSS) do centro do cursor para uma fração 0–1 — igual à do <input type="range">. */
-export const posicaoCursor = (frac: number) =>
+const posicaoCursor = (frac: number) =>
   `calc(${THUMB / 2}px + (100% - ${THUMB}px) * ${Math.max(0, Math.min(1, frac)).toFixed(4)})`
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange' | 'min' | 'max'> & {
@@ -15,7 +15,10 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onC
   onValue: (v: number) => void
 }
 
-/** Régua grande e acessível (alvo de 48px, cursor de 32px, setas/PageUp/PageDown funcionam). */
+/**
+ * Régua ao estilo Apple: trilho fino, preenchimento azul, cursor branco com sombra.
+ * Alvo de 48px de altura; setas, PageUp/PageDown, Home/End funcionam (input nativo).
+ */
 export const RangeSlider = forwardRef<HTMLInputElement, Props>(function RangeSlider(
   { value, min, max, onValue, className, ...rest },
   ref,
@@ -23,10 +26,10 @@ export const RangeSlider = forwardRef<HTMLInputElement, Props>(function RangeSli
   const frac = (value - min) / (max - min)
   return (
     <div className={cn('relative h-12', className)}>
-      <div aria-hidden className="absolute inset-x-0 top-1/2 h-3 -translate-y-1/2 rounded-full bg-sand-deep" />
+      <div aria-hidden className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-sand-deep" />
       <div
         aria-hidden
-        className="absolute top-1/2 left-0 h-3 -translate-y-1/2 rounded-full bg-pine-600"
+        className="absolute top-1/2 left-0 h-1.5 -translate-y-1/2 rounded-full bg-terra-600"
         style={{ width: posicaoCursor(frac) }}
       />
       <input
@@ -37,12 +40,14 @@ export const RangeSlider = forwardRef<HTMLInputElement, Props>(function RangeSli
         value={value}
         onChange={(e) => onValue(Number(e.target.value))}
         className={cn(
-          'relative block h-12 w-full cursor-pointer appearance-none bg-transparent focus-visible:outline-offset-4',
+          'relative block h-12 w-full cursor-pointer appearance-none rounded-full bg-transparent',
           '[&::-webkit-slider-runnable-track]:h-12 [&::-webkit-slider-runnable-track]:bg-transparent',
-          '[&::-webkit-slider-thumb]:mt-2 [&::-webkit-slider-thumb]:size-8 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full',
-          '[&::-webkit-slider-thumb]:border-[5px] [&::-webkit-slider-thumb]:border-pine-700 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-card',
-          '[&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:size-6 [&::-moz-range-thumb]:rounded-full',
-          '[&::-moz-range-thumb]:border-[5px] [&::-moz-range-thumb]:border-pine-700 [&::-moz-range-thumb]:bg-white',
+          '[&::-webkit-slider-thumb]:mt-[10px] [&::-webkit-slider-thumb]:size-7 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full',
+          '[&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-black/5 [&::-webkit-slider-thumb]:bg-white',
+          '[&::-webkit-slider-thumb]:shadow-[0_1px_3px_rgb(0_0_0/0.18),0_6px_14px_rgb(0_0_0/0.12)] [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:duration-200',
+          'active:[&::-webkit-slider-thumb]:scale-110',
+          '[&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:size-7 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0',
+          '[&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow-[0_1px_3px_rgb(0_0_0/0.18),0_6px_14px_rgb(0_0_0/0.12)]',
         )}
         {...rest}
       />

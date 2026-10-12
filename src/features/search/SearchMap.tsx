@@ -1,16 +1,15 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Circle, CircleMarker, MapContainer, Marker, Popup, Rectangle, TileLayer, ZoomControl } from 'react-leaflet'
 import MarkerClusterGroup from 'react-leaflet-cluster'
-import L from 'leaflet'
-import { Search } from 'lucide-react'
+import type L from 'leaflet'
+import { RotateCw } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { DispGlyph } from './Chips'
+import { DispDot } from './Chips'
 import type { Entrada } from './filtering'
 import { MapController, REGIOES_MAPA } from './MapController'
 import { MapPeekCard, MapPopupContent } from './MapCards'
 import { clusterIcon, descricaoMarcador, pinIcon, type ClusterLike } from './mapIcons'
 import { centroDe, type Bounds, type Local } from './searchState'
-import './search.css'
 
 const TILES = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
 const ATTRIBUTION =
@@ -86,6 +85,14 @@ const ATALHOS: { id: keyof typeof REGIOES_MAPA; label: string }[] = [
   { id: 'acores', label: 'Açores' },
 ]
 
+const LEGENDA = [
+  { d: 'disponivel', t: 'Vaga agora' },
+  { d: 'breve', t: 'Em breve' },
+  { d: 'espera', t: 'Lista de espera' },
+] as const
+
+const vidro = 'bg-white/90 shadow-card ring-1 ring-black/5 backdrop-blur-xl'
+
 /** Mapa de resultados (Leaflet): pílulas de preço, agrupamentos, raio, "Pesquisar nesta zona". */
 export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId, onHover, onSelect, onZona, mobile, className }: Props) {
   const [map, setMap] = useState<L.Map | null>(null)
@@ -98,7 +105,7 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
     else markers.current.delete(id)
   }, [])
 
-  // filtros mudaram → o botão "Pesquisar nesta zona" deixa de fazer sentido
+  // filtros mudaram → "Pesquisar nesta zona" deixa de fazer sentido
   useEffect(() => setMexeu(false), [fitKey])
 
   // realçar o agrupamento que contém a instituição sob o rato na lista
@@ -123,11 +130,11 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
   const centro = centroDe(local)
   const selecionado = mobile && selectedId ? resultados.find((e) => e.lar.id === selectedId) : undefined
   const porRegiao = useMemo(() => {
-    const c: Record<string, number> = { continente: 0, madeira: 0, acores: 0 }
+    const c = { continente: 0, madeira: 0, acores: 0 }
     for (const e of resultados) {
-      if (e.lar.regiao === 'Madeira') c.madeira!++
-      else if (e.lar.regiao === 'Açores') c.acores!++
-      else c.continente!++
+      if (e.lar.regiao === 'Madeira') c.madeira++
+      else if (e.lar.regiao === 'Açores') c.acores++
+      else c.continente++
     }
     return c
   }, [resultados])
@@ -139,30 +146,18 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
     setMexeu(false)
   }
 
-  const padding: [number, number] = mobile ? [28, 28] : [56, 56]
-
   return (
-    <div className={cn('relative isolate overflow-hidden bg-[#e8efe9]', className)} role="region" aria-label="Mapa das instituições">
-      <p className="sr-only">
-        O mapa repete a informação da lista de resultados. Cada marcador pode ser escolhido com a tecla Tab e aberto com Enter.
-      </p>
-      <MapContainer
-        ref={setMap}
-        center={[39.6, -8.0]}
-        zoom={7}
-        minZoom={5}
-        zoomControl={false}
-        className="h-full w-full"
-        attributionControl
-      >
+    <div className={cn('el-map relative isolate overflow-hidden bg-sand', className)} role="region" aria-label="Mapa das instituições">
+      <p className="sr-only">O mapa repete a informação da lista. Cada marcador pode ser escolhido com a tecla Tab e aberto com Enter.</p>
+      <MapContainer ref={setMap} center={[39.6, -8.0]} zoom={7} minZoom={5} zoomControl={false} className="h-full w-full bg-sand" attributionControl>
         <TileLayer url={TILES} subdomains="abcd" maxZoom={19} attribution={ATTRIBUTION} />
-        <ZoomControl position={mobile ? 'bottomright' : 'topright'} zoomInTitle="Aproximar" zoomOutTitle="Afastar" />
+        <ZoomControl position="topright" zoomInTitle="Aproximar" zoomOutTitle="Afastar" />
         <MapController
           fitKey={fitKey}
           local={local}
           raio={raio}
           resultados={resultados}
-          padding={padding}
+          padding={mobile ? [32, 32] : [64, 64]}
           onUserMove={() => setMexeu(true)}
           onBackgroundClick={() => mobile && onSelect(null)}
         />
@@ -173,13 +168,14 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
               center={[centro.lat, centro.lng]}
               radius={raio * 1000}
               interactive={false}
-              pathOptions={{ color: '#22695e', weight: 2, dashArray: '2 8', lineCap: 'round', fillColor: '#4f9b8c', fillOpacity: 0.07 }}
+              pathOptions={{ className: 'el-raio', weight: 1.5, dashArray: '4 7', lineCap: 'round' }}
             />
             <CircleMarker
+              key={local.tipo}
               center={[centro.lat, centro.lng]}
-              radius={7}
+              radius={6}
               interactive={false}
-              pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#d25b3b', fillOpacity: 1 }}
+              pathOptions={{ className: cn('el-centro', local.tipo === 'coords' && 'el-centro--gps'), weight: 3, fillOpacity: 1 }}
             />
           </>
         )}
@@ -190,7 +186,7 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
               [local.bounds.n, local.bounds.e],
             ]}
             interactive={false}
-            pathOptions={{ color: '#22695e', weight: 2, dashArray: '2 8', lineCap: 'round', fill: false }}
+            pathOptions={{ className: 'el-raio', weight: 1.5, dashArray: '4 7', lineCap: 'round', fill: false }}
           />
         )}
 
@@ -199,7 +195,7 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
           chunkedLoading
           showCoverageOnHover={false}
           spiderfyOnMaxZoom
-          maxClusterRadius={46}
+          maxClusterRadius={48}
           disableClusteringAtZoom={13}
           iconCreateFunction={(c: ClusterLike) => clusterIcon(c)}
         >
@@ -218,56 +214,51 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
       </MapContainer>
 
       {/* sobreposições (fora do contentor Leaflet para não arrastarem o mapa) */}
-      {mexeu && (
-        <div className={cn('pointer-events-none absolute inset-x-0 z-[1000] flex justify-center px-4', mobile ? 'top-[7.25rem]' : 'bottom-16')}>
+      <div className="pointer-events-none absolute top-3 left-3 z-[1000] flex flex-col items-start gap-2 sm:top-4 sm:left-4">
+        <nav aria-label="Ir para região" className={cn('pointer-events-auto flex rounded-full p-0.5', vidro)}>
+          {ATALHOS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => map?.flyToBounds(REGIOES_MAPA[a.id], { duration: 0.8, padding: [24, 24] })}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-ink transition-colors hover:bg-sand sm:px-3.5"
+            >
+              {a.label}
+              <span className="text-ink-mute tabular">{porRegiao[a.id]}</span>
+            </button>
+          ))}
+        </nav>
+        <ul aria-label="Legenda" className={cn('pointer-events-auto flex gap-3 rounded-full px-3.5 py-2 text-xs text-ink-soft', vidro)}>
+          {LEGENDA.map((l) => (
+            <li key={l.d} className="inline-flex items-center gap-1.5">
+              <DispDot disp={l.d} className="size-2.5" />
+              {l.t}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {mexeu && !selecionado && (
+        <div className={cn('pointer-events-none absolute inset-x-0 z-[1000] flex justify-center px-4', mobile ? 'bottom-20' : 'bottom-8')}>
           <button
             type="button"
             onClick={pesquisarZona}
-            className="pointer-events-auto inline-flex min-h-12 animate-fade-up items-center gap-2 rounded-full bg-pine-800 px-5 font-bold text-white shadow-lift ring-4 ring-white/70 hover:bg-pine-900"
+            className="pointer-events-auto inline-flex min-h-12 animate-pop-in items-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-white shadow-lift transition-colors hover:bg-pine-600"
           >
-            <Search aria-hidden className="size-5" />
+            <RotateCw aria-hidden className="size-4" />
             Pesquisar nesta zona
           </button>
         </div>
       )}
 
-      <div className={cn('pointer-events-none absolute z-[1000] flex flex-col gap-2', mobile ? 'top-3 left-3' : 'top-4 left-4')}>
-        <ul className="pointer-events-auto flex flex-wrap gap-x-3 gap-y-1 rounded-2xl border border-line bg-white/95 px-3 py-2 text-xs font-semibold text-ink-soft shadow-soft backdrop-blur">
-          <li className="inline-flex items-center gap-1.5">
-            <DispGlyph disp="disponivel" className="size-3.5 [&_svg]:size-3.5" /> Vaga agora
-          </li>
-          <li className="inline-flex items-center gap-1.5">
-            <DispGlyph disp="breve" className="size-3.5 [&_svg]:size-3.5" /> Em breve
-          </li>
-          <li className="inline-flex items-center gap-1.5">
-            <DispGlyph disp="espera" className="size-3.5 [&_svg]:size-3.5" /> Lista de espera
-          </li>
-        </ul>
-        <nav aria-label="Ir para região" className="pointer-events-auto inline-flex self-start overflow-hidden rounded-2xl border border-line bg-white/95 shadow-soft backdrop-blur">
-          {ATALHOS.map((a, i) => (
-            <button
-              key={a.id}
-              type="button"
-              onClick={() => map?.flyToBounds(REGIOES_MAPA[a.id], { duration: 0.8, padding: [24, 24] })}
-              className={cn('inline-flex min-h-12 items-center gap-1.5 px-3.5 text-sm font-bold text-ink hover:bg-pine-50 hover:text-pine-800', i > 0 && 'border-l border-line')}
-            >
-              {a.label}
-              <span className="text-xs font-semibold text-ink-mute tabular">{porRegiao[a.id]}</span>
-            </button>
-          ))}
-        </nav>
-      </div>
-
       {resultados.length === 0 && (
         <div className="pointer-events-none absolute inset-0 z-[999] flex items-center justify-center p-6">
-          <p className="max-w-xs rounded-2xl border border-line bg-white/95 px-5 py-4 text-center text-sm text-ink-soft shadow-card">
-            Sem instituições para mostrar com estes filtros. {mobile ? 'Veja as sugestões na lista.' : 'Veja as sugestões ao lado.'}
-          </p>
+          <p className={cn('rounded-full px-5 py-3 text-sm text-ink-soft', vidro)}>Sem instituições com estes filtros</p>
         </div>
       )}
 
       {selecionado && (
-        <div className="pointer-events-none absolute inset-x-3 bottom-24 z-[1001]">
+        <div className="pointer-events-none absolute inset-x-3 bottom-20 z-[1001]">
           <MapPeekCard e={selecionado} onClose={() => onSelect(null)} />
         </div>
       )}

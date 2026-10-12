@@ -1,94 +1,59 @@
 import type { Lar } from '@/types'
-import { COMODIDADE_ICON } from '@/components/lar/icons'
-import { COMODIDADES_ORDEM, COMODIDADE_LABEL, GRAUS_ORDEM, GRAU_LABEL } from '@/lib/labels'
-import { num, plural } from '@/lib/format'
-import { Secao, Subtitulo } from '../Secao'
+import { COMODIDADES_ORDEM, COMODIDADE_LABEL, NATUREZA_DESCRICAO, NATUREZA_LABEL, TIPO_DESCRICAO, TIPO_LABEL } from '@/lib/labels'
+import { num } from '@/lib/format'
+import { Numero, Secao, Subtitulo } from '../Secao'
 import type { DadosLar } from '../helpers'
 
-function grausResumo(lar: Lar): string {
-  const g = GRAUS_ORDEM.filter((x) => lar.graus.includes(x))
-  if (!g.length) return 'Por indicar'
-  const curto = (x: (typeof g)[number]) => (x === 'autonomo' ? 'autónomos' : GRAU_LABEL[x].replace('Dependência ', '').toLowerCase())
-  const nomes = g.map(curto)
-  const frase = nomes.length === 1 ? nomes[0]! : `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]!}`
-  return frase.replace(/^./, (c) => c.toUpperCase())
-}
-
-export function SobreSection({ lar, dados, numero }: { lar: Lar; dados: DadosLar; numero: number }) {
+export function SobreSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
   const paragrafos = lar.descricao.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
   const comodidades = COMODIDADES_ORDEM.filter((c) => lar.comodidades.includes(c))
   const anos = lar.fundacao ? new Date().getFullYear() - lar.fundacao : 0
 
-  const factos = [
-    { termo: 'Capacidade', valor: lar.capacidade ? num(lar.capacidade) : '—', nota: dados.centroDia ? 'lugares de dia' : 'residentes' },
-    { termo: 'Fundação', valor: lar.fundacao ? String(lar.fundacao) : '—', nota: anos > 1 ? `há ${anos} anos` : anos === 1 ? 'há 1 ano' : 'abriu este ano' },
-    { termo: 'Graus aceites', valor: grausResumo(lar), nota: 'de dependência', texto: true },
-  ]
-
   return (
-    <Secao
-      id="ficha-sobre"
-      numero={numero}
-      rotulo="Sobre"
-      titulo={
-        <>
-          Conhecer a <em>casa</em>
-        </>
-      }
-    >
-      <dl className="mb-10 grid grid-cols-2 border-y border-line sm:grid-cols-[1fr_1fr_1.6fr]">
-        {factos.map((f, i) => (
-          <div
-            key={f.termo}
-            className={`flex flex-col gap-1 py-4 ${i > 0 ? 'sm:border-l sm:border-line sm:pl-6' : ''} ${i === 1 ? 'border-l border-line pl-4 sm:pl-6' : ''} ${i === 2 ? 'col-span-2 border-t border-line sm:col-span-1 sm:border-t-0' : ''}`}
-          >
-            <dt className="text-xs font-bold tracking-[0.12em] text-ink-mute uppercase">{f.termo}</dt>
-            <dd className={f.texto ? 'font-display text-xl leading-snug font-semibold text-ink' : 'font-display text-4xl leading-none font-semibold text-ink tabular'}>
-              {f.valor}
-            </dd>
-            <dd className="text-sm text-ink-soft">{f.nota}</dd>
+    <Secao id="ficha-sobre" rotulo="Sobre" titulo="Conhecer a casa" intro={lar.resumo || undefined}>
+      {(lar.capacidade > 0 || lar.fundacao > 0) && (
+        <dl className="grid grid-cols-2 gap-8 sm:gap-12">
+          {lar.capacidade > 0 && <Numero valor={num(lar.capacidade)} rotulo="lugares" nota={dados.centroDia ? 'de frequência diária' : 'capacidade licenciada'} />}
+          {lar.fundacao > 0 && (
+            <Numero valor={lar.fundacao} rotulo="ano de fundação" nota={anos > 1 ? `há ${anos} anos` : anos === 1 ? 'há 1 ano' : 'abriu este ano'} />
+          )}
+        </dl>
+      )}
+
+      {paragrafos.length ? (
+        <div className="mt-12 max-w-[65ch] space-y-5 text-lg leading-relaxed text-ink-soft">
+          {paragrafos.map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-12 max-w-[65ch] text-lg text-ink-mute">
+          A instituição ainda não escreveu a sua apresentação. Ligue e pergunte como é o dia a dia — ou marque uma visita.
+        </p>
+      )}
+
+      <dl className="mt-12 grid gap-8 border-t border-line pt-8 sm:grid-cols-2 sm:gap-10">
+        {[
+          { termo: 'Tipo', valor: TIPO_LABEL[lar.tipo], texto: TIPO_DESCRICAO[lar.tipo] },
+          { termo: 'Natureza', valor: NATUREZA_LABEL[lar.natureza], texto: NATUREZA_DESCRICAO[lar.natureza] },
+        ].map((f) => (
+          <div key={f.termo}>
+            <dt className="text-sm text-ink-mute">{f.termo}</dt>
+            <dd className="mt-1 text-lg font-semibold text-ink">{f.valor}</dd>
+            <dd className="mt-1 text-base text-ink-soft">{f.texto}</dd>
           </div>
         ))}
       </dl>
 
-      {paragrafos.length ? (
-        <div className="max-w-[68ch] space-y-5 text-lg leading-relaxed text-ink">
-          {paragrafos.map((p, i) => (
-            <p
-              key={i}
-              className={
-                i === 0
-                  ? 'first-letter:float-left first-letter:mt-1.5 first-letter:mr-3 first-letter:font-display first-letter:text-[4.6rem] first-letter:leading-[0.78] first-letter:font-semibold first-letter:text-terra-600'
-                  : undefined
-              }
-            >
-              {p}
-            </p>
-          ))}
-        </div>
-      ) : (
-        <p className="max-w-2xl rounded-2xl border-2 border-dashed border-line-strong bg-white/60 p-5 text-ink-soft">
-          A instituição ainda não escreveu a sua apresentação. Para já, pode ver abaixo os cuidados, os preços e a previsão de vagas — ou ligar e perguntar
-          como é o dia a dia.
-        </p>
-      )}
-
       {comodidades.length > 0 && (
-        <div className="mt-10">
-          <Subtitulo>
-            {dados.centroDia ? 'No centro' : 'Na casa'}{' '}
-            <span className="font-sans text-base font-normal text-ink-mute">· {plural(comodidades.length, 'comodidade', 'comodidades')}</span>
-          </Subtitulo>
-          <ul className="mt-4 grid gap-x-8 sm:grid-cols-2">
-            {comodidades.map((c) => {
-              const Icon = COMODIDADE_ICON[c]
-              return (
-                <li key={c} className="flex items-center gap-3 border-b border-line py-3">
-                  <Icon aria-hidden className="size-5 shrink-0 text-pine-700" strokeWidth={1.8} />
-                  <span>{COMODIDADE_LABEL[c]}</span>
-                </li>
-              )
-            })}
+        <div className="mt-14">
+          <Subtitulo>{dados.centroDia ? 'No centro' : 'Na casa'}</Subtitulo>
+          <ul className="mt-4 grid border-t border-line sm:grid-cols-2 sm:gap-x-10">
+            {comodidades.map((c) => (
+              <li key={c} className="border-b border-line py-3.5 text-ink">
+                {COMODIDADE_LABEL[c]}
+              </li>
+            ))}
           </ul>
         </div>
       )}

@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { ArrowLeft, ArrowRight, ChevronDown, CornerDownLeft, ListChecks } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CornerDownLeft } from 'lucide-react'
 import type { Lar } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
-import { PASSOS, primeiroIncompleto, TOTAL_PASSOS, validarPasso, type Erros } from '../model'
+import { primeiroIncompleto, TOTAL_PASSOS, validarPasso, type Erros } from '../model'
 import { pessoa } from '../language'
 import type { AcoesSessao, Sessao } from '../useMatchSession'
-import { FunilRetrato, IndicePassos, RetratoRail } from './Retrato'
 import { ledePasso, tituloPasso } from './copy'
 import { StepPessoa } from '../steps/StepPessoa'
 import { StepAutonomia } from '../steps/StepAutonomia'
@@ -18,72 +17,24 @@ import { StepQuando } from '../steps/StepQuando'
 const reduzMovimento = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-/** Barra de progresso compacta (telemóvel) com o retrato desdobrável. */
-function ProgressoMovel({ sessao, onIrPara, lares }: { sessao: Sessao; onIrPara: (i: number) => void; lares: Lar[] }) {
-  const [aberto, setAberto] = useState(false)
-  const { passo, r, alcancado } = sessao
-  return (
-    <div className="border-b border-line bg-sand/70 lg:hidden">
-      <div className="container-page py-3">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-bold text-ink">
-            Passo {passo + 1} de {TOTAL_PASSOS} <span className="font-normal text-ink-soft">· {PASSOS[passo]!.nome}</span>
-          </p>
-          <button
-            type="button"
-            onClick={() => setAberto((a) => !a)}
-            aria-expanded={aberto}
-            aria-controls="retrato-movel"
-            className="-mr-2 inline-flex min-h-12 items-center gap-1.5 rounded-xl px-2 text-sm font-bold text-pine-800 hover:bg-white/70"
-          >
-            <ListChecks aria-hidden className="size-5" />
-            Retrato
-            <ChevronDown aria-hidden className={cn('size-4 transition-transform', aberto && 'rotate-180')} />
-          </button>
-        </div>
-        <div className="mt-1 flex gap-1.5" aria-hidden>
-          {PASSOS.map((s, i) => (
-            <span
-              key={s.id}
-              className={cn('h-1.5 flex-1 rounded-full', i < passo ? 'bg-pine-600' : i === passo ? 'bg-terra-500' : 'bg-sand-deep')}
-            />
-          ))}
-        </div>
-        {aberto && (
-          <div id="retrato-movel" className="mt-3 animate-fade-in rounded-3xl border border-line bg-cream p-2">
-            <IndicePassos
-              r={r}
-              passo={passo}
-              alcancado={alcancado}
-              onIrPara={(i) => {
-                setAberto(false)
-                onIrPara(i)
-              }}
-            />
-            <div className="mx-3 mt-1 mb-2 border-t border-dashed border-line-strong pt-4">
-              <FunilRetrato r={r} lares={lares} />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
+/**
+ * Uma pergunta por ecrã, ao estilo do assistente de configuração da Apple:
+ * barra de progresso fina no topo, pergunta enorme e centrada, Voltar / Continuar (fixos em baixo no telemóvel).
+ */
 export function Wizard({ sessao, acoes, lares }: { sessao: Sessao; acoes: AcoesSessao; lares: Lar[] }) {
-  const { passo, r, alcancado } = sessao
+  const { passo, r } = sessao
   const p = pessoa(r)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const [tentou, setTentou] = useState<number | null>(null)
   const erros: Erros = tentou === passo ? validarPasso(passo, r) : {}
   const ultimo = passo === TOTAL_PASSOS - 1
-  // a editar a partir dos resultados: tudo respondido → atalho para os resultados
+  // a editar a partir dos resultados: tudo respondido → atalho para voltar às sugestões
   const completo = primeiroIncompleto(r) === -1
 
   useEffect(() => {
-    headingRef.current?.focus({ preventScroll: true })
     window.scrollTo({ top: 0, behavior: reduzMovimento() ? 'auto' : 'smooth' })
+    headingRef.current?.focus({ preventScroll: true })
   }, [passo])
 
   const continuar = () => {
@@ -94,6 +45,7 @@ export function Wizard({ sessao, acoes, lares }: { sessao: Sessao; acoes: AcoesS
       requestAnimationFrame(() => {
         const alvo = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
         alvo?.focus()
+        alvo?.scrollIntoView({ block: 'center', behavior: reduzMovimento() ? 'auto' : 'smooth' })
       })
       return
     }
@@ -107,7 +59,7 @@ export function Wizard({ sessao, acoes, lares }: { sessao: Sessao; acoes: AcoesS
     continuar()
   }
 
-  // Enter avança (exceto em botões, áreas de texto e quando a lista da localidade está aberta)
+  // Enter avança (exceto em botões, ligações, interruptores e na lista aberta da localidade)
   const onKeyDown = (e: KeyboardEvent<HTMLFormElement>) => {
     if (e.key !== 'Enter' || e.defaultPrevented || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return
     const t = e.target as HTMLElement
@@ -118,30 +70,42 @@ export function Wizard({ sessao, acoes, lares }: { sessao: Sessao; acoes: AcoesS
   }
 
   const voltar = () => (passo === 0 ? acoes.voltarAoInicio() : acoes.irPara(passo - 1))
-
   const props = { r, patch: acoes.patch, erros, lares, p }
+  const progresso = ((passo + 1) / TOTAL_PASSOS) * 100
 
   return (
-    <div className="flex flex-1 flex-col">
-      <ProgressoMovel sessao={sessao} onIrPara={acoes.irPara} lares={lares} />
-      <div className="container-page grid flex-1 gap-10 pt-8 pb-36 lg:grid-cols-12 lg:gap-12 lg:pt-12 lg:pb-20">
-        <div className="hidden lg:col-span-4 lg:block xl:col-span-4">
-          <div className="sticky top-[calc(4.5rem+1.5rem)]">
-            <RetratoRail r={r} passo={passo} alcancado={alcancado} onIrPara={acoes.irPara} lares={lares} />
-          </div>
-        </div>
+    <div className="flex min-h-[calc(100dvh-4rem)] flex-1 flex-col">
+      <div
+        role="progressbar"
+        aria-label="Progresso do questionário"
+        aria-valuemin={1}
+        aria-valuemax={TOTAL_PASSOS}
+        aria-valuenow={passo + 1}
+        aria-valuetext={`Passo ${passo + 1} de ${TOTAL_PASSOS}`}
+        className="sticky top-16 z-[900] h-[3px] bg-sand-deep"
+      >
+        <div
+          className="h-full rounded-r-full bg-terra-600 transition-[width] duration-500 ease-[cubic-bezier(.25,.1,.25,1)]"
+          style={{ width: `${progresso}%` }}
+        />
+      </div>
 
-        <form
-          ref={formRef}
-          noValidate
-          onSubmit={onSubmit}
-          onKeyDown={onKeyDown}
-          className="flex min-w-0 flex-col lg:col-span-8 xl:col-span-8"
-          aria-labelledby="pergunta"
-        >
-          <header key={`h${passo}`} className="max-w-3xl animate-fade-up">
-            <p className="eyebrow hidden lg:block">
-              Passo {passo + 1} de {TOTAL_PASSOS} · {PASSOS[passo]!.nome}
+      <form ref={formRef} noValidate onSubmit={onSubmit} onKeyDown={onKeyDown} aria-labelledby="pergunta" className="flex flex-1 flex-col">
+        <div className="container-narrow flex-1 pt-9 pb-12 sm:pt-20 sm:pb-14 lg:pt-24">
+          <header key={`h${passo}`} className="mx-auto max-w-3xl animate-fade-up text-center">
+            <p className="text-sm font-medium text-ink-mute tabular">
+              Passo {passo + 1} de {TOTAL_PASSOS}
+              {completo && !ultimo && (
+                <>
+                  <span aria-hidden className="mx-2 text-line-strong">
+                    ·
+                  </span>
+                  <button type="button" onClick={acoes.verResultados} className="link inline-flex min-h-10 items-center">
+                    Ver sugestões
+                    <ChevronRight aria-hidden className="size-4" />
+                  </button>
+                </>
+              )}
             </p>
             <h1
               id="pergunta"
@@ -151,10 +115,10 @@ export function Wizard({ sessao, acoes, lares }: { sessao: Sessao; acoes: AcoesS
             >
               {tituloPasso(passo, p)}
             </h1>
-            <p className="mt-4 max-w-2xl text-lg text-ink-soft">{ledePasso(passo, p)}</p>
+            <p className="mx-auto mt-3 max-w-2xl text-lg text-ink-mute sm:mt-4 sm:text-xl">{ledePasso(passo)}</p>
           </header>
 
-          <div key={`c${passo}`} className="mt-9 animate-fade-up [animation-delay:60ms]">
+          <div key={`c${passo}`} className="mx-auto mt-10 max-w-2xl animate-fade-up [animation-delay:90ms] sm:mt-16">
             {passo === 0 && <StepPessoa {...props} />}
             {passo === 1 && <StepAutonomia {...props} />}
             {passo === 2 && <StepSaude {...props} />}
@@ -162,46 +126,37 @@ export function Wizard({ sessao, acoes, lares }: { sessao: Sessao; acoes: AcoesS
             {passo === 4 && <StepOrcamento {...props} />}
             {passo === 5 && <StepQuando {...props} />}
           </div>
+        </div>
 
-          {/* navegação: fixa em baixo no telemóvel, no fim do conteúdo no desktop */}
-          <div
-            className={cn(
-              'fixed inset-x-0 bottom-0 z-[900] border-t border-line bg-cream/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-16px_rgb(70_50_20/0.35)] backdrop-blur',
-              'lg:static lg:z-auto lg:mt-12 lg:border-t-2 lg:border-dashed lg:border-line-strong lg:bg-transparent lg:px-0 lg:pt-7 lg:pb-0 lg:shadow-none lg:backdrop-blur-none',
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={voltar}
-                icon={<ArrowLeft aria-hidden className="size-5" />}
-                className="px-5 max-sm:px-4"
-              >
+        {/* navegação: fixa no fundo no telemóvel (por cima da área segura), no fim do conteúdo a partir de sm */}
+        <div
+          className={cn(
+            'sticky bottom-[var(--tabbar-h,0px)] z-[900] border-t border-black/[0.06] bg-white/85 backdrop-blur-xl backdrop-saturate-150',
+            'sm:static sm:border-0 sm:bg-transparent sm:backdrop-blur-none',
+          )}
+        >
+          <div className="container-narrow">
+            <div className="mx-auto flex max-w-2xl items-center gap-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pt-0 sm:pb-24">
+              <Button variant="subtle" size="lg" onClick={voltar} icon={<ChevronLeft aria-hidden />} className="px-5 sm:px-6">
                 Voltar
               </Button>
-              {completo && !ultimo && (
-                <Button variant="ghost" size="lg" onClick={acoes.verResultados} className="hidden px-4 sm:inline-flex">
-                  Ver sugestões
-                </Button>
-              )}
+              <p className="ml-auto hidden items-center gap-1.5 text-sm text-ink-mute md:flex">
+                ou prima <kbd className="rounded-md bg-sand px-1.5 py-0.5 font-sans text-xs font-medium text-ink-soft">Enter</kbd>
+                <CornerDownLeft aria-hidden className="size-3.5" />
+              </p>
               <Button
                 type="submit"
-                variant={ultimo ? 'accent' : 'primary'}
+                variant="primary"
                 size="lg"
-                iconRight={<ArrowRight aria-hidden className="size-5" />}
-                className="ml-auto flex-1 sm:flex-none sm:px-9"
+                iconRight={<ChevronRight aria-hidden />}
+                className="ml-auto flex-1 sm:flex-none sm:px-9 md:ml-2"
               >
                 {ultimo ? 'Ver sugestões' : 'Continuar'}
               </Button>
             </div>
-            <p className="mt-3 hidden items-center justify-end gap-1.5 text-sm text-ink-mute lg:flex">
-              <CornerDownLeft aria-hidden className="size-4" />
-              Também pode carregar em <kbd className="rounded-md border border-line-strong bg-white px-1.5 font-sans text-xs font-bold">Enter</kbd>
-            </p>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   )
 }

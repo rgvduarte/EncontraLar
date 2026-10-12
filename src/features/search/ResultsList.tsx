@@ -1,16 +1,18 @@
 import { memo, useMemo } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { Link } from 'react-router'
+import { ChevronRight } from 'lucide-react'
 import { LarCard } from '@/components/lar/LarCard'
-import { CalcadaDivider } from '@/components/brand/patterns'
 import { Button } from '@/components/ui/Button'
-import { cn } from '@/lib/cn'
-import { DispGlyph } from './Chips'
-import { agrupar, type Entrada, type Grupo } from './filtering'
+import { num } from '@/lib/format'
+import { dividir, type Entrada } from './filtering'
 import type { Ordem } from './searchState'
 
 export const PAGINA = 20
 
 export const cardDomId = (id: string) => `resultado-${id}`
+
+/** No telemóvel a capa fica mais baixa (2:1) para caberem mais resultados por ecrã. */
+const CARTAO = 'max-sm:[&>div:first-child]:aspect-[2/1]'
 
 interface Props {
   resultados: Entrada[]
@@ -23,46 +25,54 @@ interface Props {
   mostrarDistancia: boolean
 }
 
-/** Lista editorial: grupos com título (h2) e cartões horizontais; paginada de 20 em 20. */
+/** Lista de cartões horizontais, paginada de 20 em 20; separa "Com vaga agora" do resto quando ajuda. */
 export const ResultsList = memo(function ResultsList({ resultados, ordem, visiveis, onMais, destaqueId, onHover, mostrarDistancia }: Props) {
   const parte = useMemo(() => resultados.slice(0, visiveis), [resultados, visiveis])
-  const grupos = useMemo(() => agrupar(parte, resultados, ordem), [parte, resultados, ordem])
+  const grupos = useMemo(() => dividir(parte, resultados, ordem), [parte, resultados, ordem])
   const faltam = resultados.length - parte.length
 
-  const cartao = (e: Entrada, h: 'h2' | 'h3') => (
-    <li key={e.lar.id} id={cardDomId(e.lar.id)} className="scroll-mt-[calc(4.5rem+var(--barra,0px)+1.25rem)]">
-      <LarCard
-        lar={e.lar}
-        layout="horizontal"
-        distanciaKm={mostrarDistancia ? e.distanciaKm : undefined}
-        selected={destaqueId === e.lar.id}
-        onHover={onHover}
-        headingLevel={h}
-      />
-    </li>
+  const lista = (itens: Entrada[], h: 'h2' | 'h3') => (
+    <ol className="flex flex-col gap-2">
+      {itens.map((e) => (
+        <li key={e.lar.id} id={cardDomId(e.lar.id)} className="scroll-mt-[calc(4rem+var(--barra,0px)+1.5rem)]">
+          <LarCard
+            lar={e.lar}
+            layout="horizontal"
+            distanciaKm={mostrarDistancia ? e.distanciaKm : undefined}
+            selected={destaqueId === e.lar.id}
+            onHover={onHover}
+            headingLevel={h}
+            className={CARTAO}
+          />
+        </li>
+      ))}
+    </ol>
   )
 
   return (
-    <div className="flex flex-col px-4 py-6 sm:px-6">
-      {grupos ? (
-        grupos.map((g, i) => (
-          <section key={g.id} aria-labelledby={`grupo-${g.id}`} className={cn(i > 0 && 'mt-4')}>
-            {i > 0 && <CalcadaDivider color="#e2d8c8" height={12} className="mb-7 opacity-90" />}
-            <CabecalhoGrupo g={g} />
-            <ol className="mt-4 flex flex-col gap-4">{g.itens.map((e) => cartao(e, 'h3'))}</ol>
-          </section>
-        ))
-      ) : (
-        <ol className="flex flex-col gap-4">{parte.map((e) => cartao(e, 'h2'))}</ol>
-      )}
+    <div className="px-2 pt-4 sm:px-3 lg:px-5">
+      {grupos
+        ? grupos.map((g, i) => (
+            <section key={g.id} aria-labelledby={`grupo-${g.id}`} className={i > 0 ? 'mt-12' : undefined}>
+              <h2 id={`grupo-${g.id}`} className="mb-2 px-3 text-lg font-semibold tracking-tight text-ink">
+                {g.titulo}
+                <span className="ml-2 font-normal text-ink-mute tabular">
+                  {num(g.total)}
+                  <span className="sr-only"> {g.total === 1 ? 'instituição' : 'instituições'}</span>
+                </span>
+              </h2>
+              {lista(g.itens, 'h3')}
+            </section>
+          ))
+        : lista(parte, 'h2')}
 
       {faltam > 0 && (
-        <div className="mt-8 flex flex-col items-center gap-2 border-t border-dashed border-line-strong pt-6 text-center">
-          <p className="text-sm text-ink-soft tabular">
-            A mostrar {parte.length} de {resultados.length}
+        <div className="mt-10 flex flex-col items-center gap-3 text-center">
+          <p className="text-sm text-ink-mute tabular">
+            {num(parte.length)} de {num(resultados.length)}
           </p>
-          <Button variant="secondary" onClick={onMais} iconRight={<ChevronDown aria-hidden className="size-5" />}>
-            Mostrar mais {Math.min(PAGINA, faltam)}
+          <Button variant="subtle" onClick={onMais}>
+            Mostrar mais
           </Button>
         </div>
       )}
@@ -70,20 +80,22 @@ export const ResultsList = memo(function ResultsList({ resultados, ordem, visive
   )
 })
 
-function CabecalhoGrupo({ g }: { g: Grupo }) {
+/** Nota final da lista: honestidade sobre os dados + assinatura discreta (a página não tem rodapé). */
+export function NotaFinal() {
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-baseline gap-3">
-        {g.disp && <DispGlyph disp={g.disp} className="translate-y-0.5" />}
-        <h2 id={`grupo-${g.id}`} className="font-display text-2xl font-semibold text-ink">
-          {g.titulo}
-          <span className="ml-3 font-medium text-ink-mute tabular">
-            {g.total}
-            <span className="sr-only"> {g.total === 1 ? 'instituição' : 'instituições'}</span>
-          </span>
-        </h2>
+    <footer className="mx-5 mt-16 border-t border-line pt-6 pb-10 text-sm text-ink-mute sm:mx-6 lg:mx-8">
+      <p className="max-w-[34rem]">
+        As vagas são indicadas pelas próprias instituições e a previsão é uma estimativa, não uma garantia. Confirme por telefone antes de se deslocar.
+      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6">
+        <Link to="/sobre#previsao" className="inline-flex min-h-12 items-center font-medium text-terra-600 hover:underline">
+          Como calculamos a previsão
+          <ChevronRight aria-hidden className="size-4" />
+        </Link>
+        <a href="https://www.buildity.pt" target="_blank" rel="noopener" className="inline-flex min-h-12 items-center text-xs text-ink-mute transition-colors hover:text-ink">
+          by Buildity
+        </a>
       </div>
-      {g.descricao && <p className="max-w-[34rem] text-sm text-ink-soft">{g.descricao}</p>}
-    </div>
+    </footer>
   )
 }

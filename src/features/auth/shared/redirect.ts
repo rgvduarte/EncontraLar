@@ -24,6 +24,16 @@ export function destinoAposEntrar(voltar: string | null, role: Role): string {
   return voltar
 }
 
+/**
+ * Depois de criar uma conta de família: volta à página pública de onde veio
+ * (ex.: a ficha de um lar, a meio de um pedido de vaga); caso contrário, null.
+ */
+export function voltarPublico(voltar: string | null): string | null {
+  if (!isInternalPath(voltar) || voltar === '/') return null
+  if (voltar.startsWith('/entrar') || voltar.startsWith('/registar')) return null
+  return roleDoCaminho(voltar) ? null : voltar
+}
+
 /** Tipo de conta exigido pelo caminho (ou null se for público). */
 export function roleDoCaminho(path: string | null): Role | null {
   if (!isInternalPath(path)) return null

@@ -1,0 +1,127 @@
+import type { ReactNode } from 'react'
+import type { Candidatura, Lar } from '@/types'
+import { estimarEspera, vagasLivres } from '@/lib/forecast'
+import { duracaoHumana, tempoRelativo } from '@/lib/format'
+import { QUARTO_CURTO } from '@/lib/labels'
+import { linhasListaEspera, quartoParaPropor, verificarCompatibilidade } from '../lib/derive'
+import { perfilLinha, procuraTexto, relacaoTexto } from '../shared/pedidoBits'
+import { MoreLink } from '../shared/ui'
+import { PedidoAcoes } from './PedidoAcoes'
+import { EstadoTag, PropostaLinha } from './partes'
+
+const Posicao = ({ children }: { children: ReactNode }) => (
+  <span aria-hidden className="text-3xl leading-none font-semibold tracking-tight whitespace-nowrap text-ink tabular">
+    {children}
+  </span>
+)
+
+function LinhaOnline({ c, posicao, lar, agora, verHref, sugerido }: { c: Candidatura; posicao: number; lar: Lar; agora: number; verHref: string; sugerido: boolean }) {
+  const p = c.perfil
+  const inscrito = [...c.historico].reverse().find((h) => h.estado === 'lista_espera')?.data ?? c.atualizadaEm
+  const faltas = verificarCompatibilidade(lar, p).filter((x) => x.estado === 'falta').length
+  const est = estimarEspera(lar, { posicao })
+  const espera = est.imediata ? 'Há lugar livre para esta posição' : est.diasMediana != null ? `Espera estimada: ${duracaoHumana(est.diasMediana)}` : 'Espera estimada: mais de 2 anos'
+  return (
+    <li className="grid grid-cols-[3.5rem_1fr] gap-x-4 py-8 sm:grid-cols-[4.5rem_1fr]">
+      <Posicao>{posicao}</Posicao>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+          <div className="min-w-0">
+            {sugerido && <p className="text-sm font-medium text-terra-700">Sugestão: é a primeira da lista para o quarto livre</p>}
+            <h3 className="text-lg font-semibold">
+              <span className="sr-only">Posição {posicao}: </span>
+              {p.nome}, {p.idade} anos
+            </h3>
+          </div>
+          {c.estado === 'vaga_proposta' && <EstadoTag c={c} />}
+        </div>
+        <p className="text-ink-soft">
+          {relacaoTexto(c)} · {perfilLinha(c).toLowerCase()}
+        </p>
+        <p className="text-ink-soft">{procuraTexto(c)}</p>
+        <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-mute">
+          <span>Inscrito(a) {tempoRelativo(inscrito, new Date(agora))}</span>
+          <span className={faltas ? 'font-medium text-alert-700' : undefined}>
+            {faltas ? `${faltas} ${faltas === 1 ? 'ponto' : 'pontos'} a verificar` : 'Compatível com a ficha'}
+          </span>
+          <span>{espera}</span>
+        </p>
+        <PropostaLinha c={c} agora={agora} className="mt-4" />
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <PedidoAcoes c={c} lar={lar} agora={agora} apenasPrincipal />
+          <MoreLink to={verHref} aria-label={`Ver o pedido de ${p.nome}`}>
+            Ver pedido
+          </MoreLink>
+        </div>
+      </div>
+    </li>
+  )
+}
+
+function LinhaFora({ de, ate }: { de: number; ate: number }) {
+  const n = ate - de + 1
+  return (
+    <li className="grid grid-cols-[3.5rem_1fr] items-baseline gap-x-4 py-6 sm:grid-cols-[4.5rem_1fr]">
+      <span aria-hidden className="text-xl leading-none font-semibold whitespace-nowrap text-ink-mute tabular">
+        {n === 1 ? de : `${de}–${ate}`}
+      </span>
+      <p className="text-ink-mute">
+        <span className="sr-only">{n === 1 ? `Posição ${de}: ` : `Posições ${de} a ${ate}: `}</span>
+        {n === 1 ? 'Inscrição feita por telefone ou presencialmente' : `${n} inscrições feitas por telefone ou presencialmente`}
+      </p>
+    </li>
+  )
+}
+
+/** A lista de espera pela ordem, com as posições que não passaram pela plataforma. */
+export function ListaEspera({ lar, cands, agora, verHref }: { lar: Lar; cands: Candidatura[]; agora: number; verHref: (c: Candidatura) => string }) {
+  const linhas = linhasListaEspera(lar, cands)
+  const online = linhas.filter((l) => l.tipo === 'online').length
+  const total = linhas.reduce((s, l) => s + (l.tipo === 'online' ? 1 : l.ate - l.de + 1), 0)
+  const livresTipos = lar.quartos.filter((q) => q.livres > 0)
+  const livres = vagasLivres(lar)
+  // sugestão: a primeira pessoa (por posição) que pediu um tipo de quarto livre e cabe na ficha
+  const sugerido = linhas.find(
+    (l) =>
+      l.tipo === 'online' &&
+      l.c.estado === 'lista_espera' &&
+      quartoParaPropor(lar, l.c.perfil)?.preferido &&
+      verificarCompatibilidade(lar, l.c.perfil).every((x) => x.estado === 'ok'),
+  )
+  const sugeridoId = sugerido?.tipo === 'online' ? sugerido.c.id : null
+
+  return (
+    <section aria-label="Lista de espera" className="flex flex-col gap-2">
+      <p className="max-w-2xl text-ink-mute">
+        {total === 0
+          ? 'A lista de espera está vazia. Os pedidos que inscrever aparecem aqui, pela ordem.'
+          : `${total} ${total === 1 ? 'pessoa' : 'pessoas'} na lista, pela ordem. ${online} ${online === 1 ? 'inscreveu-se' : 'inscreveram-se'} pela plataforma; as outras posições são inscrições feitas por telefone ou presencialmente.`}
+      </p>
+      {total > 0 && (
+        <p className="max-w-2xl text-ink-mute">
+          {livres > 0 ? (
+            <>
+              <span className="font-medium text-leaf-700">
+                {livres === 1 ? 'Tem 1 lugar livre' : `Tem ${livres} lugares livres`} ({livresTipos.map((q) => QUARTO_CURTO[q.tipo].toLowerCase()).join(', ')}).
+              </span>{' '}
+              Proponha-o a quem estiver mais acima, ou contacte primeiro as inscrições por telefone.
+            </>
+          ) : (
+            'Sem lugares livres. Quando registar uma vaga, pode propô-la daqui.'
+          )}
+        </p>
+      )}
+      {linhas.length > 0 && (
+        <ol className="mt-4 divide-y divide-line border-t border-line">
+          {linhas.map((l) =>
+            l.tipo === 'online' ? (
+              <LinhaOnline key={l.c.id} c={l.c} posicao={l.posicao} lar={lar} agora={agora} verHref={verHref(l.c)} sugerido={l.c.id === sugeridoId} />
+            ) : (
+              <LinhaFora key={`f-${l.de}`} de={l.de} ate={l.ate} />
+            ),
+          )}
+        </ol>
+      )}
+    </section>
+  )
+}

@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ArrowRight, BadgeCheck, Mail, Phone, UserRound } from 'lucide-react'
 import type { Natureza, TipoResposta } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { InputField } from '@/components/ui/Field'
@@ -11,34 +10,34 @@ import { ErrorSummary } from '../shared/ErrorSummary'
 import { InlineSpinner } from '../shared/InlineSpinner'
 import { PasswordField } from '../shared/PasswordField'
 import { PasswordStrength } from '../shared/PasswordStrength'
-import { PrototypeNote } from '../shared/PrototypeNote'
 import { guardarCargo } from '../shared/cargo'
 import { pausa, useForm } from '../shared/useForm'
 import { MSG_EMAIL_EXISTE, formatarTelefone } from '../shared/validators'
 import { ConsentFields } from './ConsentFields'
-import { FormSection } from './FormSection'
 import { InstituicaoFields } from './InstituicaoFields'
-import { InstitutionPreview, type InstitutionDraft } from './InstitutionPreview'
 import { lugarCanonico } from './LugarCombobox'
 import { INST_INITIAL, INST_ORDER, INST_RULES, type InstValues } from './institutionSchema'
 
-/** Formulário de registo de instituição: responsável (2), instituição (3) e confirmação (4). */
-export function InstitutionForm({ onDraftChange }: { onDraftChange?: (d: InstitutionDraft) => void }) {
+function Grupo({ legend, children }: { legend: string; children: ReactNode }) {
+  return (
+    <fieldset className="min-w-0">
+      <legend className="mb-5 font-display text-2xl font-semibold tracking-[-0.02em] text-ink">{legend}</legend>
+      {children}
+    </fieldset>
+  )
+}
+
+/** Registo de instituição: dois grupos curtos (responsável e instituição) e confirmação. */
+export function InstitutionForm() {
   const navigate = useNavigate()
   const form = useForm<InstValues>({ initial: INST_INITIAL, rules: INST_RULES, order: INST_ORDER })
   const [erroGeral, setErroGeral] = useState<string | null>(null)
   const v = form.values
   const pessoal = useMemo(() => [v.nome, v.email, v.instNome], [v.nome, v.email, v.instNome])
 
-  const draft = useMemo<InstitutionDraft>(
-    () => ({ instNome: v.instNome, tipo: v.tipo, natureza: v.natureza, lugar: v.lugar, capacidade: v.capacidade, precoDesde: v.precoDesde }),
-    [v.instNome, v.tipo, v.natureza, v.lugar, v.capacidade, v.precoDesde],
-  )
-  useEffect(() => onDraftChange?.(draft), [draft, onDraftChange])
-
   const submit = form.handleSubmit(async (vals) => {
     setErroGeral(null)
-    await pausa(600)
+    await pausa(500)
     const r = register({
       role: 'lar',
       nome: vals.nome,
@@ -64,92 +63,63 @@ export function InstitutionForm({ onDraftChange }: { onDraftChange?: (d: Institu
       return
     }
     guardarCargo(r.user.id, vals.cargo)
-    toast.success(`Instituição registada. Bem-vindo(a), ${primeiroNome(r.user.nome)}.`, 'A ficha fica com «verificação em curso» até à visita.')
+    toast.success(`Instituição registada. Bem-vindo(a), ${primeiroNome(r.user.nome)}.`)
     navigate('/gestao?bemvindo=1', { replace: true })
   })
 
   const email = form.field('email')
 
   return (
-    <form noValidate onSubmit={submit} aria-labelledby="passo-responsavel" className="flex flex-col gap-12">
+    <form noValidate onSubmit={submit} aria-label="Registar instituição" className="flex flex-col gap-12">
       {form.attempts > 0 && (form.visibleErrors.length > 0 || erroGeral) && (
         <ErrorSummary key={form.attempts} errors={form.visibleErrors} onSelect={form.focusField} extra={erroGeral} />
       )}
 
-      <FormSection
-        n={2}
-        id="passo-responsavel"
-        title={<>Quem é o <em>responsável</em></>}
-        intro="A pessoa que vai gerir a ficha, atualizar as vagas e responder aos pedidos das famílias."
-      >
-        <div className="grid gap-6 sm:grid-cols-2">
-          <InputField {...form.field('nome')} label="Nome" autoComplete="name" leading={<UserRound />} placeholder="Ex.: Helena Marques" />
-          <InputField
-            {...form.field('cargo')}
-            label="Cargo"
-            autoComplete="organization-title"
-            leading={<BadgeCheck />}
-            placeholder="Ex.: Diretora técnica"
-          />
+      <Grupo legend="Responsável">
+        <div className="flex flex-col gap-5">
+          <InputField {...form.field('nome')} label="Nome" autoComplete="name" />
+          <InputField {...form.field('cargo')} label="Cargo" autoComplete="organization-title" />
           <InputField
             {...email}
             error={email.error === MSG_EMAIL_EXISTE ? <EmailExisteErro email={v.email} /> : email.error}
-            label="Email profissional"
+            label="Email"
             type="email"
             inputMode="email"
             autoComplete="email"
             autoCapitalize="none"
             spellCheck={false}
-            leading={<Mail />}
-            hint="Recebe aqui os pedidos das famílias."
           />
           <InputField
             {...form.field('telefone')}
-            label="Telefone da instituição"
+            label="Telefone"
+            hint="Aparece na ficha pública."
             type="tel"
             inputMode="tel"
             autoComplete="tel-national"
-            leading={<Phone />}
-            hint="Aparece na ficha pública."
-            placeholder="220 000 000"
           />
-          <div className="flex flex-col gap-3 sm:col-span-2">
-            <PasswordField {...form.field('password')} label="Palavra-passe" autoComplete="new-password" hint="Pelo menos 8 caracteres." />
-            <PasswordStrength password={v.password} pessoal={pessoal} />
-          </div>
+          <PasswordField
+            {...form.field('password')}
+            label="Palavra-passe"
+            hint="Pelo menos 8 caracteres."
+            autoComplete="new-password"
+            below={<PasswordStrength password={v.password} pessoal={pessoal} />}
+          />
         </div>
-      </FormSection>
+      </Grupo>
 
-      <FormSection
-        n={3}
-        id="passo-instituicao"
-        title={<>A <em>instituição</em></>}
-        intro="O essencial para aparecer no mapa. Quartos, cuidados, equipa e vagas completam-se depois, no painel."
-      >
+      <Grupo legend="Instituição">
         <InstituicaoFields form={form} />
-        <div className="mt-10 lg:hidden">
-          <p className="eyebrow mb-3">Assim vai aparecer</p>
-          <InstitutionPreview draft={draft} />
-        </div>
-      </FormSection>
+      </Grupo>
 
-      <FormSection n={4} id="passo-confirmar-inst" title={<>Confirmar e <em>registar</em></>}>
+      <div className="flex flex-col gap-6">
         <ConsentFields
-          legend="Declarações e consentimentos"
+          legend="Declarações"
           items={[
-            {
-              key: 'autorizacao',
-              props: form.checkbox('autorizacao'),
-              error: form.errorOf('autorizacao'),
-              label: 'Represento esta instituição e posso publicar informação em nome dela',
-              description: 'Confirmamos este ponto na visita de verificação.',
-            },
             {
               key: 'termos',
               props: form.checkbox('termos'),
               error: form.errorOf('termos'),
-              label: 'Aceito os termos de utilização',
-              description: 'Comprometo-me a manter as vagas e as mensalidades atualizadas e a responder aos pedidos das famílias.',
+              label: 'Represento esta instituição e aceito os termos de utilização',
             },
             {
               key: 'privacidade',
@@ -164,24 +134,20 @@ export function InstitutionForm({ onDraftChange }: { onDraftChange?: (d: Institu
                   </Link>
                 </>
               ),
-              description: 'Os perfis clínicos que as famílias partilham servem apenas para avaliar o pedido de vaga.',
             },
           ]}
         />
-        <div className="mt-8 flex flex-col gap-5 border-t border-line pt-8 sm:flex-row sm:items-center sm:justify-between">
-          <PrototypeNote className="max-w-sm" />
-          <Button
-            type="submit"
-            size="lg"
-            disabled={form.submitting}
-            aria-busy={form.submitting || undefined}
-            iconRight={form.submitting ? <InlineSpinner /> : <ArrowRight aria-hidden className="size-5" />}
-            className="sm:min-w-64"
-          >
-            {form.submitting ? 'A registar…' : 'Registar instituição'}
-          </Button>
-        </div>
-      </FormSection>
+        <Button
+          type="submit"
+          size="lg"
+          full
+          disabled={form.submitting}
+          aria-busy={form.submitting || undefined}
+          iconRight={form.submitting ? <InlineSpinner /> : undefined}
+        >
+          {form.submitting ? 'A registar…' : 'Registar instituição'}
+        </Button>
+      </div>
     </form>
   )
 }

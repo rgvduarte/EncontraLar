@@ -70,7 +70,7 @@ export function construirOpcoes(texto: string, entradas: Entrada[], podeLocaliza
     const pop = POPULARES.map((p) => LUGARES.find((l) => l.label === p))
       .filter((l): l is LugarPesquisa => Boolean(l))
       .map<Opcao>((lugar) => ({ kind: 'lugar', id: `op-l-${lugar.label}`, lugar, ...contarLugar(entradas, lugar) }))
-    grupos.push({ id: 'g-pop', titulo: 'Cidades com mais procura', opcoes: pop })
+    grupos.push({ id: 'g-pop', titulo: 'Cidades', opcoes: pop })
     return grupos
   }
 

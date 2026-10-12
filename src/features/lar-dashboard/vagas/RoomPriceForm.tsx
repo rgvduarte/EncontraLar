@@ -1,5 +1,4 @@
-import { useState, type FormEvent } from 'react'
-import { Euro, Trash2 } from 'lucide-react'
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 import type { RoomOffer } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { InputField } from '@/components/ui/Field'
@@ -24,23 +23,33 @@ export function validarQuarto(v: Valores): Partial<Record<keyof Valores, string>
   const max = inteiro(v.precoMax)
   if (Number.isNaN(total) || total < 1) e.total = 'Indique pelo menos 1 lugar.'
   else if (total > 500) e.total = 'Confirme o número: parece demasiado alto.'
-  if (Number.isNaN(min) || min < 1) e.precoMin = 'Indique a mensalidade mínima, em euros.'
-  if (Number.isNaN(max) || max < 1) e.precoMax = 'Indique a mensalidade máxima, em euros.'
-  else if (!Number.isNaN(min) && max < min) e.precoMax = 'A máxima não pode ser inferior à mínima.'
+  if (Number.isNaN(min) || min < 1) e.precoMin = 'Indique o valor, em euros.'
+  if (Number.isNaN(max) || max < 1) e.precoMax = 'Indique o valor, em euros.'
+  else if (!Number.isNaN(min) && max < min) e.precoMax = 'Não pode ser inferior ao mínimo.'
   return e
 }
 
-/** Lugares e mensalidades de um tipo de quarto (o número de livres muda-se no contador, acima). */
-export function RoomPriceForm({ larId, quarto, podeRemover }: { larId: string; quarto: RoomOffer; podeRemover: boolean }) {
-  const [valores, setValores] = useState<Valores | null>(null)
+/** Lugares e mensalidades de um tipo de quarto (os livres mudam-se no contador). */
+export function RoomPriceForm({
+  id,
+  larId,
+  quarto,
+  podeRemover,
+  onDone,
+}: {
+  id: string
+  larId: string
+  quarto: RoomOffer
+  podeRemover: boolean
+  onDone: () => void
+}) {
+  const [v, setV] = useState<Valores>(() => deQuarto(quarto))
   const [tentou, setTentou] = useState(false)
   const [remover, setRemover] = useState(false)
-  const v = valores ?? deQuarto(quarto)
   const erros = tentou ? validarQuarto(v) : {}
-  const sujo = valores != null && (v.total !== String(quarto.total) || v.precoMin !== String(quarto.precoMin) || v.precoMax !== String(quarto.precoMax))
   const nome = QUARTO_LABEL[quarto.tipo].toLowerCase()
 
-  const mudar = (k: keyof Valores) => (e: React.ChangeEvent<HTMLInputElement>) => setValores({ ...v, [k]: e.target.value })
+  const mudar = (k: keyof Valores) => (e: ChangeEvent<HTMLInputElement>) => setV({ ...v, [k]: e.target.value })
 
   const guardar = (e: FormEvent) => {
     e.preventDefault()
@@ -54,9 +63,8 @@ export function RoomPriceForm({ larId, quarto, podeRemover }: { larId: string; q
         q.tipo === quarto.tipo ? { ...q, total, livres: Math.min(q.livres, total), precoMin: inteiro(v.precoMin), precoMax: inteiro(v.precoMax) } : q,
       ),
     })
-    setValores(null)
-    setTentou(false)
-    toast.success('Preços guardados', `${QUARTO_LABEL[quarto.tipo]}: as famílias já veem os novos valores.`)
+    toast.success('Lugares e preços guardados', `${QUARTO_LABEL[quarto.tipo]}: as famílias já veem os novos valores.`)
+    onDone()
   }
 
   const confirmarRemocao = () => {
@@ -68,37 +76,22 @@ export function RoomPriceForm({ larId, quarto, podeRemover }: { larId: string; q
   }
 
   return (
-    <form onSubmit={guardar} noValidate className="border-t border-line bg-sand/40 px-6 py-5 sm:px-7">
-      <p className="mb-3 flex items-center gap-2 font-bold">
-        <Euro aria-hidden className="size-5 text-pine-700" /> Lugares e mensalidade
-      </p>
+    <form id={id} onSubmit={guardar} noValidate className="mt-4 animate-fade-in rounded-[1.75rem] bg-sand p-6 sm:p-7">
       <div className="grid gap-4 sm:grid-cols-3">
         <InputField label="Total de lugares" inputMode="numeric" value={v.total} onChange={mudar('total')} error={erros.total} />
-        <InputField label="Mensalidade desde" inputMode="numeric" value={v.precoMin} onChange={mudar('precoMin')} error={erros.precoMin} leading={<span className="font-bold">€</span>} />
-        <InputField label="Mensalidade até" inputMode="numeric" value={v.precoMax} onChange={mudar('precoMax')} error={erros.precoMax} leading={<span className="font-bold">€</span>} />
+        <InputField label="Mensalidade desde" inputMode="numeric" value={v.precoMin} onChange={mudar('precoMin')} error={erros.precoMin} leading="€" />
+        <InputField label="Mensalidade até" inputMode="numeric" value={v.precoMax} onChange={mudar('precoMax')} error={erros.precoMax} leading="€" />
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        {sujo && (
-          <>
-            <Button type="submit" variant="primary">
-              Guardar preços
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setValores(null)
-                setTentou(false)
-              }}
-            >
-              Repor
-            </Button>
-          </>
-        )}
-        {!sujo && <p className="text-sm text-ink-soft">Por pessoa e por mês. Os valores aparecem na ficha e nos filtros de orçamento.</p>}
+      <p className="mt-3 text-sm text-ink-mute">Por pessoa e por mês. Aparecem na ficha e nos filtros de orçamento.</p>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <Button type="submit">Guardar</Button>
+        <Button variant="secondary" onClick={onDone}>
+          Cancelar
+        </Button>
         {podeRemover && (
-          <Button variant="ghost" size="sm" className="ml-auto text-alert-700 hover:bg-alert-50" icon={<Trash2 aria-hidden className="size-4" />} onClick={() => setRemover(true)}>
-            Remover este tipo
-          </Button>
+          <button type="button" onClick={() => setRemover(true)} className="ml-auto min-h-11 text-sm font-medium text-alert-700 hover:underline">
+            Remover este tipo de quarto
+          </button>
         )}
       </div>
 
@@ -106,20 +99,20 @@ export function RoomPriceForm({ larId, quarto, podeRemover }: { larId: string; q
         open={remover}
         onClose={() => setRemover(false)}
         title={`Remover o ${nome}?`}
-        description="Deixa de aparecer na ficha pública e nos filtros. Pode voltar a adicioná-lo mais tarde."
+        description="Deixa de aparecer na ficha pública e nos filtros. Pode voltar a adicioná-lo."
         footer={
           <>
-            <Button variant="secondary" onClick={() => setRemover(false)}>
+            <Button variant="subtle" onClick={() => setRemover(false)}>
               Cancelar
             </Button>
-            <Button variant="danger" onClick={confirmarRemocao} icon={<Trash2 aria-hidden className="size-5" />}>
+            <Button variant="danger" onClick={confirmarRemocao}>
               Remover
             </Button>
           </>
         }
       >
-        <p className="text-ink-soft">
-          Os pedidos já recebidos para este tipo de quarto mantêm-se. Os {quarto.total} lugares deixam de contar para as vagas deste tipo de quarto.
+        <p className="text-ink-mute">
+          Os pedidos já recebidos mantêm-se. Os {quarto.total} lugares deste tipo deixam de contar para as vagas.
         </p>
       </Modal>
     </form>

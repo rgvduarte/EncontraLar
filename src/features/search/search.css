@@ -1,7 +1,6 @@
 /*
- * Estilos do mapa de pesquisa (marcadores Leaflet em HTML) e da régua de orçamento.
- * Valores de cor = tokens de src/index.css (escritos aqui por extenso porque o HTML dos
- * marcadores é gerado fora do React).
+ * Mapa de pesquisa: marcadores Leaflet em HTML, agrupamentos, popup e régua do orçamento.
+ * Só tokens de src/index.css (var(--color-…)); o HTML dos marcadores é gerado fora do React.
  */
 
 .el-sr {
@@ -16,9 +15,58 @@
   border: 0;
 }
 
-/* ———————————————————————————————— pílula de preço */
+/* ———————————————————————————————— mapa: mosaicos mais calmos, controlos discretos */
 
-.leaflet-marker-icon.el-marker {
+.el-map .leaflet-tile-pane {
+  filter: saturate(0.6) brightness(1.02);
+}
+.el-map .leaflet-bar {
+  border: 0 !important;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.05),
+    0 6px 18px -6px rgb(0 0 0 / 0.18) !important;
+}
+.el-map .leaflet-bar a {
+  width: 44px !important;
+  height: 44px !important;
+  line-height: 44px !important;
+  font-size: 20px !important;
+  font-weight: 400;
+  color: var(--color-ink);
+  border-bottom-color: var(--color-line) !important;
+}
+.el-map .leaflet-bar a:hover {
+  background: var(--color-sand);
+}
+.el-map .leaflet-control-attribution {
+  border-top-left-radius: 8px;
+  background: rgb(255 255 255 / 0.8);
+  color: var(--color-ink-mute);
+}
+.el-map .leaflet-control-attribution a {
+  color: var(--color-ink-mute);
+}
+
+/* raio / zona / centro (classes passadas em pathOptions.className) */
+.el-raio {
+  stroke: var(--color-pine-400);
+  fill: var(--color-ink);
+  fill-opacity: 0.025;
+}
+.el-centro {
+  fill: var(--color-ink);
+  stroke: var(--color-white);
+}
+.el-centro--gps {
+  fill: var(--color-terra-600);
+}
+
+/* ———————————————————————————————— pílula da instituição */
+
+.leaflet-marker-icon.el-marker,
+.leaflet-marker-icon.el-cluster-icon {
   background: none;
   border: 0;
   overflow: visible;
@@ -29,136 +77,87 @@
 }
 
 .el-pin {
-  --pin-bg: #24773d;
-  --pin-glyph: #ffffff;
   position: absolute;
   left: 0;
   top: 0;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 11px 6px 9px;
-  border: 2px solid #ffffff;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px 0 9px;
   border-radius: 999px;
-  background: var(--pin-bg);
-  color: #ffffff;
-  font: 700 14px/1 'Atkinson Hyperlegible', ui-sans-serif, system-ui, sans-serif;
+  background: var(--color-white);
+  color: var(--color-ink);
+  font: 600 14px/1 var(--font-sans);
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   cursor: pointer;
   box-shadow:
-    0 1px 2px rgb(11 35 33 / 0.2),
-    0 8px 16px -8px rgb(11 35 33 / 0.6);
-  transform: translate(-50%, calc(-100% - 7px));
-  transform-origin: 50% calc(100% + 7px);
+    0 0 0 1px rgb(0 0 0 / 0.06),
+    0 2px 4px rgb(0 0 0 / 0.08),
+    0 8px 18px -8px rgb(0 0 0 / 0.3);
+  transform: translate(-50%, -50%);
   transition:
-    transform 0.16s cubic-bezier(0.2, 0.7, 0.2, 1),
-    background-color 0.16s ease;
+    transform 0.22s cubic-bezier(0.25, 0.1, 0.25, 1),
+    background-color 0.22s ease,
+    color 0.22s ease;
 }
-/* bico que aponta para o local exato */
-.el-pin::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -8px;
-  width: 11px;
-  height: 11px;
-  background: var(--pin-bg);
-  border-right: 2px solid #ffffff;
-  border-bottom: 2px solid #ffffff;
-  border-bottom-right-radius: 3px;
-  transform: translateX(-50%) rotate(45deg);
-  transition: background-color 0.16s ease;
-}
-.el-pin--breve {
-  --pin-bg: #93600a;
-}
+/* lista de espera: menos peso visual, para as vagas sobressaírem */
 .el-pin--espera {
-  --pin-bg: #575176;
-}
-.el-pin.is-social .el-pin__label {
-  font-size: 13px;
-  letter-spacing: 0.03em;
+  color: var(--color-ink-mute);
 }
 
-/* símbolo de forma: cheio (vaga), meio (em breve), anel (lista de espera) */
-.el-pin__glyph {
-  position: relative;
-  width: 10px;
-  height: 10px;
+/* ponto de estado com forma própria: cheio (vaga) · meio (em breve) · anel (lista de espera) */
+.el-pin__dot {
+  width: 9px;
+  height: 9px;
   flex: none;
   border-radius: 50%;
-  border: 2px solid var(--pin-glyph);
-  background: var(--pin-glyph);
 }
-.el-pin--breve .el-pin__glyph {
-  background: linear-gradient(90deg, transparent 50%, var(--pin-glyph) 50%);
+.el-pin--disponivel .el-pin__dot {
+  background: var(--color-leaf-500);
 }
-.el-pin--espera .el-pin__glyph {
-  background: transparent;
+.el-pin--breve .el-pin__dot {
+  background: linear-gradient(90deg, transparent 50%, var(--color-sun-500) 50%);
+  box-shadow: inset 0 0 0 1.5px var(--color-sun-500);
 }
-.el-pin--disponivel .el-pin__glyph::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: 50%;
-  animation: el-pulse 2.2s ease-out infinite;
-}
-@keyframes el-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgb(255 255 255 / 0.85);
-  }
-  75%,
-  100% {
-    box-shadow: 0 0 0 9px rgb(255 255 255 / 0);
-  }
+.el-pin--espera .el-pin__dot {
+  box-shadow: inset 0 0 0 1.5px var(--color-dusk-500);
 }
 
-/* realce (lista ↔ mapa) e foco do teclado */
+/* realce (lista ↔ mapa): pílula preta, ligeiramente maior */
 .el-marker:hover .el-pin,
 .el-pin.is-active {
-  --pin-bg: #1c2a29;
-  transform: translate(-50%, calc(-100% - 7px)) scale(1.14);
-}
-.el-pin.is-active.el-pin--disponivel,
-.el-marker:hover .el-pin--disponivel {
-  --pin-glyph: #a6dfb2;
-}
-.el-pin.is-active.el-pin--breve,
-.el-marker:hover .el-pin--breve {
-  --pin-glyph: #f9d98a;
-}
-.el-pin.is-active.el-pin--espera,
-.el-marker:hover .el-pin--espera {
-  --pin-glyph: #ccc8e0;
+  background: var(--color-ink);
+  color: var(--color-white);
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow: 0 10px 24px -8px rgb(0 0 0 / 0.45);
 }
 .el-marker:focus-visible .el-pin {
-  outline: 3px solid #d25b3b;
+  outline: 3px solid var(--color-terra-500);
   outline-offset: 3px;
 }
 
 /* ———————————————————————————————— agrupamentos */
 
-.leaflet-marker-icon.el-cluster-icon {
-  background: none;
-  border: 0;
-}
 .el-cluster {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #1a4642;
-  color: #ffffff;
+  background: var(--color-white);
+  color: var(--color-ink);
   box-shadow:
-    0 0 0 3px rgb(251 248 243 / 0.95),
-    0 10px 20px -8px rgb(11 35 33 / 0.7);
-  transition:
-    transform 0.16s ease,
-    background-color 0.16s ease;
+    0 0 0 1px rgb(0 0 0 / 0.04),
+    0 2px 4px rgb(0 0 0 / 0.08),
+    0 10px 22px -10px rgb(0 0 0 / 0.35);
   cursor: pointer;
+  transition:
+    transform 0.22s cubic-bezier(0.25, 0.1, 0.25, 1),
+    background-color 0.22s ease,
+    color 0.22s ease;
 }
 .el-cluster svg {
   position: absolute;
@@ -166,107 +165,139 @@
 }
 .el-cluster__track {
   fill: none;
-  stroke: rgb(255 255 255 / 0.16);
-  stroke-width: 4;
+  stroke: var(--color-sand-deep);
+  stroke-width: 2.5;
 }
 .el-cluster__arc {
   fill: none;
-  stroke: #a6dfb2;
-  stroke-width: 4;
+  stroke: var(--color-leaf-500);
+  stroke-width: 2.5;
   stroke-linecap: round;
 }
 .el-cluster__n {
   position: relative;
-  font-family: 'Fraunces Variable', 'Fraunces', Georgia, serif;
-  font-size: 19px;
-  font-weight: 600;
+  font: 600 15px/1 var(--font-sans);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 .el-cluster-icon:hover .el-cluster,
 .el-cluster-icon.is-active .el-cluster {
-  background: #0b2321;
-  transform: scale(1.1);
+  background: var(--color-ink);
+  color: var(--color-white);
+  transform: scale(1.08);
+}
+.el-cluster-icon:hover .el-cluster__track,
+.el-cluster-icon.is-active .el-cluster__track {
+  stroke: rgb(255 255 255 / 0.2);
 }
 .el-cluster-icon:focus-visible .el-cluster {
-  outline: 3px solid #d25b3b;
+  outline: 3px solid var(--color-terra-500);
   outline-offset: 4px;
 }
 
 /* ———————————————————————————————— popup */
 
+.el-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 22px;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.04),
+    0 24px 60px -12px rgb(0 0 0 / 0.25);
+}
 .el-popup .leaflet-popup-content {
   margin: 0;
   width: 280px !important;
 }
-.el-popup .leaflet-popup-content-wrapper {
-  padding: 0;
-  overflow: hidden;
-  border-radius: 20px;
-}
 .el-popup .leaflet-popup-content p {
   margin: 0;
 }
+.el-popup .leaflet-popup-tip {
+  box-shadow: none;
+}
 .el-popup a.leaflet-popup-close-button {
-  top: 6px;
-  right: 6px;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
-  background: rgb(255 255 255 / 0.92);
-  color: #1c2a29;
-  line-height: 30px;
+  background: var(--color-sand);
+  color: var(--color-ink-soft);
+  font: 400 20px/30px var(--font-sans);
+}
+.el-popup a.leaflet-popup-close-button:hover {
+  background: var(--color-sand-deep);
+  color: var(--color-ink);
 }
 
 /* ———————————————————————————————— régua do orçamento */
 
-.budget-range {
+.el-range {
   -webkit-appearance: none;
   appearance: none;
-  width: 100%;
   height: 36px;
   background: transparent;
   cursor: pointer;
 }
-.budget-range::-webkit-slider-runnable-track {
-  height: 6px;
+.el-range::-webkit-slider-runnable-track {
+  height: 4px;
   border-radius: 999px;
-  background: linear-gradient(to right, #22695e var(--pct, 100%), #ebe0cf var(--pct, 100%));
+  background: linear-gradient(to right, var(--color-ink) var(--pct, 100%), var(--color-sand-deep) var(--pct, 100%));
 }
-.budget-range::-moz-range-track {
-  height: 6px;
+.el-range::-moz-range-track {
+  height: 4px;
   border-radius: 999px;
-  background: linear-gradient(to right, #22695e var(--pct, 100%), #ebe0cf var(--pct, 100%));
+  background: linear-gradient(to right, var(--color-ink) var(--pct, 100%), var(--color-sand-deep) var(--pct, 100%));
 }
-.budget-range::-webkit-slider-thumb {
+.el-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   margin-top: -12px;
   border-radius: 50%;
-  background: #ffffff;
-  border: 3px solid #1d564e;
-  box-shadow: 0 4px 10px -4px rgb(11 35 33 / 0.5);
+  background: var(--color-white);
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.08),
+    0 3px 8px rgb(0 0 0 / 0.18);
 }
-.budget-range::-moz-range-thumb {
-  width: 24px;
-  height: 24px;
+.el-range::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border: 0;
   border-radius: 50%;
-  background: #ffffff;
-  border: 3px solid #1d564e;
-  box-shadow: 0 4px 10px -4px rgb(11 35 33 / 0.5);
+  background: var(--color-white);
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.08),
+    0 3px 8px rgb(0 0 0 / 0.18);
 }
-.budget-range:focus {
+.el-range:focus {
   outline: none;
 }
-.budget-range:focus-visible::-webkit-slider-thumb {
-  outline: 3px solid #d25b3b;
+.el-range:focus-visible::-webkit-slider-thumb {
+  outline: 3px solid var(--color-terra-500);
   outline-offset: 2px;
 }
-.budget-range:focus-visible::-moz-range-thumb {
-  outline: 3px solid #d25b3b;
+.el-range:focus-visible::-moz-range-thumb {
+  outline: 3px solid var(--color-terra-500);
   outline-offset: 2px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .el-pin--disponivel .el-pin__glyph::before {
-    animation: none;
+/* ———————————————————————————————— filtros em ecrã inteiro no telemóvel (Modal partilhado) */
+
+@media (max-width: 1023.98px) {
+  dialog:has(.el-filtros) {
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+  }
+  dialog:has(.el-filtros) > div {
+    height: 100%;
+    max-height: none;
+  }
+  dialog:has(.el-filtros) > div > div:nth-child(2) {
+    flex: 1;
   }
 }

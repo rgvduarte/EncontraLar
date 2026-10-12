@@ -3,13 +3,13 @@
  *
  * Com createHashRouter, o URL "/#/guia#apoios" chega ao router como pathname "/guia" e hash "#apoios".
  * Um <a href="#apoios"> mudaria a rota, por isso a navegação interna faz scroll com scrollIntoView
- * e atualiza o hash através do router (com replace, para não encher o histórico).
+ * (ou com o scroll suave da app, se estiver ativo) e atualiza o hash pelo router, sem encher o histórico.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
+import { useLenis } from '@/components/motion/SmoothScroll'
 
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /** Hash depois do segundo "#" em window.location (ex.: "#/guia#apoios" → "apoios"). */
 function hashFromWindow(): string {
@@ -19,11 +19,15 @@ function hashFromWindow(): string {
   return i >= 0 ? raw.slice(i + 1) : ''
 }
 
+type Scroller = { scrollTo: (target: HTMLElement, opts?: { immediate?: boolean }) => void } | null
+
 /** Faz scroll até ao elemento com este id. Devolve false se ainda não existir. */
-export function scrollToId(id: string, { smooth = true, focus = true }: { smooth?: boolean; focus?: boolean } = {}): boolean {
+function scrollToId(id: string, lenis: Scroller, { smooth = true, focus = true } = {}): boolean {
   const el = document.getElementById(id)
   if (!el) return false
-  el.scrollIntoView({ behavior: smooth && !prefersReducedMotion() ? 'smooth' : 'auto', block: 'start' })
+  const animate = smooth && !reducedMotion()
+  if (lenis) lenis.scrollTo(el, { immediate: !animate })
+  else el.scrollIntoView({ behavior: animate ? 'smooth' : 'auto', block: 'start' })
   if (focus) {
     if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1')
     el.focus({ preventScroll: true })
@@ -32,36 +36,37 @@ export function scrollToId(id: string, { smooth = true, focus = true }: { smooth
 }
 
 /**
- * Navegação por âncoras numa página: faz scroll para o hash ao abrir (ou quando muda por uma
- * ligação externa, ex.: rodapé → "/guia#apoios") e devolve `goTo(id)` para o índice.
+ * Faz scroll para o hash ao abrir a página (ou quando muda por uma ligação externa, ex.: rodapé →
+ * "/sobre#previsao") e devolve `goTo(id)` para índices e botões dentro da página.
  */
 export function useAnchorNavigation(validIds?: readonly string[]) {
   const location = useLocation()
   const navigate = useNavigate()
+  const lenis = useLenis()
   const skip = useRef<string | null>(null)
 
   useEffect(() => {
     const id = decodeURIComponent((location.hash || `#${hashFromWindow()}`).replace(/^#/, ''))
-    if (!id) return
-    if (validIds && !validIds.includes(id)) return
+    if (!id || (validIds && !validIds.includes(id))) return
     if (skip.current === id) {
       skip.current = null
       return
     }
-    // O Layout faz scroll para o topo depois de os filhos montarem, e o conteúdo é carregado
-    // de forma diferida — esperamos um instante e repetimos depois de as fontes carregarem.
+    // O Layout volta ao topo depois de os filhos montarem e a página é carregada de forma diferida:
+    // esperamos um instante e repetimos quando as fontes acabam de carregar (a altura muda).
     let cancelled = false
     let tries = 0
     let timer = 0
     const attempt = () => {
       if (cancelled) return
-      if (scrollToId(id, { smooth: false, focus: false }) || tries++ > 30) return
+      if (scrollToId(id, lenis, { smooth: false, focus: false }) || tries++ > 30) return
       timer = window.setTimeout(attempt, 50)
     }
     timer = window.setTimeout(attempt, 80)
     const started = Date.now()
     document.fonts?.ready.then(() => {
-      if (!cancelled && Date.now() - started < 2000) window.setTimeout(() => !cancelled && scrollToId(id, { smooth: false, focus: false }), 30)
+      if (!cancelled && Date.now() - started < 2000)
+        window.setTimeout(() => !cancelled && scrollToId(id, lenis, { smooth: false, focus: false }), 30)
     })
     return () => {
       cancelled = true
@@ -72,13 +77,13 @@ export function useAnchorNavigation(validIds?: readonly string[]) {
 
   const goTo = useCallback(
     (id: string) => {
-      scrollToId(id)
+      scrollToId(id, lenis)
       if (location.hash !== `#${id}`) {
         skip.current = id
         navigate({ pathname: location.pathname, search: location.search, hash: id }, { replace: true, preventScrollReset: true })
       }
     },
-    [location.hash, location.pathname, location.search, navigate],
+    [lenis, location.hash, location.pathname, location.search, navigate],
   )
 
   return { goTo, pathname: location.pathname }
@@ -99,13 +104,12 @@ export function useScrollSpy(ids: readonly string[], offset = 180): string | nul
       let current: string | null = null
       for (const id of ids) {
         const el = document.getElementById(id)
-        if (!el) continue
-        if (el.getBoundingClientRect().top - offset <= 0) current = id
+        if (el && el.getBoundingClientRect().top - offset <= 0) current = id
       }
       // no fim da página, a última secção fica ativa mesmo que seja curta
       const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4
-      if (nearBottom && ids.length) {
-        const last = ids[ids.length - 1]!
+      const last = ids[ids.length - 1]
+      if (nearBottom && last) {
         const lastEl = document.getElementById(last)
         if (lastEl && lastEl.getBoundingClientRect().top < window.innerHeight) current = last
       }

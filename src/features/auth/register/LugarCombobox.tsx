@@ -1,10 +1,10 @@
 import { forwardRef, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { MapPin } from 'lucide-react'
 import { FieldShell } from '@/components/ui/Field'
 import { LUGARES, type LugarPesquisa } from '@/data/localidades'
 import { cn } from '@/lib/cn'
 import { normalizar } from '../shared/validators'
 import { distritoTexto } from '../shared/lugar'
+import { controlClass } from '../shared/control'
 
 const MAX = 8
 
@@ -37,7 +37,7 @@ function Realce({ texto, q }: { texto: string; q: string }) {
   return (
     <>
       {texto.slice(0, i)}
-      <mark className="rounded-sm bg-sun-100 px-0.5 text-ink">{texto.slice(i, i + n.length)}</mark>
+      <mark className="bg-transparent font-semibold text-ink">{texto.slice(i, i + n.length)}</mark>
       {texto.slice(i + n.length)}
     </>
   )
@@ -103,7 +103,6 @@ export const LugarCombobox = forwardRef<
     <FieldShell label={label} hint={hint} error={error}>
       {({ id, describedBy, invalid }) => (
         <div className="relative">
-          <MapPin aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-mute" />
           <input
             ref={ref}
             id={id}
@@ -118,7 +117,6 @@ export const LugarCombobox = forwardRef<
             aria-describedby={describedBy}
             aria-invalid={invalid || undefined}
             value={value}
-            placeholder="Ex.: Braga"
             onChange={(e) => {
               onChange(e.target.value)
               setOpen(true)
@@ -131,11 +129,7 @@ export const LugarCombobox = forwardRef<
               if (escolhido && escolhido !== value) onChange(escolhido)
               onBlur()
             }}
-            className={cn(
-              'min-h-13 w-full rounded-2xl border-2 border-line-strong bg-white py-3 pr-4 pl-12 text-base text-ink placeholder:text-ink-mute/80',
-              'transition-colors hover:border-pine-400 focus:border-pine-600 focus:outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500',
-              'aria-[invalid=true]:border-alert-600',
-            )}
+            className={controlClass}
           />
           <ul
             ref={listRef}
@@ -143,7 +137,7 @@ export const LugarCombobox = forwardRef<
             role="listbox"
             aria-label={`Sugestões para ${label.toLowerCase()}`}
             hidden={!mostrar}
-            className="absolute inset-x-0 top-full z-30 mt-2 max-h-80 overflow-auto rounded-2xl border border-line bg-white p-1.5 shadow-lift"
+            className="absolute inset-x-0 top-full z-30 mt-2 max-h-80 overflow-auto rounded-2xl bg-white p-1.5 shadow-lift ring-1 ring-line"
           >
             {opcoes.map((l, i) => (
               <li
@@ -156,10 +150,10 @@ export const LugarCombobox = forwardRef<
                 onMouseMove={() => active !== i && setActive(i)}
                 className={cn(
                   'flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-xl px-3.5 py-2',
-                  i === active ? 'bg-pine-50 text-pine-900' : 'text-ink',
+                  i === active ? 'bg-sand' : '',
                 )}
               >
-                <span className="font-semibold">
+                <span className="text-ink">
                   <Realce texto={l.label} q={value} />
                 </span>
                 <span className="shrink-0 text-right text-sm text-ink-mute">{distritoTexto(l.distrito)}</span>
@@ -174,8 +168,8 @@ export const LugarCombobox = forwardRef<
               : ''}
           </p>
           {open && value.trim().length >= 2 && opcoes.length === 0 && (
-            <p className="mt-2 text-sm text-ink-soft">
-              Não encontrámos «{value.trim()}». Escreva o concelho (por exemplo, Vila Nova de Gaia) ou a cidade mais próxima.
+            <p className="mt-2 text-sm text-ink-mute">
+              Não encontrámos «{value.trim()}». Escreva o concelho ou a cidade mais próxima.
             </p>
           )}
         </div>

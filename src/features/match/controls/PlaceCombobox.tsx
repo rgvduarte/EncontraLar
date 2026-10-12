@@ -1,5 +1,5 @@
 import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { MapPin, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import type { Lar } from '@/types'
 import { LUGARES, type LugarPesquisa } from '@/data/localidades'
 import { distanceKm } from '@/lib/geo'
@@ -114,16 +114,16 @@ export function PlaceCombobox({
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={id} className="text-lg font-bold text-ink">
+      <label htmlFor={id} className="text-base font-medium text-ink">
         {label}
       </label>
       {hint && (
-        <p id={hintId} className="-mt-1 text-sm text-ink-soft">
+        <p id={hintId} className="-mt-1 text-sm text-ink-mute">
           {hint}
         </p>
       )}
       <div className="relative">
-        <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-6 -translate-y-1/2 text-ink-mute" />
+        <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-mute" />
         <input
           ref={inputRef}
           id={id}
@@ -149,9 +149,9 @@ export function PlaceCombobox({
           onBlur={() => setOpen(false)}
           onKeyDown={onKeyDown}
           className={cn(
-            'min-h-15 w-full rounded-2xl border-2 bg-white py-3 pr-14 pl-13 text-lg text-ink placeholder:text-ink-mute/80',
-            'transition-colors hover:border-pine-400 focus:border-pine-600 focus:outline-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-terra-500',
-            error ? 'border-alert-600' : value ? 'border-pine-600' : 'border-line-strong',
+            'min-h-14 w-full rounded-2xl border bg-white py-3 pr-14 pl-12 text-lg text-ink placeholder:text-ink-mute',
+            'transition-[border-color,box-shadow] duration-200 hover:border-pine-400 focus:border-terra-500 focus:ring-4 focus:ring-terra-100 focus:outline-none',
+            error ? 'border-alert-600' : 'border-line-strong',
           )}
         />
         {query && (
@@ -163,7 +163,7 @@ export function PlaceCombobox({
               inputRef.current?.focus()
             }}
             aria-label="Limpar localidade"
-            className="absolute top-1/2 right-2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-ink-soft hover:bg-sand"
+            className="absolute top-1/2 right-1.5 flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-ink-mute hover:bg-sand hover:text-ink"
           >
             <X aria-hidden className="size-5" />
           </button>
@@ -173,7 +173,7 @@ export function PlaceCombobox({
           role="listbox"
           aria-label="Localidades sugeridas"
           className={cn(
-            'absolute inset-x-0 top-full z-30 mt-2 max-h-96 overflow-y-auto rounded-2xl border border-line bg-white p-1.5 shadow-lift',
+            'absolute inset-x-0 top-full z-30 mt-2 max-h-96 animate-fade-in overflow-y-auto rounded-2xl bg-white p-1.5 shadow-lift ring-1 ring-black/5',
             !mostrar && 'hidden',
           )}
         >
@@ -188,15 +188,11 @@ export function PlaceCombobox({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => escolher(o)}
                 onMouseMove={() => setAtivo(i)}
-                className={cn(
-                  'flex min-h-13 cursor-pointer items-center gap-3 rounded-xl px-3.5 py-2',
-                  i === ativo ? 'bg-pine-50 text-pine-900' : 'text-ink',
-                )}
+                className={cn('flex min-h-13 cursor-pointer items-center gap-3 rounded-xl px-3.5 py-2 text-ink', i === ativo && 'bg-sand')}
               >
-                <MapPin aria-hidden className={cn('size-5 shrink-0', i === ativo ? 'text-pine-700' : 'text-ink-mute')} />
                 <span className="flex-1">
-                  <span className="block font-bold">{o.label}</span>
-                  <span className="block text-sm text-ink-soft">
+                  <span className="block font-medium">{o.label}</span>
+                  <span className="block text-sm text-ink-mute">
                     {o.distrito === 'Açores'
                       ? 'Região Autónoma dos Açores'
                       : o.distrito === 'Madeira'
@@ -204,7 +200,7 @@ export function PlaceCombobox({
                         : `Distrito ${deTerra(o.distrito)}`}
                   </span>
                 </span>
-                <span className="text-sm whitespace-nowrap text-ink-soft tabular">{plural(n, 'instituição', 'instituições')}</span>
+                <span className="text-sm whitespace-nowrap text-ink-mute tabular">{plural(n, 'instituição', 'instituições')}</span>
               </li>
             )
           })}
@@ -214,12 +210,12 @@ export function PlaceCombobox({
         {mostrar ? `${plural(opcoes.length, 'localidade sugerida', 'localidades sugeridas')}. Use as setas para escolher.` : ''}
       </p>
       {semResultados && (
-        <p className="text-sm text-ink-soft">
+        <p className="text-sm text-ink-mute">
           Não encontrámos "{query}". Experimente o nome do concelho mais próximo, ou use a sua localização.
         </p>
       )}
       {error && (
-        <p id={errId} role="alert" className="text-sm font-bold text-alert-700">
+        <p id={errId} role="alert" className="text-sm font-medium text-alert-700">
           {error}
         </p>
       )}

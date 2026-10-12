@@ -2,8 +2,8 @@
  * Cálculos do painel da instituição — funções puras, sem React.
  * Tudo o que aparece no painel é derivado do store (nada de números inventados).
  */
-import type { Candidatura, DB, EstadoCandidatura, Lar, PerfilIdoso, TipoQuarto } from '@/types'
-import { ocupados, taxaOcupacao, vagasLivres } from '@/lib/forecast'
+import type { Candidatura, DB, EstadoCandidatura, Lar, PerfilIdoso, TipoQuarto, User } from '@/types'
+import { FATOR_LISTA_EFETIVA, ocupados, poissonQuantile, previsaoMensal, taxaOcupacao, taxaSaidasMensal, vagasLivres } from '@/lib/forecast'
 import { precoReferencia } from '@/lib/matching'
 import { CUIDADO_LABEL, CUIDADOS_CRITICOS, GRAU_LABEL, QUARTO_CURTO } from '@/lib/labels'
 import { euro } from '@/lib/format'
@@ -45,10 +45,6 @@ export function frescura(iso: string, agora = Date.now()): Frescura {
 }
 
 // ————————————————————————————————————————— números do resumo
-
-export function precoMinDoTipo(lar: Lar, tipo: TipoQuarto): number {
-  return lar.quartos.find((q) => q.tipo === tipo)?.precoMin ?? lar.mensalidadeMin
-}
 
 /** Mensalidades que deixam de entrar por cada mês com os lugares livres atuais vazios. */
 export const receitaEmRisco = (lar: Lar) => lar.quartos.reduce((s, q) => s + q.livres * q.precoMin, 0)
@@ -140,12 +136,6 @@ export function dataLocal(ymd: string, hora = '00:00'): Date {
 export function textoVisita(v: { data: string; hora: string }): string {
   const d = dataLocal(v.data, v.hora)
   return `${d.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}, às ${v.hora}`
-}
-
-/** "sex., 16 out." — para colunas estreitas */
-export function textoVisitaCurto(v: { data: string; hora: string }): { dia: string; hora: string } {
-  const d = dataLocal(v.data, v.hora)
-  return { dia: d.toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric', month: 'short' }), hora: v.hora }
 }
 
 export function prazo(iso: string | undefined, agora = Date.now()): { expirado: boolean; texto: string; horas: number } | null {
@@ -274,4 +264,83 @@ export function quartoParaPropor(lar: Lar, perfil: PerfilIdoso): { tipo: TipoQua
   }
   const outro = lar.quartos.find((r) => r.livres > 0)
   return outro ? { tipo: outro.tipo, preferido: perfil.quarto === 'indiferente' } : null
+}
+
+// ————————————————————————————————————————— previsão (resumo para quem gere a casa)
+
+export interface InsightsPrevisao {
+  /** lugares que deverão libertar-se nos próximos 3 e 6 meses (inclui o mês atual) */
+  e3: number
+  e6: number
+  /** intervalo de 80% */
+  min3: number
+  max3: number
+  min6: number
+  max6: number
+  /** saídas esperadas por mês (média anual) */
+  taxaMensal: number
+  /** quantas famílias da lista convém contactar já para não deixar quartos vazios */
+  contactar: number
+}
+
+export function insightsPrevisao(lar: Lar, listaTotal: number, inicio = new Date()): InsightsPrevisao {
+  const meses = previsaoMensal(lar, 6, inicio)
+  const soma = (k: number) => meses.slice(0, k).reduce((s, m) => s + m.esperado, 0)
+  const e3 = soma(3)
+  const e6 = soma(6)
+  // só uma parte da lista ainda aceita a vaga quando é contactada (modelo da previsão)
+  const aPreencher = vagasLivres(lar) + e3
+  const contactar = Math.min(listaTotal, Math.ceil(aPreencher / FATOR_LISTA_EFETIVA))
+  return {
+    e3,
+    e6,
+    min3: poissonQuantile(0.1, e3),
+    max3: poissonQuantile(0.9, e3),
+    min6: poissonQuantile(0.1, e6),
+    max6: poissonQuantile(0.9, e6),
+    taxaMensal: taxaSaidasMensal(lar),
+    contactar,
+  }
+}
+
+// ————————————————————————————————————————— primeiros passos (instituições acabadas de registar)
+
+export interface PassoArranque {
+  id: 'ficha' | 'vagas' | 'precos'
+  titulo: string
+  texto: string
+  to: string
+  cta: string
+  feito: boolean
+}
+
+export function passosArranque(lar: Lar, user: User | null): PassoArranque[] {
+  const vagasIndicadas =
+    lar.quartos.some((q) => q.livres > 0) || !user || new Date(lar.atualizadoEm).getTime() - new Date(user.criadoEm).getTime() > 5_000
+  return [
+    {
+      id: 'ficha',
+      titulo: 'Complete a ficha',
+      texto: 'Uma frase de apresentação, a descrição da casa e os cuidados que assegura.',
+      to: '/gestao/ficha',
+      cta: 'Completar',
+      feito: Boolean(lar.resumo.trim() && lar.descricao.trim() && lar.cuidados.length > 0),
+    },
+    {
+      id: 'vagas',
+      titulo: 'Indique os lugares livres',
+      texto: 'Mesmo que hoje sejam zero: diz às famílias que a informação é verdadeira.',
+      to: '/gestao/vagas',
+      cta: 'Indicar',
+      feito: vagasIndicadas,
+    },
+    {
+      id: 'precos',
+      titulo: 'Reveja os preços por quarto',
+      texto: 'Mensalidade mínima e máxima. As famílias filtram pelo orçamento.',
+      to: '/gestao/vagas',
+      cta: 'Rever',
+      feito: lar.quartos.length > 0 && lar.quartos.every((q) => q.precoMin > 0 && q.precoMax >= q.precoMin),
+    },
+  ]
 }

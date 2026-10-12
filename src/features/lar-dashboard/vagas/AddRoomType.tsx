@@ -11,7 +11,7 @@ import { validarQuarto } from './RoomPriceForm'
 
 const TIPOS: TipoQuarto[] = ['individual', 'duplo', 'casal']
 
-/** Para instituições acabadas de registar (só com um tipo de quarto) ou que mudaram a oferta. */
+/** Acrescentar um tipo de quarto (útil para instituições acabadas de registar). */
 export function AddRoomType({ lar }: { lar: Lar }) {
   const emFalta = TIPOS.filter((t) => !lar.quartos.some((q) => q.tipo === t))
   const [tipo, setTipo] = useState<TipoQuarto | null>(null)
@@ -41,12 +41,11 @@ export function AddRoomType({ lar }: { lar: Lar }) {
   }
 
   return (
-    <div className="rounded-3xl border-2 border-dashed border-line-strong p-5">
-      <p className="font-bold">Tem outro tipo de quarto?</p>
-      <p className="mt-1 text-sm text-ink-soft">As famílias filtram pelo tipo de quarto. Acrescente os que faltam na sua ficha.</p>
-      <div className="mt-3 flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line pt-8">
+      <p className="text-ink-mute">{lar.quartos.length ? 'Tem outro tipo de quarto?' : 'Que tipos de quarto tem?'}</p>
+      <div className="flex flex-wrap gap-2">
         {emFalta.map((t) => (
-          <Button key={t} variant="subtle" icon={<Plus aria-hidden className="size-5" />} onClick={() => abrir(t)}>
+          <Button key={t} variant="subtle" icon={<Plus aria-hidden />} onClick={() => abrir(t)}>
             {QUARTO_CURTO[t]}
           </Button>
         ))}
@@ -56,21 +55,19 @@ export function AddRoomType({ lar }: { lar: Lar }) {
         open={tipo != null}
         onClose={() => setTipo(null)}
         title={tipo ? `Adicionar ${QUARTO_LABEL[tipo].toLowerCase()}` : ''}
-        description="Começa com 0 lugares livres. Muda o número no contador, depois de guardar."
+        description="Começa com 0 lugares livres. Depois, mude o número no contador."
       >
         <form onSubmit={adicionar} noValidate className="flex flex-col gap-4">
           <InputField label="Lugares no total" inputMode="numeric" value={v.total} onChange={(e) => setV({ ...v, total: e.target.value })} error={erros.total} autoFocus />
           <div className="grid gap-4 sm:grid-cols-2">
-            <InputField label="Mensalidade mínima" inputMode="numeric" leading={<span className="font-bold">€</span>} value={v.precoMin} onChange={(e) => setV({ ...v, precoMin: e.target.value })} error={erros.precoMin} />
-            <InputField label="Mensalidade máxima" inputMode="numeric" leading={<span className="font-bold">€</span>} value={v.precoMax} onChange={(e) => setV({ ...v, precoMax: e.target.value })} error={erros.precoMax} />
+            <InputField label="Mensalidade desde" inputMode="numeric" leading="€" value={v.precoMin} onChange={(e) => setV({ ...v, precoMin: e.target.value })} error={erros.precoMin} />
+            <InputField label="Mensalidade até" inputMode="numeric" leading="€" value={v.precoMax} onChange={(e) => setV({ ...v, precoMax: e.target.value })} error={erros.precoMax} />
           </div>
           <div className="mt-2 flex flex-wrap justify-end gap-3">
-            <Button variant="secondary" onClick={() => setTipo(null)}>
+            <Button variant="subtle" onClick={() => setTipo(null)}>
               Cancelar
             </Button>
-            <Button type="submit" variant="primary" icon={<Plus aria-hidden className="size-5" />}>
-              Adicionar
-            </Button>
+            <Button type="submit">Adicionar</Button>
           </div>
         </form>
       </Modal>

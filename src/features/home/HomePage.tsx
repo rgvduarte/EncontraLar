@@ -2,41 +2,31 @@ import { useMemo } from 'react'
 import { useLares } from '@/lib/store'
 import { useDocumentTitle } from '@/lib/hooks'
 import { Hero } from './Hero'
-import { VagasReaisSection } from './VagasReaisSection'
-import { ForecastSection } from './ForecastSection'
+import { Numbers } from './Numbers'
+import { Bento } from './Bento'
 import { ComVagaSection } from './ComVagaSection'
-import { HowItWorks } from './HowItWorks'
-import { TransparencySection } from './TransparencySection'
-import { RegionIndex } from './RegionIndex'
-import { EmpathyBand } from './EmpathyBand'
-import { InstitutionsBand } from './InstitutionsBand'
+import { InstitutionsCta } from './InstitutionsCta'
 import { FaqSection } from './FaqSection'
-import { calcularStats, escolherFichaExemplo, escolherPrevisao } from './homeData'
+import { calcularStats } from './homeData'
 import { useNow } from './useNow'
 
 /**
- * Página inicial. Em 5 segundos: onde há vaga agora, quanto custa e quando é provável haver vaga —
- * e um caminho direto para começar a procurar.
+ * Página inicial, ao estilo Apple: seis secções, uma ideia cada.
+ * Pesquisa → números → o que o produto faz → vagas de hoje → instituições → dúvidas.
  */
 export default function HomePage() {
   useDocumentTitle(undefined)
   const lares = useLares()
   const agora = useNow()
-  const stats = useMemo(() => calcularStats(lares, agora), [lares, agora])
-  const previsao = useMemo(() => escolherPrevisao(lares), [lares])
-  const ficha = useMemo(() => escolherFichaExemplo(lares), [lares])
+  const stats = useMemo(() => calcularStats(lares), [lares])
 
   return (
     <div className="flex flex-col">
-      <Hero lares={lares} stats={stats} agora={agora} />
-      <VagasReaisSection lares={lares} stats={stats} />
-      <ForecastSection previsao={previsao} agora={agora} />
+      <Hero lares={lares} agora={agora} comVaga={stats.comVaga} />
+      <Numbers stats={stats} />
+      <Bento lares={lares} stats={stats} agora={agora} />
       <ComVagaSection lares={lares} />
-      <HowItWorks lares={lares} previsao={previsao} />
-      <TransparencySection lar={ficha} agora={agora} />
-      <RegionIndex lares={lares} />
-      <EmpathyBand />
-      <InstitutionsBand stats={stats} />
+      <InstitutionsCta />
       <FaqSection />
     </div>
   )

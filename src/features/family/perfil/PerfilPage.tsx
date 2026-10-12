@@ -1,25 +1,25 @@
 import { useCallback, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router'
-import { Plus } from 'lucide-react'
-import type { PerfilIdoso } from '@/types'
+import { Link, useSearchParams } from 'react-router'
+import { Lock, Plus } from 'lucide-react'
 import { Avatar } from '@/components/ui/misc'
-import { useMinhasCandidaturas } from '@/lib/store'
 import { useDocumentTitle } from '@/lib/hooks'
-import { GRAU_LABEL } from '@/lib/labels'
-import { tempoRelativo } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { usePerfisOrdenados } from '../shared/data'
-import { isAtiva } from '../shared/estado'
 import { ConfirmModal } from '../shared/ui'
 import { nomeCurto } from '../shared/text'
 import { PerfilForm } from './PerfilForm'
 
 type Selecao = { tipo: 'perfil'; id: string } | { tipo: 'novo' }
 
+const pillCls = (ativo: boolean) =>
+  cn(
+    'inline-flex min-h-14 items-center gap-3 rounded-full py-1.5 pr-5 pl-1.5 font-medium transition-colors duration-200',
+    ativo ? 'bg-ink text-white' : 'bg-sand text-ink hover:bg-sand-deep',
+  )
+
 export default function PerfilPage() {
   useDocumentTitle('Perfil de cuidados')
   const { perfis, principal } = usePerfisOrdenados()
-  const cands = useMinhasCandidaturas()
   const [params, setParams] = useSearchParams()
   const dirty = useRef(false)
   const [pendente, setPendente] = useState<Selecao | null>(null)
@@ -34,78 +34,57 @@ export default function PerfilPage() {
     },
     [setParams],
   )
-  const escolher = (s: Selecao) => {
-    if (dirty.current) setPendente(s)
-    else aplicar(s)
-  }
+  const escolher = (s: Selecao) => (dirty.current ? setPendente(s) : aplicar(s))
   const onDirty = useCallback((d: boolean) => {
     dirty.current = d
   }, [])
 
-  const ativosDe = (p: PerfilIdoso) => cands.filter((c) => c.perfilId === p.id && isAtiva(c)).length
-
   return (
-    <div className="flex flex-col gap-8">
-      {perfis.length > 0 && (
-        <section aria-labelledby="perfis-lista">
-          <h2 id="perfis-lista" className="sr-only">
-            Pessoas de quem cuida
-          </h2>
-          <ul className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-            {perfis.map((p) => {
-              const ativo = selecionado?.id === p.id
-              const n = ativosDe(p)
-              return (
-                <li key={p.id}>
-                  <button
-                    type="button"
-                    aria-current={ativo ? 'true' : undefined}
-                    onClick={() => !ativo && escolher({ tipo: 'perfil', id: p.id })}
-                    className={cn(
-                      'flex w-full items-center gap-4 rounded-3xl border-2 bg-white p-4 text-left transition-colors',
-                      ativo ? 'border-pine-700 shadow-card' : 'border-line hover:border-pine-400',
-                    )}
-                  >
-                    <Avatar nome={p.nome} className="size-14 text-lg" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-display text-xl leading-tight font-semibold">{nomeCurto(p.nome)}</span>
-                      <span className="block text-sm text-ink-soft">
-                        {p.relacao} · {p.idade} anos · {GRAU_LABEL[p.grau]}
+    <div className="flex flex-col gap-12">
+      <div className="flex flex-col gap-5">
+        {perfis.length > 0 && (
+          <nav aria-label="Pessoas de quem cuida">
+            <ul className="flex flex-wrap gap-2">
+              {perfis.map((p) => {
+                const ativo = selecionado?.id === p.id
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      aria-current={ativo ? 'true' : undefined}
+                      onClick={() => !ativo && escolher({ tipo: 'perfil', id: p.id })}
+                      className={pillCls(ativo)}
+                    >
+                      <Avatar nome={p.nome} className="size-11 text-base" />
+                      <span>
+                        {nomeCurto(p.nome)}
+                        <span className={cn('ml-2 tabular', ativo ? 'text-white/60' : 'text-ink-mute')}>{p.idade}</span>
                       </span>
-                      <span className="mt-0.5 block text-xs text-ink-mute">
-                        {n > 0 ? `${n === 1 ? '1 pedido ativo' : `${n} pedidos ativos`} · ` : ''}
-                        atualizado {tempoRelativo(p.atualizadoEm)}
-                      </span>
-                    </span>
-                    {p.id === principal?.id && perfis.length > 1 && (
-                      <span className="self-start rounded-full bg-terra-50 px-2 text-xs font-bold text-terra-800 ring-1 ring-terra-200">principal</span>
-                    )}
-                  </button>
-                </li>
-              )
-            })}
-            <li>
-              <button
-                type="button"
-                aria-current={novo ? 'true' : undefined}
-                onClick={() => !novo && escolher({ tipo: 'novo' })}
-                className={cn(
-                  'flex h-full min-h-22 w-full items-center gap-4 rounded-3xl border-2 border-dashed p-4 text-left transition-colors',
-                  novo ? 'border-pine-700 bg-pine-50' : 'border-line-strong hover:border-pine-500 hover:bg-white',
-                )}
-              >
-                <span aria-hidden className="flex size-14 shrink-0 items-center justify-center rounded-full bg-sand text-pine-700">
-                  <Plus className="size-6" />
-                </span>
-                <span>
-                  <span className="block font-bold">Adicionar outra pessoa</span>
-                  <span className="block text-sm text-ink-soft">Ex.: pai e mãe, cada um com o seu perfil.</span>
-                </span>
-              </button>
-            </li>
-          </ul>
-        </section>
-      )}
+                    </button>
+                  </li>
+                )
+              })}
+              <li>
+                <button type="button" aria-current={novo ? 'true' : undefined} onClick={() => !novo && escolher({ tipo: 'novo' })} className={pillCls(novo)}>
+                  <span aria-hidden className={cn('flex size-11 items-center justify-center rounded-full', novo ? 'bg-white/15' : 'bg-white')}>
+                    <Plus className="size-5" />
+                  </span>
+                  Outra pessoa
+                </button>
+              </li>
+            </ul>
+          </nav>
+        )}
+        <p className="flex items-start gap-2 text-sm text-ink-mute">
+          <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>
+            Dados de saúde (RGPD, art. 9.º): só os partilhamos com as instituições a quem pedir vaga.{' '}
+            <Link to="/privacidade" className="link">
+              Privacidade
+            </Link>
+          </span>
+        </p>
+      </div>
 
       <PerfilForm
         key={selecionado?.id ?? 'novo'}
@@ -127,12 +106,11 @@ export default function PerfilPage() {
           setPendente(null)
         }}
         title="Sair sem guardar?"
-        description="Tem alterações por guardar neste perfil."
         confirmLabel="Sair sem guardar"
         cancelLabel="Continuar a editar"
         confirmVariant="danger"
       >
-        <p>Se mudar de perfil agora, as alterações que fez desde a última gravação perdem-se.</p>
+        <p>As alterações que fez neste perfil perdem-se.</p>
       </ConfirmModal>
     </div>
   )

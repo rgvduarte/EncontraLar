@@ -1,5 +1,4 @@
 import { useId, useState, type FormEvent } from 'react'
-import { CalendarCheck } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -30,22 +29,20 @@ export function VisitaModal({ lar, c, open, onClose }: { lar: Lar; c: Candidatur
       open={open}
       onClose={onClose}
       title="Marcar visita"
-      description={c ? `No pedido para ${c.perfil.nome}, em ${lar.nome}.` : undefined}
+      description={c ? `No pedido para ${c.perfil.nome}.` : undefined}
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="subtle" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit" form={formId} icon={<CalendarCheck aria-hidden className="size-5" />}>
+          <Button type="submit" form={formId}>
             Pedir visita
           </Button>
         </>
       }
     >
-      <form id={formId} onSubmit={submeter} noValidate className="flex flex-col gap-4">
-        <p className="text-ink-soft">
-          Escolha um dia e uma hora que lhe deem jeito. A instituição confirma por telefone ou email e, se não puder, propõe outra hora.
-        </p>
+      <form id={formId} onSubmit={submeter} noValidate className="flex flex-col gap-5">
+        <p className="text-ink-mute">A instituição confirma por telefone ou email e, se não puder, propõe outra hora.</p>
         <VisitFields value={visita} onChange={setVisita} erro={erro} />
       </form>
     </Modal>

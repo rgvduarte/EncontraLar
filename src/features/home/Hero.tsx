@@ -1,71 +1,49 @@
 import { Link } from 'react-router'
-import { ArrowRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import type { Lar } from '@/types'
-import { SearchPanel } from './SearchPanel'
+import { Reveal } from '@/components/ui/Reveal'
+import { SearchPill } from './SearchPill'
 import { HeroMap } from './HeroMap'
-import { HeroStats } from './HeroStats'
-import type { HomeStats } from './homeData'
 
-const diaDaSemana = (agora: number) => new Date(agora).toLocaleDateString('pt-PT', { weekday: 'long' })
-const diaEMes = (agora: number) => new Date(agora).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' })
-
-export function Hero({ lares, stats, agora }: { lares: Lar[]; stats: HomeStats; agora: number }) {
+export function Hero({ lares, agora, comVaga }: { lares: Lar[]; agora: number; comVaga: number }) {
   return (
-    <section aria-labelledby="home-titulo" className="relative overflow-x-clip">
-      <div className="container-page pt-8 pb-14 sm:pt-12 lg:pt-14 lg:pb-20">
-        <div className="grid grid-cols-1 gap-x-12 gap-y-12 lg:grid-cols-12">
-          <div className="flex flex-col lg:col-span-7">
-            {/* linha de data, como num jornal */}
-            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line-strong pb-3 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase sm:text-sm">
-              <span>
-                <span className="hidden sm:inline">{diaDaSemana(agora)}, </span>
-                {diaEMes(agora)}
-              </span>
-              <span aria-hidden className="text-line-strong">
-                /
-              </span>
-              <span className="text-leaf-700">
-                {stats.comVaga} <span className="hidden sm:inline">instituições </span>com vaga hoje
-              </span>
-            </p>
+    <section aria-labelledby="home-titulo" className="overflow-x-clip">
+      <div className="container-page flex flex-col items-center pt-16 pb-20 text-center sm:pt-24 lg:pt-28 lg:pb-28">
+        <Reveal>
+          <p className="eyebrow">Lares e residências seniores em Portugal</p>
+        </Reveal>
+        <Reveal delay={80}>
+          <h1
+            id="home-titulo"
+            className="mt-4 text-[2.875rem] leading-[1.04] font-semibold text-ink sm:mt-5 sm:text-6xl lg:text-7xl"
+          >
+            O lar certo.
+            <br />
+            <em>Com vaga real.</em>
+          </h1>
+        </Reveal>
+        <Reveal delay={160}>
+          <p className="mx-auto mt-5 max-w-2xl text-lg text-ink-mute sm:mt-6 sm:text-2xl">
+            Vagas atualizadas pelas próprias instituições e a previsão de quando abre a próxima.
+          </p>
+        </Reveal>
 
-            <h1
-              id="home-titulo"
-              className="mt-5 text-[2.6rem] leading-[1.02] font-semibold tracking-tight text-ink sm:mt-6 sm:text-6xl xl:text-[4.6rem]"
-            >
-              Um lar com vaga, <em>perto</em> de quem ama.
-            </h1>
-            <p className="mt-4 max-w-2xl text-base text-ink-soft sm:mt-5 sm:text-xl">
-              Vagas atualizadas pelas próprias instituições, o preço real de cada quarto e uma previsão honesta de quando abre a
-              próxima vaga — em lares, residências e centros de dia de todo o país.
-            </p>
-
-            <div className="mt-6 sm:mt-8">
-              <SearchPanel lares={lares} />
-            </div>
-
-            <Link
-              to="/encontrar"
-              className="group mt-5 flex min-h-14 items-center gap-4 rounded-2xl border-2 border-dashed border-line-strong px-5 py-3 transition-colors hover:border-terra-400 hover:bg-terra-50/60"
-            >
-              <span className="flex-1 leading-snug">
-                <span className="block text-ink-soft">Não sabe por onde começar?</span>
-                <span className="block font-bold text-ink group-hover:text-terra-700">
-                  Responda a 6 perguntas e mostramos os lares compatíveis
-                </span>
-              </span>
-              <ArrowRight aria-hidden className="size-6 shrink-0 text-terra-600 transition-transform group-hover:translate-x-1" />
+        <Reveal delay={240} className="relative z-20 mt-10 w-full sm:mt-12">
+          <SearchPill lares={lares} />
+        </Reveal>
+        <Reveal delay={300} className="mt-5">
+          <p className="text-ink-mute">
+            Não sabe por onde começar?{' '}
+            <Link to="/encontrar" className="link inline-flex min-h-12 items-center gap-0.5 whitespace-nowrap">
+              Ajuda-me a escolher
+              <ChevronRight aria-hidden className="size-4" />
             </Link>
-          </div>
+          </p>
+        </Reveal>
 
-          <div className="lg:col-span-5 lg:pt-14">
-            <HeroMap lares={lares} comVaga={stats.comVaga} agora={agora} />
-          </div>
-        </div>
-
-        <div className="mt-14 border-t-2 border-ink pt-6">
-          <HeroStats stats={stats} agora={agora} />
-        </div>
+        <Reveal delay={380} className="mt-10 w-full sm:mt-20">
+          <HeroMap lares={lares} agora={agora} comVaga={comVaga} />
+        </Reveal>
       </div>
     </section>
   )

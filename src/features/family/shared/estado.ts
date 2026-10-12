@@ -1,30 +1,20 @@
-import {
-  Ban,
-  BellRing,
-  CircleCheckBig,
-  CircleX,
-  ListOrdered,
-  ScanSearch,
-  Send,
-  type LucideIcon,
-} from 'lucide-react'
+/**
+ * Regras de apresentação dos pedidos de vaga (candidaturas) no painel da família.
+ */
 import type { Candidatura, EstadoCandidatura, Lar, PerfilIdoso, RoomOffer } from '@/types'
-import type { BadgeTone } from '@/components/ui/Badge'
 import { estimarEspera, type EstimativaEspera } from '@/lib/forecast'
 import { diaPorExtenso } from './text'
 
-export const ESTADO_META: Record<EstadoCandidatura, { tone: BadgeTone; icon: LucideIcon; passo: number | null }> = {
-  enviada: { tone: 'neutral', icon: Send, passo: 0 },
-  em_analise: { tone: 'pine', icon: ScanSearch, passo: 1 },
-  lista_espera: { tone: 'dusk', icon: ListOrdered, passo: 2 },
-  vaga_proposta: { tone: 'terra', icon: BellRing, passo: 3 },
-  aceite: { tone: 'leaf', icon: CircleCheckBig, passo: 4 },
-  recusada: { tone: 'alert', icon: CircleX, passo: null },
-  cancelada: { tone: 'neutral', icon: Ban, passo: null },
+/** Cor do ponto de estado — sempre acompanhado do texto do estado. Só os momentos-chave têm cor. */
+export const ESTADO_DOT: Record<EstadoCandidatura, string> = {
+  enviada: 'bg-dusk-500',
+  em_analise: 'bg-dusk-500',
+  lista_espera: 'bg-dusk-500',
+  vaga_proposta: 'bg-terra-600',
+  aceite: 'bg-leaf-500',
+  recusada: 'bg-line-strong',
+  cancelada: 'bg-line-strong',
 }
-
-/** As "estações" de um pedido, da inscrição à entrada. */
-export const PASSOS = ['Pedido enviado', 'Em análise', 'Lista de espera', 'Vaga proposta', 'Entrada'] as const
 
 export const TERMINADOS: EstadoCandidatura[] = ['recusada', 'cancelada']
 export const isAtiva = (c: Pick<Candidatura, 'estado'>) => !TERMINADOS.includes(c.estado)
@@ -44,33 +34,39 @@ export function ordenarPedidos(cs: Candidatura[]): Candidatura[] {
   return [...cs].sort((a, b) => PRIORIDADE[a.estado] - PRIORIDADE[b.estado] || b.atualizadaEm.localeCompare(a.atualizadaEm))
 }
 
-/** O que acontece a seguir, em linguagem simples. */
+export const horaDe = (iso: string) => new Date(iso).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+
+/** O que acontece a seguir, numa frase. */
 export function proximoPasso(c: Candidatura): string | null {
   switch (c.estado) {
     case 'enviada':
-      return 'A equipa técnica vai analisar o perfil e pode telefonar-lhe para conhecer melhor a situação.'
+      return 'A instituição analisa o perfil e pode telefonar-lhe.'
     case 'em_analise':
       return 'A instituição decide se inscreve na lista de espera ou se propõe já uma vaga.'
     case 'lista_espera':
-      return 'Quando chegar a vez, a instituição propõe a vaga e tem 48 horas para responder. Avisamos de imediato.'
+      return 'Quando chegar a vez, recebe a proposta de vaga e tem 48 horas para responder.'
     case 'vaga_proposta':
-      return c.prazoResposta ? `Responda até ${diaPorExtenso(new Date(c.prazoResposta))}, às ${horaDe(c.prazoResposta)}.` : 'Responda à instituição o mais depressa possível.'
+      return c.prazoResposta
+        ? `Responder até ${diaPorExtenso(new Date(c.prazoResposta))}, às ${horaDe(c.prazoResposta)}.`
+        : 'Responder à instituição o mais depressa possível.'
     case 'aceite':
-      return 'Combine com a instituição a data de entrada e a documentação a entregar.'
+      return 'Combinar com a instituição o dia de entrada e a documentação.'
     default:
       return null
   }
 }
 
-export const horaDe = (iso: string) => new Date(iso).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
-
 /** Quarto que a instituição provavelmente propõe (mesma lógica do store ao aceitar). */
 export function quartoProposto(lar: Lar, perfil: PerfilIdoso): RoomOffer | undefined {
   const pref = perfil.quarto !== 'indiferente' ? perfil.quarto : null
-  return lar.quartos.find((q) => q.tipo === pref && q.livres > 0) ?? lar.quartos.find((q) => q.livres > 0) ?? lar.quartos.find((q) => q.tipo === pref)
+  return (
+    lar.quartos.find((q) => q.tipo === pref && q.livres > 0) ??
+    lar.quartos.find((q) => q.livres > 0) ??
+    lar.quartos.find((q) => q.tipo === pref)
+  )
 }
 
-/** Intervalo otimista–prudente em linguagem simples: "até 1 mês", "3 a 6 meses", "8 meses a mais de 2 anos". */
+/** Intervalo otimista–prudente: "nas próximas semanas", "até 2 meses", "3 a 6 meses", "8 meses a mais de 2 anos". */
 export function intervalo(diasMin: number, diasMax: number): string {
   if (diasMax <= 21) return 'nas próximas semanas'
   const a = Math.round(diasMin / 30)
@@ -82,7 +78,7 @@ export function intervalo(diasMin: number, diasMax: number): string {
 
 export interface EstimativaPessoal {
   est: EstimativaEspera
-  /** "2 a 7 meses", "desde já", "mais de 2 anos" */
+  /** "até 2 meses", "3 a 6 meses", "já há lugar", "mais de 2 anos" */
   texto: string
   /** true quando usa a posição real na lista */
   pessoal: boolean
@@ -92,8 +88,15 @@ export interface EstimativaPessoal {
 export function estimativaPessoal(lar: Lar, posicao?: number): EstimativaPessoal {
   const est = estimarEspera(lar, posicao != null ? { posicao } : {})
   let texto: string
-  if (est.imediata) texto = 'vaga possível desde já'
+  if (est.imediata) texto = 'já há lugar'
   else if (est.diasOtimista == null) texto = 'mais de 2 anos'
   else texto = intervalo(est.diasOtimista, est.diasPessimista ?? 800)
   return { est, texto, pessoal: posicao != null }
+}
+
+/** Contração "em" + artigo para nomes de instituições: "na Casa…", "no Lar…", "nas Residências…". */
+export function emLar(nome: string): string {
+  if (/^Residências\b/.test(nome)) return `nas ${nome}`
+  if (/^(Casa|Residência|Quinta|Santa Casa)\b/.test(nome)) return `na ${nome}`
+  return `no ${nome}`
 }

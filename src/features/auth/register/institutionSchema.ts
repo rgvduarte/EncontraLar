@@ -24,8 +24,7 @@ export type InstValues = {
   capacidade: string
   licenca: string
   precoDesde: string
-  // confirmação
-  autorizacao: boolean
+  // confirmação (inclui a declaração de que representa a instituição)
   termos: boolean
   privacidade: boolean
 }
@@ -46,7 +45,6 @@ export const INST_INITIAL: InstValues = {
   capacidade: '',
   licenca: '',
   precoDesde: '',
-  autorizacao: false,
   termos: false,
   privacidade: false,
 }
@@ -54,30 +52,30 @@ export const INST_INITIAL: InstValues = {
 export const INST_ORDER: (keyof InstValues)[] = [
   'nome', 'cargo', 'email', 'telefone', 'password',
   'instNome', 'tipo', 'natureza', 'lugar', 'morada', 'capacidade', 'licenca', 'precoDesde',
-  'autorizacao', 'termos', 'privacidade',
+  'termos', 'privacidade',
 ]
 
 export const INST_RULES: Rules<InstValues> = {
   nome: (v) => validarNome(v),
-  cargo: (v) => (!v.trim() ? 'Indique o seu cargo na instituição, por exemplo diretora técnica.' : undefined),
+  cargo: (v) => (!v.trim() ? 'Indique o seu cargo, por exemplo diretora técnica.' : undefined),
   email: (v) => validarEmail(v, { novo: true }),
   telefone: (v) => validarTelefone(v),
   password: (v) => validarPalavraPasseNova(v),
   instNome: (v) => validarNome(v, 'o nome da instituição'),
-  tipo: (v) => (!v ? 'Escolha o tipo de resposta social.' : undefined),
-  natureza: (v) => (!v ? 'Escolha a natureza da instituição (IPSS, Misericórdia ou privada).' : undefined),
+  tipo: (v) => (!v ? 'Escolha o tipo de instituição.' : undefined),
+  natureza: (v) => (!v ? 'Escolha a natureza: IPSS, Misericórdia ou privada.' : undefined),
   lugar: (v) =>
     !v.trim()
       ? 'Indique a localidade da instituição.'
       : !lugarCanonico(v)
         ? 'Escolha a localidade numa das sugestões da lista.'
         : undefined,
-  morada: (v) => (v.trim().length < 5 ? 'Indique a morada (rua e número) — é para lá que vai a visita de verificação.' : undefined),
+  morada: (v) => (v.trim().length < 5 ? 'Indique a morada, com rua e número.' : undefined),
   capacidade: (v) =>
     validarInteiro(v, {
       min: 1,
       max: 400,
-      vazio: 'Indique quantos lugares tem a licença de funcionamento.',
+      vazio: 'Indique o número de lugares.',
       foraIntervalo: 'A capacidade deve estar entre 1 e 400 lugares.',
     }),
   licenca: (v) =>
@@ -90,10 +88,9 @@ export const INST_RULES: Rules<InstValues> = {
     validarInteiro(v, {
       min: 100,
       max: 10000,
-      vazio: 'Indique a mensalidade mais baixa que pratica.',
+      vazio: 'Indique a mensalidade mais baixa.',
       foraIntervalo: 'A mensalidade deve estar entre 100 € e 10 000 €.',
     }),
-  autorizacao: (v) => (v ? undefined : 'Confirme que pode registar a instituição em nome dela.'),
-  termos: (v) => (v ? undefined : 'Para criar a conta, aceite os termos de utilização.'),
+  termos: (v) => (v ? undefined : 'Confirme que representa a instituição e aceita os termos.'),
   privacidade: (v) => (v ? undefined : 'Confirme que leu a política de privacidade.'),
 }

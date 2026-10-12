@@ -1,97 +1,77 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ArrowUpRight } from 'lucide-react'
 import type { Lar } from '@/types'
 import { MapLegend, PortugalMap } from '@/components/brand/PortugalMap'
-import { AzulejoBand, azulejoBg } from '@/components/brand/patterns'
 import { vagasLivres } from '@/lib/forecast'
-import { euro, tempoRelativo } from '@/lib/format'
-import { TIPO_LABEL } from '@/lib/labels'
+import { cn } from '@/lib/cn'
+import { tempoCurto, ultimasVagas } from './homeData'
 
-/** Cartão flutuante com a vaga atualizada mais recentemente — o produto a funcionar, no próprio hero. */
-function UltimaVaga({ lares, agora }: { lares: Lar[]; agora: number }) {
-  const lar = useMemo(
-    () =>
-      lares
-        .filter((l) => l.tipo !== 'centro_dia' && vagasLivres(l) > 0)
-        .sort((a, b) => b.atualizadoEm.localeCompare(a.atualizadoEm))[0],
-    [lares],
-  )
-  if (!lar) return null
-  const n = vagasLivres(lar)
-  return (
-    <Link
-      to={`/lar/${lar.id}`}
-      className="group absolute top-28 -left-24 z-10 hidden w-[17rem] rounded-2xl border border-line bg-white p-4 shadow-lift transition-transform hover:-translate-y-0.5 xl:block"
-    >
-      <span className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-xs font-bold tracking-[0.12em] text-pine-700 uppercase">
-          <span aria-hidden className="size-2 animate-pulse-ring rounded-full bg-leaf-500" />
-          Última vaga
-        </span>
-        <span className="text-xs text-ink-mute">{tempoRelativo(lar.atualizadoEm, new Date(agora))}</span>
-      </span>
-      <span className="mt-2 block font-display text-lg leading-snug font-semibold text-ink group-hover:underline">{lar.nome}</span>
-      <span className="mt-0.5 block text-sm text-ink-soft">
-        {lar.localidade} · {TIPO_LABEL[lar.tipo]}
-      </span>
-      <span className="mt-3 flex items-center justify-between gap-2 border-t border-dashed border-line-strong pt-3 text-sm">
-        <span className="rounded-lg bg-leaf-50 px-2 py-0.5 font-bold whitespace-nowrap text-leaf-700">
-          {n} {n === 1 ? 'vaga livre' : 'vagas livres'}
-        </span>
-        <span className="flex items-center gap-1 whitespace-nowrap text-ink-soft">
-          desde <strong className="text-ink tabular">{euro(lar.mensalidadeMin)}</strong>
-          <ArrowUpRight aria-hidden className="size-4 text-pine-700" />
-        </span>
-      </span>
-    </Link>
-  )
-}
+/** Onde pousa cada etiqueta no ecrã grande: no mar a oeste e em Espanha a leste, longe dos pontos. */
+const POSICAO = [
+  'lg:absolute lg:top-[13%] lg:right-[70%]',
+  'lg:absolute lg:top-[38%] lg:left-[84%]',
+  'lg:absolute lg:top-[66%] lg:left-[82%]',
+]
 
 /**
- * O mapa de Portugal como "fotografia" do produto: moldura em areia com friso de azulejo,
- * um bloco de azulejo desencontrado por trás e uma legenda de revista.
+ * O "produto como imagem": o mapa de Portugal em pontos, com as últimas vagas a flutuar à volta.
+ * Passar o rato (ou o foco) numa etiqueta realça o ponto da instituição no mapa.
  */
-export function HeroMap({ lares, comVaga, agora }: { lares: Lar[]; comVaga: number; agora: number }) {
+export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number; comVaga: number }) {
   const navigate = useNavigate()
+  const [destaque, setDestaque] = useState<string | null>(null)
+  const ultimas = useMemo(() => ultimasVagas(lares, 3), [lares])
   const mapaRef = useRef<HTMLDivElement>(null)
-  // O PortugalMap declara role="img", mas com onSelect contém ligações focáveis (um "img" não pode ter
+
+  // O PortugalMap declara role="img" mas, com onSelect, contém ligações focáveis (um "img" não pode ter
   // controlos lá dentro). Até o componente partilhado tratar disto, expomo-lo como grupo de ligações.
   useEffect(() => {
     mapaRef.current?.querySelector('svg[role="img"]')?.setAttribute('role', 'group')
   }, [])
+
   return (
-    <figure className="relative mx-auto w-full max-w-md lg:max-w-none">
-      {/* bloco de azulejo desencontrado, por trás da moldura */}
-      <div
-        aria-hidden
-        className="absolute -right-3 -bottom-3 left-8 top-10 rounded-[2rem] bg-pine-900 sm:-right-5 sm:-bottom-5"
-        style={azulejoBg('#80bbac', 0.32, 44)}
-      />
-      <UltimaVaga lares={lares} agora={agora} />
-      <div className="relative overflow-hidden rounded-[2rem] border border-line-strong/70 bg-sand shadow-card">
-        <AzulejoBand color="#1d564e" opacity={0.55} size={28} className="h-7 border-b border-line-strong/60 bg-white/60" />
-        <div className="flex items-center justify-between gap-3 px-5 pt-4">
-          <p className="eyebrow">Portugal, hoje</p>
-          <p className="flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-bold text-leaf-700 shadow-soft">
-            <span aria-hidden className="size-2.5 animate-pulse-ring rounded-full bg-leaf-500" />
-            <span className="tabular">{comVaga}</span> com vaga
-          </p>
-        </div>
-        <div ref={mapaRef} className="px-3 pt-1 pb-2 sm:px-5">
-          <PortugalMap
-            lares={lares}
-            onSelect={(l) => navigate(`/lar/${l.id}`)}
-            title={`Mapa de Portugal com ${lares.length} instituições; ${comVaga} têm vaga agora. Cada ponto abre a ficha da instituição.`}
-          />
-        </div>
-        <figcaption className="border-t border-line-strong/50 bg-white/55 px-5 py-4">
-          <MapLegend />
-          <p className="mt-2 text-sm text-ink-soft">
-            Cada ponto é uma instituição. Os verdes pulsam porque têm lugar livre hoje — toque num ponto para abrir a ficha.
-          </p>
-        </figcaption>
+    <figure className="relative mx-auto w-full max-w-[19rem] sm:max-w-[30rem] lg:max-w-[34rem]">
+      <div ref={mapaRef}>
+        <PortugalMap
+          lares={lares}
+          highlightId={destaque}
+          onSelect={(l) => navigate(`/lar/${l.id}`)}
+          title={`Mapa de Portugal com ${lares.length} instituições, ${comVaga} com vaga agora. Cada ponto abre a ficha da instituição.`}
+        />
       </div>
+
+      {ultimas.length > 0 && (
+        <ul aria-label="Vagas atualizadas há menos tempo" className="mt-8 flex flex-col items-center gap-3 lg:mt-0">
+          {ultimas.map((l, i) => {
+            const n = vagasLivres(l)
+            return (
+              <li key={l.id} className={cn(POSICAO[i], i === 2 && 'max-lg:hidden')}>
+                <Link
+                  to={`/lar/${l.id}`}
+                  onMouseEnter={() => setDestaque(l.id)}
+                  onMouseLeave={() => setDestaque(null)}
+                  onFocus={() => setDestaque(l.id)}
+                  onBlur={() => setDestaque(null)}
+                  className={cn(
+                    'flex min-h-12 items-center gap-2.5 rounded-full bg-white/90 py-2 pr-5 pl-4 text-sm whitespace-nowrap shadow-card ring-1 ring-black/5 backdrop-blur-md',
+                    'transition-transform duration-300 ease-[cubic-bezier(.25,.1,.25,1)] hover:-translate-y-0.5',
+                  )}
+                >
+                  <span aria-hidden className="size-2 shrink-0 animate-pulse-ring rounded-full bg-leaf-500" />
+                  <span className="max-w-[11rem] truncate font-medium text-ink sm:max-w-[15rem]">{l.nome}</span>
+                  <span className="text-ink-mute">
+                    · {n} {n === 1 ? 'vaga' : 'vagas'} · {tempoCurto(l.atualizadoEm, agora)}
+                  </span>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      <figcaption className="mt-8 flex justify-center lg:mt-10">
+        <MapLegend className="justify-center" />
+      </figcaption>
     </figure>
   )
 }

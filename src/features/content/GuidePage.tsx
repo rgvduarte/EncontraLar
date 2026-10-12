@@ -1,26 +1,24 @@
-import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, Search, Sparkles } from 'lucide-react'
 import { useDocumentTitle } from '@/lib/hooks'
 import { ButtonLink } from '@/components/ui/Button'
-import { AzulejoBand, CalcadaDivider, calcadaStonesBg } from '@/components/brand/patterns'
+import { Reveal } from '@/components/ui/Reveal'
 import { useAnchorNavigation, useScrollSpy } from './shared/anchors'
-import { TocChips, TocSidebar, type TocItem } from './shared/Toc'
-import { GuideHero } from './guia/GuideHero'
-import { TiposSection } from './guia/TiposSection'
-import { EscolherSection } from './guia/EscolherSection'
-import { VisitChecklist } from './guia/VisitChecklist'
-import { ApoiosSection } from './guia/ApoiosSection'
-import { AlertaSection } from './guia/AlertaSection'
-import { FaqSection, LinhasSection } from './guia/AjudaSections'
+import { TocBar, TocSidebar, type TocItem } from './shared/Toc'
+import { MoreLink, PageHero } from './shared/ui'
+import { Tipos } from './guia/Tipos'
+import { Escolher } from './guia/Escolher'
+import { Visita } from './guia/Visita'
+import { Apoios } from './guia/Apoios'
+import { Alerta } from './guia/Alerta'
+import { Faq, Linhas } from './guia/Ajuda'
 
 const SECOES: TocItem[] = [
-  { id: 'tipos', label: 'Tipos de resposta', short: 'Tipos' },
-  { id: 'escolher', label: 'Como escolher', short: 'Escolher' },
-  { id: 'visita', label: 'A visita', short: 'Visita' },
-  { id: 'apoios', label: 'Apoios e custos', short: 'Apoios' },
-  { id: 'alerta', label: 'Sinais de alerta', short: 'Alerta' },
-  { id: 'faq', label: 'Perguntas frequentes', short: 'Perguntas' },
-  { id: 'linhas', label: 'Linhas de apoio', short: 'Linhas' },
+  { id: 'tipos', label: 'Tipos de resposta' },
+  { id: 'escolher', label: 'Como escolher' },
+  { id: 'visita', label: 'A visita' },
+  { id: 'apoios', label: 'Apoios e custos' },
+  { id: 'alerta', label: 'Sinais de alerta' },
+  { id: 'faq', label: 'Perguntas frequentes' },
+  { id: 'linhas', label: 'Linhas de apoio' },
 ]
 const IDS = SECOES.map((s) => s.id)
 
@@ -28,84 +26,59 @@ export default function GuidePage() {
   useDocumentTitle('Guia para famílias')
   const { goTo, pathname } = useAnchorNavigation(IDS)
   const active = useScrollSpy(IDS)
-  const artigo = useRef<HTMLElement>(null)
-  const [minutos, setMinutos] = useState<number | null>(null)
-
-  // tempo de leitura calculado a partir do texto real do guia (~200 palavras por minuto)
-  useEffect(() => {
-    const texto = artigo.current?.innerText ?? ''
-    const palavras = texto.split(/\s+/).filter(Boolean).length
-    if (palavras > 0) setMinutos(Math.max(1, Math.round(palavras / 200)))
-  }, [])
+  const toc = { items: SECOES, active, onGo: goTo, pathname, label: 'Neste guia' }
 
   return (
     <>
-      <GuideHero minutos={minutos} onGo={goTo} />
-      <AzulejoBand color="#1d564e" opacity={0.5} size={40} className="h-10 opacity-60 print:hidden" />
-
-      <div className="container-page">
-        <TocChips items={SECOES} active={active} onGo={goTo} pathname={pathname} label="Secções do guia" />
-        <div className="grid gap-12 pt-12 pb-24 sm:pt-16 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-14 xl:grid-cols-[16rem_minmax(0,1fr)] xl:gap-20">
-          <aside className="hidden lg:block">
-            <TocSidebar
-              items={SECOES}
-              active={active}
-              onGo={goTo}
-              pathname={pathname}
-              title="Neste guia"
-              footer={
-                <div className="flex flex-col gap-3 rounded-2xl bg-sand p-4 text-sm text-ink-soft">
-                  <p>Já sabe o que procura?</p>
-                  <ButtonLink to="/pesquisa?vaga=agora" size="sm" full icon={<Search aria-hidden className="size-4" />}>
-                    Ver vagas no mapa
-                  </ButtonLink>
-                </div>
-              }
-            />
-          </aside>
-          <article ref={artigo} aria-labelledby="guia-titulo" className="flex min-w-0 flex-col gap-24 sm:gap-28">
-            <TiposSection />
-            <EscolherSection />
-            <VisitChecklist />
-            <ApoiosSection />
-            <AlertaSection />
-            <FaqSection />
-            <LinhasSection />
-          </article>
+      <PageHero
+        eyebrow="Guia para famílias"
+        title={
+          <>
+            Escolher um lar com calma, <em>mesmo com pressa</em>.
+          </>
+        }
+        subtitle="O que é cada resposta, o que ver na visita, que apoios existem e a quem ligar."
+        className="print:hidden"
+      >
+        <p className="text-base text-ink-mute">Se tem pressa:</p>
+        <div className="mt-1 flex flex-col items-center gap-x-7 sm:flex-row sm:justify-center">
+          <MoreLink to="/pesquisa?vaga=agora">Lares com vaga agora</MoreLink>
+          <MoreLink to="/encontrar">Ajuda-me a escolher</MoreLink>
+          <MoreLink to={{ pathname, hash: 'apoios' }} onClick={() => goTo('apoios')}>
+            Apoios e custos
+          </MoreLink>
         </div>
+      </PageHero>
+
+      <div className="container-page grid pb-24 sm:pb-32 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-16 xl:gap-24">
+        <TocBar {...toc} />
+        <TocSidebar {...toc} />
+        <article aria-label="Guia para famílias" className="flex max-w-[46rem] min-w-0 flex-col gap-24 pt-12 sm:gap-32 lg:pt-0">
+          <Tipos />
+          <Escolher />
+          <Visita />
+          <Apoios />
+          <Alerta />
+          <Faq />
+          <Linhas />
+        </article>
       </div>
 
-      {/* ——— Fecho: o próximo passo */}
-      <section aria-labelledby="guia-fecho" className="on-dark relative bg-pine-900 text-pine-50 print:hidden">
-        <CalcadaDivider color="#163a37" bg="#fbf8f3" height={26} className="absolute inset-x-0 -top-[25px]" />
-        <div className="absolute inset-0" style={calcadaStonesBg('#ffffff', 0.035)} aria-hidden />
-        <div className="relative container-page grid gap-8 py-16 sm:py-20 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end lg:gap-16">
-          <div>
-            <h2 id="guia-fecho" className="text-4xl font-semibold text-white sm:text-5xl">
-              Pronto para o <em>próximo passo</em>?
-            </h2>
-            <p className="mt-4 max-w-[54ch] text-lg text-pine-200">
-              Veja onde há vaga agora, perto de quem vai visitar — ou deixe-nos sugerir instituições compatíveis com o perfil de saúde da pessoa.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-            <ButtonLink to="/pesquisa?vaga=agora" variant="accent" size="lg" full icon={<Search aria-hidden className="size-5" />}>
+      <section aria-labelledby="guia-fecho" className="bg-sand print:hidden">
+        <Reveal className="container-narrow flex flex-col items-center py-24 text-center sm:py-32">
+          <h2 id="guia-fecho" className="headline max-w-[16ch]">
+            Pronto para o próximo passo?
+          </h2>
+          <p className="mt-5 max-w-[40ch] text-xl text-ink-mute sm:text-2xl">Veja onde há vaga agora, perto de quem vai visitar.</p>
+          <div className="mt-10 flex flex-col items-center gap-x-8 gap-y-3 sm:flex-row">
+            <ButtonLink to="/pesquisa?vaga=agora" size="lg">
               Ver vagas no mapa
             </ButtonLink>
-            <ButtonLink
-              to="/encontrar"
-              size="lg"
-              variant="secondary"
-              full
-              className="border-white/30! bg-transparent! text-white! hover:bg-white/10!"
-              icon={<Sparkles aria-hidden className="size-5" />}
-              iconRight={<ArrowRight aria-hidden className="size-5" />}
-            >
+            <MoreLink to="/encontrar" className="text-lg">
               Ajuda-me a escolher
-            </ButtonLink>
+            </MoreLink>
           </div>
-        </div>
-        <AzulejoBand color="#4f9b8c" opacity={0.5} size={40} className="relative h-10 opacity-40" />
+        </Reveal>
       </section>
     </>
   )
