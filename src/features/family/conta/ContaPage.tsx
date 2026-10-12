@@ -18,7 +18,7 @@ import { useDocumentTitle } from '@/lib/hooks'
 import { dataLonga } from '@/lib/format'
 import { descarregarFicheiro } from '../shared/ics'
 import { ConfirmModal } from '../shared/ui'
-import { Tween, enterCls, useSeen } from '../shared/motion'
+import { Tween, enterCls, stagger, useSeen } from '../shared/motion'
 import { cn } from '@/lib/cn'
 
 const AVISOS = [
@@ -30,12 +30,13 @@ const AVISOS = [
 ] as const
 
 /** Linha de definições ao estilo Apple: título à esquerda, conteúdo à direita, separadas por linhas finas. */
-function Bloco({ id, titulo, texto, children }: { id: string; titulo: string; texto?: string; children: ReactNode }) {
+function Bloco({ id, titulo, texto, ordem = 0, children }: { id: string; titulo: string; texto?: string; ordem?: number; children: ReactNode }) {
   const [ref, on] = useSeen<HTMLElement>()
   return (
     <section
       ref={ref}
       aria-labelledby={id}
+      style={stagger(on, ordem, 90)}
       className={cn(enterCls(on, 'up'), 'grid gap-6 border-t border-line py-10 first:border-t-0 first:pt-0 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12')}
     >
       <div>
@@ -107,7 +108,7 @@ export default function ContaPage() {
 
   return (
     <div>
-      <Bloco id="conta-contactos" titulo="Contactos" texto="É por aqui que as instituições lhe respondem.">
+      <Bloco id="conta-contactos" ordem={0} titulo="Contactos" texto="É por aqui que as instituições lhe respondem.">
         <form onSubmit={guardar} noValidate className="flex flex-col gap-5">
           <InputField
             label="Nome"
@@ -147,7 +148,7 @@ export default function ContaPage() {
         </form>
       </Bloco>
 
-      <Bloco id="conta-avisos" titulo="Avisos" texto="Também aparecem no sino, no topo da página.">
+      <Bloco id="conta-avisos" ordem={1} titulo="Avisos" texto="Também aparecem no sino, no topo da página.">
         <div className="divide-y divide-line border-y border-line">
           {AVISOS.map((a) => (
             <Switch
@@ -166,7 +167,7 @@ export default function ContaPage() {
         </p>
       </Bloco>
 
-      <Bloco id="conta-dados" titulo="Os seus dados" texto="RGPD, artigos 15.º e 20.º.">
+      <Bloco id="conta-dados" ordem={2} titulo="Os seus dados" texto="RGPD, artigos 15.º e 20.º.">
         {/* os números contam ao aparecer */}
         <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
           {(
@@ -195,14 +196,14 @@ export default function ContaPage() {
         </div>
       </Bloco>
 
-      <Bloco id="conta-demo" titulo="Demonstração" texto="Afeta apenas este navegador.">
+      <Bloco id="conta-demo" ordem={3} titulo="Demonstração" texto="Afeta apenas este navegador.">
         <p className="text-ink-soft">Volta ao exemplo inicial: perfis, pedidos, guardados e notificações.</p>
         <Button variant="subtle" className="mt-5 w-full sm:w-auto" onClick={() => setRepor(true)}>
           Repor dados de demonstração
         </Button>
       </Bloco>
 
-      <Bloco id="conta-sessao" titulo="Sessão">
+      <Bloco id="conta-sessao" ordem={4} titulo="Sessão">
         <p className="text-ink-soft">Num computador partilhado, termine sempre a sessão.</p>
         <Button
           className="mt-5 w-full sm:w-auto"
