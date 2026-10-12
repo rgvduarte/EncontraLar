@@ -866,7 +866,7 @@ export function atualizarCandidatura(id: string, estado: EstadoCandidatura, nota
     em_analise: `O pedido para ${nome} está em análise ${noLar(lar.nome)}.`,
     lista_espera: `${nome} ficou ${inscrito} na lista de espera ${doLar(lar.nome)}${posicao != null ? ` (posição ${posicao})` : ''}.`,
     vaga_proposta: `Há uma vaga ${noLar(lar.nome)} para ${nome}. Responda nas próximas 48 horas.`,
-    aceite: `A entrada de ${nome} ${noLar(lar.nome)} está confirmada.`,
+    aceite: `A vaga ${noLar(lar.nome)} para ${nome} foi aceite. A instituição vai combinar consigo a data de entrada.`,
     recusada: `${maiuscula(oLar(lar.nome))} não ${larPlural(lar.nome) ? 'têm' : 'tem'}, neste momento, condições para receber ${nome}.`,
   }
   state = {

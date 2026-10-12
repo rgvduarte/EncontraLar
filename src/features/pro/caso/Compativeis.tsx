@@ -18,6 +18,7 @@ import { cn } from '@/lib/cn'
 import { Pill } from '@/features/family/perfil/controls'
 import { pessoaCurta } from '../shared/caso'
 import { EstadoPedido, MaisLink } from '../shared/ui'
+import { useBarraAcao } from '../shared/useBarraAcao'
 
 const PASSO = 8
 
@@ -225,6 +226,8 @@ export function Compativeis({
   const lista = filtro === 'vaga' ? compat.filter((m) => m.espera.imediata) : compat
   const visiveis = lista.slice(0, limite)
   const n = escolhidas.length
+  const barra = useRef<HTMLDivElement>(null)
+  useBarraAcao(barra, n > 0)
 
   const toggle = (id: string, on: boolean) =>
     setEscolha((s) => {
@@ -324,6 +327,7 @@ export function Compativeis({
       {/* barra presa ao fundo (por cima da barra de abas) enquanto a lista está à vista */}
       {/* presa ao fundo (por cima da barra de abas) só quando há instituições escolhidas, como a barra de gravação dos formulários */}
       <div
+        ref={barra}
         className={cn(
           'z-20 mt-6 rounded-[1.5rem] p-3 sm:rounded-full sm:py-3 sm:pr-3 sm:pl-7',
           n

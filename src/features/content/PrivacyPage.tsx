@@ -10,7 +10,7 @@ import { ExternalLink, PageHero } from './shared/ui'
 
 const RESUMO = [
   'Pedimos só o necessário para encontrar um lar.',
-  'Os dados de saúde só seguem para as instituições a quem pede vaga, e só com o seu consentimento.',
+  'Os dados de saúde só seguem para as instituições a quem pede vaga, com o seu consentimento, e primeiro sem nome nem contacto.',
   'Pode ver, corrigir ou apagar tudo, quando quiser.',
 ] as const
 
@@ -73,6 +73,9 @@ export default function PrivacyPage() {
             <p>
               <strong>Da sua atividade:</strong> instituições guardadas, alertas de vaga, pedidos e visitas.
             </p>
+            <p>
+              <strong>Da conta de um profissional de saúde:</strong> nome, email, telefone, organização e serviço, e os casos que acompanha.
+            </p>
           </Bloco>
 
           <Bloco titulo="Para quê">
@@ -88,8 +91,54 @@ export default function PrivacyPage() {
               que pode retirar a qualquer momento.
             </p>
             <p>
-              Só os partilhamos com as <strong>instituições a quem envia um pedido de vaga</strong>, para que possam avaliar se têm condições para
-              receber a pessoa. Nenhuma outra instituição os vê.
+              Só os partilhamos com as <strong>instituições a quem é enviado um pedido de vaga</strong>, por si ou pelo profissional de saúde que
+              acompanha a pessoa, para que possam avaliar se têm condições para a receber. Nenhuma outra instituição os vê.
+            </p>
+          </Bloco>
+
+          <Bloco titulo="Pedidos em duas fases">
+            <p>
+              Quando envia um pedido, a instituição vê primeiro um <strong>resumo sem identificação</strong>: faixa etária (não a idade exata), grau
+              de dependência, cuidados necessários, zona, orçamento, urgência e origem do pedido (família, ou hospital com a data prevista de alta).
+            </p>
+            <p>
+              O nome, o contacto e o perfil completo só lhe chegam se <strong>aceitar o pedido</strong>. Se recusar sem aceitar, ou se cancelar o
+              pedido antes disso, nunca os vê. Na versão com servidor, esta regra é aplicada pela base de dados e não apenas no ecrã.
+            </p>
+          </Bloco>
+
+          <Bloco titulo="Pedidos feitos por profissionais de saúde">
+            <p>
+              Assistentes sociais de hospitais, centros de saúde e autarquias podem criar um caso e enviá-lo a várias instituições. Antes de o
+              criar, o profissional <strong>confirma que a pessoa, ou o seu representante, autorizou a partilha</strong> dos dados para procurar
+              vaga. Sem essa confirmação, o caso não é criado nem enviado.
+            </p>
+            <p>
+              Só o próprio profissional vê os seus casos. O contacto que as instituições recebem, depois de aceitarem, é o do profissional, e o caso
+              pode ter uma referência interna que não identifica a pessoa. As duas fases aplicam-se da mesma forma.
+            </p>
+          </Bloco>
+
+          <Bloco titulo="Pesquisas sem resultados">
+            <p>
+              Quando uma pesquisa não encontra vagas, guardamos de forma <strong>anónima</strong> o que se procurava: distrito ou localidade, grau de
+              dependência, cuidados, orçamento máximo e o número de resultados. Não guardamos nome, conta, morada nem endereço IP.
+            </p>
+            <p>
+              As instituições veem só totais do seu distrito (por exemplo, quantas procuras sem resposta houve para cuidados na demência). Estes
+              registos são apagados ao fim de um ano.
+            </p>
+          </Bloco>
+
+          <Bloco titulo="O link de confirmação de vagas">
+            <p>
+              Cada instituição pode receber, por SMS ou email, um link para confirmar as vagas num toque, sem iniciar sessão. O link mostra só o
+              nome da instituição e as vagas publicadas, e só serve para responder se ainda as tem. Não dá acesso a pedidos, contactos nem dados de
+              saúde.
+            </p>
+            <p>
+              Guardamos apenas uma impressão digital do link (um hash), não o próprio link. Deixa de funcionar ao fim de 30 dias, ou quando a
+              instituição pede um novo.
             </p>
           </Bloco>
 
@@ -117,8 +166,9 @@ export default function PrivacyPage() {
               Neste protótipo
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-ink-soft">
-              Nada é enviado para um servidor. Contas, perfis, pedidos e a lista da visita ficam guardados só neste navegador (no armazenamento local).
-              Pode apagá-los aqui.
+              Nada é enviado para um servidor. Contas, perfis, pedidos, casos, pesquisas sem resultados e a lista da visita ficam guardados só neste
+              navegador (no armazenamento local). Os prazos de conservação e a validade do link de confirmação só se aplicam na versão com
+              servidor. Pode apagar tudo aqui.
             </p>
             <Button variant="primary" className="mt-6 w-full py-3 whitespace-normal text-balance sm:w-auto" onClick={() => setConfirmar(true)}>
               Apagar os dados deste navegador

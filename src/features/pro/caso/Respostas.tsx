@@ -2,7 +2,7 @@ import { forwardRef, useId, useState } from 'react'
 import { Link } from 'react-router'
 import { BadgeCheck, Clock, Phone } from 'lucide-react'
 import type { Candidatura, Caso, Lar } from '@/types'
-import { atualizarCaso, cancelarCandidatura, confirmarEntradaFamilia, responderVaga, useLares } from '@/lib/store'
+import { cancelarCandidatura, confirmarEntradaFamilia, responderVaga, useLares } from '@/lib/store'
 import { contactoVisivel, entradaVerificada } from '@/lib/negocio'
 import { isoDia, plural, tempoRelativo } from '@/lib/format'
 import { NATUREZA_LABEL } from '@/lib/labels'
@@ -55,7 +55,7 @@ function ConfirmarEntrada({ c, lar }: { c: Candidatura; lar: Lar }) {
 }
 
 /** Uma resposta: instituição, estado, última nota, data, contacto (depois de aceitar) e as ações do momento. */
-function Resposta({ c, lar, caso }: { c: Candidatura; lar: Lar; caso: Caso }) {
+function Resposta({ c, lar, caso, onColocar }: { c: Candidatura; lar: Lar; caso: Caso; onColocar: () => void }) {
   const [modal, setModal] = useState<'aceitar' | 'recusar' | 'cancelar' | null>(null)
   const nota = ultimaNotaDoLar(c)
   const titulo = useId()
@@ -170,10 +170,7 @@ function Resposta({ c, lar, caso }: { c: Candidatura; lar: Lar; caso: Caso }) {
               <Button
                 variant="subtle"
                 className="w-full sm:w-auto"
-                onClick={() => {
-                  atualizarCaso(caso.id, { estado: 'colocado' })
-                  toast.success('Caso colocado', 'Passa para “Colocados e fechados”.')
-                }}
+                onClick={onColocar}
               >
                 Marcar o caso como colocado
               </Button>
@@ -238,7 +235,10 @@ function Resposta({ c, lar, caso }: { c: Candidatura; lar: Lar; caso: Caso }) {
 }
 
 /** "Respostas": um pedido por instituição, o que pede ação primeiro. O título recebe o foco depois de enviar. */
-export const Respostas = forwardRef<HTMLHeadingElement, { caso: Caso; cands: Candidatura[] }>(function Respostas({ caso, cands }, ref) {
+export const Respostas = forwardRef<HTMLHeadingElement, { caso: Caso; cands: Candidatura[]; onColocar: () => void }>(function Respostas(
+  { caso, cands, onColocar },
+  ref,
+) {
   const lares = useLares()
   const porId = new Map(lares.map((l) => [l.id, l]))
   const r = resumirRespostas(cands)
@@ -254,7 +254,7 @@ export const Respostas = forwardRef<HTMLHeadingElement, { caso: Caso; cands: Can
       <ul className="mt-6 flex flex-col gap-3">
         {lista.map((c) => {
           const lar = porId.get(c.larId)
-          return lar ? <Resposta key={c.id} c={c} lar={lar} caso={caso} /> : null
+          return lar ? <Resposta key={c.id} c={c} lar={lar} caso={caso} onColocar={onColocar} /> : null
         })}
       </ul>
     </section>

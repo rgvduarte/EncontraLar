@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { Building2 } from 'lucide-react'
 import { criarCaso, useLar, useLares } from '@/lib/store'
@@ -11,6 +11,7 @@ import { aoLar } from '@/features/family/shared/estado'
 import { CamposCaso, focarCampo } from '../form/CamposCaso'
 import { casoInput, casoVazio, mesmoCaso, ORDEM_CAMPOS, validarCaso, type CasoForm, type ErrosCaso } from '../form/casoModel'
 import { useContagem } from '../form/useContagem'
+import { useBarraAcao } from '../shared/useBarraAcao'
 
 /** Novo caso (/casos/novo[?lar=<id>]): o perfil de cuidados, a alta prevista e o consentimento. */
 export default function NovoCasoPage() {
@@ -25,6 +26,8 @@ export default function NovoCasoPage() {
   const [erros, setErros] = useState<ErrosCaso>({})
   const [criado, setCriado] = useState<string | null>(null)
   const contagem = useContagem(form, lares)
+  const barra = useRef<HTMLDivElement>(null)
+  useBarraAcao(barra, true)
   const sujo = !mesmoCaso(form, inicial) && !criado
   useAvisoAlteracoes(sujo)
 
@@ -73,6 +76,7 @@ export default function NovoCasoPage() {
 
       {/* barra de ação ao alcance do polegar (por cima da barra de abas); data-match-barra: a lista de localidades não fica por baixo dela */}
       <div
+        ref={barra}
         data-match-barra
         className="sticky bottom-[calc(var(--tabbar-h)+0.75rem)] z-20 mt-12 rounded-[1.5rem] bg-white/95 p-3 shadow-lift ring-1 ring-black/[0.06] backdrop-blur-xl backdrop-saturate-150 sm:rounded-full sm:py-3 sm:pr-3 sm:pl-7"
       >

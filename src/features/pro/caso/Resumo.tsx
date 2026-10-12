@@ -1,47 +1,39 @@
 import { useState } from 'react'
 import { ArrowDown, CheckCircle2, Pencil, RotateCcw, XCircle } from 'lucide-react'
 import type { Candidatura, Caso, EstadoCaso, PerfilIdoso } from '@/types'
-import { atualizarCaso, cancelarCandidatura } from '@/lib/store'
+import { atualizarCaso } from '@/lib/store'
 import { Button } from '@/components/ui/Button'
-import { Checkbox } from '@/components/ui/Field'
 import { toast } from '@/components/ui/Toast'
 import { dataLonga, plural } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { contagemAlta, POR_LIBERTAR, prazoTexto, resumirRespostas } from '../shared/caso'
-import { Confirmar, EstadoCasoChip } from '../shared/ui'
+import { contagemAlta, prazoTexto, resumirRespostas } from '../shared/caso'
+import { EstadoCasoChip } from '../shared/ui'
 import { EditarCaso } from './EditarCaso'
-
-type Acao = 'colocado' | 'fechado'
+import type { AcaoCaso } from './MudarEstado'
 
 /**
  * Cabeçalho do caso: contagem até à alta, estado, referência e consentimento; ações (editar, colocar, fechar, reabrir).
- * Colocar ou fechar o caso oferece-se para cancelar os pedidos ainda em curso (liberta as instituições).
+ * Colocar ou fechar pede confirmação (MudarEstado, na página), que se oferece para cancelar os pedidos em curso.
  */
-export function Resumo({ caso, perfil, cands, onVerRespostas }: { caso: Caso; perfil: PerfilIdoso; cands: Candidatura[]; onVerRespostas: () => void }) {
+export function Resumo({
+  caso,
+  perfil,
+  cands,
+  onVerRespostas,
+  onAcao,
+}: {
+  caso: Caso
+  perfil: PerfilIdoso
+  cands: Candidatura[]
+  onVerRespostas: () => void
+  /** pede a confirmação de "Marcar como colocado" / "Fechar caso" (desenhada pela página) */
+  onAcao: (a: AcaoCaso) => void
+}) {
   const [editar, setEditar] = useState(false)
-  const [acao, setAcao] = useState<Acao | null>(null)
-  const [libertar, setLibertar] = useState(true)
   const alta = contagemAlta(caso.altaPrevista, caso.estado)
   const r = resumirRespostas(cands)
   const proposta = r.propostas[0]
-  const emCurso = cands.filter((c) => POR_LIBERTAR.includes(c.estado))
   const aberto = caso.estado === 'aberto'
-
-  const abrir = (a: Acao) => {
-    setLibertar(true)
-    setAcao(a)
-  }
-
-  const confirmar = () => {
-    if (!acao) return
-    const n = libertar ? emCurso.length : 0
-    if (n) for (const c of emCurso) cancelarCandidatura(c.id)
-    atualizarCaso(caso.id, { estado: acao })
-    const extra = n ? ` ${n === 1 ? 'O pedido em curso foi cancelado' : `Os ${n} pedidos em curso foram cancelados`} e as instituições avisadas.` : ''
-    if (acao === 'colocado') toast.success('Caso colocado', extra.trim() || 'Passa para “Colocados e fechados”.')
-    else toast.info('Caso fechado', `Pode reabri-lo quando precisar.${extra}`)
-    setAcao(null)
-  }
 
   const reabrir = (estado: EstadoCaso) => {
     atualizarCaso(caso.id, { estado: 'aberto' })
@@ -104,10 +96,10 @@ export function Resumo({ caso, perfil, cands, onVerRespostas }: { caso: Caso; pe
         </Button>
         {aberto ? (
           <>
-            <Button variant="secondary" icon={<CheckCircle2 aria-hidden />} onClick={() => abrir('colocado')} className="col-span-2 max-sm:order-first">
+            <Button variant="secondary" icon={<CheckCircle2 aria-hidden />} onClick={() => onAcao('colocado')} className="col-span-2 max-sm:order-first">
               Marcar como colocado
             </Button>
-            <Button variant="secondary" icon={<XCircle aria-hidden />} onClick={() => abrir('fechado')}>
+            <Button variant="secondary" icon={<XCircle aria-hidden />} onClick={() => onAcao('fechado')}>
               Fechar caso
             </Button>
           </>
@@ -120,30 +112,6 @@ export function Resumo({ caso, perfil, cands, onVerRespostas }: { caso: Caso; pe
 
       <EditarCaso open={editar} onClose={() => setEditar(false)} caso={caso} perfil={perfil} />
 
-      <Confirmar
-        open={acao !== null}
-        onClose={() => setAcao(null)}
-        onConfirm={confirmar}
-        title={acao === 'fechado' ? 'Fechar este caso?' : 'Marcar o caso como colocado?'}
-        description={caso.referencia ?? undefined}
-        confirmLabel={acao === 'fechado' ? 'Fechar caso' : 'Marcar como colocado'}
-        cancelLabel="Voltar"
-        confirmVariant={acao === 'fechado' ? 'danger' : 'primary'}
-      >
-        <p>
-          {acao === 'fechado'
-            ? 'Use quando a pessoa já não precisa de vaga (por exemplo, voltou para casa com apoio). Pode reabrir o caso depois.'
-            : 'A pessoa tem lugar numa instituição. O caso passa para “Colocados e fechados”.'}
-        </p>
-        {emCurso.length > 0 && (
-          <Checkbox
-            checked={libertar}
-            onChange={(e) => setLibertar(e.target.checked)}
-            label={emCurso.length === 1 ? 'Cancelar o pedido em curso' : `Cancelar os ${emCurso.length} pedidos em curso`}
-            description="As instituições são avisadas e deixam de guardar lugar para esta pessoa."
-          />
-        )}
-      </Confirmar>
     </section>
   )
 }

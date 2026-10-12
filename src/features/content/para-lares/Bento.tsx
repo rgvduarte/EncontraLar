@@ -194,18 +194,20 @@ function PedidoDuasFases({ lar }: { lar: Lar }) {
           </button>
         </div>
       ) : (
-        <>
-          <p className="mt-4 flex items-start gap-2 text-sm text-ink-mute">
-            <Lock aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
-            Nome e contacto aparecem quando aceitar.
-          </p>
-          <Button ref={aceitar} variant="primary" className="mt-4 w-full" onClick={() => mudar(true)}>
-            Aceitar e ver contacto
-          </Button>
-        </>
+        <Button ref={aceitar} variant="primary" className="mt-4 w-full" icon={<Lock aria-hidden strokeWidth={1.75} />} onClick={() => mudar(true)}>
+          Aceitar e ver contacto
+        </Button>
       )}
     </div>
   )
+}
+
+/** Urgência curta para a linha da caixa de pedidos. */
+const URGENCIA_CURTA: Record<Candidatura['perfil']['urgencia'], string> = {
+  imediata: 'Urgente',
+  '1-3meses': '1 a 3 meses',
+  '3-6meses': '3 a 6 meses',
+  planeamento: 'Sem pressa',
 }
 
 /** "Alta em 4 dias" · "Alta amanhã" · "Alta hoje" (o texto comum do painel). */
@@ -239,31 +241,33 @@ function Encaminhamentos({ lar }: { lar: Lar }) {
         <span className="text-ink-mute">por prioridade</span>
       </p>
       <ol className="mt-3 flex flex-col">
-        {lista.map((c) => {
+        {lista.map((c, i) => {
           const dias = diasAteAlta(c.encaminhamento?.altaPrevista)
           const encaminhado = origemDe(c) === 'profissional' && c.encaminhamento
           return (
-            <li key={c.id} className="flex flex-col gap-1.5 border-t border-line py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <div className="min-w-0">
+            // no telemóvel e no tablet bastam duas linhas (o cartão vive numa faixa estreita)
+            <li key={c.id} className={cn('border-t border-line py-3.5', i > 1 && 'hidden lg:block')}>
+              <div className="flex items-center justify-between gap-3">
                 <p className="font-medium text-ink">
                   Pessoa de <span className="tabular">{faixaEtaria(c.perfil.idade)}</span> anos
-                  <span className="font-normal text-ink-mute"> · {GRAU_LABEL[c.perfil.grau].toLowerCase()}</span>
                 </p>
-                <p className="text-sm text-ink-mute">{encaminhado ? `Encaminhado por ${c.encaminhamento!.organizacao}` : 'Pedido de uma família'}</p>
+                {dias != null && dias >= 0 ? (
+                  <Badge tone={dias <= 7 ? 'alert' : 'neutral'} icon={<Clock aria-hidden strokeWidth={2} />}>
+                    {textoAlta(dias)}
+                  </Badge>
+                ) : (
+                  <span className="shrink-0 text-sm text-ink-mute">{URGENCIA_CURTA[c.perfil.urgencia]}</span>
+                )}
               </div>
-              {dias != null && dias >= 0 ? (
-                <Badge tone={dias <= 7 ? 'alert' : 'neutral'} icon={<Clock aria-hidden strokeWidth={2} />} className="self-start sm:self-auto">
-                  {textoAlta(dias)}
-                </Badge>
-              ) : (
-                <span className="shrink-0 text-sm text-ink-mute">{URGENCIA_LABEL[c.perfil.urgencia]}</span>
-              )}
+              <p className="mt-0.5 text-sm text-ink-mute">
+                {GRAU_LABEL[c.perfil.grau]} · {encaminhado ? `Encaminhado por ${c.encaminhamento!.organizacao}` : 'Pedido de uma família'}
+              </p>
             </li>
           )
         })}
       </ol>
       <p className="mt-1 border-t border-line pt-4 text-sm text-ink-mute">
-        As altas dos próximos 7 dias passam para o topo da sua lista. A ordem pública dos resultados não muda.
+        As altas dos próximos 7 dias sobem ao topo da sua lista. A ordem pública dos resultados não muda.
       </p>
     </div>
   )
@@ -351,27 +355,27 @@ export function Bento({ base, ensaio }: { base: Lar; ensaio: Ensaio }) {
         <SectionTitle id="pl-funcoes" title="Feito para quem não tem tempo." subtitle="Cinco coisas, bem feitas. Incluídas para todas as instituições." />
       </Reveal>
       <SwipeRow as="ul" label="Funcionalidades" className="mt-12 sm:mt-20 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-12">
-        <Tile title="Vagas num toque." text="Mais uma, menos uma. O cartão que as famílias veem muda no mesmo instante." className="md:col-span-2 lg:col-span-7">
+        <Tile
+          title="Vagas num toque."
+          text="Mais uma, menos uma. O cartão que as famílias veem muda no mesmo instante."
+          className="md:col-span-2 lg:col-span-12"
+          lado
+        >
           <VistaFamilia ensaio={ensaio} />
         </Tile>
-        <Tile
-          title="Pedidos com perfil de cuidados."
-          text="Vê primeiro o perfil de cuidados, sem dados pessoais. Aceita, e só então recebe o contacto."
-          className="lg:col-span-5"
-          delay={100}
-        >
+        <Tile title="Pedidos com perfil de cuidados." text="Vê primeiro o perfil de cuidados, sem dados pessoais. Aceita, e só então recebe o contacto." className="lg:col-span-5">
           <PedidoDuasFases lar={base} />
         </Tile>
         <Tile
           title="Encaminhamentos de hospitais."
-          text="Assistentes sociais de hospitais e centros de saúde enviam o pedido com a data prevista de alta. Quem sai do hospital nos próximos dias aparece primeiro."
+          text="Hospitais e centros de saúde enviam-lhe pedidos com a data prevista de alta."
           extra={
             <MoreLink to="/profissionais" tone="sand" className="mt-2 text-lg">
               Para profissionais de saúde
             </MoreLink>
           }
-          className="lg:col-span-12"
-          lado
+          className="lg:col-span-7"
+          delay={100}
         >
           <Encaminhamentos lar={base} />
         </Tile>

@@ -63,14 +63,16 @@ function useDemo(): { to?: string; onClick?: () => void; label: string } {
 function Acoes({ tom = 'claro', className }: { tom?: 'claro' | 'escuro'; className?: string }) {
   const demo = useDemo()
   const escuro = tom === 'escuro'
+  // o texto da demonstração é longo: no telemóvel parte em duas linhas em vez de sair do botão
+  const longo = 'w-full whitespace-normal py-3 text-center leading-snug sm:w-auto sm:whitespace-nowrap'
   return (
     <div className={cn('mx-auto flex w-full max-w-sm flex-col items-stretch gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:items-center sm:justify-center', className)}>
       {demo.to ? (
-        <ButtonLink to={demo.to} size="lg" variant={escuro ? 'inverse' : 'primary'} className="w-full sm:w-auto">
+        <ButtonLink to={demo.to} size="lg" variant={escuro ? 'inverse' : 'primary'} className={longo}>
           {demo.label}
         </ButtonLink>
       ) : (
-        <Button size="lg" variant={escuro ? 'inverse' : 'primary'} onClick={demo.onClick} className="w-full sm:w-auto">
+        <Button size="lg" variant={escuro ? 'inverse' : 'primary'} onClick={demo.onClick} className={longo}>
           {demo.label}
         </Button>
       )}

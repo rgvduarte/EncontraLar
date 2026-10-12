@@ -12,6 +12,7 @@ import { MaisLink } from '../shared/ui'
 import { Resumo } from './Resumo'
 import { Compativeis } from './Compativeis'
 import { Respostas } from './Respostas'
+import { MudarEstado, type AcaoCaso } from './MudarEstado'
 
 /**
  * Caso (/casos/:id[?lar=<id>]): resumo e ações; respostas das instituições (quando já foi enviado);
@@ -24,6 +25,7 @@ export default function CasoPage() {
   const respostas = useRef<HTMLHeadingElement>(null)
   const scrollTo = useScrollTo()
   const [irRespostas, setIrRespostas] = useState(0)
+  const [acao, setAcao] = useState<AcaoCaso | null>(null)
   useDocumentTitle(caso && perfil ? `Caso · ${pessoaCurta(perfil)}` : 'Caso não encontrado')
 
   const verRespostas = useCallback(() => {
@@ -58,9 +60,9 @@ export default function CasoPage() {
         <MaisLink to="/casos" className="self-start text-[0.9375rem] [&_svg]:order-first [&_svg]:rotate-180">
           Todos os casos
         </MaisLink>
-        <Resumo caso={caso} perfil={perfil} cands={cands} onVerRespostas={verRespostas} />
+        <Resumo caso={caso} perfil={perfil} cands={cands} onVerRespostas={verRespostas} onAcao={setAcao} />
       </div>
-      {temRespostas && <Respostas ref={respostas} caso={caso} cands={cands} />}
+      {temRespostas && <Respostas ref={respostas} caso={caso} cands={cands} onColocar={() => setAcao('colocado')} />}
       {caso.estado === 'aberto' ? (
         <Compativeis caso={caso} perfil={perfil} cands={cands} onEnviado={() => setIrRespostas((n) => n + 1)} />
       ) : (
@@ -68,6 +70,7 @@ export default function CasoPage() {
           Este caso está {caso.estado === 'colocado' ? 'colocado' : 'fechado'}. Para o enviar a mais instituições, reabra-o no topo da página.
         </p>
       )}
+      <MudarEstado caso={caso} cands={cands} acao={acao} onClose={() => setAcao(null)} />
     </div>
   )
 }
