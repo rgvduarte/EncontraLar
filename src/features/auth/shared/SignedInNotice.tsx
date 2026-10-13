@@ -13,6 +13,7 @@ const IR_PARA_PAINEL: Record<Role, string> = {
   familia: 'Ir para o painel',
   lar: 'Ir para o painel',
   profissional: 'Ir para os casos',
+  equipa: 'Ir para as visitas',
 }
 
 /** Quem é, por baixo do nome: a instituição (lar), a organização (profissional) ou o email. */

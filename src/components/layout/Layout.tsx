@@ -10,6 +10,7 @@ import { AvisoAlteracoesHost } from '@/components/ui/useAvisoAlteracoes'
 import { SmoothScroll, useLenis } from '@/components/motion/SmoothScroll'
 import { getDB, setAlerta, toggleFavorito, useCurrentUser } from '@/lib/store'
 import { cn } from '@/lib/cn'
+import { temAcessoCompleto } from '@/lib/acesso'
 
 /** Páginas de ecrã inteiro (mapa) e fluxos focados (questionário) sem rodapé. */
 const SEM_RODAPE = ['/pesquisa', '/encontrar']
@@ -121,12 +122,13 @@ function RetomarIntencao() {
     if (!guardar && !alerta) return
     const existe = (id: string) => getDB().lares.some((l) => l.id === id)
     const favorito = (id: string) => getDB().favoritos.find((f) => f.userId === user.id && f.larId === id)
+    // os alertas de vaga são do Acesso Família: sem ele, não se promete o aviso (e o alerta não liga)
+    const completo = temAcessoCompleto(user)
     if (guardar && existe(guardar) && !favorito(guardar)) {
       toggleFavorito(guardar)
-      toast.success('Guardado nos seus favoritos', 'Vamos avisá-lo(a) quando houver vaga.')
+      toast.success('Guardado nos seus favoritos', completo ? 'Vamos avisá-lo(a) quando houver vaga.' : 'Fica nos guardados do seu painel.')
     }
-    if (alerta && existe(alerta) && !favorito(alerta)?.alerta) {
-      setAlerta(alerta, true)
+    if (alerta && existe(alerta) && !favorito(alerta)?.alerta && setAlerta(alerta, true)) {
       toast.success('Alerta de vaga ligado', 'Avisamos quando abrir uma vaga.')
     }
     params.delete('guardar')

@@ -20,7 +20,7 @@ export function planoDoParam(v: string | null | undefined): PlanoFamiliaId | nul
  * - família sem passe: abre a folha de compra; família com passe: "Somar" dias;
  * - instituição ou profissional: só a explicação (o passe é para famílias).
  */
-export type Visitante = 'convidado' | 'familia' | 'familia-ativa' | 'lar' | 'profissional'
+export type Visitante = 'convidado' | 'familia' | 'familia-ativa' | 'lar' | 'profissional' | 'equipa'
 
 export function tipoVisitante(role: Role | undefined, ativo: boolean): Visitante {
   if (!role) return 'convidado'

@@ -17,19 +17,22 @@ import { Appear, cascade } from './shared/Appear'
 import { comVoltar, destinoAposEntrar, ehAcesso, intencaoDe, motivoDoDestino, precisaDeAcesso, roleDoCaminho } from './shared/redirect'
 
 const ROLES: Role[] = ['familia', 'lar', 'profissional']
-const TITULO: Record<Role, string> = { familia: 'Criar conta', lar: 'Registar instituição', profissional: 'Criar conta profissional' }
+const TITULO: Record<Role, string> = { familia: 'Criar conta', lar: 'Registar instituição', profissional: 'Criar conta profissional', equipa: 'Conta da equipa' }
 
 /** `?tipo=` explícito; senão, o tipo de conta da área para onde ia (ex.: `voltar=/casos/…` → profissional); senão, família. */
 function tipoDe(params: URLSearchParams): Role {
   const t = params.get('tipo')
   if (ROLES.includes(t as Role)) return t as Role
-  return roleDoCaminho(params.get('voltar')) ?? 'familia'
+  // contas da equipa de terreno não se criam aqui (são internas): quem ia para /visitas regista-se como família
+  const daArea = roleDoCaminho(params.get('voltar'))
+  return daArea && ROLES.includes(daArea) ? daArea : 'familia'
 }
 
 const DESCRICAO: Record<Role, string> = {
   familia: `Criar conta é gratuito. Explore à vontade; o Acesso Família (${ACESSO_DESDE}) mostra vagas, preços e previsão.`,
   lar: 'Publique as vagas e receba pedidos de famílias.',
   profissional: 'Para assistentes sociais: envie o mesmo pedido a várias instituições.',
+  equipa: 'As contas da equipa de terreno são criadas pela administração.',
 }
 
 /**

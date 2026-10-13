@@ -123,7 +123,7 @@ function Ficha({ lar }: { lar: Lar }) {
           </aside>
 
           <div className="flex min-w-0 flex-col gap-28 pt-10 sm:gap-36 sm:pt-20 lg:col-start-1 lg:row-start-2">
-            <SobreSection lar={lar} dados={dados} />
+            <SobreSection lar={lar} dados={dados} completo={completo} />
             <CuidadosSection lar={lar} />
             <PrecosSection lar={lar} dados={dados} completo={completo} />
             <PrevisaoSection lar={lar} dados={dados} completo={completo} />

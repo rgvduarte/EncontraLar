@@ -19,14 +19,16 @@ import type {
   Organizacao,
   PerfilIdoso,
   PlanoFamiliaId,
+  PlanoInstituicao,
   ProcuraAnonima,
   Review,
   Role,
   TipoQuarto,
   TipoResposta,
   User,
+  Visita,
 } from '@/types'
-import { createSeed, DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_PASSWORD, DEMO_PRO_EMAIL, SEED_VERSION } from '@/data/seed'
+import { createSeed, DEMO_EQUIPA_EMAIL, DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_PASSWORD, DEMO_PRO_EMAIL, SEED_VERSION } from '@/data/seed'
 import { LOCALIDADES, LUGARES } from '@/data/localidades'
 import { hashPassword } from './hash'
 import { uid } from './random'
@@ -77,6 +79,7 @@ function dbValida(d: unknown): d is DB {
     Array.isArray(x.notificacoes) &&
     Array.isArray(x.casos) &&
     Array.isArray(x.procuras) &&
+    Array.isArray(x.visitas) &&
     x.lares.every((l) => !!l && Array.isArray(l.quartos) && Array.isArray(l.historicoSaidas))
   )
 }
@@ -103,6 +106,7 @@ export function rebaseDemo(antigo: DB, fresco: DB = createSeed()): DB {
     favoritos: [...fresco.favoritos, ...antigo.favoritos.filter((f) => f && !favSeed.has(chave(f)))],
     casos: juntar(antigo.casos, fresco.casos),
     procuras: juntar(antigo.procuras, fresco.procuras).slice(-MAX_PROCURAS),
+    visitas: juntar(antigo.visitas, fresco.visitas),
   }
 }
 
@@ -315,6 +319,13 @@ export function useAcesso(): EstadoAcesso {
   }, [user])
 }
 
+/** Visitas da equipa de terreno (só a equipa vê), mais recentes primeiro. */
+export function useVisitas(): Visita[] {
+  const d = useDB()
+  const user = useCurrentUser()
+  return useMemo(() => (user?.role === 'equipa' ? [...d.visitas].sort((a, b) => b.data.localeCompare(a.data)) : []), [d.visitas, user])
+}
+
 export const getDB = () => db
 export const getCurrentUser = () => (sessionUserId ? (db.users.find((u) => u.id === sessionUserId) ?? null) : null)
 
@@ -340,7 +351,8 @@ export function login(email: string, password: string): AuthResult {
 }
 
 export function loginDemo(role: Role): AuthResult {
-  return login(role === 'familia' ? DEMO_FAMILIA_EMAIL : role === 'lar' ? DEMO_LAR_EMAIL : DEMO_PRO_EMAIL, DEMO_PASSWORD)
+  const email = { familia: DEMO_FAMILIA_EMAIL, lar: DEMO_LAR_EMAIL, profissional: DEMO_PRO_EMAIL, equipa: DEMO_EQUIPA_EMAIL }[role]
+  return login(email, DEMO_PASSWORD)
 }
 
 export function logout() {
@@ -464,7 +476,7 @@ export function register(input: RegisterInput): AuthResult {
             ? 'A sua ficha foi criada e está pendente de verificação. Complete a informação e mantenha as vagas atualizadas.'
             : input.role === 'profissional'
               ? 'Crie um caso com o perfil de cuidados da pessoa e envie o pedido às instituições compatíveis de uma só vez.'
-              : 'Crie o perfil da pessoa de quem cuida para receber sugestões compatíveis e alertas de vaga.',
+              : 'Crie o perfil da pessoa de quem cuida para ver as instituições compatíveis. Com o Acesso Família, vê onde há vaga, envia pedidos e recebe alertas.',
         link: input.role === 'lar' ? '/gestao' : input.role === 'profissional' ? '/casos' : '/familia',
         lida: false,
         criadaEm: nowIso(),
@@ -508,14 +520,17 @@ export function toggleFavorito(larId: string): boolean {
     ...db,
     favoritos: existe
       ? db.favoritos.filter((f) => !(f.userId === user.id && f.larId === larId))
-      : [...db.favoritos, { userId: user.id, larId, alerta: true, criadoEm: nowIso() }],
+      // o alerta de vaga é do Acesso Família: na versão grátis, guardar não liga o alerta
+      : [...db.favoritos, { userId: user.id, larId, alerta: temAcessoCompleto(user), criadoEm: nowIso() }],
   })
   return !existe
 }
 
-export function setAlerta(larId: string, alerta: boolean) {
+/** Liga/desliga o alerta de vaga. Ligar é do Acesso Família (devolve false sem ele); desligar está sempre à mão. */
+export function setAlerta(larId: string, alerta: boolean): boolean {
   const user = getCurrentUser()
-  if (!user) return
+  if (!user) return false
+  if (alerta && !temAcessoCompleto(user)) return false
   const existe = db.favoritos.some((f) => f.userId === user.id && f.larId === larId)
   commit({
     ...db,
@@ -523,6 +538,7 @@ export function setAlerta(larId: string, alerta: boolean) {
       ? db.favoritos.map((f) => (f.userId === user.id && f.larId === larId ? { ...f, alerta } : f))
       : [...db.favoritos, { userId: user.id, larId, alerta, criadoEm: nowIso() }],
   })
+  return true
 }
 
 // ————————————————————————————————————————— perfis
@@ -779,6 +795,10 @@ function avisarNovaVaga(state: DB, lar: Lar, tipo: TipoQuarto): { state: DB; avi
     }
   }
   for (const f of state.favoritos) {
+    // alertas de lares guardados só com Acesso Família (senão revelariam quais têm vaga); quem está inscrito
+    // na lista de espera (acima) é sempre avisado, porque já tem uma relação com a instituição
+    const seguidor = state.users.find((u) => u.id === f.userId)
+    if (!temAcessoCompleto(seguidor)) continue
     if (f.larId === lar.id && f.alerta && f.userId !== lar.ownerId && !destinatarios.has(f.userId)) {
       destinatarios.set(
         f.userId,
@@ -1260,4 +1280,151 @@ export function comprarAcessoDemo(planoId: PlanoFamiliaId, metodo: MetodoPagamen
     ],
   })
   return { ok: true, ate: acesso.ate }
+}
+
+// ————————————————————————————————————————— modalidade das instituições privadas
+
+/** O lar privado escolhe: por entrada ou mensalidade fixa (no protótipo, muda logo; na versão real, no contrato). */
+export function escolherPlanoInstituicao(plano: PlanoInstituicao): { ok: true } | { ok: false; erro: string } {
+  const user = getCurrentUser()
+  const lar = user?.role === 'lar' ? db.lares.find((l) => l.id === user.larId) : undefined
+  if (!lar) return { ok: false, erro: 'Só a instituição pode escolher a modalidade.' }
+  if (lar.natureza !== 'privado') return { ok: false, erro: 'As IPSS e Misericórdias não têm custos.' }
+  commit({ ...db, lares: patchLar(db.lares, lar.id, (l) => ({ ...l, planoInstituicao: plano })) })
+  return { ok: true }
+}
+
+// ————————————————————————————————————————— equipa de terreno (modo visita)
+
+export interface RegistoVisitaInput {
+  larId: string
+  resultado: Visita['resultado']
+  verificacao: Visita['verificacao']
+  responsavel?: Visita['responsavel']
+  plano?: PlanoInstituicao
+  notas?: string
+  proximoContacto?: string
+  /** nº do alvará/licença visto na visita (atualiza a ficha quando a licença é confirmada) */
+  licenca?: string
+  /** vagas e preços confirmados na visita (por tipo de quarto existente) */
+  quartos?: { tipo: TipoQuarto; livres: number; precoMin: number; precoMax: number }[]
+  cuidados?: Lar['cuidados']
+  /** na adesão: criar a conta do responsável (precisa de email) */
+  criarConta?: boolean
+}
+
+export type RegistoVisitaResultado =
+  | { ok: true; visita: Visita; selo: boolean; conta?: { email: string; palavraPasse: string } }
+  | { ok: false; erro: string }
+
+/** Palavra-passe provisória legível (o responsável muda-a no primeiro acesso). */
+function palavraPasseProvisoria(): string {
+  const letras = 'abcdefghjkmnpqrstuvwxyz23456789'
+  const bytes = new Uint8Array(10)
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) crypto.getRandomValues(bytes)
+  else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256)
+  return Array.from(bytes, (b) => letras[b % letras.length]).join('').replace(/^(.{5})/, '$1-')
+}
+
+/**
+ * A equipa regista uma visita: confirma a licença e as instalações (selo "Visitada pela equipa"), as vagas e os
+ * preços (a ficha fica atualizada agora), os cuidados, e o resultado. Na adesão de um privado fica registada a
+ * modalidade; com email do responsável, pode criar-lhe a conta (palavra-passe provisória, mostrada uma vez).
+ */
+export function registarVisita(input: RegistoVisitaInput): RegistoVisitaResultado {
+  const user = getCurrentUser()
+  if (!user || user.role !== 'equipa') return { ok: false, erro: 'Só a equipa de terreno regista visitas.' }
+  const lar = db.lares.find((l) => l.id === input.larId)
+  if (!lar) return { ok: false, erro: 'Instituição não encontrada.' }
+  const agora = nowIso()
+  const email = input.responsavel?.email?.trim().toLowerCase()
+  const criarConta = !!input.criarConta && input.resultado === 'aderiu' && !lar.ownerId
+  if (criarConta) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, erro: 'Indique o email do responsável para criar a conta.' }
+    if (db.users.some((u) => u.email.toLowerCase() === email)) return { ok: false, erro: 'Já existe uma conta com este email.' }
+  }
+
+  const selo = input.verificacao.licencaConfirmada && input.verificacao.instalacoesVistas
+  let novoLar: Lar = { ...lar }
+  if (input.verificacao.licencaConfirmada) {
+    const licenca = input.licenca?.trim() || lar.verificacao.licenca
+    // licença confirmada sem ver as instalações: 1.º nível (licença), sem o selo da visita
+    const estado = selo ? 'verificado' : lar.verificacao.estado === 'nao_verificado' ? 'pendente' : lar.verificacao.estado
+    novoLar = { ...novoLar, verificacao: { ...novoLar.verificacao, licenca, estado, ...(selo ? { data: agora } : {}) } }
+  }
+  if (input.quartos?.length && (input.verificacao.vagasConfirmadas || input.verificacao.precosConfirmados)) {
+    const quartos = novoLar.quartos.map((q) => {
+      const c = input.quartos!.find((x) => x.tipo === q.tipo)
+      if (!c) return q
+      return {
+        ...q,
+        livres: input.verificacao.vagasConfirmadas ? Math.max(0, Math.min(q.total, Math.round(c.livres))) : q.livres,
+        precoMin: input.verificacao.precosConfirmados ? Math.max(0, Math.round(c.precoMin)) : q.precoMin,
+        precoMax: input.verificacao.precosConfirmados ? Math.max(Math.round(c.precoMin), Math.round(c.precoMax)) : q.precoMax,
+      }
+    })
+    const precos = quartos.flatMap((q) => [q.precoMin, q.precoMax])
+    novoLar = { ...novoLar, quartos, mensalidadeMin: Math.min(...precos), mensalidadeMax: Math.max(...precos), atualizadoEm: agora }
+  }
+  if (input.cuidados) novoLar = { ...novoLar, cuidados: input.cuidados }
+  if (input.resultado === 'aderiu' && lar.natureza === 'privado') novoLar = { ...novoLar, planoInstituicao: input.plano ?? 'por_entrada' }
+
+  let users = db.users
+  let conta: { email: string; palavraPasse: string } | undefined
+  let contaId: string | undefined
+  if (criarConta && email) {
+    const palavraPasse = palavraPasseProvisoria()
+    contaId = uid('u')
+    users = [
+      ...users,
+      {
+        id: contaId,
+        role: 'lar',
+        nome: input.responsavel?.nome?.trim() || lar.nome,
+        email,
+        passwordHash: hashPassword(palavraPasse, email),
+        telefone: input.responsavel?.telefone?.trim() || undefined,
+        criadoEm: agora,
+        larId: lar.id,
+      },
+    ]
+    novoLar = { ...novoLar, ownerId: contaId }
+    conta = { email, palavraPasse }
+  }
+
+  const visita: Visita = {
+    id: uid('v'),
+    larId: lar.id,
+    equipaId: user.id,
+    data: agora,
+    resultado: input.resultado,
+    verificacao: input.verificacao,
+    responsavel: input.responsavel,
+    plano: input.resultado === 'aderiu' && lar.natureza === 'privado' ? (input.plano ?? 'por_entrada') : undefined,
+    notas: input.notas?.trim() || undefined,
+    proximoContacto: input.resultado === 'interessado' || input.resultado === 'voltar' ? input.proximoContacto : undefined,
+    contaCriadaId: contaId,
+  }
+  const dono = novoLar.ownerId
+  commit({
+    ...db,
+    users,
+    lares: db.lares.map((l) => (l.id === lar.id ? novoLar : l)),
+    visitas: [...db.visitas, visita],
+    notificacoes:
+      dono && selo
+        ? [
+            ...db.notificacoes,
+            novaNotificacao({
+              userId: dono,
+              tipo: 'sistema',
+              titulo: 'Visitada pela equipa',
+              texto: 'A equipa do EncontraLar confirmou a licença e as instalações. A ficha tem agora o selo «Visitada pela equipa».',
+              larId: lar.id,
+              link: '/gestao/ficha',
+            }),
+          ]
+        : db.notificacoes,
+  })
+  return { ok: true, visita, selo, conta }
 }

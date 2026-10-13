@@ -24,12 +24,14 @@ const CONTA: Record<Role, { nome: string; painel: string; acao: string }> = {
   familia: { nome: 'família', painel: '/familia', acao: 'Ir para o meu painel' },
   lar: { nome: 'instituição', painel: '/gestao', acao: 'Ir para o painel da instituição' },
   profissional: { nome: 'profissional de saúde', painel: '/casos', acao: 'Ir para os meus casos' },
+  equipa: { nome: 'equipa de terreno', painel: '/visitas', acao: 'Ir para as visitas' },
 }
 
 const AREA: Record<Role, string> = {
   familia: 'Esta área é para famílias',
   lar: 'Esta área é para instituições',
   profissional: 'Esta área é para profissionais de saúde',
+  equipa: 'Esta área é para a equipa de terreno do EncontraLar',
 }
 
 /** Página para quem tem sessão com o tipo de conta errado (ex.: família a abrir /gestao ou /casos). */

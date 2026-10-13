@@ -1,6 +1,6 @@
 import { Heart } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router'
-import { toggleFavorito, useCurrentUser, useFavorito } from '@/lib/store'
+import { toggleFavorito, useAcesso, useCurrentUser, useFavorito } from '@/lib/store'
 import { toast } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
 
@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn'
 export function FavoriteButton({ larId, larNome, variant = 'overlay', className }: { larId: string; larNome: string; variant?: 'overlay' | 'inline'; className?: string }) {
   const user = useCurrentUser()
   const fav = useFavorito(larId)
+  const { completo } = useAcesso()
   const navigate = useNavigate()
   const location = useLocation()
   // os guardados vivem no painel da família: instituições e profissionais não os têm
@@ -21,12 +22,13 @@ export function FavoriteButton({ larId, larNome, variant = 'overlay', className 
       // o regresso leva a intenção (?guardar=<id>): depois de entrar, a instituição fica mesmo guardada (Layout)
       const params = new URLSearchParams(location.search)
       params.set('guardar', larId)
-      toast.info('Entre para guardar', 'Crie uma conta gratuita para guardar instituições e receber alertas de vaga.')
+      toast.info('Entre para guardar', 'Crie uma conta gratuita para guardar instituições.')
       navigate(`/entrar?voltar=${encodeURIComponent(`${location.pathname}?${params.toString()}`)}`)
       return
     }
     const now = toggleFavorito(larId)
-    toast.success(now ? 'Guardado nos seus favoritos' : 'Removido dos favoritos', now ? 'Vamos avisá-lo(a) quando houver vaga.' : undefined)
+    // os alertas de vaga são do Acesso Família: sem ele, não se promete o aviso
+    toast.success(now ? 'Guardado nos seus favoritos' : 'Removido dos favoritos', now ? (completo ? 'Vamos avisá-lo(a) quando houver vaga.' : 'Fica nos guardados do seu painel.') : undefined)
   }
 
   if (variant === 'inline') {

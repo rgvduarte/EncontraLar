@@ -20,6 +20,7 @@ import type {
   RoomOffer,
   TipoResposta,
   User,
+  Visita,
 } from '@/types'
 import { LOCALIDADES, LUGARES, type Localidade } from './localidades'
 import { createRng, type Rng } from '@/lib/random'
@@ -30,10 +31,11 @@ import { emTerra } from '@/lib/lugares'
 import { aoLar, flexLar, larPlural, maiuscula, noLar, oLar } from '@/lib/artigos'
 import { tokenConfirmacao } from '@/lib/negocio'
 
-/** 6: Acesso Família (passe da família de demonstração).
+/** 7: equipa de terreno (visitas) e modalidade das instituições privadas (por entrada / mensal).
+ *  6: Acesso Família (passe da família de demonstração).
  *  5: modelo de negócio (entradas, encaminhamentos de profissionais, casos, procura sem resposta, link de confirmação).
  *  4: textos gerados revistos, telefones com 9 dígitos, acordos com a Segurança Social só no setor social. */
-export const SEED_VERSION = 6
+export const SEED_VERSION = 7
 export const DEMO_PASSWORD = 'demo1234'
 export const DEMO_FAMILIA_EMAIL = 'familia@exemplo.pt'
 export const DEMO_LAR_EMAIL = 'lar@exemplo.pt'
@@ -42,6 +44,8 @@ export const DEMO_FAMILIA_ID = 'u-ana-ferreira'
 export const DEMO_LAR_USER_ID = 'u-helena-marques'
 export const DEMO_PRO_EMAIL = 'social@exemplo.pt'
 export const DEMO_PRO_ID = 'u-marta-correia'
+export const DEMO_EQUIPA_EMAIL = 'equipa@exemplo.pt'
+export const DEMO_EQUIPA_ID = 'u-equipa-sofia'
 
 const DIA = 86_400_000
 
@@ -661,6 +665,8 @@ export function createSeed(agora = Date.now()): DB {
       telefone: '225 000 310', criadoEm: iso(120), demo: true,
       organizacao: { nome: 'Hospital de Vale Formoso', tipo: 'hospital', servico: 'Serviço Social' },
     },
+    // equipa de terreno (conta interna; fictícia): visitas, verificação e adesão das instituições
+    { id: DEMO_EQUIPA_ID, role: 'equipa', nome: 'Sofia Ramos', email: DEMO_EQUIPA_EMAIL, passwordHash: hashPassword(DEMO_PASSWORD, DEMO_EQUIPA_EMAIL), telefone: '910 000 520', criadoEm: iso(200), demo: true },
   ]
 
   const maria = perfil(
@@ -927,6 +933,33 @@ export function createSeed(agora = Date.now()): DB {
     }
   })
 
+  // ——— equipa de terreno: visitas no distrito do Porto (região piloto)
+  const demoLar = lares[0]!
+  demoLar.planoInstituicao = 'por_entrada'
+  const privadosPorto = lares.filter((l) => l.id !== DEMO_LAR_ID && l.distrito === 'Porto' && l.natureza === 'privado' && l.tipo !== 'centro_dia')
+  const sociaisPorto = lares.filter((l) => l.distrito === 'Porto' && l.natureza !== 'privado' && l.tipo === 'erpi' && l.id !== ipss.id)
+  const [pMensal, pInteressado, pVoltar, pRecusou] = privadosPorto
+  const sAderiu = sociaisPorto[0]
+  if (pMensal) pMensal.planoInstituicao = 'mensal'
+  const verifTudo = { licencaConfirmada: true, instalacoesVistas: true, vagasConfirmadas: true, precosConfirmados: true }
+  const verifNada = { licencaConfirmada: false, instalacoesVistas: false, vagasConfirmadas: false, precosConfirmados: false }
+  const visitas: Visita[] = [
+    { id: 'v-1', larId: DEMO_LAR_ID, equipaId: DEMO_EQUIPA_ID, data: iso(64), resultado: 'aderiu', verificacao: verifTudo, plano: 'por_entrada',
+      responsavel: { nome: 'Helena Marques', cargo: 'Diretora técnica', telefone: '220 000 042', email: DEMO_LAR_EMAIL }, notas: 'Quer começar pela unidade de demências. Pediu formação para a equipa administrativa.' },
+    ...(pMensal ? [{ id: 'v-2', larId: pMensal.id, equipaId: DEMO_EQUIPA_ID, data: iso(21), resultado: 'aderiu' as const, verificacao: verifTudo, plano: 'mensal' as const,
+      responsavel: { nome: 'Paulo Antunes', cargo: 'Sócio-gerente' }, notas: 'Prefere um custo fixo por mês. Casa pequena: cada cama vazia pesa muito.' }] : []),
+    ...(pInteressado ? [{ id: 'v-3', larId: pInteressado.id, equipaId: DEMO_EQUIPA_ID, data: iso(6), resultado: 'interessado' as const, verificacao: { ...verifNada, licencaConfirmada: true },
+      proximoContacto: futuro(5), notas: 'Gostou da lista de espera digital. Vai falar com o sócio antes de decidir.' }] : []),
+    ...(pVoltar ? [{ id: 'v-4', larId: pVoltar.id, equipaId: DEMO_EQUIPA_ID, data: iso(3), resultado: 'voltar' as const, verificacao: verifNada,
+      proximoContacto: futuro(2), notas: 'A diretora estava de férias. Voltar na próxima semana, de manhã.' }] : []),
+    ...(pRecusou ? [{ id: 'v-5', larId: pRecusou.id, equipaId: DEMO_EQUIPA_ID, data: iso(12), resultado: 'recusou' as const, verificacao: verifNada,
+      notas: 'Lista de espera cheia; não vê necessidade por agora. Voltar a tentar daqui a 6 meses.' }] : []),
+    ...(sAderiu ? [{ id: 'v-6', larId: sAderiu.id, equipaId: DEMO_EQUIPA_ID, data: iso(30), resultado: 'aderiu' as const, verificacao: verifTudo,
+      notas: 'IPSS: sem custos. Interesse em reduzir os telefonemas de famílias.' }] : []),
+  ]
+  if (pMensal) pMensal.verificacao = { ...pMensal.verificacao, estado: 'verificado', data: iso(21) }
+  if (sAderiu) sAderiu.verificacao = { ...sAderiu.verificacao, estado: 'verificado', data: iso(30) }
+
   const favoritos: Favorito[] = [
     { userId: DEMO_FAMILIA_ID, larId: DEMO_LAR_ID, alerta: true, criadoEm: iso(20) },
     { userId: DEMO_FAMILIA_ID, larId: larVisita.id, alerta: true, criadoEm: iso(7) },
@@ -997,6 +1030,7 @@ export function createSeed(agora = Date.now()): DB {
     notificacoes,
     casos,
     procuras,
+    visitas,
   }
 }
 

@@ -9,7 +9,7 @@ import type { DadosLar } from '../helpers'
  * "Contexto": a frase-resumo da instituição acende-se palavra a palavra com o scroll (o único TextReveal
  * da página), seguida dos números-chave a contar e da apresentação.
  */
-export function SobreSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
+export function SobreSection({ lar, dados, completo }: { lar: Lar; dados: DadosLar; completo: boolean }) {
   const paragrafos = lar.descricao
     .split(/\n\s*\n/)
     .map((p) => p.trim())
@@ -52,7 +52,10 @@ export function SobreSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
           </div>
         ) : (
           <p className="mt-12 max-w-[65ch] text-lg text-ink-mute">
-            A instituição ainda não escreveu a sua apresentação. Ligue e pergunte como é o dia a dia — ou marque uma visita.
+            {/* versão grátis: os contactos são do Acesso Família, por isso não sugerimos ligar */}
+            {completo
+              ? 'A instituição ainda não escreveu a sua apresentação. Ligue e pergunte como é o dia a dia — ou marque uma visita.'
+              : 'A instituição ainda não escreveu a sua apresentação. Uma visita é a melhor forma de conhecer o dia a dia.'}
           </p>
         )}
       </Bloco>

@@ -25,12 +25,13 @@ describe('Acesso Família — regras', () => {
     expect(Date.parse(novoAte(undefined, planoFamilia('acesso_30'), agora))).toBe(agora + 30 * DIA)
   })
 
-  it('quem vê a camada completa: famílias com passe e profissionais; visitantes e instituições não', () => {
+  it('quem vê a camada completa: famílias com passe, profissionais e a equipa; visitantes e instituições não', () => {
     const ativo = { plano: 'acesso_90' as const, compradoEm: '', ate: new Date(agora + DIA).toISOString(), origem: 'compra' as const }
     expect(temAcessoCompleto(null, agora)).toBe(false)
     expect(temAcessoCompleto({ role: 'familia' }, agora)).toBe(false)
     expect(temAcessoCompleto({ role: 'familia', acesso: ativo }, agora)).toBe(true)
     expect(temAcessoCompleto({ role: 'profissional' }, agora)).toBe(true)
+    expect(temAcessoCompleto({ role: 'equipa' }, agora)).toBe(true)
     expect(temAcessoCompleto({ role: 'lar' }, agora)).toBe(false)
   })
 

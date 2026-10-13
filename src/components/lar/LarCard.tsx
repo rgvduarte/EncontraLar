@@ -175,7 +175,7 @@ function FaixaGratis({ lar }: { lar: Lar }) {
           o texto fica recolhido à direita do cadeado */}
       <p className="flex items-baseline gap-1.5 text-sm text-ink-mute">
         <Lock aria-hidden className="size-3.5 shrink-0 translate-y-[0.1em]" />
-        <span>Vagas e preços com Acesso Família</span>
+        <span>Vagas e preços com o Acesso Família</span>
       </p>
     </>
   )

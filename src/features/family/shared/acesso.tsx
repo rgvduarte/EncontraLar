@@ -48,12 +48,16 @@ export function AcessoEstado({ voltar = '/familia', className }: { voltar?: stri
   if (ativo && ate) {
     return (
       <section aria-labelledby={id} className={caixa}>
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 text-lg leading-snug">
+        {/* telemóvel: o nome numa linha e o estado por baixo (sem o "·" a abrir a linha) */}
+        <div className="flex min-w-0 flex-col gap-y-0.5 text-lg leading-snug sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
           <h2 id={id} className="text-lg font-semibold">
             Acesso Família
           </h2>
           <p className="text-ink-mute">
-            <span aria-hidden>· </span>ativo até {diaAte(ate)} <span aria-hidden>·</span> {faltamDias(diasRestantes)}
+            <span aria-hidden className="max-sm:hidden">
+              ·{' '}
+            </span>
+            ativo até {diaAte(ate)} <span aria-hidden>·</span> {faltamDias(diasRestantes)}
           </p>
         </div>
         <MoreLink to={linkAcesso(voltar)} className="shrink-0">

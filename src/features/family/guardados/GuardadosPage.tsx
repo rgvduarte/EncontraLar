@@ -44,6 +44,8 @@ export default function GuardadosPage() {
   const [acessoModal, setAcessoModalState] = useState<{ open: boolean; acao: 'comparar' | 'alerta' }>({ open: false, acao: 'comparar' })
   const setAcessoModal = (acao: 'comparar' | 'alerta') => setAcessoModalState({ open: true, acao })
   const [comparar, setComparar] = useState(false)
+  // só com o Acesso Família (se o passe terminar com a comparação aberta, a tabela de preços sai do ecrã)
+  const comparando = comparar && completo
   const [sel, setSel] = useState<string[]>([])
   const [ul, item] = useStagger<HTMLUListElement>('up', 80)
   const cartoes = useRef<Record<string, HTMLLIElement | null>>({})
@@ -129,7 +131,7 @@ export default function GuardadosPage() {
           </div>
         )}
         {itens.length >= 2 &&
-          (comparar ? (
+          (comparando ? (
             <Button variant="subtle" className="w-full sm:w-auto" onClick={() => setComparar(false)}>
               Fechar comparação
             </Button>
@@ -145,7 +147,7 @@ export default function GuardadosPage() {
           ))}
       </div>
 
-      {comparar && (
+      {comparando && (
         <Comparacao>
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
             <h2 id="comparar-titulo" className="text-2xl font-semibold sm:text-3xl">

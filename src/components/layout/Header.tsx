@@ -33,7 +33,7 @@ import { DEMO_LAR_EMAIL, DEMO_PRO_EMAIL } from '@/data/seed'
 import type { Distrito, Notificacao, Role, User } from '@/types'
 
 export function painelPath(role: Role) {
-  return role === 'lar' ? '/gestao' : role === 'profissional' ? '/casos' : '/familia'
+  return role === 'lar' ? '/gestao' : role === 'profissional' ? '/casos' : role === 'equipa' ? '/visitas' : '/familia'
 }
 
 /** Atalho para o painel de cada tipo de conta (menu da conta e menu móvel). */
@@ -41,6 +41,7 @@ const PAINEL: Record<Role, { label: string; icon: LucideIcon }> = {
   familia: { label: 'O meu painel', icon: LayoutDashboard },
   lar: { label: 'Painel da instituição', icon: LayoutDashboard },
   profissional: { label: 'Os meus casos', icon: FolderOpen },
+  equipa: { label: 'Visitas', icon: FolderOpen },
 }
 
 /** Onde trabalha o profissional ("Hospital de Vale Formoso"), por baixo do nome; as outras contas não têm. */

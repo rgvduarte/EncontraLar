@@ -91,7 +91,8 @@ describe('script das contas de demonstração (utilizadores-demo.sql)', () => {
   })
 
   it('liga as contas (famílias, gestora e assistente social): a gestora fica dona do lar de demonstração', async () => {
-    expect(contas).toHaveLength(proto.users.length)
+    // a equipa de terreno é interna (só no protótipo): não tem conta na base
+    expect(contas).toHaveLength(proto.users.filter((u) => u.role !== 'equipa').length)
     expect(contas.find((c) => c.role === 'profissional')).toMatchObject({ email: 'social@exemplo.pt', organizacao: { tipo: 'hospital' } })
     await db.exec(demoSql())
     await db.exec(demoSql()) // segunda vez: não faz nada
@@ -166,7 +167,8 @@ describe('ida e volta: base de demonstração → mappers = createSeed', () => {
     for (const a of avaliacoes) porLar.set(a.instituicao_id, [...(porLar.get(a.instituicao_id) ?? []), a])
     expect(linhas).toHaveLength(proto.lares.length)
     const semInternos = (l: Lar) => {
-      const { ownerId: _o, visualizacoes30d: _v, confirmacaoToken: _t, reviews, atualizadoEm, verificacao, ...resto } = l
+      // planoInstituicao: modalidade comercial (contrato) — fica fora da vista pública
+      const { ownerId: _o, visualizacoes30d: _v, confirmacaoToken: _t, planoInstituicao: _p, reviews, atualizadoEm, verificacao, ...resto } = l
       return { ...resto, atualizadoEm: Date.parse(atualizadoEm), verificacao: { ...verificacao, data: verificacao.data && Date.parse(verificacao.data), ultimaInspecao: verificacao.ultimaInspecao && Date.parse(verificacao.ultimaInspecao) }, reviews: reviews.map(({ id: _i, data, ...r }) => ({ ...r, data: Date.parse(data) })) }
     }
     for (const l of proto.lares) {

@@ -50,7 +50,7 @@ export function StartScreen({
           >
             <span className="block">Diga-nos quem é.</span>{' '}
             <span className="block">
-              Mostramos onde há <em>lugar</em>.
+              Encontramos as casas que <em>servem</em>.
             </span>
           </h1>
         </Reveal>

@@ -13,7 +13,7 @@
  * Nota: no protótipo os dados vivem no navegador, por isso o bloqueio é só de apresentação. Na versão com
  * servidor, a camada viva não sai da base de dados para quem não tem acesso (ver docs/SUPABASE.md).
  */
-import type { AcessoFamilia, Lar, PlanoFamiliaId, User } from '@/types'
+import type { AcessoFamilia, Lar, PlanoFamiliaId, PlanoInstituicao, User } from '@/types'
 import { disponibilidade, estimarEspera, vagaParaNovos } from './forecast'
 
 export interface PlanoFamilia {
@@ -41,6 +41,38 @@ export const IVA_FAMILIA_PERCENT = 23
  */
 export const TAXA_ENTRADA_PRIVADO_CENTIMOS = 15000
 
+export interface PlanoInstituicaoInfo {
+  id: PlanoInstituicao
+  nome: string
+  /** + IVA */
+  valorCentimos: number
+  unidade: 'por entrada' | 'por mês'
+  resumo: string
+}
+
+/**
+ * Lares privados escolhem a modalidade (valores + IVA, por contrato; só no painel privado e no material comercial):
+ * por entrada (só paga quando alguém entra) ou mensalidade fixa (sem taxa por entrada). 29 €/mês ≈ 2,3 entradas/ano.
+ */
+export const PLANOS_INSTITUICAO: Record<PlanoInstituicao, PlanoInstituicaoInfo> = {
+  por_entrada: { id: 'por_entrada', nome: 'Por entrada', valorCentimos: TAXA_ENTRADA_PRIVADO_CENTIMOS, unidade: 'por entrada', resumo: 'Só paga quando alguém entra através do EncontraLar.' },
+  mensal: { id: 'mensal', nome: 'Mensalidade', valorCentimos: 2900, unidade: 'por mês', resumo: 'Valor fixo por mês, sem taxa por entrada.' },
+}
+
+/** Modalidade em vigor: null para IPSS e Misericórdias (sem custos); por omissão, por entrada. */
+export const planoDoLar = (lar: Pick<Lar, 'natureza' | 'planoInstituicao'>): PlanoInstituicao | null =>
+  lar.natureza !== 'privado' ? null : (lar.planoInstituicao ?? 'por_entrada')
+
+/** "150 € + IVA por entrada" · "29 € + IVA por mês" (painel privado da instituição). */
+export const valorPlanoTexto = (p: PlanoInstituicao) => `${precoTexto(PLANOS_INSTITUICAO[p].valorCentimos).replace(',00', '')} + IVA ${PLANOS_INSTITUICAO[p].unidade}`
+
+/** O que uma entrada custa a esta instituição, numa linha (painel privado). */
+export function cobrancaEntradaTexto(lar: Pick<Lar, 'natureza' | 'planoInstituicao'>): string {
+  const p = planoDoLar(lar)
+  if (!p) return 'Isenta — setor social'
+  return p === 'mensal' ? `Incluída na mensalidade (${valorPlanoTexto('mensal')})` : `Taxa fixa: ${valorPlanoTexto('por_entrada')}`
+}
+
 export const planoFamilia = (id: PlanoFamiliaId): PlanoFamilia => PLANOS_FAMILIA.find((p) => p.id === id) ?? PLANOS_FAMILIA[0]!
 
 /** "14,90 €" */
@@ -53,10 +85,13 @@ export function acessoAtivo(a: AcessoFamilia | undefined, agora = Date.now()): b
   return !!a && Date.parse(a.ate) > agora
 }
 
-/** Vê a camada completa (vagas, preços, previsão, contactos, pedidos)? Profissionais: sempre; famílias: com passe ativo. */
+/**
+ * Vê a camada completa (vagas, preços, previsão, contactos, pedidos)? Profissionais e a equipa de terreno (que
+ * confirma vagas e preços nas visitas): sempre; famílias: com passe ativo.
+ */
 export function temAcessoCompleto(user: Pick<User, 'role' | 'acesso'> | null | undefined, agora = Date.now()): boolean {
   if (!user) return false
-  if (user.role === 'profissional') return true
+  if (user.role === 'profissional' || user.role === 'equipa') return true
   if (user.role === 'familia') return acessoAtivo(user.acesso, agora)
   return false
 }

@@ -231,8 +231,14 @@ function variavelConta(u: User): string {
   return `v_${u.id.replace(/^u-/, '').replace(/[^a-z0-9]+/g, '_')}`
 }
 
+/**
+ * A equipa de terreno é uma conta interna (criada à parte, com permissões de administração no servidor):
+ * fica fora do SQL de demonstração, tal como as visitas que regista no protótipo.
+ */
+const utilizadoresBD = (db: DB) => db.users.filter((u) => u.role !== 'equipa')
+
 export function contasDemo(db: DB = createSeed(AGORA_SEED)): ContaDemo[] {
-  return db.users.map((u) => ({
+  return utilizadoresBD(db).map((u) => ({
     email: u.email.toLowerCase(),
     role: u.role,
     nome: u.nome,
@@ -360,11 +366,11 @@ function linhaNotificacao(n: Notificacao, agora: number, userVar: string, porId:
  */
 export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): string {
   const lar = db.lares.find((l) => l.id === DEMO_LAR_ID)
-  const familia = db.users.find((u) => u.id === DEMO_FAMILIA_ID)
-  const gestora = db.users.find((u) => u.id === DEMO_LAR_USER_ID)
+  const familia = utilizadoresBD(db).find((u) => u.id === DEMO_FAMILIA_ID)
+  const gestora = utilizadoresBD(db).find((u) => u.id === DEMO_LAR_USER_ID)
   if (!lar || !familia || !gestora) throw new Error('seed sem lar/contas de demonstração')
 
-  const varDe = new Map(db.users.map((u) => [u.id, variavelConta(u)]))
+  const varDe = new Map(utilizadoresBD(db).map((u) => [u.id, variavelConta(u)]))
   if (new Set(varDe.values()).size !== varDe.size) throw new Error('variáveis de conta repetidas')
   const contas = contasDemo(db)
 
@@ -414,7 +420,7 @@ export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): st
     '',
     'do $demo$',
     'declare',
-    ...db.users.map((u) => `  ${varDe.get(u.id)} uuid;`),
+    ...utilizadoresBD(db).map((u) => `  ${varDe.get(u.id)} uuid;`),
     '  v_invalidas text;',
     'begin',
     `  if not exists (select 1 from public.instituicoes where id = ${lit(DEMO_LAR_ID)} and demonstracao) then`,
@@ -433,7 +439,7 @@ export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): st
     '  if v_invalidas is not null then',
     "    raise exception 'Contas de demonstração em falta ou inválidas (e-mail por confirmar ou sem app_metadata.role): %. Crie-as com scripts/criar-contas-demo.mjs — ver docs/SUPABASE.md.', v_invalidas;",
     '  end if;',
-    ...db.users.map((u) => `  ${varDe.get(u.id)} := (select id from auth.users where lower(email) = ${lit(u.email.toLowerCase())});`),
+    ...utilizadoresBD(db).map((u) => `  ${varDe.get(u.id)} := (select id from auth.users where lower(email) = ${lit(u.email.toLowerCase())});`),
     '',
     `  if exists (select 1 from public.instituicoes where id = ${lit(DEMO_LAR_ID)} and owner_id is not null and owner_id <> v_lar) then`,
     `    raise exception 'A ficha ${DEMO_LAR_ID} já tem outro gestor — nada foi alterado.';`,
@@ -444,7 +450,7 @@ export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): st
     '  end if;',
     '',
     '  -- contas de demonstração: só interagem com fichas de demonstração (o papel já veio do app_metadata)',
-    ...db.users.map(
+    ...utilizadoresBD(db).map(
       (u) =>
         `  update public.perfis_utilizador set demonstracao = true, nome = ${lit(u.nome)}, telefone = ${lit(u.telefone ?? null)}, organizacao = ${u.organizacao ? jsonb(u.organizacao) : 'null'} where id = ${varDe.get(u.id)};`,
     ),

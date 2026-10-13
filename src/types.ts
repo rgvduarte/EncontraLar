@@ -130,10 +130,38 @@ export interface Lar {
   visualizacoes30d: number
   /** link de confirmação rápida das vagas, sem login (enviado por SMS/email): /confirmar/:token */
   confirmacaoToken?: string
+  /** só privados: modalidade escolhida (ausente = por entrada) */
+  planoInstituicao?: PlanoInstituicao
 }
 
-/** familia = quem procura; lar = instituição; profissional = assistente social (hospital, centro de saúde…) */
-export type Role = 'familia' | 'lar' | 'profissional'
+/**
+ * familia = quem procura; lar = instituição; profissional = assistente social (hospital, centro de saúde…);
+ * equipa = equipa de terreno do EncontraLar (visitas, verificação e adesão das instituições — conta interna)
+ */
+export type Role = 'familia' | 'lar' | 'profissional' | 'equipa'
+
+/** Lares privados escolhem: taxa fixa por entrada, ou mensalidade fixa sem taxa por entrada. */
+export type PlanoInstituicao = 'por_entrada' | 'mensal'
+
+export type ResultadoVisita = 'aderiu' | 'interessado' | 'voltar' | 'recusou'
+
+/** Visita da equipa de terreno a uma instituição (modo visita). */
+export interface Visita {
+  id: string
+  larId: string
+  equipaId: string
+  /** ISO */
+  data: string
+  resultado: ResultadoVisita
+  verificacao: { licencaConfirmada: boolean; instalacoesVistas: boolean; vagasConfirmadas: boolean; precosConfirmados: boolean }
+  responsavel?: { nome: string; cargo?: string; telefone?: string; email?: string }
+  plano?: PlanoInstituicao
+  notas?: string
+  /** AAAA-MM-DD — próximo contacto combinado (interessado / voltar) */
+  proximoContacto?: string
+  /** conta criada para o responsável na adesão (só demonstração: id do utilizador) */
+  contaCriadaId?: string
+}
 
 export type TipoOrganizacao = 'hospital' | 'centro_saude' | 'autarquia' | 'outro'
 export interface Organizacao {
@@ -337,6 +365,7 @@ export interface DB {
   notificacoes: Notificacao[]
   casos: Caso[]
   procuras: ProcuraAnonima[]
+  visitas: Visita[]
 }
 
 /** Estado de disponibilidade calculado a partir das vagas e da previsão. */
