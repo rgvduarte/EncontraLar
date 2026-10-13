@@ -1,6 +1,38 @@
 # Modelo de negócio e contrato técnico
 
-Decisões aprovadas (12/10/2026), a partir da proposta "estratégia lares" e do feedback dado:
+## Atualização de 13/10/2026: modelo de dois lados
+
+A procura de vagas é muito maior do que a oferta, por isso a família é quem sente mais o problema. Passam a pagar **os dois lados**, por coisas diferentes, com uma taxa mais baixa de cada lado. A mesma ligação nunca é cobrada duas vezes.
+
+| Quem | Grátis | Pago | Valor |
+|---|---|---|---|
+| **Famílias** | Explorar de forma genérica: que instituições existem, onde, o tipo, a natureza, a verificação, a avaliação geral, a **faixa** de preço, o guia e apoios, e contagens agregadas ("43 com vaga nesta zona") | **Acesso Família**: que instituições têm vaga e quantos lugares, preços por quarto, previsão de espera, contactos, pedidos a várias casas, visitas, alertas, comparação | **14,90 € / 30 dias** ou **29,90 € / 90 dias**, IVA incluído, **sem renovação automática**. Uma nova compra soma os dias. |
+| **Lares privados** | Ficha verificada, vagas, lista de espera digital, pedidos | Taxa fixa por entrada | **150 € + IVA** por entrada (por contrato; nunca em páginas públicas) |
+| **IPSS e Misericórdias** | Tudo | Nada | 0 € |
+| **Profissionais de saúde** | Acesso completo, incluindo casos e encaminhamentos | Nada (no futuro, licença institucional) | 0 € |
+
+Regras que não mudam:
+- **Pagar não muda a ordem dos resultados nem dá prioridade nas vagas.** Vale para as famílias e para as instituições.
+- **A versão grátis não expõe o negócio:** a camada viva (quais têm vaga, quantos lugares, preços, previsão, contactos) é do Acesso Família.
+  - No protótipo o bloqueio é só de apresentação, porque os dados vivem no navegador.
+  - Na versão com servidor, esses dados **não saem da base de dados** para quem não tem acesso: uma vista pública genérica e outra completa, com verificação do direito de acesso no servidor.
+- **A família de demonstração** (`familia@exemplo.pt`) tem um passe de 90 dias ativo. Para ver a versão grátis, explore sem entrar ou crie uma conta.
+
+Contrato técnico (protótipo):
+- `src/lib/acesso.ts` (`PLANOS_FAMILIA`, `temAcessoCompleto`, `faixaPreco`, `resumoDisponibilidade`, `TAXA_ENTRADA_PRIVADO_CENTIMOS`);
+- `User.acesso` (`AcessoFamilia`);
+- `useAcesso()` e `comprarAcessoDemo()` em `src/lib/store.ts` (simulação do Stripe Checkout com MB WAY, Multibanco ou cartão);
+- os componentes `src/components/acesso` (`BloqueioCartao`, `LinhasBloqueadas`, `AvisoAcesso`, `AcessoNecessarioModal`);
+- a página `/acesso`.
+
+Por validar (a próxima decisão depende disto):
+- **10 lares privados:** que ocupação têm, quantos dias fica uma vaga vazia, quanto gastam a captar residentes;
+- **10 famílias:** quanto pagariam, e pelo quê;
+- **Conversão real da página `/acesso`.**
+
+---
+
+Decisões aprovadas a 12/10/2026 (modelo só com taxa por entrada, valor de referência inicial de 300 € + IVA, hoje 150 € + IVA), a partir da proposta "estratégia lares" e do feedback dado:
 
 | Tema | Decisão |
 |---|---|

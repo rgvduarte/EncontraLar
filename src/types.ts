@@ -158,6 +158,24 @@ export interface User {
   organizacao?: Organizacao
   /** utilizadores de demonstração (mostrados no login) */
   demo?: boolean
+  /** famílias: Acesso Família (passe pago, sem renovação automática) */
+  acesso?: AcessoFamilia
+}
+
+/** Passes do Acesso Família (preços em src/lib/acesso.ts). */
+export type PlanoFamiliaId = 'acesso_30' | 'acesso_90'
+export type MetodoPagamentoFamilia = 'mbway' | 'multibanco' | 'cartao'
+
+export interface AcessoFamilia {
+  plano: PlanoFamiliaId
+  /** ISO */
+  compradoEm: string
+  /** ISO — o acesso termina neste instante (sem renovação automática) */
+  ate: string
+  origem: 'compra' | 'demo'
+  metodo?: MetodoPagamentoFamilia
+  /** valor pago, IVA incluído (cêntimos) */
+  valorCentimos?: number
 }
 
 export type Urgencia = 'imediata' | '1-3meses' | '3-6meses' | 'planeamento'

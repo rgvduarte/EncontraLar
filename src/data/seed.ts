@@ -30,9 +30,10 @@ import { emTerra } from '@/lib/lugares'
 import { aoLar, flexLar, larPlural, maiuscula, noLar, oLar } from '@/lib/artigos'
 import { tokenConfirmacao } from '@/lib/negocio'
 
-/** 5: modelo de negócio (entradas, encaminhamentos de profissionais, casos, procura sem resposta, link de confirmação).
+/** 6: Acesso Família (passe da família de demonstração).
+ *  5: modelo de negócio (entradas, encaminhamentos de profissionais, casos, procura sem resposta, link de confirmação).
  *  4: textos gerados revistos, telefones com 9 dígitos, acordos com a Segurança Social só no setor social. */
-export const SEED_VERSION = 5
+export const SEED_VERSION = 6
 export const DEMO_PASSWORD = 'demo1234'
 export const DEMO_FAMILIA_EMAIL = 'familia@exemplo.pt'
 export const DEMO_LAR_EMAIL = 'lar@exemplo.pt'
@@ -649,7 +650,11 @@ export function createSeed(agora = Date.now()): DB {
   const demoHash = hashPassword(DEMO_PASSWORD, DEMO_FAMILIA_EMAIL)
 
   const users: User[] = [
-    { id: DEMO_FAMILIA_ID, role: 'familia', nome: 'Ana Ferreira', email: DEMO_FAMILIA_EMAIL, passwordHash: demoHash, telefone: '912 000 101', criadoEm: iso(41), demo: true },
+    {
+      id: DEMO_FAMILIA_ID, role: 'familia', nome: 'Ana Ferreira', email: DEMO_FAMILIA_EMAIL, passwordHash: demoHash, telefone: '912 000 101', criadoEm: iso(41), demo: true,
+      // passe de 90 dias comprado há 10 dias (a conta de demonstração mostra a experiência completa)
+      acesso: { plano: 'acesso_90', compradoEm: iso(10), ate: new Date(agora + 80 * DIA).toISOString(), origem: 'demo', metodo: 'mbway', valorCentimos: 2990 },
+    },
     { id: DEMO_LAR_USER_ID, role: 'lar', nome: 'Helena Marques', email: DEMO_LAR_EMAIL, passwordHash: hashPassword(DEMO_PASSWORD, DEMO_LAR_EMAIL), telefone: '220 000 042', criadoEm: iso(400), larId: DEMO_LAR_ID, demo: true },
     {
       id: DEMO_PRO_ID, role: 'profissional', nome: 'Marta Correia', email: DEMO_PRO_EMAIL, passwordHash: hashPassword(DEMO_PASSWORD, DEMO_PRO_EMAIL),

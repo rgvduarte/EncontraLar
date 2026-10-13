@@ -6,16 +6,19 @@
  */
 import { useMemo, useSyncExternalStore } from 'react'
 import type {
+  AcessoFamilia,
   Candidatura,
   Caso,
   DB,
   EstadoCandidatura,
   Favorito,
   Lar,
+  MetodoPagamentoFamilia,
   Natureza,
   Notificacao,
   Organizacao,
   PerfilIdoso,
+  PlanoFamiliaId,
   ProcuraAnonima,
   Review,
   Role,
@@ -28,9 +31,10 @@ import { LOCALIDADES, LUGARES } from '@/data/localidades'
 import { hashPassword } from './hash'
 import { uid } from './random'
 import { ESTADO_CANDIDATURA_LABEL } from './labels'
-import { diaPorExtenso, horaPt } from './format'
+import { diaPorExtenso, horaPt, isoDia } from './format'
 import { aoLar, doLar, larPlural, maiuscula, noLar, oLar } from './artigos'
 import { contactoVisivel, faixaEtaria, taxaPara } from './negocio'
+import { acessoAtivo, diasRestantes, novoAte, planoFamilia, temAcessoCompleto } from './acesso'
 
 const DB_KEY = 'encontralar:db'
 const SESSION_KEY = 'encontralar:sessao'
@@ -284,6 +288,31 @@ export function useProcurasZona(lar: Pick<Lar, 'distrito'> | undefined, dias = 3
     const desde = Date.now() - dias * 86_400_000
     return d.procuras.filter((p) => p.distrito === lar.distrito && Date.parse(p.criadaEm) >= desde)
   }, [d.procuras, lar, dias])
+}
+
+export interface EstadoAcesso {
+  /** vê a camada completa: vagas, preços, previsão, contactos, pedidos (famílias com passe e profissionais) */
+  completo: boolean
+  /** a família tem um passe em vigor */
+  ativo: boolean
+  ate?: string
+  plano?: PlanoFamiliaId
+  diasRestantes: number
+}
+
+/** Estado do Acesso Família do utilizador com sessão (ou de um visitante: versão grátis). */
+export function useAcesso(): EstadoAcesso {
+  const user = useCurrentUser()
+  return useMemo(() => {
+    const agora = Date.now()
+    return {
+      completo: temAcessoCompleto(user, agora),
+      ativo: acessoAtivo(user?.acesso, agora),
+      ate: user?.acesso?.ate,
+      plano: user?.acesso?.plano,
+      diasRestantes: diasRestantes(user?.acesso, agora),
+    }
+  }, [user])
 }
 
 export const getDB = () => db
@@ -1194,4 +1223,41 @@ export function responderConfirmacao(token: string, aindaTem: boolean): Lar | nu
   if (aindaTem) confirmarVagasAtualizadas(lar.id)
   else commit({ ...db, lares: patchLar(db.lares, lar.id, (l) => ({ ...l, quartos: l.quartos.map((q) => ({ ...q, livres: 0 })), atualizadoEm: nowIso() })) })
   return db.lares.find((l) => l.id === lar.id) ?? null
+}
+
+// ————————————————————————————————————————— Acesso Família (lado das famílias)
+
+/**
+ * Demonstração: simula o pagamento de um passe do Acesso Família (na versão real: Stripe Checkout com MB WAY,
+ * Multibanco ou cartão, e fatura-recibo certificada). Só contas de família. Soma os dias ao passe em vigor.
+ */
+export function comprarAcessoDemo(planoId: PlanoFamiliaId, metodo: MetodoPagamentoFamilia): { ok: true; ate: string } | { ok: false; erro: string } {
+  const user = getCurrentUser()
+  if (!user) return { ok: false, erro: 'Entre ou crie uma conta de família para ativar o Acesso Família.' }
+  if (user.role !== 'familia') return { ok: false, erro: 'O Acesso Família é para contas de família.' }
+  const plano = planoFamilia(planoId)
+  const agora = Date.now()
+  const acesso: AcessoFamilia = {
+    plano: plano.id,
+    compradoEm: new Date(agora).toISOString(),
+    ate: novoAte(user.acesso, plano, agora),
+    origem: 'compra',
+    metodo,
+    valorCentimos: plano.precoCentimos,
+  }
+  commit({
+    ...db,
+    users: db.users.map((u) => (u.id === user.id ? { ...u, acesso } : u)),
+    notificacoes: [
+      ...db.notificacoes,
+      novaNotificacao({
+        userId: user.id,
+        tipo: 'sistema',
+        titulo: 'Acesso Família ativo',
+        texto: `Tem acesso completo até ${diaPorExtenso(isoDia(new Date(acesso.ate)))}. Não há renovação automática.`,
+        link: '/familia',
+      }),
+    ],
+  })
+  return { ok: true, ate: acesso.ate }
 }
