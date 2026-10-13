@@ -5,7 +5,7 @@ import { Button, buttonClasses } from '@/components/ui/Button'
 import { InputField } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/components/ui/Toast'
-import { confirmarEntradaFamilia, jaAvaliou, useMinhasCandidaturas } from '@/lib/store'
+import { confirmarEntradaFamilia, jaAvaliou, useAcesso, useMinhasCandidaturas } from '@/lib/store'
 import { entradaVerificada } from '@/lib/negocio'
 import { cn } from '@/lib/cn'
 import type { PedidoComLar } from './data'
@@ -150,6 +150,8 @@ export function EntradaTile({
   className?: string
 }) {
   const titleId = useId()
+  // confirmar a entrada e avaliar são sempre gratuitos; só o telefone da instituição é do Acesso Família
+  const { completo } = useAcesso()
   const passo = passoEntrada(c)
   if (!passo) return null
   const tile = variant === 'tile'
@@ -210,7 +212,7 @@ export function EntradaTile({
           <Button onClick={confirmar} className="w-full sm:w-auto">
             Confirmar
           </Button>
-          {lar.telefone && (
+          {completo && lar.telefone && (
             <a href={telHref(lar.telefone)} className={buttonClasses('secondary', 'md', 'w-full sm:w-auto')}>
               <Phone aria-hidden />
               Não está certo? Ligar

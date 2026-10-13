@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   LogOut,
   Search,
+  Ticket,
   type LucideIcon,
 } from 'lucide-react'
 import { Logo } from './Logo'
@@ -22,9 +23,9 @@ import { ButtonLink, buttonClasses } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/misc'
 import { toast } from '@/components/ui/Toast'
 import { useLenis } from '@/components/motion/SmoothScroll'
-import { getDB, loginDemo, marcarNotificacaoLida, marcarTodasLidas, useCurrentUser, useLares, useNotificacoes } from '@/lib/store'
+import { getDB, loginDemo, marcarNotificacaoLida, marcarTodasLidas, useAcesso, useCurrentUser, useLares, useNotificacoes } from '@/lib/store'
 import { useDismiss, useMediaQuery } from '@/lib/hooks'
-import { tempoRelativo } from '@/lib/format'
+import { rotuloMes, tempoRelativo } from '@/lib/format'
 import { vagaParaNovos } from '@/lib/forecast'
 import { prefersReducedMotion } from '@/lib/motion'
 import { cn } from '@/lib/cn'
@@ -45,6 +46,12 @@ const PAINEL: Record<Role, { label: string; icon: LucideIcon }> = {
 /** Onde trabalha o profissional ("Hospital de Vale Formoso"), por baixo do nome; as outras contas não têm. */
 const organizacaoDe = (user: User): string | undefined => (user.role === 'profissional' ? user.organizacao?.nome : undefined)
 
+/** Último dia do Acesso Família: "31 dez." (com o ano quando não é o atual: "1 jan. 2027"). */
+function ateCurto(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getDate()} ${rotuloMes(d.getMonth(), d.getFullYear() !== new Date().getFullYear() ? d.getFullYear() : undefined)}`
+}
+
 // ————————————————————————————————————————— conteúdo dos menus
 
 interface MenuLink {
@@ -52,6 +59,8 @@ interface MenuLink {
   label: string
   /** texto secundário (ex.: contagem) */
   meta?: string
+  /** descrição de uma linha, por baixo da etiqueta (ex.: Acesso Família) */
+  desc?: string
   /** ação em vez de ligação: entrar na conta de demonstração (instituição ou assistente social) */
   action?: 'demo-lar' | 'demo-pro'
   /** só para quem não tem sessão ("Experimentar como assistente social") */
@@ -78,6 +87,7 @@ function useMenus(): MenuDef[] {
   const lares = useLares()
   const user = useCurrentUser()
   const papel = user?.role ?? null
+  const { ativo, ate } = useAcesso()
   return useMemo(() => {
     // o mesmo critério do filtro "Com vaga agora" da pesquisa: lugar livre para quem pede hoje
     const comVaga = lares.filter((l) => vagaParaNovos(l)).length
@@ -94,6 +104,13 @@ function useMenus(): MenuDef[] {
               { to: '/pesquisa', label: 'Mapa de vagas' },
               { to: '/pesquisa?vaga=agora', label: 'Com vaga agora', meta: String(comVaga) },
               { to: '/pesquisa?vaga=breve', label: 'Vaga em breve' },
+              // o passe das famílias (só famílias e visitantes; profissionais já veem tudo, instituições não compram)
+              {
+                to: '/acesso',
+                label: 'Acesso Família',
+                desc: ativo && ate ? `Ativo até ${ateCurto(ate)}` : 'Que instituições têm vaga, preços e contactos.',
+                soFamilia: true,
+              },
             ],
           },
           {
@@ -195,7 +212,7 @@ function useMenus(): MenuDef[] {
           links: c.links.filter((l: MenuLink) => !(l.soSemSessao && papel) && !(l.soFamilia && papel && papel !== 'familia')),
         })),
       }))
-  }, [lares, papel])
+  }, [lares, papel, ativo, ate])
 }
 
 // ————————————————————————————————————————— notificações e conta
@@ -300,6 +317,28 @@ function NotificationBell() {
   )
 }
 
+/**
+ * Estado do Acesso Família de uma conta de família (menu da conta e menu móvel): "ativo até 31 dez." ou o convite.
+ * Leva sempre à página do Acesso Família (ver o que inclui, juntar dias).
+ */
+function AcessoDaConta({ onSeguir, className }: { onSeguir: () => void; className?: string }) {
+  const { ativo, ate } = useAcesso()
+  return (
+    <Link to="/acesso" onClick={onSeguir} className={cn('flex min-h-12 items-center gap-3 rounded-2xl px-4 hover:bg-sand', className)}>
+      <Ticket aria-hidden className="size-5 shrink-0 text-ink-mute" />
+      {ativo && ate ? (
+        <span className="py-1.5 leading-snug">
+          Acesso Família
+          <span className="sr-only"> · </span>
+          <span className="block text-sm text-ink-mute">Ativo até {ateCurto(ate)}</span>
+        </span>
+      ) : (
+        'Ativar o Acesso Família'
+      )}
+    </Link>
+  )
+}
+
 function UserMenu() {
   const user = useCurrentUser()!
   const [open, setOpen] = useState(false)
@@ -325,12 +364,13 @@ function UserMenu() {
         <span className="sr-only">Menu da conta</span>
       </button>
       {open && (
-        <div className="absolute right-0 z-[1100] mt-2 w-72 origin-top-right animate-pop-in overflow-hidden rounded-[1.5rem] bg-white/95 p-2 shadow-lift ring-1 ring-black/5 backdrop-blur-2xl">
+        <div className="absolute right-0 z-[1100] mt-2 w-80 origin-top-right animate-pop-in overflow-hidden rounded-[1.5rem] bg-white/95 p-2 shadow-lift ring-1 ring-black/5 backdrop-blur-2xl">
           <div className="px-4 py-3">
             <p className="font-semibold">{user.nome}</p>
             {org && <p className="text-sm text-ink-soft">{org}</p>}
             <p className="truncate text-sm text-ink-mute">{user.email}</p>
           </div>
+          {user.role === 'familia' && <AcessoDaConta onSeguir={() => setOpen(false)} />}
           <Link to={painelPath(user.role)} onClick={() => setOpen(false)} className="flex min-h-12 items-center gap-3 rounded-2xl px-4 hover:bg-sand">
             <painel.icon aria-hidden className="size-5 text-ink-mute" />
             {painel.label}
@@ -382,8 +422,12 @@ function EntradaMenu({
       {/* o espaço separa o número no nome acessível ("Porto 28" e não "Porto28"); num contentor flex não se vê */}
       {l.meta && ' '}
       {l.meta && <span className={cn('text-ink-mute tabular', metaClassName)}>{l.meta}</span>}
+      {l.desc && ' '}
+      {l.desc && <span className="text-sm font-normal tracking-normal text-ink-mute">{l.desc}</span>}
     </>
   )
+  // com descrição: etiqueta e descrição uma por baixo da outra
+  if (l.desc) className = cn(className, 'flex-col items-start gap-0.5')
   if (l.action)
     return (
       <button type="button" onClick={() => onAcao(l)} className={className}>
@@ -862,6 +906,7 @@ export function Header() {
                   Sessão iniciada como <span className="font-medium text-ink">{user.nome}</span>
                   {orgUser && <span className="mt-0.5 block text-ink-soft">{orgUser}</span>}
                 </p>
+                {user.role === 'familia' && <AcessoDaConta onSeguir={fecharMenus} className="-mx-4 text-lg" />}
                 <Link to={painelPath(user.role)} onClick={fecharMenus} className={buttonClasses('primary', 'lg', 'w-full')}>
                   <PainelIcon aria-hidden />
                   {PAINEL[user.role].label}

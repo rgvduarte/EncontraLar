@@ -5,7 +5,7 @@ import type { Candidatura, Lar } from '@/types'
 import { toast } from '@/components/ui/Toast'
 import { LarCover } from '@/components/lar/LarCover'
 import { CountUp } from '@/components/motion'
-import { cancelarCandidatura } from '@/lib/store'
+import { cancelarCandidatura, useAcesso } from '@/lib/store'
 import { ESTADO_CANDIDATURA_DESCRICAO } from '@/lib/labels'
 import { dataLonga } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -20,8 +20,24 @@ import { comArtigo, nomeCurto, ordinal, telHref } from '../shared/text'
 import { Historico } from './Historico'
 import { VisitaBlock } from './VisitaBlock'
 
-/** Lugar na lista + estimativa pessoal + previsão mês a mês. */
-function Espera({ c, lar }: { c: Candidatura; lar: Lar }) {
+/**
+ * Lugar na lista + estimativa pessoal + previsão mês a mês.
+ * Versão grátis (passe terminado): fica o lugar na lista, que é do próprio pedido; a estimativa, a previsão e o
+ * tamanho da lista são do Acesso Família e não aparecem (o aviso está no topo da lista de pedidos).
+ */
+function Espera({ c, lar, completo }: { c: Candidatura; lar: Lar; completo: boolean }) {
+  if (!completo) {
+    return (
+      <dl className="mt-10">
+        <dt className="text-sm text-ink-mute">Lugar na lista</dt>
+        {c.posicao ? (
+          <dd className="mt-1 text-6xl leading-none font-semibold tracking-tight tabular">{ordinal(c.posicao)}</dd>
+        ) : (
+          <dd className="mt-1 text-xl font-semibold text-ink-soft">Ainda sem lugar</dd>
+        )}
+      </dl>
+    )
+  }
   const { est, texto, pessoal } = estimativaPessoal(lar, c.posicao)
   return (
     <div className="mt-10">
@@ -74,6 +90,7 @@ export function PedidoCard({
 }) {
   const [cancelar, setCancelar] = useState(false)
   const [modal, setModal] = useState<'entrada' | 'avaliar' | null>(null)
+  const { completo } = useAcesso()
   const [seen, visto] = useSeen<HTMLElement>()
   const on = visto || !animateIn
   const card = useRef<HTMLElement | null>(null)
@@ -103,7 +120,8 @@ export function PedidoCard({
       toast.info('Pedido cancelado', 'A instituição foi avisada. Pode voltar a pedir vaga quando quiser.')
     })
   }
-  const contactos = Number(Boolean(lar.telefone)) + Number(Boolean(lar.email))
+  // os contactos diretos da instituição são do Acesso Família: na versão grátis não chegam ao ecrã
+  const contactos = completo ? Number(Boolean(lar.telefone)) + Number(Boolean(lar.email)) : 0
 
   return (
     <article
@@ -172,7 +190,7 @@ export function PedidoCard({
         />
       )}
 
-      {mostraEspera && <Espera c={c} lar={lar} />}
+      {mostraEspera && <Espera c={c} lar={lar} completo={completo} />}
 
       <div className="mt-12 grid gap-10 md:grid-cols-2">
         {/* div e não section: cada pedido tem um Histórico e uma Visita — regiões com o mesmo nome repetiam-se na lista de marcos */}

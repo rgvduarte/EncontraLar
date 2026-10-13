@@ -23,6 +23,8 @@ const ComoOrdenamosPage = lazy(() => import('@/features/content/ComoOrdenamosPag
 const CasosApp = lazy(() => import('@/features/pro/CasosApp'))
 const ProfissionaisPage = lazy(() => import('@/features/pro/ProfissionaisPage'))
 const ConfirmarPage = lazy(() => import('@/features/confirmar/ConfirmarPage'))
+// Acesso Família: o passe das famílias (vagas, preços, previsão, contactos, pedidos) — docs/DESIGN.md
+const AcessoPage = lazy(() => import('@/features/acesso/AcessoPage'))
 const NotFoundPage = lazy(() => import('@/features/content/NotFoundPage'))
 
 // HashRouter: URLs do tipo /#/pesquisa — funciona no GitHub Pages sem configuração de servidor.
@@ -67,6 +69,7 @@ const router = createHashRouter([
           },
           { path: 'profissionais', element: <ProfissionaisPage /> },
           { path: 'confirmar/:token', element: <ConfirmarPage /> },
+          { path: 'acesso', element: <AcessoPage /> },
           { path: 'para-lares', element: <ForLaresPage /> },
           { path: 'guia', element: <GuidePage /> },
           { path: 'sobre', element: <AboutPage /> },

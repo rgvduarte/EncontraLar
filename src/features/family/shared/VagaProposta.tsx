@@ -5,7 +5,8 @@ import { Phone } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
-import { responderVaga } from '@/lib/store'
+import { responderVaga, useAcesso } from '@/lib/store'
+import { faixaPreco } from '@/lib/acesso'
 import { euro, tempoRelativo } from '@/lib/format'
 import { QUARTO_LABEL } from '@/lib/labels'
 import { useMediaQuery } from '@/lib/hooks'
@@ -53,7 +54,7 @@ const desdeDe = (c: Candidatura) => c.historico.findLast((h) => h.estado === 'va
  * Contagem decrescente: os algarismos rolam quando mudam (como um conta-quilómetros) e uma barra
  * fina esvazia-se continuamente até ao fim do prazo.
  */
-function Contagem({ prazo, desde }: { prazo: string; desde: string }) {
+function Contagem({ prazo, desde, contactos }: { prazo: string; desde: string; contactos: boolean }) {
   const now = useNow(1000)
   const fim = new Date(prazo).getTime()
   const ms = fim - now
@@ -69,7 +70,9 @@ function Contagem({ prazo, desde }: { prazo: string; desde: string }) {
     return (
       <div>
         <p className="text-2xl font-semibold text-white">O prazo terminou</p>
-        <p className="mt-1 text-white/65">Ligue para confirmar se a vaga ainda está reservada.</p>
+        <p className="mt-1 text-white/65">
+          {contactos ? 'Ligue para confirmar se a vaga ainda está reservada.' : 'Confirme com a instituição se a vaga ainda está reservada.'}
+        </p>
       </div>
     )
   }
@@ -182,6 +185,8 @@ export function VagaProposta({ c, lar, variant = 'tile', thumbBar = false }: { c
   const tile = variant === 'tile'
   const H = tile ? 'h2' : 'h3'
   const desde = desdeDe(c)
+  // versão grátis (passe terminado): a decisão continua a ser da família; o preço por quarto e o telefone não aparecem
+  const { completo } = useAcesso()
 
   // o bloco "sai" (encolhe e desvanece) antes de o pedido mudar de estado
   const aceitar = () => {
@@ -221,13 +226,13 @@ export function VagaProposta({ c, lar, variant = 'tile', thumbBar = false }: { c
       </H>
       {quarto && (
         <p className="mt-3 text-lg text-white/70">
-          {QUARTO_LABEL[quarto.tipo]} · desde {euro(quarto.precoMin)}/mês · {lar.localidade}
+          {QUARTO_LABEL[quarto.tipo]} · {completo ? `desde ${euro(quarto.precoMin)}/mês` : faixaPreco(lar)} · {lar.localidade}
         </p>
       )}
 
       <div className={tile ? 'mt-9 sm:mt-10' : 'mt-8'}>
         {c.prazoResposta ? (
-          <Contagem prazo={c.prazoResposta} desde={desde} />
+          <Contagem prazo={c.prazoResposta} desde={desde} contactos={completo} />
         ) : (
           <p className="text-white/70">Responda à instituição o mais depressa possível.</p>
         )}
@@ -242,7 +247,7 @@ export function VagaProposta({ c, lar, variant = 'tile', thumbBar = false }: { c
       </div>
 
       <p className="mt-4 flex flex-wrap gap-x-6 text-white/65">
-        {lar.telefone && (
+        {completo && lar.telefone && (
           <a href={telHref(lar.telefone)} className="inline-flex min-h-12 items-center gap-2 font-medium text-terra-300 hover:underline">
             <Phone aria-hidden className="size-4" />
             Ligar antes de decidir

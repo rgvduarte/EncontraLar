@@ -1,11 +1,13 @@
 /**
  * Filtragem, ordenação, divisão da lista e sugestões de "alívio" de filtros — funções puras.
+ * `completo = false` é a versão grátis (gratis.ts): nada aqui depende das vagas nem do preço exato.
  */
 import type { Disponibilidade, Lar } from '@/types'
 import { vagaParaNovos, type EstimativaEspera } from '@/lib/forecast'
 import { distanceKm, type LatLng } from '@/lib/geo'
 import { CUIDADO_LABEL, GRAU_LABEL, NATUREZA_LABEL } from '@/lib/labels'
 import { euro } from '@/lib/format'
+import { cabeNaFaixa, FAIXAS_ORCAMENTO, faixaDoOrcamento, indiceFaixa, ROTULO_FAIXA } from './gratis'
 import {
   centroDe,
   dentroDe,
@@ -75,12 +77,15 @@ export function noLocal(e: Entrada, local: Local, raio: number): boolean {
   }
 }
 
-export function passaFiltros(e: Entrada, f: Filtros): boolean {
+/** `completo = false` (versão grátis): sem filtro por vaga e orçamento por faixas. */
+export function passaFiltros(e: Entrada, f: Filtros, completo = true): boolean {
   const { lar } = e
   if (f.tipos.length && !f.tipos.includes(lar.tipo)) return false
-  if (f.vaga === 'agora' && e.novos !== 'disponivel') return false
-  if (f.vaga === 'breve' && e.novos === 'espera') return false
-  if (f.max != null && lar.mensalidadeMin > f.max) return false
+  if (completo) {
+    if (f.vaga === 'agora' && e.novos !== 'disponivel') return false
+    if (f.vaga === 'breve' && e.novos === 'espera') return false
+    if (f.max != null && lar.mensalidadeMin > f.max) return false
+  } else if (!cabeNaFaixa(lar.mensalidadeMin, f.max)) return false
   if (f.grau && !lar.graus.includes(f.grau)) return false
   if (f.cuidados.length && !f.cuidados.every((c) => lar.cuidados.includes(c))) return false
   if (f.ss && !lar.acordoSS) return false
@@ -93,24 +98,38 @@ export function passaFiltros(e: Entrada, f: Filtros): boolean {
   return true
 }
 
-export function filtrar(entradas: Entrada[], s: Pick<SearchState, 'local' | 'raio'> & Filtros): Entrada[] {
-  return entradas.filter((e) => noLocal(e, s.local, s.raio) && passaFiltros(e, s))
+export function filtrar(entradas: Entrada[], s: Pick<SearchState, 'local' | 'raio'> & Filtros, completo = true): Entrada[] {
+  return entradas.filter((e) => noLocal(e, s.local, s.raio) && passaFiltros(e, s, completo))
 }
 
 const espera = (e: Entrada) => (e.est.imediata ? 0 : (e.est.diasMediana ?? 10_000))
 
-export function ordenar(lista: Entrada[], ordem: Ordem): Entrada[] {
+/**
+ * Versão grátis: a relevância sem as vagas nem a data em que foram confirmadas (senão as primeiras da lista
+ * seriam as que têm vaga); empates pelo nº de avaliações e pelo nome, para a ordem ser estável.
+ */
+const relevanciaGratis = (a: Entrada, b: Entrada) =>
+  b.lar.avaliacao - a.lar.avaliacao || b.lar.numAvaliacoes - a.lar.numAvaliacoes || a.lar.nome.localeCompare(b.lar.nome, 'pt')
+
+/** `completo = false` (versão grátis): nada depende das vagas; o preço conta por faixa, não pelo valor exato. */
+export function ordenar(lista: Entrada[], ordem: Ordem, completo = true): Entrada[] {
   const arr = [...lista]
-  const relevancia = (a: Entrada, b: Entrada) =>
-    DISP_ORDEM[a.novos] - DISP_ORDEM[b.novos] ||
-    b.lar.avaliacao - a.lar.avaliacao ||
-    b.lar.atualizadoEm.localeCompare(a.lar.atualizadoEm)
+  const relevancia = completo
+    ? (a: Entrada, b: Entrada) =>
+        DISP_ORDEM[a.novos] - DISP_ORDEM[b.novos] ||
+        b.lar.avaliacao - a.lar.avaliacao ||
+        b.lar.atualizadoEm.localeCompare(a.lar.atualizadoEm)
+    : relevanciaGratis
+  const preco = completo
+    ? (a: Entrada, b: Entrada) => a.lar.mensalidadeMin - b.lar.mensalidadeMin
+    : (a: Entrada, b: Entrada) => indiceFaixa(a.lar.mensalidadeMin) - indiceFaixa(b.lar.mensalidadeMin)
   switch (ordem) {
     case 'distancia':
       return arr.sort((a, b) => (a.distanciaKm ?? 0) - (b.distanciaKm ?? 0) || relevancia(a, b))
     case 'preco':
-      return arr.sort((a, b) => a.lar.mensalidadeMin - b.lar.mensalidadeMin || relevancia(a, b))
+      return arr.sort((a, b) => preco(a, b) || relevancia(a, b))
     case 'disponibilidade':
+      if (!completo) return arr.sort(relevancia)
       return arr.sort((a, b) => espera(a) - espera(b) || b.lar.avaliacao - a.lar.avaliacao)
     case 'avaliacao':
       return arr.sort((a, b) => b.lar.avaliacao - a.lar.avaliacao || b.lar.numAvaliacoes - a.lar.numAvaliacoes)
@@ -158,9 +177,10 @@ export interface Alivio {
 /**
  * Para cada restrição ativa, quantas instituições aparecem se a aliviarmos.
  * Ordem: dos ajustes mais pequenos para os maiores; "todo o país" fica sempre como último recurso.
+ * Versão grátis (`completo = false`): o orçamento sobe de faixa em faixa (nunca a valores exatos).
  */
-export function calcularAlivios(entradas: Entrada[], s: SearchState): Alivio[] {
-  const conta = (patch: Partial<SearchState>) => filtrar(entradas, { ...s, ...patch }).length
+export function calcularAlivios(entradas: Entrada[], s: SearchState, completo = true): Alivio[] {
+  const conta = (patch: Partial<SearchState>) => filtrar(entradas, { ...s, ...patch }, completo).length
   const out: Alivio[] = []
   const add = (id: string, acao: string, patch: Partial<SearchState>) => {
     const n = conta(patch)
@@ -173,10 +193,15 @@ export function calcularAlivios(entradas: Entrada[], s: SearchState): Alivio[] {
   }
   if (s.vaga === 'agora') add('vaga-breve', 'Incluir vagas previstas em breve', { vaga: 'breve' })
   if (s.vaga) add('vaga', `Retirar «${VAGA_LABEL[s.vaga]}»`, { vaga: null })
-  if (s.max != null) {
+  if (s.max != null && completo) {
     const degraus = [800, 1000, 1200, 1500, 1800, 2000, 2500, 3000, 4000].filter((v) => v > s.max!)
     const sobe = degraus.find((v) => conta({ max: v }) > 0)
     if (sobe) add('max', `Subir o orçamento até ${euro(sobe)}`, { max: sobe })
+    else add('max-off', 'Retirar o limite de orçamento', { max: null })
+  } else if (s.max != null) {
+    const atual = faixaDoOrcamento(s.max)
+    const sobe = FAIXAS_ORCAMENTO.find((f) => atual != null && f > atual && conta({ max: f }) > 0)
+    if (sobe) add('max', `Subir o orçamento ${ROTULO_FAIXA[sobe].toLowerCase()}`, { max: sobe })
     else add('max-off', 'Retirar o limite de orçamento', { max: null })
   }
   if (s.cuidados.length) {

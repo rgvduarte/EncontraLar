@@ -1,6 +1,9 @@
 import { Link } from 'react-router'
 import type { Candidatura, Lar } from '@/types'
 import { LarCover } from '@/components/lar/LarCover'
+import { AvisoAcesso } from '@/components/acesso'
+import { useAcesso } from '@/lib/store'
+import { linkAcesso } from '@/lib/acesso'
 import type { PedidoComLar } from '../shared/data'
 import { AnimatedForecast } from '../shared/Forecast'
 import { useStagger } from '../shared/motion'
@@ -9,8 +12,11 @@ import { diaMes, entradaPorConfirmar, estimativaPessoal, horaDe } from '../share
 import { EstadoTag, MoreLink, SectionHeader } from '../shared/ui'
 import { nomeCurto, ordinal } from '../shared/text'
 
+/** Estados em que a linha mostra a estimativa de espera (camada do Acesso Família). */
+const COM_PREVISAO: Candidatura['estado'][] = ['enviada', 'em_analise', 'lista_espera']
+
 /** O número que importa para cada estado, à direita da linha. */
-function Situacao({ c, lar }: { c: Candidatura; lar: Lar }) {
+function Situacao({ c, lar, previsao }: { c: Candidatura; lar: Lar; previsao: boolean }) {
   if (c.estado === 'vaga_proposta') {
     return (
       <p className="sm:text-right">
@@ -42,6 +48,8 @@ function Situacao({ c, lar }: { c: Candidatura; lar: Lar }) {
       </p>
     )
   }
+  // versão grátis: a previsão de espera não aparece (nem escondida)
+  if (!previsao) return null
   const { est, texto, pessoal } = estimativaPessoal(lar, c.posicao)
   return (
     <div className="flex items-center gap-5">
@@ -58,6 +66,8 @@ function Situacao({ c, lar }: { c: Candidatura; lar: Lar }) {
 export function PedidosResumo({ ativos, terminados, pesquisa }: { ativos: PedidoComLar[]; terminados: number; pesquisa: string }) {
   const visiveis = ativos.slice(0, 5)
   const [lista, item] = useStagger<HTMLUListElement>('up', 80)
+  const { completo } = useAcesso()
+  const semPrevisao = !completo && visiveis.some(({ c }) => COM_PREVISAO.includes(c.estado))
   return (
     <section aria-labelledby="resumo-pedidos">
       <SectionHeader
@@ -67,14 +77,26 @@ export function PedidosResumo({ ativos, terminados, pesquisa }: { ativos: Pedido
       />
 
       {ativos.length === 0 ? (
-        <div className="mt-6 border-y border-line py-6">
-          <p className="max-w-xl text-ink-soft">
-            Ainda sem pedidos em curso. Pode pedir vaga em várias instituições ao mesmo tempo — um pedido não obriga a nada.
-          </p>
-          <MoreLink to={`${pesquisa}${pesquisa.includes('?') ? '&' : '?'}vaga=breve`} className="mt-2">
-            Encontrar instituições com vaga
-          </MoreLink>
-        </div>
+        completo ? (
+          <div className="mt-6 border-y border-line py-6">
+            <p className="max-w-xl text-ink-soft">
+              Ainda sem pedidos em curso. Pode pedir vaga em várias instituições ao mesmo tempo — um pedido não obriga a nada.
+            </p>
+            <MoreLink to={`${pesquisa}${pesquisa.includes('?') ? '&' : '?'}vaga=breve`} className="mt-2">
+              Encontrar instituições com vaga
+            </MoreLink>
+          </div>
+        ) : (
+          <div className="mt-6 border-y border-line py-6">
+            <p className="max-w-xl text-ink-soft">
+              Ainda sem pedidos em curso. Com o Acesso Família, envia o perfil de cuidados a várias casas de uma vez — um pedido
+              não obriga a nada.
+            </p>
+            <MoreLink to={linkAcesso('/familia')} className="mt-2">
+              Ver o Acesso Família
+            </MoreLink>
+          </div>
+        )
       ) : (
         <ul ref={lista} className="mt-6 divide-y divide-line border-y border-line">
           {visiveis.map(({ c, lar }, i) => (
@@ -98,12 +120,14 @@ export function PedidosResumo({ ativos, terminados, pesquisa }: { ativos: Pedido
                 </p>
               </div>
               <div className="col-start-2 sm:col-start-3">
-                <Situacao c={c} lar={lar} />
+                <Situacao c={c} lar={lar} previsao={completo} />
               </div>
             </li>
           ))}
         </ul>
       )}
+
+      {semPrevisao && <AvisoAcesso texto="A previsão de espera de cada pedido está disponível com o Acesso Família." voltar="/familia" className="mt-4" />}
 
       {(ativos.length > visiveis.length || terminados > 0) && (
         <p className="mt-4 text-sm text-ink-mute">

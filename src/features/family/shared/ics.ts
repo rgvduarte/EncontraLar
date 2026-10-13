@@ -42,7 +42,8 @@ const VTIMEZONE: Record<string, string[]> = {
   ],
 }
 
-export function visitaICS(c: Candidatura, lar: Lar, guiaUrl: string): string | null {
+/** `contactos: false` (versão grátis): sem telefone nem email da instituição (são do Acesso Família). */
+export function visitaICS(c: Candidatura, lar: Lar, guiaUrl: string, { contactos = true }: { contactos?: boolean } = {}): string | null {
   if (!c.visita) return null
   const tz = lar.distrito === 'Açores' ? 'Atlantic/Azores' : 'Europe/Lisbon'
   const inicio = dataLocal(c.visita.data, c.visita.hora)
@@ -51,9 +52,11 @@ export function visitaICS(c: Candidatura, lar: Lar, guiaUrl: string): string | n
   const descricao = [
     `Visita às instalações ${doLar(lar.nome)} (pedido para ${c.perfil.nome}).`,
     c.visita.estado === 'confirmada' ? 'Visita confirmada pela instituição.' : 'A aguardar confirmação da instituição.',
-    `Contacto: ${lar.telefone} (${telHref(lar.telefone)}) · ${lar.email}`,
+    contactos ? `Contacto: ${lar.telefone} (${telHref(lar.telefone)}) · ${lar.email}` : null,
     `O que observar e perguntar: ${guiaUrl}`,
-  ].join('\n')
+  ]
+    .filter(Boolean)
+    .join('\n')
   const linhas = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -103,9 +106,9 @@ const slug = (s: string) =>
     .slice(0, 40)
 
 /** Descarrega o .ics da visita. Devolve false se não houver visita. */
-export function descarregarVisita(c: Candidatura, lar: Lar): boolean {
+export function descarregarVisita(c: Candidatura, lar: Lar, opcoes?: { contactos?: boolean }): boolean {
   const guia = `${window.location.origin}${window.location.pathname}#/guia#visita`
-  const ics = visitaICS(c, lar, guia)
+  const ics = visitaICS(c, lar, guia, opcoes)
   if (!ics) return false
   descarregarFicheiro(`visita-${slug(lar.nome)}.ics`, ics, 'text/calendar;charset=utf-8')
   return true

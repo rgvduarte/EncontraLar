@@ -1,8 +1,10 @@
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { Link } from 'react-router'
-import { CalendarPlus } from 'lucide-react'
+import { CalendarPlus, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { toast } from '@/components/ui/Toast'
+import { AcessoNecessarioModal } from '@/components/acesso'
+import { useAcesso } from '@/lib/store'
 import { cn } from '@/lib/cn'
 import type { VisitaMarcada } from '../shared/data'
 import { descarregarVisita } from '../shared/ics'
@@ -15,6 +17,8 @@ export const mapsUrl = (lat: number, lng: number) =>
 /** Próxima visita: a data em grande, a instituição e uma ação — juntar ao calendário. */
 export function ProximaVisita({ visita, outras = 0, temPedidos }: { visita: VisitaMarcada | undefined; outras?: number; temPedidos: boolean }) {
   const titleId = useId()
+  const { completo } = useAcesso()
+  const [modal, setModal] = useState(false)
 
   if (!visita) {
     return (
@@ -24,10 +28,19 @@ export function ProximaVisita({ visita, outras = 0, temPedidos }: { visita: Visi
         </h2>
         <div className="mt-6 tile flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="max-w-lg text-lg text-ink-soft">Ainda sem visitas marcadas. Ver o lar ao vivo diz mais do que qualquer ficha.</p>
-          <MoreLink to={temPedidos ? '/familia/pedidos' : '/pesquisa'} className="shrink-0">
-            {temPedidos ? 'Marcar visita' : 'Escolher onde visitar'}
-          </MoreLink>
+          {temPedidos && !completo ? (
+            // marcar visitas é do Acesso Família: o pedido de visita abre a explicação, não o formulário
+            <button type="button" onClick={() => setModal(true)} className="link inline-flex min-h-12 shrink-0 items-center gap-0.5">
+              Marcar visita
+              <ChevronRight aria-hidden className="size-[1.05em] translate-y-px" />
+            </button>
+          ) : (
+            <MoreLink to={temPedidos ? '/familia/pedidos' : '/pesquisa'} className="shrink-0">
+              {temPedidos ? 'Marcar visita' : 'Escolher onde visitar'}
+            </MoreLink>
+          )}
         </div>
+        {!completo && <AcessoNecessarioModal open={modal} onClose={() => setModal(false)} acao="visita" voltar="/familia" />}
       </section>
     )
   }
@@ -75,7 +88,8 @@ export function ProximaVisita({ visita, outras = 0, temPedidos }: { visita: Visi
               icon={<CalendarPlus aria-hidden />}
               className="w-full sm:w-auto"
               onClick={() => {
-                if (descarregarVisita(c, lar)) toast.success('Visita no calendário', 'Abra o ficheiro descarregado para a juntar ao seu calendário.')
+                if (descarregarVisita(c, lar, { contactos: completo }))
+                  toast.success('Visita no calendário', 'Abra o ficheiro descarregado para a juntar ao seu calendário.')
               }}
             >
               Adicionar ao calendário

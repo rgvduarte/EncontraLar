@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Check } from 'lucide-react'
 import type { PerfilIdoso } from '@/types'
+import { useAcesso } from '@/lib/store'
+import { linkAcesso } from '@/lib/acesso'
 import { cn } from '@/lib/cn'
 import type { VisitaMarcada } from '../shared/data'
 import { MoreLink, SectionHeader } from '../shared/ui'
@@ -40,6 +42,7 @@ export function ProximosPassos({
   pesquisa: string
 }) {
   const [guiaLido, setGuiaLido] = useState(lerGuiaLido)
+  const { completo } = useAcesso()
   const marcarGuia = () => {
     setGuiaLido(true)
     try {
@@ -67,9 +70,19 @@ export function ProximosPassos({
     {
       id: 'pedir',
       titulo: 'Pedir vaga em duas ou mais',
-      detalhe: pedidos >= 2 ? `${pedidos} pedidos feitos.` : 'As listas de espera andam a ritmos diferentes.',
+      detalhe:
+        pedidos >= 2
+          ? `${pedidos} pedidos feitos.`
+          : completo
+            ? 'As listas de espera andam a ritmos diferentes.'
+            : 'Com o Acesso Família, envia o perfil a várias casas de uma vez.',
       feito: pedidos >= 2,
-      acao: guardados > 0 ? { to: '/familia/guardados', label: 'Ver guardados' } : { to: pesquisa, label: 'Abrir o mapa' },
+      // pedir vaga é do Acesso Família: na versão grátis, o passo leva à página do passe
+      acao: !completo
+        ? { to: linkAcesso('/familia'), label: 'Ver o Acesso Família' }
+        : guardados > 0
+          ? { to: '/familia/guardados', label: 'Ver guardados' }
+          : { to: pesquisa, label: 'Abrir o mapa' },
     },
     {
       id: 'visita',

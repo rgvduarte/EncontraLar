@@ -4,6 +4,7 @@ import { useCurrentUser, useFavoritos, useNotificacoes } from '@/lib/store'
 import { useDocumentTitle } from '@/lib/hooks'
 import { usePedidos, usePerfisOrdenados, pesquisaUrl, visitasFuturas } from '../shared/data'
 import { VagaProposta } from '../shared/VagaProposta'
+import { AcessoEstado } from '../shared/acesso'
 import { Enter } from '../shared/motion'
 import { primeiroNome } from '../shared/text'
 import { Entradas } from './Entradas'
@@ -66,6 +67,11 @@ export default function ResumoPage() {
           <Sugestoes perfil={principal} excluir={excluir} />
         </Enter>
       )}
+
+      {/* Acesso Família: até quando (com passe) ou o que acrescenta (versão grátis), numa linha */}
+      <Enter>
+        <AcessoEstado />
+      </Enter>
 
       <Enter>
         <PedidosResumo ativos={ativos} terminados={terminados.length} pesquisa={pesquisa} />
