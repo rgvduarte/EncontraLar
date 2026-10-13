@@ -10,7 +10,7 @@
  */
 import type { ConfigMoloni } from '../config.ts'
 import { centimosParaDecimal } from '../faturacao/dinheiro.ts'
-import { assegurarDescricaoSegura, type ClienteFiscal, type LinhaDocumento, type PagamentoDocumento } from '../faturacao/documentos.ts'
+import { assegurarDescricaoSegura, referenciaExterna, type ClienteFiscal, type LinhaDocumento, type PagamentoDocumento } from '../faturacao/documentos.ts'
 import { NIF_CONSUMIDOR_FINAL } from '../faturacao/nif.ts'
 
 export const MOLONI_BASE = 'https://api.moloni.pt/v1'
@@ -115,7 +115,7 @@ export function corpoDocumento(cfg: ConfigMoloni, d: DocumentoMoloni, status: 0 
     expiration_date: d.vencimento,
     document_set_id: cfg.documentSetId,
     customer_id: d.clienteId,
-    your_reference: d.chave,
+    your_reference: referenciaExterna(d.chave),
     financial_discount: 0,
     special_discount: 0,
     products: produtos(cfg, d.linhas),
@@ -145,7 +145,7 @@ export function corpoRecibo(cfg: ConfigMoloni, r: ReciboMoloni, status: 0 | 1): 
     date: r.data,
     document_set_id: cfg.documentSetId,
     customer_id: r.clienteId,
-    your_reference: r.chave,
+    your_reference: referenciaExterna(r.chave),
     net_value: decimal(total),
     associated_documents: r.documentos.map((a) => ({ associated_id: a.externoId, value: decimal(a.valorCentimos) })),
     payments: pagamentos(cfg, r.pagamento),
@@ -165,7 +165,7 @@ export const pedidoApagarDocumento = (cfg: ConfigMoloni, token: string, tipo: Ti
   post(`${RECURSO[tipo]}/delete`, token, { company_id: cfg.companyId, document_id: documentId })
 
 export const pedidoProcurarPorChave = (cfg: ConfigMoloni, token: string, tipo: TipoMoloni, chave: string) =>
-  post(`${RECURSO[tipo]}/getAll`, token, { company_id: cfg.companyId, your_reference: chave })
+  post(`${RECURSO[tipo]}/getAll`, token, { company_id: cfg.companyId, your_reference: referenciaExterna(chave) })
 
 export const pedidoLinkPdf = (cfg: ConfigMoloni, token: string, documentId: number) =>
   post('documents/getPDFLink', token, { company_id: cfg.companyId, document_id: documentId })
@@ -188,7 +188,7 @@ export const ENDPOINTS_A_VERIFICAR = [
   'receipts/insert: associated_documents[] e payments[]',
   'creditNotes/insert (NC, playbook da equipa)',
   'documents/getPDFLink: forma da resposta e validade do link',
-  '<recurso>/getAll com your_reference (procurar por chave)',
+  '<recurso>/getAll com your_reference (procurar por chave) e o comprimento máximo de your_reference (usamos 19 caracteres)',
   'ATCUD e QR gerados ao fechar (série comunicada à AT)',
   'limites de pedidos (rate limits)',
   'cliente "Consumidor final" (999999990) e morada "Desconhecido"',

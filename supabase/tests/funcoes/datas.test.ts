@@ -3,9 +3,10 @@
  * e entradaAtribuida (src/lib/negocio.ts) correm no fuso do processo; aqui o processo corre em Lisboa (como o
  * browser das famílias e dos lares), e as funções do servidor dão o mesmo resultado em qualquer fuso.
  */
+const TZ_ORIGINAL = process.env.TZ
 process.env.TZ = 'Europe/Lisbon'
 
-import { describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 import { compromissoAte as compromissoAteProto, podeMudarPlano } from '@/lib/acesso'
 import { entradaAtribuida } from '@/lib/negocio'
 import {
@@ -24,6 +25,11 @@ import {
   somarDiasData,
   somarDiasLisboa,
 } from '../../functions/_shared/faturacao/datas.ts'
+
+afterAll(() => {
+  if (TZ_ORIGINAL === undefined) delete process.env.TZ
+  else process.env.TZ = TZ_ORIGINAL
+})
 
 const H = 3_600_000
 const DIA = 24 * H

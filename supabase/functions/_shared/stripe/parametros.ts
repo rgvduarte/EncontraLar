@@ -16,7 +16,7 @@ import { centimosParaDecimal, ivaCentimos, totaisDocumento, linhaLiquida, type T
 import { descricaoEntrada } from '../faturacao/documentos.ts'
 import { mesPorExtenso, paraSegundos, somarHoras } from '../faturacao/datas.ts'
 import { MENSALIDADE_CENTIMOS, PLANOS_FAMILIA, PRODUTO_STRIPE_MENSALIDADE, produtoStripeIva, type PlanoFamiliaId } from '../faturacao/planos.ts'
-import type { CobrancaPreparadaRpc, ContextoInstituicaoRpc, DadosFiscaisRpc } from '../portas.ts'
+import type { CobrancaPreparadaRpc, DadosFiscaisRpc } from '../portas.ts'
 import type { PedidoStripe } from './porta.ts'
 
 /** Placeholder que o Stripe substitui no success_url. */
@@ -325,9 +325,3 @@ function resumo(t: string): string {
   }
   return (h >>> 0).toString(16).padStart(8, '0')
 }
-
-/** Contexto mínimo para a subscrição (validado antes de chamar o Stripe). */
-export function prontoParaSubscricao(c: Pick<ContextoInstituicaoRpc, 'stripe_customer_id' | 'stripe_payment_method_id'>): c is { stripe_customer_id: string; stripe_payment_method_id: string } {
-  return !!c.stripe_customer_id && !!c.stripe_payment_method_id
-}
-

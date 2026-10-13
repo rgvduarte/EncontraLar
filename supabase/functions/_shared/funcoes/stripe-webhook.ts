@@ -29,7 +29,7 @@ export function criarHandlerStripeWebhook(d: DepsWebhook): Handler {
     const segredo = d.config.stripe.segredoWebhook
     if (!segredo) return respostaErro(500, 'configuracao', MENSAGENS.configuracao)
     const corpo = await req.text()
-    const v = await verificarEvento(corpo, req.headers.get('stripe-signature'), segredo, d.verificador, Math.floor(d.agora() / 1000))
+    const v = await verificarEvento(corpo, req.headers.get('stripe-signature'), segredo, d.verificador, d.agora())
     if (!v.ok) {
       d.registo.erro('webhook_assinatura', { motivo: v.motivo })
       return respostaErro(400, v.motivo, 'Assinatura inválida.')

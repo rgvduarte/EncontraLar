@@ -189,7 +189,12 @@ export type OperacaoEvento =
       metodo: MetodoPago | null
       /** total cobrado pelo Stripe; a BD compara com o seu (subscrição: 2900 + IVA do contrato) */
       total_centimos: number | null
-      /** «NOVO» só origem 'subscricao'; instituicao_id = metadata da subscrição (só para comparar); período inclusivo */
+      /**
+       * «NOVO» só origem 'subscricao'; período inclusivo (dias de Lisboa). A primeira fatura de uma subscrição
+       * pode chegar ANTES de servico_subscricao_registar/subscricao_estado: se a subscrição ainda não for
+       * conhecida, a BD liga-a ao lar de instituicao_id (metadata da subscrição) com estado 'incompleta'.
+       * Em payment_intent.processing a origem vem sempre 'entradas' e só atualiza faturas já conhecidas.
+       */
       subscricao: { stripe_subscription_id: string; instituicao_id: string | null; periodo_inicio: string; periodo_fim: string } | null
     }
   | {

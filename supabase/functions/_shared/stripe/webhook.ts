@@ -30,16 +30,21 @@ export interface VerificadorWebhook {
 
 export type ResultadoVerificacao = { ok: true; evento: Stripe.Event } | { ok: false; motivo: 'sem_assinatura' | 'assinatura_invalida' }
 
+/**
+ * `recebidoEmMs` é o relógio da função em MILISSEGUNDOS: o SDK (stripe@23) divide-o por 1000 para calcular a
+ * idade da assinatura. Passar segundos desligaria, sem erro, a proteção contra repetições (o teste
+ * "carimbo fora da tolerância" apanha isso).
+ */
 export async function verificarEvento(
   corpo: string,
   assinatura: string | null,
   segredo: string,
   v: VerificadorWebhook,
-  agoraSegundos?: number,
+  recebidoEmMs?: number,
 ): Promise<ResultadoVerificacao> {
   if (!assinatura) return { ok: false, motivo: 'sem_assinatura' }
   try {
-    const evento = await v.webhooks.constructEventAsync(corpo, assinatura, segredo, TOLERANCIA_ASSINATURA_S, v.cripto, agoraSegundos)
+    const evento = await v.webhooks.constructEventAsync(corpo, assinatura, segredo, TOLERANCIA_ASSINATURA_S, v.cripto, recebidoEmMs)
     return { ok: true, evento }
   } catch {
     return { ok: false, motivo: 'assinatura_invalida' }

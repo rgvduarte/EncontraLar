@@ -123,9 +123,9 @@ export function lerConfig(env: Ambiente, necessidades: readonly Necessidade[] = 
   const segredoCron = precisa('cron') ? obrigatorio('FATURACAO_CRON_SECRET') : txt('FATURACAO_CRON_SECRET')
   if (segredoCron && segredoCron.length < 32) problemas.push('FATURACAO_CRON_SECRET tem de ter pelo menos 32 caracteres.')
 
-  // ——— Moloni (só quando é o emissor)
+  // ——— Moloni (só nas funções que emitem documentos e quando é o emissor)
   let moloni: ConfigMoloni | null = null
-  if (emissor === 'moloni' && (precisa('emissor') || txt('FATURACAO_EMISSOR') === 'moloni')) {
+  if (emissor === 'moloni' && precisa('emissor')) {
     const id = (k: string) => {
       const v = obrigatorio(k)
       if (!v) return 0

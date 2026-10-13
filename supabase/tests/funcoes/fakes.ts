@@ -37,7 +37,9 @@ import {
   type Natureza,
 } from '../../functions/_shared/portas.ts'
 import type { OpcoesPedido, PortaStripe } from '../../functions/_shared/stripe/porta.ts'
-import type { Config } from '../../functions/_shared/config.ts'
+import type { Config, ConfigMoloni } from '../../functions/_shared/config.ts'
+import type { LinhaDocumento } from '../../functions/_shared/faturacao/documentos.ts'
+import type { Buscar } from '../../functions/_shared/moloni/cliente.ts'
 import { lerConfig } from '../../functions/_shared/config.ts'
 
 // ————————————————————————————————————————————————————————————— relógio e dados pessoais
@@ -495,7 +497,13 @@ export class BDFalsa implements PortaBD {
           if (f) f.stripe_invoice_id = op.stripe_invoice_id
         }
         if (!f && op.origem === 'subscricao' && op.subscricao) {
-          const sub = [...this.subscricoes.values()].find((s) => s.stripe_subscription_id === op.subscricao!.stripe_subscription_id)
+          let sub = [...this.subscricoes.values()].find((s) => s.stripe_subscription_id === op.subscricao!.stripe_subscription_id)
+          const instMeta = op.subscricao.instituicao_id ? this.instituicoes.get(op.subscricao.instituicao_id) : undefined
+          if (!sub && instMeta && !this.subscricoes.has(instMeta.id)) {
+            // a fatura chegou antes do registo da subscrição: liga-a pelo metadata
+            sub = { instituicao_id: instMeta.id, stripe_subscription_id: op.subscricao.stripe_subscription_id, estado: 'incompleta', inicio: null, compromisso_ate: null }
+            this.subscricoes.set(instMeta.id, sub)
+          }
           if (!sub) throw new ErroBD('P0002', 'Subscrição desconhecida.')
           const inst = this.instituicoes.get(sub.instituicao_id)!
           const v = linhaLiquida(MENSALIDADE_CENTIMOS, inst.iva_percent)
@@ -1222,6 +1230,107 @@ export function faturaComPagamento(id: string, tipo: 'sepa_debit' | 'card', erro
       data: [{ created: 1, payment: { type: 'payment_intent', payment_intent: { id: `pi_${id}`, payment_method: { type: tipo }, last_payment_error: erro ? { ...erro, payment_method: { type: tipo } } : null } } }],
     },
   } as unknown as Stripe.Invoice
+}
+
+// ————————————————————————————————————————————————————————————— Moloni falso (fetch)
+
+export const CFG_MOLONI: ConfigMoloni = {
+  clientId: 'cliente',
+  clientSecret: 'segredo',
+  username: 'api@encontralar.pt',
+  password: 'pw',
+  companyId: 5,
+  documentSetId: 9,
+  produtos: { entrada: 101, mensalidade: 102, acesso: 103 },
+  impostos: { 23: 11, 22: 12, 16: 13 },
+  metodosPagamento: { sepa_debit: 21, card: 22, customer_balance: 23, mb_way: 24, multibanco: 25 },
+  paisId: 1,
+  idiomaId: 1,
+  prazoVencimentoId: 31,
+}
+
+export const LINHA_ENTRADA: LinhaDocumento = { produto: 'entrada', descricao: 'Pedido EL-3F9A2B1C · entrada a 30/09/2026', quantidade: 1, liquidoCentimos: 15000, ivaPercent: 23, ivaCentimos: 3450, totalCentimos: 18450 }
+
+/** Servidor Moloni falso: responde por endpoint e regista os pedidos. */
+export function moloniFalso(respostas: Record<string, (corpo: Record<string, unknown>, n: number) => { status?: number; json: unknown }>) {
+  const pedidos: { endpoint: string; url: string; corpo: Record<string, unknown> | null }[] = []
+  const contagem = new Map<string, number>()
+  const buscar: Buscar = async (url, init) => {
+    const endpoint = new URL(url).pathname.replace(/^\/v1\//, '').replace(/\/$/, '')
+    const corpo = init.body ? (JSON.parse(init.body) as Record<string, unknown>) : null
+    pedidos.push({ endpoint, url, corpo })
+    const n = (contagem.get(endpoint) ?? 0) + 1
+    contagem.set(endpoint, n)
+    const f = respostas[endpoint]
+    if (!f) return { status: 404, json: async () => ({ error: 'nao_simulado' }) }
+    const r = f(corpo ?? {}, n)
+    return { status: r.status ?? 200, json: async () => r.json }
+  }
+  return { buscar, pedidos }
+}
+
+
+/**
+ * Moloni com estado: guarda os documentos inseridos e calcula os totais como o Moloni (IVA por linha,
+ * arredondado ao cêntimo) — para correr os fluxos completos com o MoloniEmissor verdadeiro.
+ */
+export function moloniComEstado() {
+  const docs = new Map<number, { tipo: string; corpo: Record<string, unknown>; status: number; numero: number }>()
+  const numeros = new Map<string, number>()
+  let id = 1000
+  const totais = (corpo: Record<string, unknown>) => {
+    const produtos = (corpo.products as { price: number; qty: number; taxes: { value: number }[] }[] | undefined) ?? []
+    let liquido = 0
+    let iva = 0
+    for (const p of produtos) {
+      const l = Math.round(p.price * p.qty * 100)
+      liquido += l
+      for (const t of p.taxes) iva += Math.round((l * t.value) / 100)
+    }
+    if (!produtos.length) return { bruto: Math.round(Number(corpo.net_value) * 100), iva: 0 }
+    return { bruto: liquido + iva, iva }
+  }
+  const recurso = (r: string, tipo: string) => ({
+    [`${r}/insert`]: (c: Record<string, unknown>) => {
+      id++
+      docs.set(id, { tipo, corpo: c, status: Number(c.status), numero: 0 })
+      return { json: { valid: 1, document_id: id } }
+    },
+    [`${r}/update`]: (c: Record<string, unknown>) => {
+      const d = docs.get(Number(c.document_id))!
+      d.status = Number(c.status)
+      if (d.status === 1 && !d.numero) {
+        const n = (numeros.get(tipo) ?? 0) + 1
+        numeros.set(tipo, n)
+        d.numero = n
+      }
+      return { json: { valid: 1 } }
+    },
+    [`${r}/getOne`]: (c: Record<string, unknown>) => {
+      const d = docs.get(Number(c.document_id))!
+      const t = totais(d.corpo)
+      return { json: { document_id: c.document_id, status: d.status, number: d.numero, document_set_name: 'M2026', gross_value: (t.bruto / 100).toFixed(2), taxes_value: (t.iva / 100).toFixed(2) } }
+    },
+    [`${r}/getAll`]: (c: Record<string, unknown>) => ({
+      json: [...docs.entries()].filter(([, d]) => d.tipo === tipo && d.corpo.your_reference === c.your_reference).map(([k, d]) => ({ document_id: k, your_reference: d.corpo.your_reference, status: d.status })),
+    }),
+    [`${r}/delete`]: (c: Record<string, unknown>) => {
+      docs.delete(Number(c.document_id))
+      return { json: { valid: 1 } }
+    },
+  })
+  let cliente = 0
+  const servidor = moloniFalso({
+    grant: () => ({ json: { access_token: 'tok', expires_in: 3600, refresh_token: 'ref' } }),
+    'customers/getByVat': () => ({ json: [] }),
+    'customers/getNextNumber': () => ({ json: { number: String(cliente + 1) } }),
+    'customers/insert': () => ({ json: { valid: 1, customer_id: ++cliente } }),
+    'documents/getPDFLink': () => ({ json: { url: 'https://www.moloni.pt/downloads/doc.pdf' } }),
+    ...recurso('invoices', 'FT'),
+    ...recurso('invoiceReceipts', 'FR'),
+    ...recurso('receipts', 'RC'),
+  })
+  return { ...servidor, docs }
 }
 
 export const iso = (t: number) => new Date(t).toISOString()

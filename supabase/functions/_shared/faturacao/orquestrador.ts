@@ -21,7 +21,7 @@ import {
 } from '../stripe/parametros.ts'
 import { resumirErroStripe, type PortaStripe } from '../stripe/porta.ts'
 import { normalizarMotivo } from '../stripe/motivos.ts'
-import type { CobrancaPreparadaRpc, ContextoSubscricaoRpc, DocumentoPendenteRpc, EstadoSubscricao, ModoDocumento, PortaBD, Registo } from '../portas.ts'
+import type { CobrancaPreparadaRpc, ContextoSubscricaoRpc, DocumentoPendenteRpc, EstadoSubscricao, ModoDocumento, MotivoFalha, PortaBD, Registo } from '../portas.ts'
 import { compromissoAte, diaLisboa, inicioDoDiaLisboa } from './datas.ts'
 import { eTaxaIva } from './dinheiro.ts'
 import { pedidoDoDocumento } from './documentos.ts'
@@ -144,7 +144,7 @@ export async function debitarCobrancas(d: DepsOrquestrador, agora: number) {
   for (const c of lista) {
     const p = parametrosPagarFatura(c.fatura_id, diaLisboa(agora))
     let estado: 'paga' | 'em_processamento' | 'falhou'
-    let motivo = null
+    let motivo: MotivoFalha | null = null
     try {
       const r = await d.stripe.pagarFatura(c.stripe_invoice_id, p.params, p.opcoes)
       estado = r.status === 'paid' ? 'paga' : 'em_processamento'

@@ -9,7 +9,7 @@
  * Nunca o nome da pessoa, notas, necessidades de cuidados ou o nome do lar. assegurarDescricaoSegura() recusa
  * qualquer outro texto.
  */
-import { ivaCentimos, linhaLiquida, separarIvaIncluidoOuFalhar, totaisDocumento, eTaxaIva, type LinhaValores, type TaxaIva } from './dinheiro.ts'
+import { linhaLiquida, separarIvaIncluidoOuFalhar, totaisDocumento, eTaxaIva, type LinhaValores, type TaxaIva } from './dinheiro.ts'
 import { dataCurta } from './datas.ts'
 import { planoFamilia, type PlanoFamiliaId } from './planos.ts'
 import { referenciaValida } from './referencia.ts'
@@ -60,6 +60,23 @@ export function chaveDocumento(c: ChaveDocumento): string {
   if ('subscricaoInvoice' in c) return `FT:sub:${c.subscricaoInvoice}`
   if ('pagamento' in c) return `FR:pag:${c.pagamento}`
   return `${c.tipo}:${c.fatura}`
+}
+
+/**
+ * Referência externa do documento no emissor (Moloni: your_reference, impressa no documento): opaca e
+ * estável — tipo + 16 hexadecimais (dois FNV-1a de 32 bits) da chave. Não leva uuids internos; serve para
+ * reencontrar o documento depois de uma falha (procurarPorChave).
+ */
+export function referenciaExterna(chave: string): string {
+  const fnv = (t: string, base: number) => {
+    let h = base
+    for (let i = 0; i < t.length; i++) {
+      h ^= t.charCodeAt(i)
+      h = Math.imul(h, 0x01000193)
+    }
+    return (h >>> 0).toString(16).padStart(8, '0')
+  }
+  return `${chave.slice(0, 2)}-${fnv(chave, 0x811c9dc5)}${fnv(chave, 0x050c5d1f)}`.toUpperCase()
 }
 
 // ————————————————————————————————————————————————————————————— agrupamento (referência para o SQL)
@@ -225,6 +242,3 @@ export function pedidoDoDocumento(d: DocumentoPendenteRpc): PedidoDocumento {
 function pagamentoDocumento(p: NonNullable<DocumentoPendenteRpc['pagamento']>): PagamentoDocumento {
   return { metodo: p.metodo, data: p.data, valorCentimos: p.valor_centimos }
 }
-
-/** IVA de uma mensalidade (para conferir a fatura de subscrição do Stripe). */
-export const totalMensalidade = (liquido: number, pct: TaxaIva) => liquido + ivaCentimos(liquido, pct)

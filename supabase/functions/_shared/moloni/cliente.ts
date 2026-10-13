@@ -7,7 +7,7 @@
  */
 import type { ConfigMoloni } from '../config.ts'
 import { decimalParaCentimos } from '../faturacao/dinheiro.ts'
-import type { ClienteFiscal } from '../faturacao/documentos.ts'
+import { referenciaExterna, type ClienteFiscal } from '../faturacao/documentos.ts'
 import { totaisDocumento } from '../faturacao/dinheiro.ts'
 import type { DocumentoEmitido, EmissorFaturas, PedidoEmissaoFatura, PedidoEmissaoRecibo } from '../faturacao/emissor.ts'
 import {
@@ -170,7 +170,8 @@ export class MoloniEmissor implements EmissorFaturas {
     const tipo = tipoDaChave(chave)
     if (!tipo) return null
     const lista = await this.chamar((t) => pedidoProcurarPorChave(this.cfg, t, tipo, chave))
-    const d = Array.isArray(lista) ? (lista as Record<string, unknown>[]).find((x) => x && x.your_reference === chave && Number(x.status) === 1) : undefined
+    const ref = referenciaExterna(chave)
+    const d = Array.isArray(lista) ? (lista as Record<string, unknown>[]).find((x) => x && x.your_reference === ref && Number(x.status) === 1) : undefined
     if (!d) return null
     const { fechado: _f, ...doc } = await this.ler(tipo, numero(d.document_id), chave)
     return doc
