@@ -8,7 +8,7 @@ import { euro, num } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { DispDot, QuietSelect } from './Chips'
 import { refTitulo } from './focoTitulo'
-import { agregadoVisivel, faixaDoOrcamento, ROTULO_FAIXA, type Ignorados } from './gratis'
+import { faixaDoOrcamento, ROTULO_FAIXA, type Ignorados } from './gratis'
 import { useNumeroAnimado, usePresenca } from './motion'
 import type { SearchModel } from './useSearch'
 import {
@@ -102,17 +102,19 @@ function Contagem({ n }: { n: number }) {
  * e «Vaga mais cedo» fechada na ordenação (escolhê-la abre o convite e a ordem fica como estava).
  */
 export function ResultsSummary({ model, desktop }: Props) {
-  const { state, resultados, comVaga, update, completo, ignorados, pedirAcesso } = model
+  const { state, resultados, update, completo, ignorados, pedirAcesso, zona } = model
   const n = resultados.length
-  // versão grátis com poucos resultados: "1 com vaga agora" em 1 resultado diria qual
-  const agregado = n > 0 && (completo || agregadoVisivel(n))
+  // versão completa: sobre os resultados; versão grátis: só a contagem da zona, sem filtros (e a partir de 5 casas)
+  const agregado = completo ? n > 0 : zona?.comVaga != null
+  const comVaga = completo ? model.comVaga : (zona?.comVaga ?? 0)
+  const prefixoZona = completo || !zona ? '' : `${zona.rotulo}: `
   const centro = centroDe(state.local)
   const visiveis: Grupo[] = desktop ? ['mais'] : ['tipo', 'max', 'mais']
   const pilulas = pilulasAtivas(state, completo).filter((p) => visiveis.includes(p.grupo))
   const presentes = usePresenca(pilulas, chavePilula)
   const total = contarTodosFiltros(state) + (state.q ? 1 : 0)
   const titulo = tituloPesquisa(state)
-  const resumo = `${num(n)} ${n === 1 ? 'instituição' : 'instituições'}${agregado ? `, ${num(comVaga)} com vaga agora` : ''}`
+  const resumo = `${num(n)} ${n === 1 ? 'instituição' : 'instituições'}${agregado ? `, ${prefixoZona.toLowerCase()}${num(comVaga)} com vaga agora` : ''}`
   const ordemFechada = useId()
 
   return (
@@ -133,10 +135,12 @@ export function ResultsSummary({ model, desktop }: Props) {
           <Contagem n={n} /> {n === 1 ? 'instituição' : 'instituições'}
           {agregado && (
             <>
-              <span> · </span>
-              <span className="inline-flex items-baseline gap-1.5">
+              {/* versão grátis no telemóvel: a contagem da zona vai para a linha seguinte (sem o separador pendurado) */}
+              <span className={cn(!completo && 'max-sm:hidden')}> · </span>
+              <span className={cn('inline-flex items-baseline gap-1.5', !completo && 'max-sm:flex')}>
                 <DispDot disp="disponivel" className="size-2.5 self-center" />
                 <span>
+                  {prefixoZona}
                   <Contagem n={comVaga} /> com vaga agora
                 </span>
               </span>

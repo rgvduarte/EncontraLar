@@ -12,7 +12,6 @@ import { FilterBar } from './FilterBar'
 import { FiltersModal, type ModoFiltros, type Rascunho } from './FiltersModal'
 import { refTitulo } from './focoTitulo'
 import { filtrar, noLocal, passaFiltros } from './filtering'
-import { agregadoVisivel } from './gratis'
 import { MobileBar, ViewToggle } from './MobileBar'
 import { procuraDaPesquisa, useRegistoProcura } from './procura'
 import { cardDomId, NotaFinal, PAGINA, ResultsList } from './ResultsList'
@@ -62,7 +61,7 @@ function guardar(chave: string, valor: string) {
  */
 export default function SearchPage() {
   const model = useSearch()
-  const { state, entradas, resultados, comVaga, update, completo } = model
+  const { state, entradas, resultados, comVaga, update, completo, zona } = model
   const desktop = useMediaQuery('(min-width: 1024px)')
   const titulo = tituloPesquisa(state)
   useDocumentTitle(titulo)
@@ -298,7 +297,7 @@ export default function SearchPage() {
           </h1>
           <p className="sr-only" aria-live="polite">
             {resultados.length} instituições
-            {(completo || agregadoVisivel(resultados.length)) && `, ${comVaga} com vaga agora`}
+            {completo ? `, ${comVaga} com vaga agora` : zona?.comVaga != null && `, ${zona.rotulo.toLowerCase()}: ${zona.comVaga} com vaga agora`}
           </p>
           {/* o mapa ocupa exatamente o espaço entre a barra de pesquisa e a barra de abas */}
           <div className={cn('relative min-h-[22rem] flex-1', entrada === 'mapa' && 'el-vista-mapa')} style={{ viewTransitionName: 'el-mapa' }}>

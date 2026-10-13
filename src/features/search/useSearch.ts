@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router'
 import type { Disponibilidade } from '@/types'
 import { useAcesso, useLares } from '@/lib/store'
+import { agregadoVisivel, resumoDisponibilidade } from '@/lib/acesso'
+import { deLugar } from '@/lib/format'
 import { disponibilidade, estimarEspera, type EstimativaEspera } from '@/lib/forecast'
 import { comVagaAgora, construirEntradas, filtrar, ordenar, type Entrada } from './filtering'
 import { estadoGratis, ignoradosGratis, type Ignorados } from './gratis'
@@ -14,8 +16,14 @@ export interface SearchModel {
   entradas: Entrada[]
   /** resultados filtrados e ordenados */
   resultados: Entrada[]
-  /** resultados com vaga para quem pede hoje (na versão grátis só se mostra o total, nunca quais) */
+  /** resultados com vaga para quem pede hoje (só na versão completa: na grátis, ver `zona`) */
   comVaga: number
+  /**
+   * Versão grátis: quantas têm vaga na zona (o distrito do lugar escolhido, ou o país), sem filtros. Contar sobre os
+   * resultados filtrados deixaria saber quais têm vaga, tirando um filtro de cada vez; o servidor só dá contagens por
+   * zona (disponibilidade_agregada). `comVaga` é null abaixo de MIN_AGREGADO. Na versão completa, null.
+   */
+  zona: { rotulo: string; total: number; comVaga: number | null } | null
   update: (patch: Partial<SearchState>) => void
   /** substitui o estado (usado pelo "Limpar tudo") */
   replace: (next: SearchState) => void
@@ -63,6 +71,13 @@ export function useSearch(): SearchModel {
   const resultados = useMemo(() => ordenar(filtrar(entradas, state, completo), state.ordem, completo), [entradas, state, completo])
   // "com vaga agora" = vaga para quem pede hoje (um lugar livre já prometido à lista de espera não conta)
   const comVaga = useMemo(() => resultados.filter(comVagaAgora).length, [resultados])
+  const distritoZona = state.local.tipo === 'lugar' ? state.local.lugar.distrito : state.local.tipo === 'distrito' ? state.local.distrito : null
+  const zona = useMemo(() => {
+    if (completo) return null
+    const grupo = distritoZona ? lares.filter((l) => l.distrito === distritoZona) : lares
+    const r = resumoDisponibilidade(grupo)
+    return { rotulo: distritoZona ? `No distrito ${deLugar(distritoZona)}` : 'No país', total: r.total, comVaga: agregadoVisivel(r.total) ? r.comVaga : null }
+  }, [completo, distritoZona, lares])
 
   const replace = useCallback(
     (next: SearchState) => {
@@ -84,5 +99,5 @@ export function useSearch(): SearchModel {
   )
   const fecharAcesso = useCallback(() => setPedidoAcesso((p) => ({ ...p, aberto: false })), [])
 
-  return { state, entradas, resultados, comVaga, update, replace, completo, ignorados, pedirAcesso, pedidoAcesso, fecharAcesso }
+  return { state, entradas, resultados, comVaga, zona, update, replace, completo, ignorados, pedirAcesso, pedidoAcesso, fecharAcesso }
 }

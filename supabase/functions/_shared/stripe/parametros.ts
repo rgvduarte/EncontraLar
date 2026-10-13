@@ -270,7 +270,7 @@ export function planoCobrancaMensal(c: CobrancaPreparadaRpc, cfg: ConfigCobranca
     currency: 'eur',
     auto_advance: false,
     collection_method: automatica ? 'charge_automatically' : 'send_invoice',
-    ...(automatica ? {} : { days_until_due: cfg.diasPagamento }),
+    ...(automatica ? { default_payment_method: c.stripe_payment_method_id! } : { days_until_due: cfg.diasPagamento }),
     pending_invoice_items_behavior: 'exclude',
     payment_settings: {
       payment_method_types: metodos,
