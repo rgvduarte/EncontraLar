@@ -22,16 +22,16 @@ export default function ContaPage() {
 
   return (
     <div className="flex max-w-2xl flex-col gap-10">
-      <section aria-labelledby="quem-titulo" className="flex items-center gap-5 rounded-[1.75rem] bg-sand p-6 sm:p-7">
-        <Avatar nome={user.nome} className="size-16 text-xl" />
+      <section aria-labelledby="quem-titulo" className="flex items-center gap-4 rounded-[1.75rem] bg-sand p-5 sm:gap-5 sm:p-7">
+        <Avatar nome={user.nome} className="size-14 text-lg sm:size-16 sm:text-xl" />
         <div className="min-w-0">
           <h2 id="quem-titulo" className="text-2xl font-semibold">
             {user.nome}
           </h2>
           <p className="text-ink-mute">Equipa de terreno · EncontraLar</p>
-          <p className="mt-1 text-[0.9375rem] break-all text-ink-soft">
-            {user.email}
-            {user.telefone && <span className="whitespace-nowrap"> · {user.telefone}</span>}
+          <p className="mt-1 text-[0.9375rem] text-ink-soft">
+            <span className="block [overflow-wrap:anywhere]">{user.email}</span>
+            {user.telefone && <span className="block whitespace-nowrap tabular">{user.telefone}</span>}
           </p>
         </div>
       </section>

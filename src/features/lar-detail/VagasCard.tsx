@@ -148,6 +148,8 @@ export function VagasCard({
   const navigate = useNavigate()
   const location = useLocation()
   const gestor = user?.role === 'lar'
+  // equipa de terreno: regista a visita (modo visita) em vez de pedir vaga; sem alertas nem guardados
+  const equipa = user?.role === 'equipa'
   const minhaFicha = gestor && user.larId === lar.id
   const alerta = Boolean(fav?.alerta)
   // estados com animação de troca: só anima quando mudam (não à entrada da página)
@@ -237,6 +239,16 @@ export function VagasCard({
                   Editar ficha e vagas
                 </ButtonLink>
               </div>
+            ) : equipa ? (
+              <>
+                <Previsao dados={dados} />
+                <div ref={ctaRef} className="mt-5">
+                  <ButtonLink to={`/visitas/${encodeURIComponent(lar.id)}`} variant="primary" size="lg" full>
+                    Registar visita
+                  </ButtonLink>
+                  <p className="mt-2 text-sm text-ink-mute">Confirmar licença, instalações, vagas e preços no modo visita.</p>
+                </div>
+              </>
             ) : (
               <>
                 <Previsao dados={dados} />
@@ -257,7 +269,7 @@ export function VagasCard({
         </>
       )}
 
-      {!gestor && (
+      {!gestor && !equipa && (
         <div className="mt-6 border-t border-line pt-3">
           <Switch
             checked={alerta}

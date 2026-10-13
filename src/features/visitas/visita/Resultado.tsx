@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { HeartHandshake, KeyRound } from 'lucide-react'
+import { Clock, HeartHandshake, KeyRound } from 'lucide-react'
 import type { Lar, PlanoInstituicao, ResultadoVisita } from '@/types'
 import { ChoiceCard, InputField, Switch } from '@/components/ui/Field'
 import { COMPROMISSO_MENSAL_MESES, compromissoAte, ENTRADAS_ANO_MENSAL_COMPENSA, PLANOS_INSTITUICAO, valorPlanoTexto } from '@/lib/acesso'
@@ -112,6 +112,15 @@ export function Resultado({
                       <span className="mt-0.5 block">
                         {p === 'por_entrada' ? 'Só paga quando alguém entra.' : `Sem taxa por entrada · compromisso de ${COMPROMISSO_MENSAL_MESES} meses.`}
                       </span>
+                      {/* como no painel da instituição: a data em que a modalidade volta a poder ser escolhida */}
+                      {fechada && ate && (
+                        <span className="mt-2 flex items-center gap-1.5 font-medium text-ink-soft">
+                          <Clock aria-hidden className="size-4 shrink-0" />
+                          <span>
+                            Disponível a partir de <span className="whitespace-nowrap">{dataLonga(ate)}</span>
+                          </span>
+                        </span>
+                      )}
                     </>
                   }
                 />
@@ -120,7 +129,7 @@ export function Resultado({
           </div>
           <p id={`${id}-compensa`} className="mt-3 text-sm text-ink-mute">
             Mensalidade: compensa a partir de {ENTRADAS_ANO_MENSAL_COMPENSA} entradas por ano.
-            {bloqueada && ate && <> Já está na mensalidade: «Por entrada» só a partir de {dataLonga(ate)}.</>}
+            {bloqueada && <> Já está na mensalidade, com compromisso de {COMPROMISSO_MENSAL_MESES} meses.</>}
           </p>
           {erros.plano && (
             <p role="alert" className={ERRO}>

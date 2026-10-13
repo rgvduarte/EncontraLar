@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router'
 import type { Role } from '@/types'
 import { useDocumentTitle } from '@/lib/hooks'
 import { loginDemo } from '@/lib/store'
-import { DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_PASSWORD } from '@/data/seed'
+import { DEMO_EQUIPA_EMAIL, DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_PASSWORD, DEMO_PRO_EMAIL } from '@/data/seed'
 import { Button } from '@/components/ui/Button'
 import { Reveal } from '@/components/motion'
 import { toast } from '@/components/ui/Toast'
@@ -27,6 +27,8 @@ const CONTAS: { role: Role; nome: string; nota?: string; email: string; destino:
   // a família de demonstração tem um passe de 90 dias: mostra a experiência completa
   { role: 'familia', nome: 'Família', nota: 'Com o Acesso Família ativo.', email: DEMO_FAMILIA_EMAIL, destino: '/familia' },
   { role: 'lar', nome: 'Instituição', email: DEMO_LAR_EMAIL, destino: '/gestao' },
+  { role: 'profissional', nome: 'Assistente social', nota: 'Casos e encaminhamentos de um hospital.', email: DEMO_PRO_EMAIL, destino: '/casos' },
+  { role: 'equipa', nome: 'Equipa de terreno', nota: 'Modo visita: verificar e registar instituições.', email: DEMO_EQUIPA_EMAIL, destino: '/visitas' },
 ]
 
 export default function AboutPage() {

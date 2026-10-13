@@ -43,9 +43,9 @@ export function DashboardShell({
   aside?: ReactNode
   children: ReactNode
 }) {
-  // no telemóvel, as contas de instituição e de profissional já navegam pelo painel na barra inferior (MobileTabBar)
+  // no telemóvel, as contas de instituição, de profissional e da equipa de terreno já navegam pelo painel na barra inferior (MobileTabBar)
   const user = useCurrentUser()
-  const pilulasMoveis = user?.role !== 'lar' && user?.role !== 'profissional'
+  const pilulasMoveis = user?.role !== 'lar' && user?.role !== 'profissional' && user?.role !== 'equipa'
   // manter a pílula ativa visível (centrada) na fila deslizável
   const fila = useRef<HTMLUListElement>(null)
   const { pathname } = useLocation()

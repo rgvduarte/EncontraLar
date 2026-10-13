@@ -181,12 +181,15 @@ export default function PipelinePage() {
           }))}
         />
 
-        <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <p aria-live="polite" className="text-ink-mute">
-            {lista.length > 0 && (
+        {/* a contagem é anunciada ao mudar de segmento, distrito ou pesquisa (vazia: só para o leitor de ecrã) */}
+        <div className={cn('flex flex-wrap items-center justify-between gap-x-4 gap-y-2', lista.length > 0 ? 'min-h-11' : '-mt-5')}>
+          <p aria-live="polite" className={cn('text-ink-mute', !lista.length && 'sr-only')}>
+            {lista.length > 0 ? (
               <>
                 <span className="font-medium text-ink">{plural(lista.length, 'instituição', 'instituições')}</span> · {ordem}
               </>
+            ) : (
+              'Nenhuma instituição nesta lista.'
             )}
           </p>
           {segmento === 'por_visitar' && posicao.suportado && segmentos.por_visitar.length > 1 && (

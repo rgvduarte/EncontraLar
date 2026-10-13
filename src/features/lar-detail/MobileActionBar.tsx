@@ -71,7 +71,9 @@ export function MobileActionBar({
   onVisita: () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
-  const instituicao = useCurrentUser()?.role === 'lar'
+  const role = useCurrentUser()?.role
+  const instituicao = role === 'lar'
+  const equipa = role === 'equipa'
 
   // linha 1, à direita: o estado do pedido da família ou, com acesso completo, a disponibilidade — o mesmo estado
   // (e a mesma cor do ponto) que o cartão: lugar livre mas já prometido à lista de espera (laranja, "lista à frente"),
@@ -151,6 +153,11 @@ export function MobileActionBar({
           ) : minhaFicha ? (
             <ButtonLink to="/gestao/ficha" className={botao}>
               Editar ficha e vagas
+            </ButtonLink>
+          ) : equipa ? (
+            // equipa de terreno: a ação é registar a visita (modo visita), não pedir vaga
+            <ButtonLink to={`/visitas/${encodeURIComponent(lar.id)}`} className={botao}>
+              Registar visita
             </ButtonLink>
           ) : !completo && !instituicao ? (
             // versão grátis: uma só ação, para a página do Acesso Família (volta a esta ficha depois de ativar)

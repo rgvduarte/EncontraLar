@@ -124,9 +124,13 @@ function FormularioVisita({ lar, visitas }: { lar: Lar; visitas: Visita[] }) {
     const antes = getDB().lares.find((l) => l.id === lar.id) ?? lar
     const r = registarVisita(registoDe(form, antes))
     if (!r.ok) {
+      // o erro junto ao campo a que diz respeito: o email da conta, ou a modalidade (compromisso da mensalidade)
       if (/email/i.test(r.erro)) {
         setErros({ email: r.erro })
         focar('email')
+      } else if (/mensalidade|modalidade|compromisso/i.test(r.erro)) {
+        setErros({ plano: r.erro })
+        focar('plano')
       } else setErroGeral(r.erro)
       return
     }

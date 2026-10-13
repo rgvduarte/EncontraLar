@@ -943,13 +943,13 @@ export function createSeed(agora = Date.now()): DB {
   const sociaisPorto = lares.filter((l) => l.distrito === 'Porto' && l.natureza !== 'privado' && l.tipo === 'erpi' && l.id !== ipss.id)
   const [pMensal, pInteressado, pVoltar, pRecusou] = privadosPorto
   const sAderiu = sociaisPorto[0]
-  if (pMensal) Object.assign(pMensal, { planoInstituicao: 'mensal', planoDesde: iso(21) })
+  if (pMensal) Object.assign(pMensal, { planoInstituicao: 'mensal', planoDesde: iso(9) })
   const verifTudo = { licencaConfirmada: true, instalacoesVistas: true, vagasConfirmadas: true, precosConfirmados: true }
   const verifNada = { licencaConfirmada: false, instalacoesVistas: false, vagasConfirmadas: false, precosConfirmados: false }
   const visitas: Visita[] = [
     { id: 'v-1', larId: DEMO_LAR_ID, equipaId: DEMO_EQUIPA_ID, data: iso(64), resultado: 'aderiu', verificacao: verifTudo, plano: 'por_entrada',
       responsavel: { nome: 'Helena Marques', cargo: 'Diretora técnica', telefone: '220 000 042', email: DEMO_LAR_EMAIL }, notas: 'Quer começar pela unidade de demências. Pediu formação para a equipa administrativa.' },
-    ...(pMensal ? [{ id: 'v-2', larId: pMensal.id, equipaId: DEMO_EQUIPA_ID, data: iso(21), resultado: 'aderiu' as const, verificacao: verifTudo, plano: 'mensal' as const,
+    ...(pMensal ? [{ id: 'v-2', larId: pMensal.id, equipaId: DEMO_EQUIPA_ID, data: iso(9), resultado: 'aderiu' as const, verificacao: verifTudo, plano: 'mensal' as const,
       responsavel: { nome: 'Paulo Antunes', cargo: 'Sócio-gerente' }, notas: 'Prefere um custo fixo por mês. Casa pequena: cada cama vazia pesa muito.' }] : []),
     ...(pInteressado ? [{ id: 'v-3', larId: pInteressado.id, equipaId: DEMO_EQUIPA_ID, data: iso(6), resultado: 'interessado' as const, verificacao: { ...verifNada, licencaConfirmada: true },
       proximoContacto: futuro(5), notas: 'Gostou da lista de espera digital. Vai falar com o sócio antes de decidir.' }] : []),
@@ -960,7 +960,7 @@ export function createSeed(agora = Date.now()): DB {
     ...(sAderiu ? [{ id: 'v-6', larId: sAderiu.id, equipaId: DEMO_EQUIPA_ID, data: iso(30), resultado: 'aderiu' as const, verificacao: verifTudo,
       notas: 'IPSS: sem custos. Interesse em reduzir os telefonemas de famílias.' }] : []),
   ]
-  if (pMensal) pMensal.verificacao = { ...pMensal.verificacao, estado: 'verificado', data: iso(21) }
+  if (pMensal) pMensal.verificacao = { ...pMensal.verificacao, estado: 'verificado', data: iso(9) }
   // v-3 confirmou a licença na visita (sem ver as instalações)
   if (pInteressado) pInteressado.verificacao = { ...pInteressado.verificacao, licencaConfirmadaEm: iso(6) }
   if (sAderiu) sAderiu.verificacao = { ...sAderiu.verificacao, estado: 'verificado', data: iso(30) }

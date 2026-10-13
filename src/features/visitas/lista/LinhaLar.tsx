@@ -34,7 +34,7 @@ export function LinhaLar({ linha, agora, rascunho }: { linha: LinhaPipeline; ago
             </h3>
             <p className="mt-0.5 text-[0.9375rem] leading-snug text-ink-mute">
               {TIPO_LABEL[lar.tipo]} · {NATUREZA_LABEL[lar.natureza]} · {lar.localidade}
-              {distanciaKm != null && <span className="font-medium text-ink-soft"> · {km(distanciaKm)}</span>}
+              {distanciaKm != null && <span className="font-medium whitespace-nowrap text-ink-soft"> · {km(distanciaKm)}</span>}
             </p>
           </div>
           <div className="mt-2.5 flex flex-wrap gap-2 lg:contents">

@@ -21,7 +21,7 @@ const SEM_RODAPE = ['/pesquisa', '/encontrar']
  */
 function chaveDaPagina(pathname: string) {
   const seg = pathname.split('/')[1] ?? ''
-  return seg === 'familia' || seg === 'gestao' || seg === 'casos' ? seg : pathname
+  return seg === 'familia' || seg === 'gestao' || seg === 'casos' || seg === 'visitas' ? seg : pathname
 }
 
 function ScrollParaOTopo() {
