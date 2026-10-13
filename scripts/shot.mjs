@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Capturas de ecrã para revisão visual.
- * Uso: node scripts/shot.mjs <rota> <saida.png> [--mobile] [--login=familia|lar] [--full] [--base=http://127.0.0.1:5173] [--wait=ms]
+ * Uso: node scripts/shot.mjs <rota> <saida.png> [--mobile] [--login=familia|lar|profissional|equipa] [--full] [--base=http://127.0.0.1:5173] [--wait=ms]
  * Ex.:  node scripts/shot.mjs /pesquisa .shots/pesquisa.png --full
  *       node scripts/shot.mjs /familia .shots/familia-mobile.png --mobile --login=familia
  */
@@ -45,7 +45,7 @@ await page.route(/basemaps\.cartocdn\.com|tile\.openstreetmap\.org/, (r) =>
 await page.goto(`${base}/#/`, { waitUntil: 'domcontentloaded' })
 if (login) {
   await page.evaluate((role) => {
-    const email = role === 'lar' ? 'lar@exemplo.pt' : 'familia@exemplo.pt'
+    const email = { lar: 'lar@exemplo.pt', profissional: 'social@exemplo.pt', equipa: 'equipa@exemplo.pt' }[role] ?? 'familia@exemplo.pt'
     const raw = localStorage.getItem('encontralar:db')
     if (!raw) return
     const db = JSON.parse(raw)

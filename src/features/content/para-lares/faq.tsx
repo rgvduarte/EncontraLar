@@ -7,12 +7,21 @@ export const LARES_FAQ: FaqItem[] = [
     a: (
       <>
         <p>
-          Estar no EncontraLar é gratuito para todas as instituições, com todas as funcionalidades. Os lares privados pagam apenas uma taxa fixa
-          por cada pessoa que entra através da plataforma. IPSS e Misericórdias não pagam qualquer taxa.
+          Estar no EncontraLar é gratuito para todas as instituições, com todas as funcionalidades. IPSS e Misericórdias não pagam nada. Os
+          lares privados escolhem a modalidade que lhes serve melhor:
         </p>
-        <p>
-          A taxa é fixa e só é devida quando a pessoa entra; o valor é acordado no contrato. Não há mensalidade, percentagem sobre a mensalidade
-          nem custos de adesão.
+        <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 marker:text-ink-mute">
+          <li>
+            <strong>Por entrada</strong> — uma taxa fixa por cada pessoa que entra através do EncontraLar. Se ninguém entrar, não paga nada.
+          </li>
+          <li>
+            <strong>Mensalidade</strong> — um valor fixo por mês, sem taxa por entrada, com compromisso de 12 meses. Compensa a quem recebe
+            várias pessoas por ano.
+          </li>
+        </ul>
+        <p className="mt-3">
+          Os valores são acordados no contrato. Não há percentagem sobre a mensalidade dos residentes nem custos de adesão, e pode passar para a
+          mensalidade quando quiser.
         </p>
       </>
     ),
@@ -43,8 +52,8 @@ export const LARES_FAQ: FaqItem[] = [
         </p>
         <p>
           Conta a entrada que acontece até 12 meses depois desse primeiro pedido. Só a família que confirmou a entrada pode deixar uma
-          avaliação verificada. Nos lares privados, é esta entrada que dá lugar à taxa fixa; IPSS e
-          Misericórdias ficam isentas.
+          avaliação verificada. Nos lares privados por entrada, é esta entrada que dá lugar à taxa fixa; com mensalidade, está incluída. IPSS
+          e Misericórdias ficam isentas.
         </p>
       </>
     ),

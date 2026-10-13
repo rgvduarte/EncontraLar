@@ -7,9 +7,42 @@ A procura de vagas é muito maior do que a oferta, por isso a família é quem s
 | Quem | Grátis | Pago | Valor |
 |---|---|---|---|
 | **Famílias** | Explorar de forma genérica: que instituições existem, onde, o tipo, a natureza, a verificação, a avaliação geral, a **faixa** de preço, o guia e apoios, e contagens agregadas ("43 com vaga nesta zona") | **Acesso Família**: que instituições têm vaga e quantos lugares, preços por quarto, previsão de espera, contactos, pedidos a várias casas, visitas, alertas, comparação | **14,90 € / 30 dias** ou **29,90 € / 90 dias**, IVA incluído, **sem renovação automática**. Uma nova compra soma os dias. |
-| **Lares privados** | Ficha verificada, vagas, lista de espera digital, pedidos | Taxa fixa por entrada | **150 € + IVA** por entrada (por contrato; nunca em páginas públicas) |
+| **Lares privados** | Ficha verificada, vagas, lista de espera digital, pedidos | **O lar escolhe:** taxa fixa por entrada, ou mensalidade fixa sem taxa por entrada | **150 € + IVA** por entrada, ou **29 € + IVA** por mês com compromisso de 12 meses (por contrato; nunca em páginas públicas) |
 | **IPSS e Misericórdias** | Tudo | Nada | 0 € |
 | **Profissionais de saúde** | Acesso completo, incluindo casos e encaminhamentos | Nada (no futuro, licença institucional) | 0 € |
+
+### Lares privados: por entrada ou mensalidade (decisão de 13/10/2026)
+
+O lar privado escolhe a modalidade. Nenhuma das duas dá funcionalidades a mais: só muda a forma de pagar.
+
+| Modalidade | Valor | Para quem |
+|---|---|---|
+| **Por entrada** (por omissão) | 150 € + IVA por cada pessoa que entra através do EncontraLar | Quem recebe poucas pessoas por ano. Se ninguém entrar, não paga nada. |
+| **Mensalidade** | 29 € + IVA por mês, sem taxa por entrada | Quem recebe **3 ou mais** pessoas por ano (12 × 29 € = 348 € < 3 × 150 € = 450 €) e prefere um custo fixo. |
+
+- **Compromisso de 12 meses na mensalidade.** Passar para a mensalidade é possível a qualquer momento. Voltar à taxa por entrada só é possível no fim do compromisso. Sem esta regra, um lar mudava para a mensalidade só no mês de uma entrada (29 € em vez de 150 €) e voltava a seguir.
+- **A entrada fica com a taxa da modalidade em vigor no dia em que é confirmada:** `aplicavel` (por entrada), `incluida` (mensalidade) ou `isenta` (IPSS e Misericórdias).
+- **Onde aparecem os valores:** só no painel privado da instituição, nos ecrãs da equipa de terreno e no folheto entregue nas visitas. O `/para-lares` descreve as duas modalidades sem valores.
+- **Leitura de receita:** a mensalidade troca receita variável por receita recorrente previsível. Com o piloto, medir quantos privados escolhem cada uma e as entradas por lar por ano. Se a maioria dos lares com muitas entradas escolher a mensalidade, rever o valor (29 € é baixo para um lar com 6 entradas por ano, que pouparia 552 €).
+
+### Equipa de terreno e modo visita (decisão de 13/10/2026)
+
+A oferta (os lares) entra porta a porta, a começar pelo distrito do Porto. Em cada visita, a equipa:
+1. confirma a **licença** e vê as **instalações** (selo «Visitada pela equipa»);
+2. confirma **vagas, preços e cuidados**, e a ficha fica logo atualizada;
+3. apresenta o EncontraLar e regista o resultado: **aderiu**, **interessado**, **voltar mais tarde** ou **recusou**, com o próximo contacto;
+4. na adesão de um privado, regista a **modalidade**; se o lar ainda não tem conta, cria a conta do responsável.
+
+O papel `equipa` é interno (atribuído só por um administrador). Vê a camada completa e não compra o Acesso Família.
+
+No protótipo:
+- `/visitas` mostra o pipeline por distrito (por visitar, a acompanhar, aderiram, recusaram) e o formulário de visita, pensado para o telemóvel;
+- a conta de demonstração é `equipa@exemplo.pt`;
+- a conta do responsável é criada com uma palavra-passe provisória, mostrada uma vez.
+
+Na versão real, o responsável recebe um convite por email (Supabase Auth Admin, numa Edge Function).
+
+O **kit de terreno** (folheto para instituições, guia de visita, registo em CSV) fica fora do repositório.
 
 Regras que não mudam:
 - **Pagar não muda a ordem dos resultados nem dá prioridade nas vagas.** Vale para as famílias e para as instituições.
@@ -19,14 +52,18 @@ Regras que não mudam:
 - **A família de demonstração** (`familia@exemplo.pt`) tem um passe de 90 dias ativo. Para ver a versão grátis, explore sem entrar ou crie uma conta.
 
 Contrato técnico (protótipo):
-- `src/lib/acesso.ts` (`PLANOS_FAMILIA`, `temAcessoCompleto`, `faixaPreco`, `resumoDisponibilidade`, `TAXA_ENTRADA_PRIVADO_CENTIMOS`);
+- `src/lib/acesso.ts`:
+  - famílias: `PLANOS_FAMILIA`, `temAcessoCompleto`, `faixaPreco`, `resumoDisponibilidade`;
+  - instituições: `PLANOS_INSTITUICAO`, `planoDoLar`, `cobrancaEntradaTexto`, `compromissoAte`, `podeMudarPlano`, `ENTRADAS_ANO_MENSAL_COMPENSA`;
+- `Lar.planoInstituicao` e `Lar.planoDesde`; `escolherPlanoInstituicao()` em `src/lib/store.ts`;
+- `Visita`, `DB.visitas`, `registarVisita()` e `useVisitas()` em `src/lib/store.ts` (papel `equipa`);
 - `User.acesso` (`AcessoFamilia`);
 - `useAcesso()` e `comprarAcessoDemo()` em `src/lib/store.ts` (simulação do Stripe Checkout com MB WAY, Multibanco ou cartão);
 - os componentes `src/components/acesso` (`BloqueioCartao`, `LinhasBloqueadas`, `AvisoAcesso`, `AcessoNecessarioModal`);
 - a página `/acesso`.
 
 Por validar (a próxima decisão depende disto):
-- **10 lares privados:** que ocupação têm, quantos dias fica uma vaga vazia, quanto gastam a captar residentes;
+- **10 lares privados:** que ocupação têm, quantos dias fica uma vaga vazia, quanto gastam a captar residentes, quantas entradas por ano têm (decide a modalidade);
 - **10 famílias:** quanto pagariam, e pelo quê;
 - **Conversão real da página `/acesso`.**
 
@@ -63,7 +100,7 @@ A taxa por entrada só funciona se a entrada não puder "desaparecer". A platafo
 ### Tipos (`src/types.ts`)
 
 ```ts
-export type Role = 'familia' | 'lar' | 'profissional'
+export type Role = 'familia' | 'lar' | 'profissional' | 'equipa'   // equipa: interna (visitas)
 
 export type TipoOrganizacao = 'hospital' | 'centro_saude' | 'autarquia' | 'outro'
 export interface Organizacao { nome: string; tipo: TipoOrganizacao; servico?: string }
@@ -78,7 +115,7 @@ export interface Encaminhamento {
   organizacao: string            // "Hospital de Vale Formoso (fictício) · Serviço Social"
   altaPrevista?: string          // YYYY-MM-DD
 }
-export type TaxaEntrada = 'aplicavel' | 'isenta'   // isenta quando lar.natureza !== 'privado'
+export type TaxaEntrada = 'aplicavel' | 'incluida' | 'isenta'   // incluida: privado com mensalidade; isenta: IPSS/Misericórdia
 export interface Entrada {
   data: string                   // YYYY-MM-DD da entrada
   confirmadaLarEm?: string       // ISO

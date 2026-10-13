@@ -1,10 +1,10 @@
 /**
  * "Quanto custa" — o modelo de negócio, sem valores (docs/MODELO-NEGOCIO.md):
  * estar no EncontraLar é gratuito para todas as instituições, com todas as funcionalidades;
- * os lares privados pagam só uma taxa fixa por cada pessoa que entra através da plataforma
- * (valor acordado no contrato, nunca publicado); IPSS e Misericórdias não pagam nada;
- * grupos com várias casas falam connosco. Ninguém paga para aparecer primeiro: nem as instituições,
- * nem as famílias que compram o Acesso Família para ver as vagas em tempo real.
+ * os lares privados escolhem: uma taxa fixa por cada pessoa que entra através da plataforma, ou uma
+ * mensalidade fixa sem taxa por entrada (valores acordados no contrato, nunca publicados);
+ * IPSS e Misericórdias não pagam nada; grupos com várias casas falam connosco. Ninguém paga para aparecer
+ * primeiro: nem as instituições, nem as famílias que compram o Acesso Família para ver as vagas em tempo real.
  */
 import { Check } from 'lucide-react'
 import type { Lar } from '@/types'
@@ -25,9 +25,14 @@ const INCLUIDO = [
 
 const QUEM: { quem: string; condicao: string; nota?: string; contacto?: boolean }[] = [
   {
-    quem: 'Lares privados',
+    quem: 'Lares privados · por entrada',
     condicao: 'Uma taxa fixa por cada pessoa que entra através do EncontraLar.',
-    nota: 'Sem mensalidade, sem percentagem sobre a mensalidade, sem custos de adesão. O valor é acordado no contrato.',
+    nota: 'Se ninguém entrar, não paga nada. Sem percentagem sobre a mensalidade dos residentes e sem custos de adesão.',
+  },
+  {
+    quem: 'Lares privados · mensalidade',
+    condicao: 'Um valor fixo por mês, sem taxa por entrada.',
+    nota: 'Compromisso de 12 meses. Compensa a quem recebe várias pessoas por ano. Os valores são acordados no contrato.',
   },
   { quem: 'IPSS e Misericórdias', condicao: 'Sem qualquer taxa.', nota: 'Nem por pedidos, nem por entradas.' },
   { quem: 'Grupos e redes com várias casas', condicao: 'Condições sob consulta.', contacto: true },
@@ -45,7 +50,7 @@ function LugarVazio({ lar }: { lar: Lar }) {
   return (
     <p className="mx-auto mt-12 max-w-[52ch] text-center text-lg text-ink-mute sm:mt-16">
       {maiuscula(noLar(lar.nome))}, uma semana com um lugar vazio{quarto} custa cerca de{' '}
-      <span className="font-semibold text-ink tabular">{euro(semana)}</span>. É por isso que só cobramos quando alguém entra.
+      <span className="font-semibold text-ink tabular">{euro(semana)}</span>. É por isso que, por entrada, só cobramos quando alguém entra.
     </p>
   )
 }
@@ -77,7 +82,7 @@ export function QuantoCusta({ lar }: { lar: Lar }) {
               </li>
             ))}
           </ul>
-          <p className="mt-8 text-base text-ink-mute lg:mt-auto lg:pt-8">Para as instituições, não há planos nem funcionalidades pagas.</p>
+          <p className="mt-8 text-base text-ink-mute lg:mt-auto lg:pt-8">Não há funcionalidades pagas: a modalidade só muda a forma de pagar.</p>
         </Reveal>
 
         <Reveal delay={120} className="rounded-[1.75rem] bg-white px-6 ring-1 ring-line ring-inset sm:px-10 lg:col-span-7">
@@ -108,7 +113,7 @@ export function QuantoCusta({ lar }: { lar: Lar }) {
       <Reveal variant="fade" className="mx-auto mt-16 flex max-w-[48ch] flex-col items-center text-center sm:mt-24">
         <h3 className="text-2xl font-semibold text-ink sm:text-3xl">Ninguém paga para aparecer primeiro.</h3>
         <p className="mt-3 text-lg text-ink-mute">
-          Não há posições pagas nem destaques à venda. A taxa não muda a ordem dos resultados, e o selo de verificação não se compra. As
+          Não há posições pagas nem destaques à venda. A modalidade não muda a ordem dos resultados, e o selo de verificação não se compra. As
           famílias podem pagar um Acesso Família para ver as vagas em tempo real, mas isso nunca muda a ordem nem dá prioridade nas vagas.
         </p>
         <MoreLink to="/como-ordenamos" className="mt-1 text-lg">
