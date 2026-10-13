@@ -79,7 +79,7 @@ const COLUNAS_INSTITUICAO = [
   'concelho', 'distrito', 'regiao', 'lat', 'lng', 'telefone', 'email', 'website', 'capacidade',
   'lista_espera_offline', 'estadia_media_meses', 'acordo_ss', 'incluido', 'extras', 'graus', 'cuidados',
   'comodidades', 'equipa_cuidadores_por_10', 'equipa_enfermeiros', 'equipa_medico_horas_semana', 'licenca',
-  'verificacao_estado', 'verificacao_data', 'ultima_inspecao', 'avaliacao_media', 'num_avaliacoes', 'fundacao',
+  'verificacao_estado', 'verificacao_data', 'licenca_confirmada_em', 'ultima_inspecao', 'avaliacao_media', 'num_avaliacoes', 'fundacao',
   'atualizado_em', 'capa', 'visualizacoes_30d', 'confirmacao_token_hash', 'plano', 'plano_desde',
 ]
 
@@ -96,7 +96,8 @@ function linhaInstituicao(l: Lar, agora: number): string {
     lit(l.listaEspera), lit(l.estadiaMediaMeses), lit(l.acordoSS), arr(l.incluido, 'text[]'), jsonb(l.extras),
     arr(l.graus, 'public.grau_dependencia[]'), arr(l.cuidados, 'text[]'), arr(l.comodidades, 'text[]'),
     lit(l.equipa.cuidadoresPor10), lit(l.equipa.enfermeiros), lit(l.equipa.medicoHorasSemana), lit(l.verificacao.licenca),
-    lit(l.verificacao.estado), rel(l.verificacao.data, agora), rel(l.verificacao.ultimaInspecao, agora),
+    lit(l.verificacao.estado), rel(l.verificacao.data, agora), rel(l.verificacao.licencaConfirmadaEm, agora),
+    rel(l.verificacao.ultimaInspecao, agora),
     lit(l.avaliacao), lit(l.numAvaliacoes), lit(l.fundacao), rel(l.atualizadoEm, agora), jsonb(l.capa),
     lit(l.visualizacoes30d),
     l.confirmacaoToken ? `decode('${hashToken(l.confirmacaoToken)}', 'hex')` : 'null',

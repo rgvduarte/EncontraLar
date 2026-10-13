@@ -164,6 +164,8 @@ export function larDeLinha(r: InstituicaoPublicaRow, reviews: Review[] = [], don
       estado: r.verificacao_estado ?? 'pendente',
       data: iso(r.verificacao_data),
       licenca: r.licenca ?? '',
+      // sem data, o número é só declarado (não conta para o nível «Licença confirmada»)
+      licencaConfirmadaEm: iso(r.licenca_confirmada_em),
       ultimaInspecao: iso(r.ultima_inspecao),
     },
     avaliacao: num(r.avaliacao_media),

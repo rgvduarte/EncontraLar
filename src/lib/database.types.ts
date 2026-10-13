@@ -22,8 +22,8 @@
  *   * candidaturas: o LAR só lê as linhas que aceitou (desbloqueada_em); antes disso usa a RPC
  *     pedidos_recebidos(), que devolve o resumo sem identificação;
  *   * procuras_anonimas não é legível nem gravável pelos clientes (registar_procura / procura_na_zona);
- *   * publicado, demonstracao, lista_espera_offline e os campos de verificação não são graváveis
- *     pelos clientes (só pelo administrador).
+ *   * publicado, demonstracao, lista_espera_offline e os campos de verificação (incluindo
+ *     licenca_confirmada_em, que é legível) não são graváveis pelos clientes (só pelo servidor/administrador).
  */
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
@@ -376,6 +376,7 @@ export type Database = {
           licenca: string
           verificacao_estado: Database['public']['Enums']['estado_verificacao']
           verificacao_data: string | null
+          licenca_confirmada_em: string | null
           ultima_inspecao: string | null
           avaliacao_media: number
           num_avaliacoes: number
@@ -427,6 +428,7 @@ export type Database = {
           licenca?: string
           verificacao_estado?: Database['public']['Enums']['estado_verificacao']
           verificacao_data?: string | null
+          licenca_confirmada_em?: string | null
           ultima_inspecao?: string | null
           avaliacao_media?: number
           num_avaliacoes?: number
@@ -478,6 +480,7 @@ export type Database = {
           licenca?: string
           verificacao_estado?: Database['public']['Enums']['estado_verificacao']
           verificacao_data?: string | null
+          licenca_confirmada_em?: string | null
           ultima_inspecao?: string | null
           avaliacao_media?: number
           num_avaliacoes?: number
@@ -862,6 +865,7 @@ export type Database = {
           mensalidade_max: number | null
           quartos: Json | null
           historico_saidas: number[] | null
+          licenca_confirmada_em: string | null
         }
         Relationships: []
       }

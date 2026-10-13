@@ -180,16 +180,29 @@ describe('ida e volta: base de demonstração → mappers = createSeed', () => {
     const semInternos = (l: Lar) => {
       // planoInstituicao: modalidade comercial (contrato) — fica fora da vista pública
       const { ownerId: _o, visualizacoes30d: _v, confirmacaoToken: _t, planoInstituicao: _p, planoDesde: _pd, reviews, atualizadoEm, verificacao, ...resto } = l
-      return { ...resto, atualizadoEm: Date.parse(atualizadoEm), verificacao: { ...verificacao, data: verificacao.data && Date.parse(verificacao.data), ultimaInspecao: verificacao.ultimaInspecao && Date.parse(verificacao.ultimaInspecao) }, reviews: reviews.map(({ id: _i, data, ...r }) => ({ ...r, data: Date.parse(data) })) }
+      const quando = (iso: string | undefined) => iso && Date.parse(iso)
+      return {
+        ...resto,
+        atualizadoEm: Date.parse(atualizadoEm),
+        verificacao: { ...verificacao, data: quando(verificacao.data), ultimaInspecao: quando(verificacao.ultimaInspecao), licencaConfirmadaEm: quando(verificacao.licencaConfirmadaEm) },
+        reviews: reviews.map(({ id: _i, data, ...r }) => ({ ...r, data: Date.parse(data) })),
+      }
     }
     for (const l of proto.lares) {
       const r = linhas.find((x) => x.id === l.id)
       expect(r, l.id).toBeDefined()
       const daBd = larDeLinha(r!, (porLar.get(l.id) ?? []).map(reviewDeLinha))
+      // os níveis públicos de verificação (licença confirmada, visitada, avaliações verificadas) são os do protótipo
+      expect(niveisVerificacao(daBd), l.id).toEqual(niveisVerificacao(l))
       const esperado = semInternos({
         ...l,
         atualizadoEm: desloca(l.atualizadoEm)!,
-        verificacao: { ...l.verificacao, data: desloca(l.verificacao.data), ultimaInspecao: desloca(l.verificacao.ultimaInspecao) },
+        verificacao: {
+          ...l.verificacao,
+          data: desloca(l.verificacao.data),
+          ultimaInspecao: desloca(l.verificacao.ultimaInspecao),
+          licencaConfirmadaEm: desloca(l.verificacao.licencaConfirmadaEm),
+        },
         reviews: l.reviews.map((rv) => ({ ...rv, data: desloca(rv.data)! })),
       })
       expect(semInternos(daBd), l.id).toEqual(esperado)

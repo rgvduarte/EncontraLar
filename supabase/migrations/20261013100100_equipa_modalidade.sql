@@ -18,6 +18,8 @@
 --      por registar_visita(), que aplica o selo «Visitada pela equipa», a licença, as vagas e os preços
 --      confirmados, os cuidados e, na adesão de um privado, a modalidade; avisa o gestor do selo.
 --      A conta do responsável NÃO é criada aqui (Auth Admin API numa Edge Function — docs/SUPABASE.md).
+--   6. Licença confirmada (instituicoes.licenca_confirmada_em, pública): o número declarado no registo não
+--      chega para o nível «Licença confirmada»; conta a ficha verificada ou a licença confirmada pela equipa.
 -- =====================================================================================
 
 -- ————————————————————————————————————————————————————————————————— 1. tipos
@@ -101,6 +103,147 @@ $$;
 create trigger instituicoes_plano_natureza
   before update of natureza on public.instituicoes
   for each row execute function private.instituicoes_limpar_plano();
+
+-- ————————————————————————————————————————————————————————————————— 2b. licença confirmada (nível público)
+
+-- Nível «Licença confirmada» das fichas (niveisVerificacao no protótipo): o número que a instituição declara no
+-- registo não chega. Conta quando a ficha está verificada OU a equipa confirmou a licença (no registo da
+-- Segurança Social ou na visita) — a data fica aqui. É público (a vista mostra-o, como o estado da
+-- verificação); só o servidor o escreve: registar_visita() ou o administrador.
+alter table public.instituicoes
+  add column licenca_confirmada_em timestamptz;
+comment on column public.instituicoes.licenca_confirmada_em is
+  'A equipa confirmou a licença (no registo da Segurança Social ou na visita). Sem data, o número é só declarado. Nível público «Licença confirmada» = licença preenchida e (verificado ou esta data). Só o servidor a escreve.';
+grant select (licenca_confirmada_em) on public.instituicoes to anon, authenticated;
+
+-- Ficha criada por um cliente: como em 20261012190400, e também sem licença confirmada nem modalidade
+-- (defesa em profundidade: os clientes nem têm privilégio nessas colunas).
+create or replace function private.proteger_instituicao_insercao()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if current_user in ('anon', 'authenticated') then
+    new.publicado := false;
+    new.demonstracao := false;
+    new.verificacao_estado := 'pendente';
+    new.verificacao_data := null;
+    new.licenca_confirmada_em := null;
+    new.ultima_inspecao := null;
+    new.lista_espera_offline := 0;
+    new.lista_espera_online := 0;
+    new.avaliacao_media := 0;
+    new.num_avaliacoes := 0;
+    new.visualizacoes_30d := 0;
+    new.atualizado_em := now();
+    new.plano := null;
+    new.plano_desde := null;
+  end if;
+  return new;
+end;
+$$;
+
+-- Antes de cada UPDATE de instituicoes, como em 20261012190400, e também:
+--   * clientes não confirmam a licença nem mudam a modalidade (defesa em profundidade; a modalidade só se
+--     apaga quando a ficha deixa de ser privada — trigger instituicoes_plano_natureza);
+--   * quando um cliente muda um campo de identidade ou de contacto, a licença volta a ser só declarada (a
+--     confirmação era da ficha anterior; o nível «Licença confirmada» não fica ao lado de um nome, morada ou
+--     telefone que ninguém confirmou) e, numa ficha verificada, a verificação volta a "pendente".
+create or replace function private.proteger_instituicao()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if old.owner_id is not null and new.owner_id is null then
+    new.publicado := false;
+  end if;
+
+  if current_user in ('anon', 'authenticated') then
+    if new.publicado is distinct from old.publicado or new.demonstracao is distinct from old.demonstracao then
+      raise exception 'A publicação da ficha é feita pela equipa EncontraLar depois da verificação.'
+        using errcode = '42501';
+    end if;
+    if new.licenca_confirmada_em is distinct from old.licenca_confirmada_em then
+      raise exception 'A licença é confirmada pela equipa EncontraLar.' using errcode = '42501';
+    end if;
+    if new.natureza = 'privado' and (new.plano, new.plano_desde) is distinct from (old.plano, old.plano_desde) then
+      raise exception 'A modalidade muda-se no painel da instituição (escolher_plano_instituicao).' using errcode = '42501';
+    end if;
+    if (new.nome, new.tipo, new.natureza, new.morada, new.codigo_postal, new.localidade, new.concelho,
+        new.distrito, new.regiao, new.lat, new.lng, new.acordo_ss, new.licenca,
+        new.telefone, new.email, new.website)
+       is distinct from
+       (old.nome, old.tipo, old.natureza, old.morada, old.codigo_postal, old.localidade, old.concelho,
+        old.distrito, old.regiao, old.lat, old.lng, old.acordo_ss, old.licenca,
+        old.telefone, old.email, old.website)
+    then
+      new.licenca_confirmada_em := null;
+      if old.verificacao_estado = 'verificado' then
+        new.verificacao_estado := 'pendente';
+        new.verificacao_data := null;
+      end if;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+-- Vista pública: a mesma de 20261012190400 e, no fim, licenca_confirmada_em (o nível «Licença confirmada» é
+-- público). Continua sem colunas internas (owner_id, visualizacoes_30d, token, modalidade).
+create or replace view public.instituicoes_publicas
+with (security_invoker = true)
+as
+select
+  i.id, i.nome, i.tipo, i.natureza, i.resumo, i.descricao,
+  i.morada, i.codigo_postal, i.localidade, i.concelho, i.distrito, i.regiao, i.lat, i.lng,
+  i.telefone, i.email, i.website,
+  i.capacidade,
+  i.lista_espera_offline + i.lista_espera_online as lista_espera,
+  i.estadia_media_meses, i.acordo_ss, i.incluido, i.extras, i.graus, i.cuidados, i.comodidades,
+  i.equipa_cuidadores_por_10, i.equipa_enfermeiros, i.equipa_medico_horas_semana,
+  i.licenca, i.verificacao_estado, i.verificacao_data, i.ultima_inspecao,
+  i.avaliacao_media, i.num_avaliacoes, i.fundacao, i.atualizado_em, i.capa,
+  i.publicado, i.demonstracao,
+  coalesce(q.vagas_livres, 0) as vagas_livres,
+  q.mensalidade_min,
+  q.mensalidade_max,
+  coalesce(q.quartos, '[]'::jsonb) as quartos,
+  coalesce(h.historico, '{}'::integer[]) as historico_saidas,
+  i.licenca_confirmada_em
+from public.instituicoes i
+left join lateral (
+  select
+    sum(qq.livres)::integer as vagas_livres,
+    min(qq.preco_min) as mensalidade_min,
+    max(qq.preco_max) as mensalidade_max,
+    jsonb_agg(
+      jsonb_build_object(
+        'tipo', qq.tipo, 'total', qq.total, 'livres', qq.livres,
+        'preco_min', qq.preco_min, 'preco_max', qq.preco_max
+      ) order by qq.tipo
+    ) as quartos
+  from public.quartos qq
+  where qq.instituicao_id = i.id
+) q on true
+left join lateral (
+  -- últimos 12 meses no calendário português (o último é o mês corrente em Lisboa)
+  select array_agg(coalesce(s.saidas, 0) order by m.mes) as historico
+  from generate_series(
+         date_trunc('month', now() at time zone 'Europe/Lisbon') - interval '11 months',
+         date_trunc('month', now() at time zone 'Europe/Lisbon'),
+         interval '1 month'
+       ) as m (mes)
+  left join public.saidas_mensais s on s.instituicao_id = i.id and s.mes = m.mes::date
+  where exists (select 1 from public.saidas_mensais x where x.instituicao_id = i.id)
+) h on true;
+
+comment on view public.instituicoes_publicas is
+  'Pesquisa/ficha pública: vagas_livres, mensalidade_min/max e quartos calculados a partir de quartos; lista_espera = offline + plataforma; historico_saidas = últimos 12 meses (Europe/Lisbon; o último é o mês corrente); licenca_confirmada_em = nível «Licença confirmada». Sem colunas internas (owner_id, visualizacoes_30d, modalidade): ver painel_instituicao().';
+
+revoke all on public.instituicoes_publicas from anon, authenticated;
+grant select on public.instituicoes_publicas to anon, authenticated, service_role;
 
 -- ————————————————————————————————————————————————————————————————— 3. taxa da entrada ('incluida')
 
@@ -514,8 +657,9 @@ grant select on public.visitas to authenticated;
 
 -- registarVisita: só contas 'equipa' (com email), só fichas do seu "mundo". Bloqueia a ficha (e depois os
 -- quartos, pela ordem das outras RPC) e aplica o que foi confirmado na visita:
---   * licença + instalações → selo «Visitada pela equipa» (verificado, com a data de hoje);
---     só a licença → 1.º nível (nao_verificado passa a pendente); p_licenca atualiza o nº da licença;
+--   * licença confirmada → nível «Licença confirmada» (licenca_confirmada_em = agora); p_licenca atualiza o nº;
+--     com as instalações vistas → selo «Visitada pela equipa» (verificado, com a data de hoje); sem elas o
+--     estado da verificação não muda;
 --   * p_quartos [{tipo, livres, preco_min, preco_max}]: só as partes confirmadas (vagas e/ou preços), por
 --     tipo de quarto que a ficha já tem; livres entre 0 e o total; preços inteiros, o máximo nunca abaixo do
 --     mínimo; renova a frescura das vagas (sem avisos de vaga — como no protótipo);
@@ -659,15 +803,13 @@ begin
       using errcode = '22023';
   end if;
 
-  -- licença confirmada (com as instalações: selo da visita; sem elas: 1.º nível)
+  -- licença confirmada: nível «Licença confirmada» (licenca_confirmada_em); com as instalações, o selo da visita
+  -- (verificado, com a data de hoje). Sem as instalações, o estado da verificação não muda.
   if v_licenca_ok then
     update public.instituicoes i
        set licenca = coalesce(v_licenca, i.licenca),
-           verificacao_estado = case
-             when v_selo then 'verificado'::public.estado_verificacao
-             when i.verificacao_estado = 'nao_verificado' then 'pendente'::public.estado_verificacao
-             else i.verificacao_estado
-           end,
+           licenca_confirmada_em = now(),
+           verificacao_estado = case when v_selo then 'verificado'::public.estado_verificacao else i.verificacao_estado end,
            verificacao_data = case when v_selo then now() else i.verificacao_data end
      where i.id = v_inst.id;
   end if;
