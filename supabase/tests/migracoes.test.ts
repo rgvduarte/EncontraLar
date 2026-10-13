@@ -9,8 +9,16 @@ import { AGORA_SEED, hashToken } from '../../scripts/gerar-seed-sql'
 import { admin, criarBase, MIGRACOES } from './helpers'
 
 const TABELAS = [
-  'acessos_familia', 'avaliacoes', 'candidatura_eventos', 'candidaturas', 'casos', 'favoritos', 'instituicoes', 'notificacoes',
-  'perfis_cuidados', 'perfis_utilizador', 'procuras_anonimas', 'quartos', 'saidas_mensais', 'visitas',
+  'acessos_familia', 'avaliacoes', 'candidatura_eventos', 'candidaturas', 'casos', 'consentimentos_acesso', 'contestacoes_entrada',
+  'contratos', 'dados_faturacao', 'documentos_fiscais', 'fatura_linhas', 'faturas', 'favoritos', 'instituicoes', 'notificacoes',
+  'pagamentos_familia', 'perfis_cuidados', 'perfis_utilizador', 'procuras_anonimas', 'quartos', 'saidas_mensais', 'stripe_eventos',
+  'subscricoes_instituicao', 'visitas',
+]
+
+/** Tabelas da faturação (20261013120000): RLS, só leitura do dono, nenhuma escrita de clientes. */
+const TABELAS_FATURACAO = [
+  'consentimentos_acesso', 'contestacoes_entrada', 'contratos', 'dados_faturacao', 'documentos_fiscais', 'fatura_linhas', 'faturas',
+  'pagamentos_familia', 'stripe_eventos', 'subscricoes_instituicao',
 ]
 
 const RPC_PUBLICAS = [
@@ -20,6 +28,17 @@ const RPC_PUBLICAS = [
   'avaliacoes_instituicao', 'instituicoes_completas', 'painel_equipa', 'painel_instituicao', 'pedidos_recebidos', 'pedir_visita', 'procura_na_zona', 'registar_entrada',
   'registar_procura', 'registar_vaga_libertada', 'registar_visita', 'renovar_token_confirmacao', 'responder_vaga',
   'vagas_por_token',
+  // faturação (dono de um lar)
+  'contestar_entrada', 'faturacao_resumo', 'guardar_dados_faturacao',
+]
+
+/** RPC só do servidor (Edge Functions com a chave secreta): o contrato de supabase/functions/_shared/portas.ts. */
+const RPC_SERVICO = [
+  'resolver_contestacao', 'servico_acesso_iniciar', 'servico_acesso_sessao_criada', 'servico_cobranca_criada', 'servico_cobranca_debito_iniciado',
+  'servico_cobrancas_a_debitar', 'servico_contexto_instituicao', 'servico_definir_cliente_stripe', 'servico_documento_emitido',
+  'servico_documento_externo', 'servico_documento_falhou', 'servico_documentos_pendentes', 'servico_evento_aplicar', 'servico_evento_falhou',
+  'servico_evento_iniciar', 'servico_iniciar_execucao', 'servico_preparar_cobrancas', 'servico_reservar_documentos', 'servico_subscricao_contexto',
+  'servico_subscricao_registar', 'servico_subscricoes_a_sincronizar', 'servico_terminar_execucao',
 ]
 
 /**
@@ -105,7 +124,7 @@ describe('migrações', () => {
   })
 
   it('anon não tem privilégios em dados pessoais nem de saúde (nem nas visitas da equipa, nem no Acesso Família)', async () => {
-    for (const t of ['perfis_utilizador', 'perfis_cuidados', 'candidaturas', 'candidatura_eventos', 'favoritos', 'notificacoes', 'casos', 'procuras_anonimas', 'visitas', 'acessos_familia']) {
+    for (const t of ['perfis_utilizador', 'perfis_cuidados', 'candidaturas', 'candidatura_eventos', 'favoritos', 'notificacoes', 'casos', 'procuras_anonimas', 'visitas', 'acessos_familia', ...TABELAS_FATURACAO]) {
       const [r] = await adm<{ s: boolean; i: boolean; u: boolean; d: boolean }>(
         `select has_table_privilege('anon', $1, 'select') s, has_table_privilege('anon', $1, 'insert') i,
                 has_table_privilege('anon', $1, 'update') u, has_table_privilege('anon', $1, 'delete') d`,
@@ -116,7 +135,7 @@ describe('migrações', () => {
   })
 
   it('clientes não escrevem candidaturas, eventos, notificações, casos, avaliações, procura, visitas nem o Acesso Família (só funções de servidor)', async () => {
-    for (const t of ['candidaturas', 'candidatura_eventos', 'notificacoes', 'casos', 'procuras_anonimas', 'visitas', 'acessos_familia']) {
+    for (const t of ['candidaturas', 'candidatura_eventos', 'notificacoes', 'casos', 'procuras_anonimas', 'visitas', 'acessos_familia', ...TABELAS_FATURACAO]) {
       const [r] = await adm<{ i: boolean; u: boolean; d: boolean }>(
         `select has_table_privilege('authenticated', $1, 'insert') i, has_table_privilege('authenticated', $1, 'update') u,
                 has_table_privilege('authenticated', $1, 'delete') d`,
@@ -135,6 +154,65 @@ describe('migrações', () => {
       "select has_table_privilege('service_role', 'public.acessos_familia', 'insert') i, has_table_privilege('service_role', 'public.acessos_familia', 'update') u, has_table_privilege('service_role', 'public.acessos_familia', 'delete') d",
     )
     expect(a2).toEqual({ i: false, u: false, d: false })
+    // faturação: nem a service_role escreve nas tabelas (só pelas funções servico_*, que validam e mantêm a coerência)
+    for (const t of TABELAS_FATURACAO) {
+      const [r] = await adm<{ s: boolean; i: boolean; u: boolean; d: boolean }>(
+        `select has_table_privilege('service_role', $1, 'select') s, has_table_privilege('service_role', $1, 'insert') i,
+                has_table_privilege('service_role', $1, 'update') u, has_table_privilege('service_role', $1, 'delete') d`,
+        [`public.${t}`],
+      )
+      expect(r, t).toEqual({ s: true, i: false, u: false, d: false })
+    }
+  })
+
+  it('faturação: o dono lê sem as colunas stripe_*/moloni_*/externo_id; stripe_eventos e as tabelas private sem acesso de clientes', async () => {
+    const fechadas: [string, string][] = [
+      ['dados_faturacao', 'stripe_customer_id'], ['dados_faturacao', 'stripe_payment_method_id'], ['dados_faturacao', 'moloni_cliente_id'],
+      ['faturas', 'stripe_invoice_id'], ['faturas', 'stripe_subscription_id'], ['faturas', 'tentativas'], ['faturas', 'divergente'],
+      ['pagamentos_familia', 'stripe_checkout_session_id'], ['pagamentos_familia', 'stripe_payment_intent_id'], ['pagamentos_familia', 'demonstracao'],
+      ['subscricoes_instituicao', 'stripe_subscription_id'], ['documentos_fiscais', 'externo_id'], ['documentos_fiscais', 'emissor'],
+      ['documentos_fiscais', 'cliente'], ['documentos_fiscais', 'chave'], ['documentos_fiscais', 'ultimo_erro'], ['contratos', 'notas'],
+      ['consentimentos_acesso', 'ip_truncado'], ['consentimentos_acesso', 'user_id'],
+    ]
+    for (const [t, c] of fechadas) {
+      const [r] = await adm<{ a: boolean; s: boolean; u: boolean }>(
+        `select has_column_privilege('authenticated', $1, $2, 'select') a, has_column_privilege('anon', $1, $2, 'select') s,
+                has_column_privilege('authenticated', $1, $2, 'update') u`,
+        [`public.${t}`, c],
+      )
+      expect(r, `${t}.${c}`).toEqual({ a: false, s: false, u: false })
+    }
+    // as colunas que a página Faturação lê na tabela (o resto vem de faturacao_resumo)
+    for (const [t, c] of [['documentos_fiscais', 'id'], ['documentos_fiscais', 'numero'], ['faturas', 'url_pagamento'], ['pagamentos_familia', 'estado'], ['dados_faturacao', 'metodo_ultimos4']]) {
+      const [r] = await adm<{ a: boolean }>("select has_column_privilege('authenticated', $1, $2, 'select') a", [`public.${t}`, c])
+      expect(r, `${t}.${c}`).toEqual({ a: true })
+    }
+    const [e] = await adm<{ a: boolean; s: boolean }>("select has_table_privilege('authenticated', 'public.stripe_eventos', 'select') a, has_any_column_privilege('authenticated', 'public.stripe_eventos', 'select') s")
+    expect(e).toEqual({ a: false, s: false })
+    for (const t of ['private.execucoes_faturacao', 'private.alertas_faturacao']) {
+      const [r] = await adm<{ a: boolean; u: boolean; s: boolean }>(
+        "select has_table_privilege('anon', $1, 'select') a, has_table_privilege('authenticated', $1, 'select') u, has_table_privilege('service_role', $1, 'select') s",
+        [t],
+      )
+      expect(r, t).toEqual({ a: false, u: false, s: false })
+    }
+    // políticas: só leitura, só authenticated, sempre pelo dono (lar ou família) — stripe_eventos sem nenhuma
+    const pol = await adm<{ tablename: string; policyname: string; cmd: string; roles: string[]; q: string }>(
+      `select tablename, policyname, cmd, roles::text[] as roles, qual as q from pg_policies where tablename = any ($1) order by 1, 2`,
+      [TABELAS_FATURACAO],
+    )
+    expect(pol.map((x) => `${x.tablename}.${x.policyname}`)).toEqual([
+      'consentimentos_acesso.consentimentos_select_proprio', 'contestacoes_entrada.contestacoes_select_dono', 'contratos.contratos_select_dono',
+      'dados_faturacao.dados_faturacao_select_dono', 'documentos_fiscais.documentos_select_familia', 'documentos_fiscais.documentos_select_instituicao',
+      'fatura_linhas.fatura_linhas_select_dono', 'faturas.faturas_select_dono', 'pagamentos_familia.pagamentos_familia_select_proprio',
+      'subscricoes_instituicao.subscricoes_select_dono',
+    ])
+    for (const x of pol) {
+      expect(x.cmd, x.policyname).toBe('SELECT')
+      expect(x.roles, x.policyname).toEqual(['authenticated'])
+      expect(x.q, x.policyname).toMatch(/minha_instituicao|auth\.uid/)
+    }
+    for (const x of pol.filter((y) => y.tablename === 'documentos_fiscais')) expect(x.q).toMatch(/'emitido'/)
   })
 
   it('a camada do Acesso Família não chega a anon pela tabela: quartos, saídas e avaliações sem leitura; colunas da camada completa fechadas', async () => {
@@ -251,12 +329,16 @@ describe('migrações', () => {
   it('agendam no pg_cron a expiração das propostas, a minimização dos pedidos encerrados e a retenção da procura anónima', async () => {
     const r = await adm<{ jobname: string; schedule: string; command: string }>('select jobname, schedule, command from cron.job order by jobname')
     expect(r).toEqual([
+      { jobname: 'encontralar-cobrar-mes', schedule: '7 7 1 * *', command: "select private.invocar_faturacao('cobranca')" },
       { jobname: 'encontralar-expirar-propostas', schedule: '*/15 * * * *', command: 'select private.expirar_propostas()' },
+      { jobname: 'encontralar-faturar-diario', schedule: '13 6 * * *', command: "select private.invocar_faturacao('diario')" },
+      { jobname: 'encontralar-limpar-eventos-stripe', schedule: '29 3 * * *', command: 'select private.limpar_stripe_eventos(90)' },
       { jobname: 'encontralar-limpar-procuras', schedule: '41 3 * * *', command: 'select private.limpar_procuras_anonimas(365)' },
       { jobname: 'encontralar-minimizar-pedidos', schedule: '17 3 * * *', command: 'select private.minimizar_candidaturas_encerradas(30)' },
     ])
-    // os comandos agendados correm (como postgres, tal como o pg_cron)
+    // os comandos agendados correm (como postgres, tal como o pg_cron); sem segredos no Vault a faturação não faz nada
     for (const j of r) await expect(adm(j.command)).resolves.toBeDefined()
+    expect(await adm('select count(*)::int n from net.pedidos_teste')).toEqual([{ n: 0 }])
   })
 
   it('anon só executa a pesquisa anónima, o link de confirmação e a versão grátis; authenticated só as RPC previstas e as auxiliares das políticas', async () => {
@@ -283,6 +365,35 @@ describe('migrações', () => {
       'private.resumo_publico',
     ])
     expect(r.filter((x) => x.auth).map((x) => x.f).sort()).toEqual([...permitidas].sort())
+  })
+
+  it('service_role executa as RPC do servidor (contrato portas.ts) e as das contas; anon e authenticated nenhuma servico_*', async () => {
+    const r = await adm<{ f: string; anon: boolean; auth: boolean; servico: boolean }>(`
+      select n.nspname || '.' || p.proname as f,
+             has_function_privilege('anon', p.oid, 'execute') as anon,
+             has_function_privilege('authenticated', p.oid, 'execute') as auth,
+             has_function_privilege('service_role', p.oid, 'execute') as servico
+        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname in ('public', 'private')
+       order by 1`)
+    const esperadas = new Set([
+      ...[...RPC_PUBLICAS, ...RPC_ANON, ...RPC_SERVICO].flatMap((f) => [`public.${f}`, `private.${f}`]),
+      'private.tem_papel', 'private.minha_instituicao', 'private.mundo_equipa', 'private.tem_acesso_completo', 'private.conta_demonstracao',
+      'private.resumo_publico',
+      // a faturação soma os dias do passe (Acesso Família)
+      'private.estender_acesso',
+    ])
+    expect(r.filter((x) => x.servico).map((x) => x.f).sort()).toEqual([...esperadas].sort())
+    const servico = new Set(RPC_SERVICO.flatMap((f) => [`public.${f}`, `private.${f}`]))
+    expect(r.filter((x) => servico.has(x.f) && (x.anon || x.auth))).toEqual([])
+    // o contrato: cada RPC de serviço em portas.ts existe em public
+    const { readFileSync } = await import('node:fs')
+    const portas = readFileSync(new URL('../functions/_shared/portas.ts', import.meta.url), 'utf8')
+    const bloco = portas.slice(portas.indexOf('export interface RpcServico'), portas.indexOf('// ————', portas.indexOf('export interface RpcServico')))
+    const nomes = [...bloco.matchAll(/^ {2}(\w+):\s*\{/gm)].map((m) => m[1]!).sort()
+    expect(nomes).toEqual([...RPC_SERVICO].sort())
+    // a tarefa agendada (pg_net) e a retenção dos eventos: só postgres
+    for (const f of ['private.invocar_faturacao', 'private.limpar_stripe_eventos']) expect(r.find((x) => x.f === f), f).toMatchObject({ anon: false, auth: false, servico: false })
   })
 
   it('publicam notificacoes, candidaturas e quartos no Realtime', async () => {

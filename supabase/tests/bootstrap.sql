@@ -96,3 +96,47 @@ as $$
   on conflict (jobname) do update set schedule = excluded.schedule, command = excluded.command
   returning jobid;
 $$;
+
+-- Imitação mínima do pg_net e do Vault (o PGlite não os tem), para a faturação agendada
+-- (20261013120100_faturacao_agendamento.sql): net.http_post regista o pedido em net.pedidos_teste (os testes
+-- leem o URL, o corpo e os cabeçalhos); vault.decrypted_secrets lê vault.secrets em claro (só em testes!).
+create schema net;
+create table net.pedidos_teste (
+  id bigint generated always as identity primary key,
+  url text,
+  body jsonb,
+  params jsonb,
+  headers jsonb,
+  timeout_milliseconds integer,
+  criado_em timestamptz not null default now()
+);
+create function net.http_post(
+  url text,
+  body jsonb default '{}'::jsonb,
+  params jsonb default '{}'::jsonb,
+  headers jsonb default '{"Content-Type": "application/json"}'::jsonb,
+  timeout_milliseconds integer default 5000
+)
+returns bigint
+language sql
+as $$
+  insert into net.pedidos_teste (url, body, params, headers, timeout_milliseconds)
+  values (url, body, params, headers, timeout_milliseconds)
+  returning id;
+$$;
+
+create schema vault;
+create table vault.secrets (
+  id uuid primary key default gen_random_uuid(),
+  name text unique,
+  secret text not null
+);
+create view vault.decrypted_secrets as select id, name, secret as decrypted_secret from vault.secrets;
+create function vault.create_secret(new_secret text, new_name text default null)
+returns uuid
+language sql
+as $$
+  insert into vault.secrets (name, secret) values (new_name, new_secret)
+  on conflict (name) do update set secret = excluded.secret
+  returning id;
+$$;
