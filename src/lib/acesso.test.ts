@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_PASSWORD, DEMO_PRO_EMAIL } from '@/data/seed'
 import { acessoAtivo, diasRestantes, faixaPreco, novoAte, planoFamilia, PLANOS_FAMILIA, precoTexto, temAcessoCompleto } from './acesso'
-import { comprarAcessoDemo, getCurrentUser, login, logout, register, resetDemo } from './store'
+import { candidatar, comprarAcessoDemo, getCurrentUser, getDB, login, logout, pedirVisita, register, resetDemo, savePerfil } from './store'
 
 const DIA = 86_400_000
 const agora = Date.parse('2026-10-13T10:00:00Z')
@@ -60,6 +60,24 @@ describe('Acesso Família — compra simulada (store)', () => {
     expect(c.ok).toBe(true)
     expect(temAcessoCompleto(getCurrentUser())).toBe(true)
     expect(getCurrentUser()?.acesso?.valorCentimos).toBe(1490)
+  })
+
+  it('sem passe não se enviam pedidos nem se pedem visitas; com passe, sim', () => {
+    register({ role: 'familia', nome: 'Rita Pedido', email: 'rita.pedido@exemplo.pt', password: 'palavrapasse1' })
+    const ana = getDB().perfis.find((p) => p.userId !== getCurrentUser()!.id)!
+    const { id: _i, userId: _u, criadoEm: _c, atualizadoEm: _a, ...dados } = ana
+    const perfil = savePerfil(dados)!
+    const larId = getDB().lares[3]!.id
+    expect(candidatar({ larId, perfilId: perfil.id })).toBeNull()
+    comprarAcessoDemo('acesso_30', 'mbway')
+    const c = candidatar({ larId, perfilId: perfil.id })
+    expect(c?.estado).toBe('enviada')
+    // o passe acaba: a visita já não se pede
+    const db = getDB()
+    const u = db.users.find((x) => x.id === getCurrentUser()!.id)!
+    u.acesso = { ...u.acesso!, ate: new Date(Date.now() - DIA).toISOString() }
+    pedirVisita(c!.id, '2026-11-02', '15:00')
+    expect(getDB().candidaturas.find((x) => x.id === c!.id)?.visita).toBeUndefined()
   })
 
   it('só contas de família compram o passe', () => {

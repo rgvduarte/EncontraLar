@@ -603,6 +603,8 @@ export function candidatar(input: CandidatarInput): Candidatura | null {
     (c) => c.userId === user.id && c.larId === lar.id && c.perfilId === perfil.id && !['cancelada', 'recusada'].includes(c.estado),
   )
   if (ativa) return ativa
+  // pedidos a várias casas são do Acesso Família (como no servidor: candidatar recusa sem acesso)
+  if (!temAcessoCompleto(user)) return null
   const agora = nowIso()
   const c: Candidatura = {
     id: uid('c'),
@@ -637,8 +639,10 @@ export function candidatar(input: CandidatarInput): Candidatura | null {
 }
 
 export function pedirVisita(candidaturaId: string, data: string, hora: string) {
+  const user = getCurrentUser()
   const c = db.candidaturas.find((x) => x.id === candidaturaId)
-  if (!c) return
+  // só quem fez o pedido, e as visitas são do Acesso Família (como no servidor: pedir_visita recusa sem acesso)
+  if (!c || !user || c.userId !== user.id || !temAcessoCompleto(user)) return
   const lar = db.lares.find((l) => l.id === c.larId)
   const notifs = lar?.ownerId
     ? [
