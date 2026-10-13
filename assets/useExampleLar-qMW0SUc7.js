@@ -1,0 +1,1 @@
+import{f as e,l as t}from"./hooks-sBmhAI3G.js";import{R as n,Y as r}from"./store-C5XbKeb1.js";var i=e(t(),1),a=`Casa de exemplo`;function o(){let e=r(),{completo:t}=n();return(0,i.useMemo)(()=>{let n=e.find(e=>e.id===`lar-jardins-do-douro`)??e.find(e=>e.tipo===`erpi`&&e.listaEspera>0&&e.historicoSaidas.length>0)??e[0];return n&&!t?{...n,nome:a}:n},[e,t])}export{o as t};

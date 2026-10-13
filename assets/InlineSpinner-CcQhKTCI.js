@@ -1,0 +1,1 @@
+import{a as e,o as t}from"./hooks-sBmhAI3G.js";var n=e();function r({className:e}){return(0,n.jsx)(`span`,{"aria-hidden":!0,className:t(`inline-block size-5 animate-spin rounded-full border-2 border-current border-t-transparent opacity-80`,e)})}export{r as t};
