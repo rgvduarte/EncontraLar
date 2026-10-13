@@ -3,7 +3,7 @@ import { DEMO_EQUIPA_EMAIL, DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_LAR_ID, DEM
 import type { Visita } from '@/types'
 import { cobrancaEntradaTexto, compromissoAte, ENTRADAS_ANO_MENSAL_COMPENSA, planoDoLar, podeMudarPlano } from './acesso'
 import { niveisVerificacao, taxaPara } from './negocio'
-import { escolherPlanoInstituicao, getCurrentUser, getDB, login, logout, marcarEntrada, register, registarVisita, resetDemo, setAlerta } from './store'
+import { atualizarLar, escolherPlanoInstituicao, getCurrentUser, getDB, login, logout, marcarEntrada, register, registarVisita, resetDemo, setAlerta } from './store'
 
 const tudo: Visita['verificacao'] = { licencaConfirmada: true, instalacoesVistas: true, vagasConfirmadas: true, precosConfirmados: true }
 const nada: Visita['verificacao'] = { licencaConfirmada: false, instalacoesVistas: false, vagasConfirmadas: false, precosConfirmados: false }
@@ -123,6 +123,23 @@ describe('equipa de terreno: registo de visitas', () => {
   })
 })
 
+describe('a ficha muda depois de confirmada', () => {
+  beforeEach(() => {
+    logout()
+    resetDemo()
+  })
+
+  it('mudar o telefone de uma ficha verificada volta a pô-la em análise; a descrição não', () => {
+    login(DEMO_LAR_EMAIL, DEMO_PASSWORD)
+    expect(niveisVerificacao(lar(DEMO_LAR_ID))).toMatchObject({ licenca: true, visitado: true })
+    expect(atualizarLar(DEMO_LAR_ID, { descricao: 'Outra descrição.', telefone: lar(DEMO_LAR_ID).telefone })).toEqual({ reverificar: false })
+    expect(lar(DEMO_LAR_ID).verificacao.estado).toBe('verificado')
+    expect(atualizarLar(DEMO_LAR_ID, { telefone: '220 999 999' })).toEqual({ reverificar: true })
+    expect(lar(DEMO_LAR_ID).verificacao).toMatchObject({ estado: 'pendente', data: undefined, licencaConfirmadaEm: undefined })
+    expect(niveisVerificacao(lar(DEMO_LAR_ID))).toMatchObject({ licenca: false, visitado: false })
+  })
+})
+
 describe('modalidade das instituições privadas', () => {
   beforeEach(() => {
     logout()
@@ -162,6 +179,15 @@ describe('modalidade das instituições privadas', () => {
     expect(c).toBeDefined()
     marcarEntrada(c!.id, '2026-10-20')
     expect(getDB().candidaturas.find((x) => x.id === c!.id)?.entrada?.taxa).toBe('incluida')
+
+    // nem a equipa, numa nova visita, tira o lar da mensalidade antes do fim do compromisso
+    login(DEMO_EQUIPA_EMAIL, DEMO_PASSWORD)
+    const visita = registarVisita({ larId: DEMO_LAR_ID, resultado: 'aderiu', verificacao: nada, plano: 'por_entrada' })
+    expect(visita.ok).toBe(false)
+    // a mesma modalidade não recomeça o compromisso
+    const desde = lar(DEMO_LAR_ID).planoDesde
+    expect(registarVisita({ larId: DEMO_LAR_ID, resultado: 'aderiu', verificacao: nada, plano: 'mensal' }).ok).toBe(true)
+    expect(lar(DEMO_LAR_ID).planoDesde).toBe(desde)
   })
 })
 

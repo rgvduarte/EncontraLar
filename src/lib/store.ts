@@ -750,11 +750,31 @@ export function responderVaga(id: string, aceitar: boolean) {
 
 // ————————————————————————————————————————— operações da instituição
 
-export function atualizarLar(larId: string, patch: Partial<Omit<Lar, 'id' | 'ownerId'>>) {
+/** Dados que identificam a casa: mudá-los depois de confirmados obriga a nova confirmação da equipa (como no servidor). */
+const IDENTIDADE_LAR = ['nome', 'tipo', 'natureza', 'morada', 'codigoPostal', 'localidade', 'concelho', 'distrito', 'regiao', 'lat', 'lng', 'acordoSS', 'telefone', 'email', 'website'] as const
+
+/**
+ * Atualiza a ficha. Se mudar a identificação, a licença ou os contactos, a licença deixa de estar confirmada e o selo
+ * da visita volta a "em análise" (assim um selo não fica num telefone ou morada que ninguém confirmou).
+ * Devolve `reverificar: true` quando isso acontece numa ficha que tinha alguma confirmação.
+ */
+export function atualizarLar(larId: string, patch: Partial<Omit<Lar, 'id' | 'ownerId'>>): { reverificar: boolean } {
+  let reverificar = false
   commit({
     ...db,
     lares: patchLar(db.lares, larId, (l) => {
       const next = { ...l, ...patch }
+      const mudou =
+        IDENTIDADE_LAR.some((k) => k in patch && (patch[k] ?? undefined) !== (l[k] ?? undefined)) ||
+        (!!patch.verificacao && patch.verificacao.licenca !== l.verificacao.licenca)
+      if (mudou && (l.verificacao.licencaConfirmadaEm || l.verificacao.estado === 'verificado')) {
+        reverificar = true
+        next.verificacao = {
+          ...next.verificacao,
+          licencaConfirmadaEm: undefined,
+          ...(l.verificacao.estado === 'verificado' ? { estado: 'pendente' as const, data: undefined } : {}),
+        }
+      }
       if (patch.quartos) {
         const precos = next.quartos.flatMap((q) => [q.precoMin, q.precoMax])
         if (precos.length) {
@@ -767,6 +787,7 @@ export function atualizarLar(larId: string, patch: Partial<Omit<Lar, 'id' | 'own
       return next
     }),
   })
+  return { reverificar }
 }
 
 /** Confirma que a informação de vagas está correta (renova o selo de atualização). */
@@ -1347,6 +1368,9 @@ export function registarVisita(input: RegistoVisitaInput): RegistoVisitaResultad
   if (!lar) return { ok: false, erro: 'Instituição não encontrada.' }
   const agora = nowIso()
   const email = input.responsavel?.email?.trim().toLowerCase()
+  if (input.resultado === 'aderiu' && lar.natureza === 'privado' && (input.plano ?? 'por_entrada') !== (lar.planoInstituicao ?? 'por_entrada') && !podeMudarPlano(lar)) {
+    return { ok: false, erro: `A mensalidade tem um compromisso de ${COMPROMISSO_MENSAL_MESES} meses: pode mudar a partir de ${dataLonga(compromissoAte(lar)!)}.` }
+  }
   const criarConta = !!input.criarConta && input.resultado === 'aderiu' && !lar.ownerId
   if (criarConta) {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, erro: 'Indique o email do responsável para criar a conta.' }
@@ -1378,7 +1402,11 @@ export function registarVisita(input: RegistoVisitaInput): RegistoVisitaResultad
     novoLar = { ...novoLar, quartos, mensalidadeMin: Math.min(...precos), mensalidadeMax: Math.max(...precos), atualizadoEm: agora }
   }
   if (input.cuidados) novoLar = { ...novoLar, cuidados: input.cuidados }
-  if (input.resultado === 'aderiu' && lar.natureza === 'privado') novoLar = { ...novoLar, planoInstituicao: input.plano ?? 'por_entrada', planoDesde: agora }
+  if (input.resultado === 'aderiu' && lar.natureza === 'privado') {
+    const plano = input.plano ?? 'por_entrada'
+    // a mesma modalidade não recomeça o compromisso; ninguém sai da mensalidade antes dos 12 meses
+    if (plano !== (lar.planoInstituicao ?? 'por_entrada')) novoLar = { ...novoLar, planoInstituicao: plano, planoDesde: agora }
+  }
 
   let users = db.users
   let conta: { email: string; palavraPasse: string } | undefined

@@ -36,8 +36,14 @@ export default function FichaPage({ lar }: { lar: Lar }) {
 
   const submeter = (e: FormEvent) => {
     e.preventDefault()
-    if (form.guardar()) {
-      toast.success('Ficha guardada', 'As famílias já veem as alterações.')
+    const res = form.guardar()
+    if (res) {
+      toast.success(
+        'Ficha guardada',
+        res.reverificar
+          ? 'Mudou dados de contacto ou de identificação: a nossa equipa vai confirmá-los de novo. Até lá, a verificação fica em análise.'
+          : 'As famílias já veem as alterações.',
+      )
     } else {
       toast.error('Falta corrigir alguns campos', 'Estão assinalados a vermelho.')
       requestAnimationFrame(() => {

@@ -43,9 +43,10 @@ Este documento explica como pôr a base de dados real a funcionar, passo a passo
   através de um pedido que a família lhe enviou, com consentimento explícito (`candidaturas.consentimento_em`), e
   **só se a ficha estiver publicada, verificada, tiver gestor e for do mesmo "mundo"** (demonstração ↔ real).
 - **Publicar fichas é sempre decisão do administrador** (secção 6). **Verificar** é do administrador ou da
-  equipa de terreno, na visita (licença + instalações = selo «Visitada pela equipa», secção 13). Mudar nome,
-  morada, contactos, licença, natureza, tipo ou acordo com a Segurança Social numa ficha verificada fá-la voltar
-  a "pendente".
+  equipa de terreno, na visita (licença + instalações = selo «Visitada pela equipa», secção 13). O nível público
+  «Licença confirmada» exige a ficha verificada ou `licenca_confirmada_em` (a equipa confirmou a licença): o
+  número declarado no registo não chega. Mudar nome, morada, contactos, licença, natureza, tipo ou acordo com a
+  Segurança Social apaga a licença confirmada e, numa ficha verificada, fá-la voltar a "pendente".
 - **Minimização**: cancelar um pedido retira de imediato os dados de saúde à instituição (fica nome e idade);
   apagar um perfil minimiza os pedidos já encerrados desse perfil; pedidos recusados são minimizados 30 dias
   depois (pg_cron). As notas do histórico e das notificações vão junto.
@@ -109,7 +110,7 @@ passar a usar o CLI, alinhe o histórico com `supabase migration repair` antes d
 | `20261012190700_modelo_negocio_tipos.sql` | Valores novos dos enums: `role_utilizador` `profissional`, `estado_candidatura` `admitida` (ficheiro à parte: um valor novo só se usa depois de a transação terminar). |
 | `20261012190800_modelo_negocio.sql` | Modelo de negócio: casos, encaminhamentos, entradas e taxa, duas fases, avaliações verificadas, procura anónima, link de confirmação, RPC novas e pg_cron da procura. |
 | `20261013100000_equipa_modalidade_tipos.sql` | Valores novos dos enums: `role_utilizador` `equipa`, `taxa_entrada` `incluida` (ficheiro à parte, pela mesma razão do `0700`). |
-| `20261013100100_equipa_modalidade.sql` | Equipa de terreno e modalidade (secção 13): `instituicoes.plano`/`plano_desde`, `escolher_plano_instituicao`, taxa `incluida`, papel `equipa`, tabela `visitas`, `registar_visita`, `painel_equipa`, `painel_instituicao` com a modalidade. |
+| `20261013100100_equipa_modalidade.sql` | Equipa de terreno e modalidade (secção 13): `instituicoes.plano`/`plano_desde`, `escolher_plano_instituicao`, taxa `incluida`, papel `equipa`, tabela `visitas`, `registar_visita`, `painel_equipa`, `painel_instituicao` com a modalidade, `licenca_confirmada_em` (também na vista pública). |
 
 As migrações já aplicadas **nunca se editam**: qualquer mudança é um ficheiro novo com um prefixo maior (hoje, maior
 do que `20261013100100`).
@@ -201,6 +202,8 @@ update public.instituicoes set publicado = false where id = 'lar-exemplo';
 - **Equipa de terreno**: dar o acesso = `app_metadata.role = 'equipa'`; tirá-lo (saída da equipa) = mudar o papel
   ou apagá-lo do `app_metadata` (a conta volta a `familia`) e terminar as sessões (os tokens já emitidos valem até
   expirarem — secção 4). A conta de demonstração da equipa só vê e só visita fichas de demonstração.
+- Licença confirmada no registo da Segurança Social (sem visita), como `postgres`:
+  `update public.instituicoes set licenca_confirmada_em = now() where id = 'lar-x';` (nível «Licença confirmada»).
 - Modalidade fora das regras (exceção comercial acordada, ex.: sair da mensalidade antes dos 12 meses), como
   `postgres`: `update public.instituicoes set plano = 'por_entrada', plano_desde = now() where id = 'lar-x';`
   (só lares privados: a base de dados recusa uma modalidade numa IPSS/Misericórdia).
@@ -246,7 +249,9 @@ A vista pública expõe `demonstracao` para a interface poder mostrar um aviso.
    social (organização, 3 casos e 4 encaminhamentos), as entradas registadas, a avaliação verificada (a
    importada pelo seed passa a pertencer à família que confirmou a entrada) e as 6 visitas da equipa de terreno no
    distrito do Porto. A modalidade dos dois lares privados que a escolheram (o de demonstração, por entrada, e um
-   na mensalidade) já vem do `seed.sql`.
+   na mensalidade) e a licença confirmada das fichas "pendentes" (há 45 dias, como no protótipo) já vêm do
+   `seed.sql`. Uma base de demonstração carregada antes de `20261013100100` não as ganha ao repetir o seed (as
+   fichas já existem: `on conflict do nothing`): crie um ramo novo.
 4. Com o Supabase ligado, o acesso de demonstração do ecrã de entrada (`DemoAccess`) deve ser escondido ou
    apontar para o ramo.
 
@@ -312,15 +317,17 @@ passam a vir inline no ficheiro gerado.
   expirado, renovado; hash ilegível).
 - `terreno.test.ts` — equipa de terreno e modalidade (espelha `src/lib/visitas.test.ts`): o papel `equipa` só
   pelo administrador (registo, conta anónima, retirar o papel), quem regista e lê visitas (e o isolamento
-  demonstração ↔ real), selo e 1.º nível, vagas e preços só confirmados, cuidados, IPSS sem modalidade, dados mal
-  formados, compromisso na adesão; a modalidade invisível para anon, famílias, outras instituições e o próprio
+  demonstração ↔ real), selo e licença confirmada, vagas e preços só confirmados, cuidados, IPSS sem modalidade,
+  dados mal formados, compromisso na adesão; a licença declarada no registo não conta (só a confirmada pela equipa,
+  que a mudança da identidade apaga); a modalidade invisível para anon, famílias, outras instituições e o próprio
   dono na tabela, `escolher_plano_instituicao` (só o dono de um privado, mesma modalidade, compromisso com a data
   no erro), a natureza que deixa de ser privada; taxa `aplicavel`/`incluida`/`isenta` fixada na primeira
   confirmação; a migração sobre uma base já em uso.
-- `prototipo.test.ts` — seed + contas de demonstração = `createSeed`: 162 fichas, 14 pedidos (lidos por quem os
-  fez e, no painel do lar, só o resumo dos que não foram aceites), 3 casos, procura do distrito, link de
-  confirmação, a modalidade (pela gestora e pela equipa) e as 6 visitas (só pela equipa), de ida e volta pelos
-  mappers; a gestora muda para a mensalidade (entrada seguinte `incluida`) e a equipa regista uma adesão.
+- `prototipo.test.ts` — seed + contas de demonstração = `createSeed`: 162 fichas (com os níveis de verificação),
+  14 pedidos (lidos por quem os fez e, no painel do lar, só o resumo dos que não foram aceites), 3 casos, procura
+  do distrito, link de confirmação, a modalidade (pela gestora e pela equipa) e as 6 visitas (só pela equipa), de
+  ida e volta pelos mappers; a gestora muda para a mensalidade (entrada seguinte `incluida`) e a equipa regista uma
+  adesão.
 
 ---
 
@@ -463,11 +470,12 @@ o Realtime de `candidaturas` só traz os aceites — use o aviso (`notificacoes`
 
 ---
 
-## 13. Equipa de terreno, modalidade dos lares privados e taxa incluída (`20261013100000` e `20261013100100`)
+## 13. Equipa de terreno, modalidade dos lares privados, taxa incluída e licença confirmada (`20261013100000` e `20261013100100`)
 
 Contrato: `docs/MODELO-NEGOCIO.md` (decisões de 13/10/2026). O que o protótipo faz em `src/lib/store.ts`
 (`escolherPlanoInstituicao`, `registarVisita`, `useVisitas`, `registarConfirmacaoEntrada`), `src/lib/acesso.ts`
-(`compromissoAte`, `podeMudarPlano`) e `src/lib/negocio.ts` (`taxaPara`) passa a ser imposto pela base de dados.
+(`compromissoAte`, `podeMudarPlano`) e `src/lib/negocio.ts` (`taxaPara`, `niveisVerificacao`) passa a ser imposto
+pela base de dados.
 Os **valores** (150 € + IVA por entrada, 29 € + IVA por mês) não vivem na base de dados (nem nos comentários, que o
 PostgREST pode expor): só no painel privado, nos ecrãs da equipa e na faturação.
 
@@ -477,6 +485,7 @@ PostgREST pode expor): só no painel privado, nos ecrãs da equipa e na faturaç
 | --- | --- |
 | `plano_instituicao` | `por_entrada` (por omissão) ou `mensal` (compromisso de 12 meses). |
 | `instituicoes.plano`, `plano_desde` | Modalidade de um lar **privado** e desde quando vigora. `null` = por entrada (como `planoInstituicao` ausente no protótipo). Restrições: só privados (`instituicoes_plano_so_privados`) e sempre com a data (`instituicoes_plano_com_data`). Se a ficha deixa de ser privada (o dono corrige a natureza), a modalidade apaga-se (trigger). **Interno**: fora da vista pública, sem privilégio de leitura ou escrita para `anon`/`authenticated`. |
+| `instituicoes.licenca_confirmada_em` | A equipa confirmou a licença (no registo da Segurança Social ou na visita). **Público** (vista e tabela): nível «Licença confirmada» = licença preenchida e (ficha `verificado` ou esta data). Sem ela, o número é só declarado. Só o servidor a escreve (`registar_visita`, administrador); um cliente que a tente escrever recebe erro, e mudar a identidade ou os contactos da ficha apaga-a. |
 | `taxa_entrada` `incluida` | Entrada num lar privado com mensalidade: sem taxa por entrada. |
 | `role_utilizador` `equipa` | Equipa de terreno (conta interna). |
 | `resultado_visita` | `aderiu`, `interessado`, `voltar`, `recusou`. |
@@ -511,8 +520,9 @@ demonstração; a equipa real só as reais (`private.mundo_equipa()`, na políti
    leitura da ficha é feita com a linha bloqueada, por isso uma mudança de modalidade simultânea espera.
 4. **Visita** (`registar_visita`, como `registarVisita`): só contas `equipa`, só fichas do seu "mundo"; bloqueia a
    ficha e depois os quartos (a ordem das outras RPC).
-   - licença **e** instalações confirmadas → selo «Visitada pela equipa»: `verificado`, `verificacao_data = now()`;
-   - só a licença → 1.º nível (`nao_verificado` passa a `pendente`; as outras ficam); `p_licenca` atualiza o n.º;
+   - licença confirmada → `licenca_confirmada_em = now()` (nível «Licença confirmada»); `p_licenca` atualiza o n.º;
+   - licença **e** instalações confirmadas → também o selo «Visitada pela equipa»: `verificado`,
+     `verificacao_data = now()`; só a licença não muda o estado da verificação;
    - `p_quartos` só nas partes confirmadas (vagas e/ou preços), por tipo de quarto que a ficha já tem (o primeiro de
      cada tipo): livres entre 0 e o total; preços inteiros, o máximo nunca abaixo do mínimo; renova a frescura;
    - `p_cuidados` substitui a lista; `aderiu` num privado → modalidade (por omissão, por entrada);
@@ -542,6 +552,7 @@ demonstração; a equipa real só as reais (`private.mundo_equipa()`, na políti
 | `lar.planoInstituicao` / `ownerId` (equipa) | `rpc('painel_equipa')` | `painelEquipaDeLinha` (`temGestor`, `dono`) |
 | `registarVisita(input)` | `rpc('registar_visita', visitaParaRpc(input))` | `visitaDeLinha`; `selo` = licença e instalações confirmadas |
 | `useVisitas()` | `from('visitas').select('*').order('data', { ascending: false })` | `visitaDeLinha` |
+| `lar.verificacao.licencaConfirmadaEm` | `instituicoes_publicas.licenca_confirmada_em` | `larDeLinha` (→ `niveisVerificacao`) |
 | `registarVisita({ criarConta: true })` | Edge Function de convite (TODO abaixo) | — |
 
 ### TODO (produção) — conta do responsável na adesão: convite por Edge Function

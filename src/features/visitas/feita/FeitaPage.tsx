@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Navigate, useParams } from 'react-router'
+import { Navigate } from 'react-router'
 import { BadgeCheck, BedDouble, CalendarClock, Check, CircleX, Copy, Euro, Handshake, KeyRound, ShieldCheck, Stethoscope } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useLar, useVisitas } from '@/lib/store'
@@ -91,9 +91,8 @@ function ContaCriada({ conta }: { conta: { email: string; palavraPasse: string }
  * /visitas/:larId/feita — o que a visita mudou na ficha (selo, vagas, preços, modalidade), a conta criada com a
  * palavra-passe provisória (uma vez) e o caminho para a próxima visita.
  */
-export default function FeitaPage() {
+export default function FeitaPage({ larId }: { larId: string }) {
   useDocumentTitle('Visita registada')
-  const { larId } = useParams()
   const lar = useLar(larId)
   const ultima = useVisitas().find((v) => v.larId === larId)
   // lida uma vez, ao entrar: ao sair deste ecrã, a palavra-passe é esquecida
@@ -121,6 +120,17 @@ export default function FeitaPage() {
         </p>
       </div>
 
+      {/* primeiro o que é preciso entregar já (só aparece uma vez); depois o que mudou */}
+      {conta ? (
+        <ContaCriada conta={conta} />
+      ) : (
+        ultima.contaCriadaId && (
+          <p className="rounded-[1.5rem] bg-sand p-5 text-ink-soft">
+            A conta do responsável foi criada. A palavra-passe provisória só é mostrada uma vez, logo a seguir a guardar.
+          </p>
+        )
+      )}
+
       <section aria-labelledby="mudou-titulo">
         <h2 id="mudou-titulo" className="text-2xl font-semibold">
           O que mudou
@@ -140,16 +150,6 @@ export default function FeitaPage() {
           })}
         </ul>
       </section>
-
-      {conta ? (
-        <ContaCriada conta={conta} />
-      ) : (
-        ultima.contaCriadaId && (
-          <p className="rounded-[1.5rem] bg-sand p-5 text-ink-soft">
-            A conta do responsável foi criada. A palavra-passe provisória só é mostrada uma vez, logo a seguir a guardar.
-          </p>
-        )
-      )}
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <ButtonLink to={ultimaLista()} size="lg" className="w-full sm:w-auto">

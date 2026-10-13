@@ -58,6 +58,7 @@ async function fichaSemGestor(id: string, natureza: 'privado' | 'ipss' | 'miseri
 interface Ficha {
   verificacao_estado: string
   verificacao_data: string | null
+  licenca_confirmada_em: string | null
   licenca: string
   cuidados: string[]
   plano: string | null
@@ -213,6 +214,7 @@ describe('registar_visita: selo, licença, vagas, preços, cuidados e modalidade
     const depois = await ficha(b.instituicao)
     expect(depois).toMatchObject({ verificacao_estado: 'verificado', licenca: '999/2026', plano: 'mensal' })
     expect(Date.parse(depois.verificacao_data!)).toBeGreaterThan(Date.parse(antes.atualizado_em))
+    expect(depois.licenca_confirmada_em).toEqual(depois.verificacao_data)
     expect(Date.parse(depois.atualizado_em)).toBeGreaterThan(Date.parse(antes.atualizado_em))
     // vagas limitadas ao total do quarto; o preço máximo nunca fica abaixo do mínimo; o duplo não foi tocado
     expect(await quartos(b.instituicao)).toEqual([
@@ -235,13 +237,18 @@ describe('registar_visita: selo, licença, vagas, preços, cuidados e modalidade
     expect(planoDoLar(lar)).toBe('por_entrada') // quem só tem a vista pública não sabe a modalidade
   })
 
-  it('licença sem ver as instalações: 1.º nível, sem selo nem aviso; nada confirmado: a ficha não muda', async () => {
+  it('licença sem ver as instalações: 1.º nível (licença confirmada), sem selo nem aviso; nada confirmado: a ficha não muda', async () => {
     const sofia = await contaEquipa()
     const alvo = await fichaSemGestor('lar-terreno-v2')
     const r = await registar(sofia, { larId: alvo, resultado: 'interessado', verificacao: { ...nada, licencaConfirmada: true }, licenca: '123/2020', proximoContacto: '2026-11-15' })
     expect(visitaDeLinha(r)).toMatchObject({ proximoContacto: '2026-11-15', plano: undefined })
-    expect(await ficha(alvo)).toMatchObject({ verificacao_estado: 'pendente', verificacao_data: null, licenca: '123/2020' })
-    expect(niveisVerificacao(await larDaVista(alvo))).toMatchObject({ licenca: true, visitado: false })
+    // o estado da verificação não muda (como no protótipo); a licença fica confirmada, com a data
+    const f = await ficha(alvo)
+    expect(f).toMatchObject({ verificacao_estado: 'nao_verificado', verificacao_data: null, licenca: '123/2020' })
+    expect(Math.abs(Date.parse(f.licenca_confirmada_em!) - (await agoraBd()))).toBeLessThan(60_000)
+    const lar = await larDaVista(alvo)
+    expect(lar.verificacao).toMatchObject({ estado: 'nao_verificado', licenca: '123/2020', licencaConfirmadaEm: expect.any(String) })
+    expect(niveisVerificacao(lar)).toMatchObject({ licenca: true, visitado: false })
 
     // uma ficha já verificada fica verificada, sem renovar a data do selo (só a licença foi vista)
     const b = await cenarioBase(db, { sufixo: 'v2' })
@@ -349,6 +356,65 @@ describe('registar_visita: selo, licença, vagas, preços, cuidados e modalidade
     const f = await ficha(alvo)
     expect(f.plano).toBe('por_entrada')
     expect(Math.abs(Date.parse(f.plano_desde!) - (await agoraBd()))).toBeLessThan(60_000)
+  })
+})
+
+// ————————————————————————————————————————————————————————————————— licença: declarada vs confirmada
+
+describe('licença confirmada (nível público): declarar o número no registo não chega', () => {
+  it('a ficha criada pelo lar nasce com a licença só declarada; só a equipa (ou o administrador) a confirma, e todos o veem', async () => {
+    const gestora = await criarUtilizador(db, { email: 'nova-gestora@x.pt', roleRegisto: 'lar' })
+    const novo = `insert into public.instituicoes (nome, tipo, natureza, localidade, concelho, distrito, regiao, lat, lng, capacidade, licenca)
+      values ('Licença Declarada', 'erpi', 'privado', 'Porto', 'Porto', 'Porto', 'Norte', 41.15, -8.61, 20, '55/2021') returning id`
+    // nem ao criar a ficha o cliente a pode dar como confirmada
+    expect(await erro(db, gestora, `insert into public.instituicoes (nome, tipo, natureza, localidade, concelho, distrito, regiao, lat, lng, capacidade, licenca, licenca_confirmada_em)
+      values ('Licença Forjada', 'erpi', 'privado', 'Porto', 'Porto', 'Porto', 'Norte', 41.15, -8.61, 20, '1/2020', now())`)).toMatch(/permission denied/)
+    const [{ id }] = (await q<{ id: string }>(db, gestora, novo)) as [{ id: string }]
+    await adm('update public.instituicoes set publicado = true where id = $1', [id]) // publicada pelo administrador, ainda por verificar
+    expect(await ficha(id)).toMatchObject({ verificacao_estado: 'pendente', licenca: '55/2021', licenca_confirmada_em: null })
+    expect(niveisVerificacao(await larDaVista(id)).licenca).toBe(false)
+    expect(await erro(db, gestora, 'update public.instituicoes set licenca_confirmada_em = now() where id = $1', [id])).toMatch(/permission denied/)
+
+    // a equipa confirma a licença (sem visitar as instalações): o nível aparece a toda a gente (anon incluído)
+    const sofia = await contaEquipa()
+    await registar(sofia, { larId: id, resultado: 'interessado', verificacao: { ...nada, licencaConfirmada: true } })
+    const [publica] = await q<{ licenca_confirmada_em: string | null }>(db, 'anon', 'select licenca_confirmada_em from public.instituicoes where id = $1', [id])
+    expect(publica!.licenca_confirmada_em).not.toBeNull()
+    expect(niveisVerificacao(await larDaVista(id))).toMatchObject({ licenca: true, visitado: false })
+    expect((await ficha(id)).verificacao_estado).toBe('pendente')
+  })
+
+  it('se o gestor muda a licença, o nome ou os contactos, a licença volta a ser só declarada (e a ficha verificada a "pendente")', async () => {
+    const sofia = await contaEquipa()
+    for (const [coluna, valor] of [['licenca', '77/2024'], ['nome', 'Outro Nome'], ['telefone', '912 345 678']] as const) {
+      const b = await cenarioBase(db, { sufixo: `lc-${coluna}` })
+      await adm("update public.instituicoes set verificacao_estado = 'pendente', verificacao_data = null where id = $1", [b.instituicao])
+      await registar(sofia, { larId: b.instituicao, resultado: 'voltar', verificacao: { ...nada, licencaConfirmada: true } })
+      expect(niveisVerificacao(await larDaVista(b.instituicao)).licenca, coluna).toBe(true)
+      // mudar a descrição não toca na confirmação
+      await q(db, b.lar, "update public.instituicoes set descricao = 'Nova descrição' where id = $1", [b.instituicao])
+      expect((await ficha(b.instituicao)).licenca_confirmada_em, coluna).not.toBeNull()
+      await q(db, b.lar, `update public.instituicoes set ${coluna} = $2 where id = $1`, [b.instituicao, valor])
+      expect((await ficha(b.instituicao)).licenca_confirmada_em, coluna).toBeNull()
+      expect(niveisVerificacao(await larDaVista(b.instituicao)).licenca, coluna).toBe(false)
+    }
+    // ficha com o selo: volta a "pendente" e perde também a licença confirmada
+    const v = await cenarioBase(db, { sufixo: 'lc-selo' })
+    await registar(sofia, { larId: v.instituicao, resultado: 'aderiu', verificacao: tudo })
+    await q(db, v.lar, "update public.instituicoes set morada = 'Rua Nova, 1' where id = $1", [v.instituicao])
+    expect(await ficha(v.instituicao)).toMatchObject({ verificacao_estado: 'pendente', verificacao_data: null, licenca_confirmada_em: null })
+    expect(niveisVerificacao(await larDaVista(v.instituicao))).toMatchObject({ licenca: false, visitado: false })
+  })
+
+  it('defesa em profundidade: mesmo com o privilégio de coluna, um cliente não confirma a licença nem muda a modalidade (trigger)', async () => {
+    const b = await cenarioBase(db, { sufixo: 'lc-dd' })
+    await adm('grant update (licenca_confirmada_em, plano, plano_desde) on public.instituicoes to authenticated')
+    try {
+      expect(await codigoErro(db, b.lar, 'update public.instituicoes set licenca_confirmada_em = now() where id = $1', [b.instituicao])).toBe('42501')
+      expect(await codigoErro(db, b.lar, "update public.instituicoes set plano = 'mensal', plano_desde = now() where id = $1", [b.instituicao])).toBe('42501')
+    } finally {
+      await adm('revoke update (licenca_confirmada_em, plano, plano_desde) on public.instituicoes from authenticated')
+    }
   })
 })
 

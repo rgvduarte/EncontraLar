@@ -161,11 +161,16 @@ describe('migrações', () => {
              has_column_privilege('anon', 'public.avaliacoes', 'user_id', 'select') as autor_avaliacao,
              has_column_privilege('authenticated', 'public.instituicoes', 'plano', 'update') as plano,
              has_column_privilege('authenticated', 'public.instituicoes', 'plano', 'insert') as plano_ao_criar,
-             has_column_privilege('authenticated', 'public.instituicoes', 'plano_desde', 'update') as plano_desde`)
+             has_column_privilege('authenticated', 'public.instituicoes', 'plano_desde', 'update') as plano_desde,
+             has_column_privilege('authenticated', 'public.instituicoes', 'licenca_confirmada_em', 'update') as licenca_confirmada,
+             has_column_privilege('authenticated', 'public.instituicoes', 'licenca_confirmada_em', 'insert') as licenca_confirmada_ao_criar,
+             has_column_privilege('anon', 'public.instituicoes', 'licenca_confirmada_em', 'select') as licenca_confirmada_publica`)
     expect(r).toEqual({
       role: false, conta_demo: false, nome: true, organizacao: false, verificacao: false, publicar: false, publicar_ao_criar: false, ficha_demo: false,
       lista_offline: false, dono: false, frescura: false, nome_ficha: true, livres: false, autor_avaliacao: false,
       plano: false, plano_ao_criar: false, plano_desde: false,
+      // o nível «Licença confirmada» é público, mas só o servidor o escreve
+      licenca_confirmada: false, licenca_confirmada_ao_criar: false, licenca_confirmada_publica: true,
     })
   })
 
@@ -186,7 +191,7 @@ describe('migrações', () => {
     for (const interna of ['owner_id', 'visualizacoes_30d', 'lista_espera_offline', 'lista_espera_online', 'confirmacao_token_hash', 'confirmacao_token_expira_em', 'plano', 'plano_desde']) {
       expect(colunas).not.toContain(interna)
     }
-    expect(colunas).toEqual(expect.arrayContaining(['lista_espera', 'publicado', 'demonstracao', 'vagas_livres', 'historico_saidas']))
+    expect(colunas).toEqual(expect.arrayContaining(['lista_espera', 'publicado', 'demonstracao', 'vagas_livres', 'historico_saidas', 'licenca_confirmada_em']))
   })
 
   it('anon e authenticated não têm privilégios em nenhuma sequência do schema public', async () => {

@@ -68,15 +68,18 @@ export function Resultado({
               <label
                 key={x}
                 className={cn(
-                  'relative flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-[1.25rem] px-3 text-center leading-tight font-medium select-none',
+                  'relative flex min-h-14 cursor-pointer items-center justify-center rounded-[1.25rem] px-2 text-center text-[0.9375rem] leading-tight font-medium select-none sm:px-3 sm:text-base',
                   'transition-[background-color,color,box-shadow,scale] duration-300 ease-[cubic-bezier(.16,1,.3,1)] active:scale-[0.98]',
                   'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
                   on ? 'bg-white text-ink shadow-soft' : 'text-ink-mute hover:text-ink',
                 )}
               >
                 <input type="radio" name={`${id}-resultado`} value={x} checked={on} onChange={() => onResultado(x)} className="sr-only" />
-                <span aria-hidden className={cn('size-2.5 shrink-0 rounded-full transition-opacity', RESULTADO_DOT[x], !on && 'opacity-60')} />
-                {RESULTADO_LABEL[x]}
+                {/* o ponto acompanha a primeira linha quando o texto parte (ecrãs muito estreitos) */}
+                <span>
+                  <span aria-hidden className={cn('mr-2 inline-block size-2.5 rounded-full align-[0.08em] transition-opacity', RESULTADO_DOT[x], !on && 'opacity-60')} />
+                  {RESULTADO_LABEL[x]}
+                </span>
               </label>
             )
           })}
@@ -145,8 +148,8 @@ export function Resultado({
             description="Para gerir a ficha e as vagas no painel da instituição."
           />
           {form.criarConta && (
-            <p aria-live="polite" className="mt-2 mb-1 flex items-start gap-2 text-sm leading-snug text-ink-soft">
-              <KeyRound aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-mute" />
+            <p aria-live="polite" className="mt-2 mb-1 flex items-center gap-2 text-sm leading-snug text-ink-soft">
+              <KeyRound aria-hidden className="size-4 shrink-0 text-ink-mute" />
               {email ? (
                 <span>
                   Conta para <span className="font-semibold break-all text-ink">{email}</span>. A palavra-passe provisória aparece no fim, uma só vez.

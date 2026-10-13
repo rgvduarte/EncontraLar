@@ -23,9 +23,9 @@ export const REF_PROJETO_PRINCIPAL = 'kdyvsxzputvuyauddmwg'
 const CONTAS = fileURLToPath(new URL('../supabase/demo/contas-demo.json', import.meta.url))
 
 /** @typedef {{ nome: string, tipo: 'hospital' | 'centro_saude' | 'autarquia' | 'outro', servico?: string }} Organizacao */
-/** @typedef {{ email: string, role: 'familia' | 'lar' | 'profissional', nome: string, telefone: string | null, palavraPasse: string | null, organizacao?: Organizacao }} ContaDemo */
+/** @typedef {{ email: string, role: 'familia' | 'lar' | 'profissional' | 'equipa', nome: string, telefone: string | null, palavraPasse: string | null, organizacao?: Organizacao }} ContaDemo */
 
-const PAPEIS = ['familia', 'lar', 'profissional']
+const PAPEIS = ['familia', 'lar', 'profissional', 'equipa']
 
 /** @returns {ContaDemo[]} */
 export function lerContas(caminho = CONTAS) {

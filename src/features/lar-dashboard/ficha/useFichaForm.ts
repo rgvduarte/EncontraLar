@@ -113,14 +113,14 @@ export function useFichaForm(lar: Lar) {
     set(k, (on ? [...atual, item] : atual.filter((x) => x !== item)) as Rascunho[K])
   }
 
-  /** Grava se for válido; devolve true em caso de sucesso. */
-  const guardar = (): boolean => {
+  /** Grava se for válido; devolve false, ou o resultado (reverificar: a equipa tem de confirmar de novo). */
+  const guardar = (): false | { reverificar: boolean } => {
     setTentou(true)
     if (Object.keys(validar(r)).length) return false
-    atualizarLar(lar.id, paraLar(r))
+    const res = atualizarLar(lar.id, paraLar(r))
     setRascunho(null)
     setTentou(false)
-    return true
+    return res
   }
 
   const repor = () => {

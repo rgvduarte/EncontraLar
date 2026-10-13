@@ -961,6 +961,8 @@ export function createSeed(agora = Date.now()): DB {
       notas: 'IPSS: sem custos. Interesse em reduzir os telefonemas de famílias.' }] : []),
   ]
   if (pMensal) pMensal.verificacao = { ...pMensal.verificacao, estado: 'verificado', data: iso(21) }
+  // v-3 confirmou a licença na visita (sem ver as instalações)
+  if (pInteressado) pInteressado.verificacao = { ...pInteressado.verificacao, licencaConfirmadaEm: iso(6) }
   if (sAderiu) sAderiu.verificacao = { ...sAderiu.verificacao, estado: 'verificado', data: iso(30) }
 
   const favoritos: Favorito[] = [

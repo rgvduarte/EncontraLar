@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react'
-import { Navigate, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router'
+import { Navigate, useLocation, useSearchParams } from 'react-router'
 import { CircleUserRound, ClipboardCheck } from 'lucide-react'
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell'
 import { Avatar } from '@/components/ui/misc'
@@ -45,24 +45,40 @@ function Ajuda() {
 }
 
 /** Título do painel conforme a rota (o DashboardShell desenha-o como h1). */
-function useCabecalho(): { eyebrow?: ReactNode; title: ReactNode; subtitle?: ReactNode } {
+type Rota = { pagina: 'lista' } | { pagina: 'conta' } | { pagina: 'visita' | 'feita'; larId: string } | { pagina: 'outra' }
+
+/**
+ * A secção pelo caminho, sem <Routes> aninhadas: dentro de <Routes> descendentes o useNavigate() não é o do router de
+ * dados (ignora `flushSync` e não devolve promessa) e o "Terminar sessão" da Conta precisa dele para sair antes de a
+ * sessão acabar (como no painel da família).
+ */
+function useRota(): Rota {
   const { pathname } = useLocation()
+  const partes = pathname.replace(/^\/visitas\/?/, '').replace(/\/$/, '').split('/').filter(Boolean)
+  if (partes.length === 0) return { pagina: 'lista' }
+  if (partes[0] === 'conta') return partes.length === 1 ? { pagina: 'conta' } : { pagina: 'outra' }
+  const larId = decodificar(partes[0]!)
+  if (partes.length === 1) return { pagina: 'visita', larId }
+  if (partes.length === 2 && partes[1] === 'feita') return { pagina: 'feita', larId }
+  return { pagina: 'outra' }
+}
+
+function useCabecalho(rota: Rota): { eyebrow?: ReactNode; title: ReactNode; subtitle?: ReactNode } {
   const [params] = useSearchParams()
   const user = useCurrentUser()
   const lares = useLares()
   const visitas = useVisitas()
-  const partes = pathname.replace(/^\/visitas\/?/, '').replace(/\/$/, '').split('/').filter(Boolean)
-  const larId = partes[0] && partes[0] !== 'conta' ? decodificar(partes[0]) : undefined
+  const larId = rota.pagina === 'visita' || rota.pagina === 'feita' ? rota.larId : undefined
   const lar = useLar(larId)
-  const naLista = partes.length === 0
+  const naLista = rota.pagina === 'lista'
   const distrito = distritoDosParams(params)
   const linhas = useMemo(() => (naLista ? linhasDoDistrito(lares, visitas, distrito, new Date()) : []), [naLista, lares, visitas, distrito])
 
-  if (partes[0] === 'conta') return { eyebrow: 'Equipa de terreno', title: 'A sua conta', subtitle: user?.email }
+  if (rota.pagina === 'conta') return { eyebrow: 'Equipa de terreno', title: 'A sua conta', subtitle: user?.email }
   if (larId) {
     if (!lar) return { eyebrow: 'Visitas', title: 'Instituição não encontrada' }
     const ultima = visitas.find((v) => v.larId === lar.id)
-    if (partes[1] === 'feita' && ultima) {
+    if (rota.pagina === 'feita' && ultima) {
       return { eyebrow: lar.nome, title: 'Visita registada', subtitle: RESULTADO_LABEL[ultima.resultado] }
     }
     return { eyebrow: 'Registar visita', title: lar.nome, subtitle: `${TIPO_LABEL[lar.tipo]} · ${NATUREZA_LABEL[lar.natureza]} · ${lar.localidade}` }
@@ -95,7 +111,8 @@ const SEM_PILULAS = 'contents max-lg:[&>div>nav]:hidden'
  * Registado pelo App com RequireAuth role="equipa". Pensado para o telemóvel, à porta da instituição.
  */
 export default function VisitasApp() {
-  const cab = useCabecalho()
+  const rota = useRota()
+  const cab = useCabecalho(rota)
   const { pathname } = useLocation()
   const urgentes = useContactosUrgentes()
 
@@ -129,21 +146,14 @@ export default function VisitasApp() {
         aside={<Ajuda />}
       >
         <div key={pathname} className="motion-safe:animate-[fade-in_.4s_ease-out_both]">
-          <Routes>
-            <Route index element={<PipelinePage />} />
-            <Route path="conta" element={<ContaPage />} />
-            <Route path=":larId" element={<VisitaRoute />} />
-            <Route path=":larId/feita" element={<FeitaPage />} />
-            <Route path="*" element={<Navigate to="/visitas" replace />} />
-          </Routes>
+          {rota.pagina === 'lista' && <PipelinePage />}
+          {rota.pagina === 'conta' && <ContaPage />}
+          {/* uma instância do formulário por instituição: mudar de instituição começa do zero (ou do seu rascunho) */}
+          {rota.pagina === 'visita' && <VisitaPage key={rota.larId} larId={rota.larId} />}
+          {rota.pagina === 'feita' && <FeitaPage key={rota.larId} larId={rota.larId} />}
+          {rota.pagina === 'outra' && <Navigate to="/visitas" replace />}
         </div>
       </DashboardShell>
     </div>
   )
-}
-
-/** Uma instância do formulário por instituição (mudar de instituição começa do zero, ou do seu rascunho). */
-function VisitaRoute() {
-  const { larId } = useParams()
-  return <VisitaPage key={larId} larId={larId} />
 }
