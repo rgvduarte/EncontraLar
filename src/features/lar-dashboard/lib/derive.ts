@@ -2,12 +2,13 @@
  * Cálculos do painel da instituição — funções puras, sem React.
  * Tudo o que aparece no painel é derivado do store (nada de números inventados).
  */
-import type { Candidatura, DB, EstadoCandidatura, Lar, PerfilIdoso, TipoQuarto, User } from '@/types'
+import type { Candidatura, DB, EstadoCandidatura, Lar, PerfilIdoso, PlanoInstituicao, TaxaEntrada, TipoQuarto, User } from '@/types'
 import { FATOR_LISTA_EFETIVA, ocupados, poissonQuantile, previsaoMensal, taxaOcupacao, taxaSaidasMensal, vagasLivres } from '@/lib/forecast'
 import { precoReferencia } from '@/lib/matching'
 import { CUIDADO_FRASE, CUIDADOS_CRITICOS, GRAU_PESSOAS } from '@/lib/labels'
 import { dataLocal, euro } from '@/lib/format'
-import { prioridadePedido } from '@/lib/negocio'
+import { entradaAtribuida, prioridadePedido, taxaPara } from '@/lib/negocio'
+import { cobrancaEntradaTexto, compromissoAte, PLANOS_INSTITUICAO, planoDoLar, podeMudarPlano, precoTexto } from '@/lib/acesso'
 
 // "2026-10-16" → Date local (sem o desvio de fuso de new Date('YYYY-MM-DD')); a versão comum vive em lib/format
 export { dataLocal }
