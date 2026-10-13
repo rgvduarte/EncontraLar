@@ -150,7 +150,7 @@ describe('minimização (RGPD)', () => {
 
   it('apagar a conta inteira continua a funcionar (cascata) e a fila da instituição encurta', async () => {
     const b = await cenarioBase(db, { sufixo: 'm5' })
-    const outra = await criarUtilizador(db, { email: 'atras@x.pt', roleAdmin: 'familia' })
+    const outra = await criarUtilizador(db, { email: 'atras@x.pt', roleAdmin: 'familia', acesso: true })
     const pOutra = await novoPerfil(outra)
     const c1 = await candidatar(b.familia, b.instituicao, b.perfil)
     const c2 = await candidatar(outra, b.instituicao, pOutra)
@@ -165,7 +165,7 @@ describe('minimização (RGPD)', () => {
 describe('avisos sem spam', () => {
   it('200 alternâncias de vagas geram no máximo um aviso por família e instituição em 24 h', async () => {
     const b = await cenarioBase(db, { sufixo: 'n1', livres: { individual: 0 } })
-    const seguidor = await criarUtilizador(db, { email: 'segue-n1@x.pt', roleAdmin: 'familia' })
+    const seguidor = await criarUtilizador(db, { email: 'segue-n1@x.pt', roleAdmin: 'familia', acesso: true })
     await q(db, seguidor, 'insert into public.favoritos (instituicao_id) values ($1)', [b.instituicao])
     const c = await candidatar(b.familia, b.instituicao, b.perfil)
     await mudarEstado(b.lar, c.id, 'lista_espera')
@@ -201,7 +201,7 @@ describe('avisos sem spam', () => {
 describe('vagas: sem sobrelotação e com prazo', () => {
   it('um lugar livre só pode ser proposto a uma família de cada vez e só aceite uma vez', async () => {
     const b = await cenarioBase(db, { sufixo: 'v1', livres: { individual: 1 } })
-    const outra = await criarUtilizador(db, { email: 'v1b@x.pt', roleAdmin: 'familia' })
+    const outra = await criarUtilizador(db, { email: 'v1b@x.pt', roleAdmin: 'familia', acesso: true })
     const pOutra = await novoPerfil(outra)
     const a = await candidatar(b.familia, b.instituicao, b.perfil)
     const c = await candidatar(outra, b.instituicao, pOutra)
@@ -284,7 +284,11 @@ describe('registo de uma instituição (mappers → PostgREST)', () => {
     const [f] = await inserirComoPostgrest(lar, 'instituicoes', { ...larParaInsercao(inst, { email: 'registo@lar.pt', telefone: '210 000 000' }) })
     expect(f!.id).toBe('lar-lar-registo')
     await inserirComoPostgrest(lar, 'quartos', { ...quartoInicial(f!.id, inst) })
-    const [r] = await q<Record<string, unknown>>(db, lar, 'select publicado, verificacao_estado, capacidade, codigo_postal, regiao from public.instituicoes where id = $1', [f!.id])
-    expect(r).toEqual({ publicado: false, verificacao_estado: 'pendente', capacidade: 30, codigo_postal: '1700-000', regiao: 'Lisboa e Vale do Tejo' })
+    const [r] = await q<Record<string, unknown>>(db, lar, 'select publicado, verificacao_estado, capacidade, regiao from public.instituicoes where id = $1', [f!.id])
+    expect(r).toEqual({ publicado: false, verificacao_estado: 'pendente', capacidade: 30, regiao: 'Lisboa e Vale do Tejo' })
+    // a morada e os contactos não se leem na tabela (são do Acesso Família): o dono lê a sua ficha inteira por instituicoes_completas
+    expect(await erro(db, lar, 'select codigo_postal from public.instituicoes where id = $1', [f!.id])).toMatch(/permission denied/)
+    const [c] = await q<Record<string, unknown>>(db, lar, 'select codigo_postal, telefone, publicado from public.instituicoes_completas()')
+    expect(c).toEqual({ codigo_postal: '1700-000', telefone: '210 000 000', publicado: false })
   })
 })

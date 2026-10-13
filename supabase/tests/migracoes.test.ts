@@ -9,21 +9,24 @@ import { AGORA_SEED, hashToken } from '../../scripts/gerar-seed-sql'
 import { admin, criarBase, MIGRACOES } from './helpers'
 
 const TABELAS = [
-  'avaliacoes', 'candidatura_eventos', 'candidaturas', 'casos', 'favoritos', 'instituicoes', 'notificacoes',
+  'acessos_familia', 'avaliacoes', 'candidatura_eventos', 'candidaturas', 'casos', 'favoritos', 'instituicoes', 'notificacoes',
   'perfis_cuidados', 'perfis_utilizador', 'procuras_anonimas', 'quartos', 'saidas_mensais', 'visitas',
 ]
 
 const RPC_PUBLICAS = [
-  'aceitar_candidatura', 'atualizar_caso', 'atualizar_estado_candidatura', 'avaliar_lar', 'cancelar_candidatura',
+  'acesso_estado', 'aceitar_candidatura', 'atualizar_caso', 'atualizar_estado_candidatura', 'avaliar_lar', 'cancelar_candidatura',
   'candidatar', 'confirmar_entrada_familia', 'confirmar_vagas_atualizadas', 'confirmar_vagas_por_token', 'confirmar_visita',
-  'criar_caso', 'definir_vagas', 'enviar_caso', 'escolher_plano_instituicao', 'marcar_entrada', 'minhas_avaliacoes',
-  'painel_equipa', 'painel_instituicao', 'pedidos_recebidos', 'pedir_visita', 'procura_na_zona', 'registar_entrada',
+  'criar_caso', 'definir_vagas', 'disponibilidade_agregada', 'enviar_caso', 'escolher_plano_instituicao', 'marcar_entrada', 'minhas_avaliacoes',
+  'avaliacoes_instituicao', 'instituicoes_completas', 'painel_equipa', 'painel_instituicao', 'pedidos_recebidos', 'pedir_visita', 'procura_na_zona', 'registar_entrada',
   'registar_procura', 'registar_vaga_libertada', 'registar_visita', 'renovar_token_confirmacao', 'responder_vaga',
   'vagas_por_token',
 ]
 
-/** As únicas RPC sem sessão: a pesquisa anónima e o link de confirmação das vagas. */
-const RPC_ANON = ['confirmar_vagas_por_token', 'registar_procura', 'vagas_por_token']
+/**
+ * As únicas RPC sem sessão: a pesquisa anónima, o link de confirmação das vagas e a versão grátis do Acesso Família
+ * (contagens agregadas e o excerto das avaliações).
+ */
+const RPC_ANON = ['avaliacoes_instituicao', 'confirmar_vagas_por_token', 'disponibilidade_agregada', 'registar_procura', 'vagas_por_token']
 
 let db: PGlite
 const adm = <T = Record<string, unknown>>(sql: string, params: unknown[] = []) => admin<T>(db, sql, params)
@@ -101,8 +104,8 @@ describe('migrações', () => {
     for (const v of r) expect(v.reloptions).toContain('security_invoker=true')
   })
 
-  it('anon não tem privilégios em dados pessoais nem de saúde (nem nas visitas da equipa)', async () => {
-    for (const t of ['perfis_utilizador', 'perfis_cuidados', 'candidaturas', 'candidatura_eventos', 'favoritos', 'notificacoes', 'casos', 'procuras_anonimas', 'visitas']) {
+  it('anon não tem privilégios em dados pessoais nem de saúde (nem nas visitas da equipa, nem no Acesso Família)', async () => {
+    for (const t of ['perfis_utilizador', 'perfis_cuidados', 'candidaturas', 'candidatura_eventos', 'favoritos', 'notificacoes', 'casos', 'procuras_anonimas', 'visitas', 'acessos_familia']) {
       const [r] = await adm<{ s: boolean; i: boolean; u: boolean; d: boolean }>(
         `select has_table_privilege('anon', $1, 'select') s, has_table_privilege('anon', $1, 'insert') i,
                 has_table_privilege('anon', $1, 'update') u, has_table_privilege('anon', $1, 'delete') d`,
@@ -112,8 +115,8 @@ describe('migrações', () => {
     }
   })
 
-  it('clientes não escrevem candidaturas, eventos, notificações, casos, avaliações, procura nem visitas (só funções de servidor)', async () => {
-    for (const t of ['candidaturas', 'candidatura_eventos', 'notificacoes', 'casos', 'procuras_anonimas', 'visitas']) {
+  it('clientes não escrevem candidaturas, eventos, notificações, casos, avaliações, procura, visitas nem o Acesso Família (só funções de servidor)', async () => {
+    for (const t of ['candidaturas', 'candidatura_eventos', 'notificacoes', 'casos', 'procuras_anonimas', 'visitas', 'acessos_familia']) {
       const [r] = await adm<{ i: boolean; u: boolean; d: boolean }>(
         `select has_table_privilege('authenticated', $1, 'insert') i, has_table_privilege('authenticated', $1, 'update') u,
                 has_table_privilege('authenticated', $1, 'delete') d`,
@@ -127,6 +130,36 @@ describe('migrações', () => {
     // procura anónima: nem leitura
     const [p] = await adm<{ anon: boolean; auth: boolean }>("select has_table_privilege('anon', 'public.procuras_anonimas', 'select') anon, has_table_privilege('authenticated', 'public.procuras_anonimas', 'select') auth")
     expect(p).toEqual({ anon: false, auth: false })
+    // Acesso Família: escrito só por private.estender_acesso (nem a service_role escreve na tabela)
+    const [a2] = await adm<{ i: boolean; u: boolean; d: boolean }>(
+      "select has_table_privilege('service_role', 'public.acessos_familia', 'insert') i, has_table_privilege('service_role', 'public.acessos_familia', 'update') u, has_table_privilege('service_role', 'public.acessos_familia', 'delete') d",
+    )
+    expect(a2).toEqual({ i: false, u: false, d: false })
+  })
+
+  it('a camada do Acesso Família não chega a anon pela tabela: quartos, saídas e avaliações sem leitura; colunas da camada completa fechadas', async () => {
+    for (const t of ['quartos', 'saidas_mensais', 'avaliacoes']) {
+      const [r] = await adm<{ s: boolean }>("select has_table_privilege('anon', $1, 'select') s", [`public.${t}`])
+      expect(r, t).toEqual({ s: false })
+    }
+    const fechadas = ['morada', 'codigo_postal', 'telefone', 'email', 'website', 'lista_espera_offline', 'lista_espera_online', 'estadia_media_meses', 'extras', 'atualizado_em', 'updated_at']
+    const r = await adm<{ papel: string; coluna: string; pode: boolean }>(`
+      select papel, coluna, has_column_privilege(papel, 'public.instituicoes', coluna, 'select') as pode
+        from unnest($1::text[]) as c (coluna) cross join (values ('anon'), ('authenticated')) as p (papel)`, [fechadas])
+    expect(r.filter((x) => x.pode)).toEqual([])
+    // os nomes dos extras (sem valores) são públicos; as políticas de leitura dos quartos, saídas e avaliações exigem o acesso
+    const [e] = await adm<{ s: boolean }>("select has_column_privilege('anon', 'public.instituicoes', 'extras_nomes', 'select') s")
+    expect(e!.s).toBe(true)
+    const pol = await adm<{ tablename: string; policyname: string; roles: string[]; q: string }>(
+      "select tablename, policyname, roles::text[] as roles, qual as q from pg_policies where tablename in ('quartos', 'saidas_mensais', 'avaliacoes') and cmd = 'SELECT' order by 1, 2",
+    )
+    expect(pol.map((x) => `${x.tablename}.${x.policyname}`)).toEqual([
+      'avaliacoes.avaliacoes_select_acesso_completo', 'avaliacoes.avaliacoes_select_autor', 'avaliacoes.avaliacoes_select_dono_instituicao',
+      'quartos.quartos_select_acesso_completo', 'quartos.quartos_select_dono',
+      'saidas_mensais.saidas_mensais_select_acesso_completo', 'saidas_mensais.saidas_mensais_select_dono',
+    ])
+    for (const x of pol) expect(x.roles, x.policyname).toEqual(['authenticated'])
+    for (const x of pol.filter((y) => y.policyname.endsWith('acesso_completo'))) expect(x.q, x.policyname).toMatch(/tem_acesso_completo/)
   })
 
   it('o lar só lê na tabela os pedidos que aceitou (política com desbloqueada_em)', async () => {
@@ -191,7 +224,11 @@ describe('migrações', () => {
     for (const interna of ['owner_id', 'visualizacoes_30d', 'lista_espera_offline', 'lista_espera_online', 'confirmacao_token_hash', 'confirmacao_token_expira_em', 'plano', 'plano_desde']) {
       expect(colunas).not.toContain(interna)
     }
-    expect(colunas).toEqual(expect.arrayContaining(['lista_espera', 'publicado', 'demonstracao', 'vagas_livres', 'historico_saidas', 'licenca_confirmada_em']))
+    // a camada do Acesso Família também não está na vista pública (vem de instituicoes_completas)
+    for (const completa of ['lista_espera', 'vagas_livres', 'quartos', 'mensalidade_min', 'mensalidade_max', 'historico_saidas', 'estadia_media_meses', 'atualizado_em', 'morada', 'codigo_postal', 'telefone', 'email', 'website', 'extras']) {
+      expect(colunas).not.toContain(completa)
+    }
+    expect(colunas).toEqual(expect.arrayContaining(['publicado', 'demonstracao', 'licenca_confirmada_em', 'faixa_preco', 'extras_nomes', 'avaliacoes_publicadas', 'avaliacoes_verificadas', 'lat', 'lng']))
   })
 
   it('anon e authenticated não têm privilégios em nenhuma sequência do schema public', async () => {
@@ -222,7 +259,7 @@ describe('migrações', () => {
     for (const j of r) await expect(adm(j.command)).resolves.toBeDefined()
   })
 
-  it('anon só executa a pesquisa anónima e o link de confirmação; authenticated só as RPC previstas e as auxiliares das políticas', async () => {
+  it('anon só executa a pesquisa anónima, o link de confirmação e a versão grátis; authenticated só as RPC previstas e as auxiliares das políticas', async () => {
     const r = await adm<{ f: string; anon: boolean; auth: boolean }>(`
       select n.nspname || '.' || p.proname as f,
              has_function_privilege('anon', p.oid, 'execute') as anon,
@@ -231,7 +268,8 @@ describe('migrações', () => {
        where n.nspname in ('public', 'private')
        order by 1`)
     expect(r.filter((x) => x.anon).map((x) => x.f).sort()).toEqual(
-      [...RPC_ANON.map((f) => `private.${f}`), ...RPC_ANON.map((f) => `public.${f}`)].sort(),
+      // resumo_publico: a faixa de preço e as contagens de avaliações da vista pública
+      [...RPC_ANON.map((f) => `private.${f}`), ...RPC_ANON.map((f) => `public.${f}`), 'private.resumo_publico'].sort(),
     )
     const permitidas = new Set([
       ...RPC_PUBLICAS.map((f) => `public.${f}`),
@@ -239,6 +277,10 @@ describe('migrações', () => {
       'private.tem_papel',
       'private.minha_instituicao',
       'private.mundo_equipa',
+      // Acesso Família: políticas dos quartos/saídas/avaliações, trigger dos favoritos e a vista pública
+      'private.tem_acesso_completo',
+      'private.conta_demonstracao',
+      'private.resumo_publico',
     ])
     expect(r.filter((x) => x.auth).map((x) => x.f).sort()).toEqual([...permitidas].sort())
   })

@@ -73,6 +73,13 @@ begin
   if exists (select 1 from public.instituicoes where id = 'lar-jardins-do-douro' and owner_id is not null and owner_id <> v_lar) then
     raise exception 'A ficha lar-jardins-do-douro já tem outro gestor — nada foi alterado.';
   end if;
+
+  -- Acesso Família das contas de demonstração (a família de demonstração tem um passe de 90 dias, como no
+  -- protótipo). Antes da saída abaixo: repetir o script numa base já ligada dá (ou renova) o passe.
+  insert into public.acessos_familia (user_id, plano, ate, criado_em, atualizado_em)
+  values (v_familia, 'acesso_90', now() + interval '6912000 seconds', now() - interval '864000 seconds', now() - interval '864000 seconds')
+  on conflict (user_id) do update set plano = excluded.plano, ate = greatest(public.acessos_familia.ate, excluded.ate), atualizado_em = now();
+
   if exists (select 1 from public.perfis_cuidados where id = md5('encontralar:p-maria-carmo')::uuid) then
     raise notice 'Dados de demonstração já ligados — nada a fazer.';
     return;

@@ -14,10 +14,11 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "allowImportingTsExtensions": false,
+    "allowImportingTsExtensions": true,
     "types": ["vite/client", "node"],
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] }
   },
-  "include": ["src", "vite.config.ts", "scripts/**/*.ts", "supabase/tests/**/*.ts"]
+  "include": ["src", "vite.config.ts", "scripts/**/*.ts", "supabase/tests/**/*.ts", "supabase/functions/_shared/**/*.ts"],
+  "exclude": ["node_modules", "dist", "supabase/functions/_shared/deno/**"]
 }

@@ -110,7 +110,7 @@ describe('dados internos', () => {
     expect(await erro(db, base.familia, 'select visualizacoes_30d from public.instituicoes')).toMatch(/permission denied/)
     expect(await erro(db, base.lar, 'select owner_id from public.instituicoes where id = $1', [base.instituicao])).toMatch(/permission denied/)
     // a vista e select de colunas públicas continuam a funcionar para anon
-    expect(await q(db, 'anon', 'select id, nome, lista_espera from public.instituicoes_publicas where id = $1', [base.instituicao])).toHaveLength(1)
+    expect(await q(db, 'anon', 'select id, nome, faixa_preco from public.instituicoes_publicas where id = $1', [base.instituicao])).toHaveLength(1)
 
     const painel = await q<Record<string, unknown>>(db, base.lar, 'select * from public.painel_instituicao()')
     expect(painel).toEqual([{
@@ -140,7 +140,8 @@ describe('favoritos', () => {
 
   it('quem segue uma ficha que deixou de estar publicada não recebe avisos de vaga dela', async () => {
     const { lar, instituicao } = await cenarioBase(db, { sufixo: 'f', livres: { individual: 0 } })
-    const seguidor = await criarUtilizador(db, { email: 'seguidor@x.pt', roleAdmin: 'familia' })
+    // com o Acesso Família (sem ele, o alerta nem fica ligado — acesso.test.ts)
+    const seguidor = await criarUtilizador(db, { email: 'seguidor@x.pt', roleAdmin: 'familia', acesso: true })
     await q(db, seguidor, 'insert into public.favoritos (instituicao_id) values ($1)', [instituicao])
     await adm('update public.instituicoes set publicado = false where id = $1', [instituicao])
     expect((await q<{ n: number }>(db, lar, "select public.definir_vagas($1, 'individual', 5) as n", [instituicao]))[0]!.n).toBe(0)
@@ -182,7 +183,7 @@ describe('avaliações', () => {
   })
 
   it('contas de demonstração não avaliam fichas reais (nem diretamente, nem sem um pedido com entrada confirmada)', async () => {
-    const demo = await criarUtilizador(db, { email: 'demo-av@x.pt', roleAdmin: 'familia' })
+    const demo = await criarUtilizador(db, { email: 'demo-av@x.pt', roleAdmin: 'familia', acesso: true })
     await adm('update public.perfis_utilizador set demonstracao = true where id = $1', [demo])
     expect(await erro(db, demo, `insert into public.avaliacoes (instituicao_id, autor, nota, aspeto_cuidados, aspeto_alimentacao, aspeto_instalacoes, aspeto_comunicacao, texto)
       values ($1, 'Demo', 1, 1, 1, 1, 1, 'Avaliação vinda da conta pública')`, [base.instituicao])).toMatch(/permission denied/)

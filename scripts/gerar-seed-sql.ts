@@ -362,6 +362,23 @@ function linhaNotificacao(n: Notificacao, agora: number, userVar: string, porId:
   return `  (${v.join(', ')})`
 }
 
+/**
+ * Acesso Família de uma conta de demonstração (User.acesso no protótipo): o mesmo plano e o mesmo fim RELATIVO
+ * (now() + o que faltava em AGORA_SEED). Só famílias, só passes ainda em vigor no momento do seed. Repetir o script
+ * nunca encurta um passe (greatest), e numa base de demonstração antiga renova o que já tinha terminado.
+ */
+function linhaAcesso(u: User, agora: number, userVar: string): string {
+  const a = u.acesso!
+  if (u.role !== 'familia') throw new Error(`${u.id}: só as famílias têm o Acesso Família`)
+  if (a.plano !== 'acesso_30' && a.plano !== 'acesso_90') throw new Error(`${u.id}: plano ${a.plano} desconhecido`)
+  if (Date.parse(a.ate) <= agora) throw new Error(`${u.id}: o passe de demonstração já terminou em AGORA_SEED`)
+  return [
+    `  insert into public.acessos_familia (user_id, plano, ate, criado_em, atualizado_em)`,
+    `  values (${userVar}, ${lit(a.plano)}, ${rel(a.ate, agora)}, ${rel(a.compradoEm, agora)}, ${rel(a.compradoEm, agora)})`,
+    `  on conflict (user_id) do update set plano = excluded.plano, ate = greatest(public.acessos_familia.ate, excluded.ate), atualizado_em = now();`,
+  ].join('\n')
+}
+
 const EMAIL_VALIDO = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 /** Visita da equipa de terreno (como registar_visita a guardaria: texto aparado, email em minúsculas). */
@@ -390,7 +407,8 @@ function linhaVisita(v: Visita, agora: number, varDe: Map<string, string>, porLa
  * a gestora fica dona de DEMO_LAR_ID; Ana, as famílias fictícias e a assistente social recebem os
  * perfis, casos, pedidos (com encaminhamentos e entradas), histórico, favoritos e notificações do
  * protótipo; a avaliação verificada fica ligada ao pedido que lhe dá direito — o painel do lar fica
- * igual ao modo demonstração; a equipa de terreno fica com as visitas do piloto no Porto.
+ * igual ao modo demonstração; a equipa de terreno fica com as visitas do piloto no Porto; Ana fica com o
+ * Acesso Família (passe de 90 dias, com o mesmo fim relativo do protótipo).
  */
 export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): string {
   const lar = db.lares.find((l) => l.id === DEMO_LAR_ID)
@@ -474,6 +492,11 @@ export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): st
     `  if exists (select 1 from public.instituicoes where id = ${lit(DEMO_LAR_ID)} and owner_id is not null and owner_id <> v_lar) then`,
     `    raise exception 'A ficha ${DEMO_LAR_ID} já tem outro gestor — nada foi alterado.';`,
     '  end if;',
+    '',
+    '  -- Acesso Família das contas de demonstração (a família de demonstração tem um passe de 90 dias, como no',
+    '  -- protótipo). Antes da saída abaixo: repetir o script numa base já ligada dá (ou renova) o passe.',
+    ...db.users.filter((u) => u.acesso).map((u) => linhaAcesso(u, agora, varDe.get(u.id)!)),
+    '',
     `  if exists (select 1 from public.perfis_cuidados where id = ${uuidDe(db.perfis[0]!.id)}) then`,
     "    raise notice 'Dados de demonstração já ligados — nada a fazer.';",
     '    return;',

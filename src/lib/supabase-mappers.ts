@@ -17,9 +17,15 @@
  *   * DUAS FASES (RGPD art. 9.º): o lar só lê na tabela os pedidos que aceitou; a lista completa do
  *     painel vem de pedidos_recebidos() → pedidoRecebidoDeLinha (pedidos por aceitar só com o resumo
  *     sem identificação: nome, contacto, notas e mensagem nunca chegam ao navegador do lar).
- *     Na BD o contacto fica visível só com desbloqueada_em (recusar ou cancelar sem aceitar não o revela).
+ *     Na BD o contacto fica visível só com desbloqueada_em (recusar ou cancelar sem aceitar não o revela);
+ *   * ACESSO FAMÍLIA (docs/SUPABASE.md, secção 14): a versão grátis lê instituicoes_publicas →
+ *     larPublicoDeLinha (LarPublico: sem vagas, preços por quarto, previsão nem contactos; faixa de preço);
+ *     com acesso completo (useAcesso().completo), instituicoes_completas() → larDeLinha (Lar inteiro).
+ *     O estado do passe vem de acesso_estado() → acessoDeLinha; as contagens de disponibilidade_agregada()
+ *     → disponibilidadeDeLinha; as avaliações de avaliacoes_instituicao() → avaliacaoInstituicaoDeLinha.
  */
 import type {
+  AcessoFamilia,
   Candidatura,
   Caso,
   Comodidade,
@@ -32,6 +38,7 @@ import type {
   Notificacao,
   Organizacao,
   PerfilIdoso,
+  PlanoFamiliaId,
   PlanoInstituicao,
   ProcuraAnonima,
   Regiao,
@@ -44,9 +51,12 @@ import type {
   Visita,
 } from '@/types'
 import type { Database, Json, Tables, TablesInsert, TablesUpdate } from './database.types'
-import type { atualizarCaso, AvaliacaoInput, CasoInput, PerfilInput, RegisterInput, RegistoVisitaInput } from './store'
+import type { atualizarCaso, AvaliacaoInput, CasoInput, EstadoAcesso, PerfilInput, RegisterInput, RegistoVisitaInput } from './store'
 import { LOCALIDADES, LUGARES } from '@/data/localidades'
+import { diasRestantes, faixaPreco } from './acesso'
+import { niveisVerificacao, type NiveisVerificacao } from './negocio'
 
+/** Linha da vista pública (versão grátis do Acesso Família) → larPublicoDeLinha. */
 export type InstituicaoPublicaRow = Tables<'instituicoes_publicas'>
 export type AvaliacaoPublicaRow = Omit<Tables<'avaliacoes'>, 'user_id'>
 export type PerfilCuidadosRow = Tables<'perfis_cuidados'>
@@ -65,6 +75,11 @@ export type MinhaAvaliacaoRow = Rpc['minhas_avaliacoes']['Returns'][number]
 export type PlanoDaInstituicaoRow = Rpc['escolher_plano_instituicao']['Returns'][number]
 export type PainelEquipaRow = Rpc['painel_equipa']['Returns'][number]
 export type VisitaRow = Tables<'visitas'>
+/** Linha de instituicoes_completas() (acesso completo; o dono, a sua ficha) → larDeLinha. */
+export type InstituicaoCompletaRow = Rpc['instituicoes_completas']['Returns'][number]
+export type AvaliacaoInstituicaoRow = Rpc['avaliacoes_instituicao']['Returns'][number]
+export type DisponibilidadeAgregadaRow = Rpc['disponibilidade_agregada']['Returns'][number]
+export type FaixaPreco = Database['public']['Enums']['faixa_preco']
 /** Argumentos de uma RPC, para supabase.rpc(nome, args). */
 export type ArgsRpc<N extends keyof Rpc> = Rpc[N]['Args']
 
@@ -117,12 +132,13 @@ export interface DadosDoDono {
 }
 
 /**
- * Linha de instituicoes_publicas → Lar. As avaliações (texto) carregam-se à parte e ficam da mais
+ * Linha de instituicoes_completas() → Lar (a ficha inteira: só com acesso completo, ou o dono para a sua).
+ * As avaliações (texto) carregam-se à parte (tabela avaliacoes, ou avaliacoes_instituicao) e ficam da mais
  * recente para a mais antiga (como no protótipo). ownerId/visualizacoes30d/modalidade só para a ficha do
  * próprio gestor (painel_instituicao) ou, a modalidade, para a equipa (painel_equipa); nas restantes
- * ficam undefined/0 (por entrada, como no protótipo).
+ * ficam undefined/0 (por entrada, como no protótipo). Para a versão grátis: larPublicoDeLinha.
  */
-export function larDeLinha(r: InstituicaoPublicaRow, reviews: Review[] = [], dono: DadosDoDono = {}): Lar {
+export function larDeLinha(r: InstituicaoCompletaRow, reviews: Review[] = [], dono: DadosDoDono = {}): Lar {
   const capa = obj(r.capa)
   return {
     id: r.id ?? '',
@@ -178,6 +194,232 @@ export function larDeLinha(r: InstituicaoPublicaRow, reviews: Review[] = [], don
     visualizacoes30d: dono.visualizacoes30d ?? 0,
     planoInstituicao: dono.planoInstituicao,
     planoDesde: dono.planoDesde,
+  }
+}
+
+// ————————————————————————————————————————— versão grátis (Acesso Família)
+
+/** Opinião da versão grátis: o texto já vem em excerto e sem as notas por aspeto (do Acesso Família). */
+export type ExcertoAvaliacao = Omit<Review, 'aspetos'> & { excerto: true }
+
+/**
+ * O que a versão grátis sabe de uma instituição (instituicoes_publicas): quem é, onde (com coordenadas — o mapa
+ * da pesquisa grátis mostra os alfinetes), tipo, natureza, descrição, cuidados, equipa, verificação, avaliação
+ * geral e número de avaliações, os nomes dos extras e a FAIXA de preço. Nada de vagas, lugares livres, lista de
+ * espera, previsão, frescura das vagas, preços por quarto, preços dos extras, morada nem contactos — esses só
+ * chegam com acesso completo (instituicoes_completas → Lar).
+ */
+export interface LarPublico
+  extends Pick<
+    Lar,
+    | 'id' | 'nome' | 'tipo' | 'natureza' | 'resumo' | 'descricao' | 'localidade' | 'concelho' | 'distrito' | 'regiao'
+    | 'lat' | 'lng' | 'capacidade' | 'acordoSS' | 'incluido' | 'graus' | 'cuidados' | 'comodidades' | 'equipa'
+    | 'verificacao' | 'avaliacao' | 'numAvaliacoes' | 'fundacao' | 'capa'
+  > {
+  /** o que se paga à parte, sem os valores */
+  extras: { nome: string }[]
+  /** faixa de preço (faixaPreco); texto com faixaPrecoTexto */
+  faixaPreco: FaixaPreco
+  /** avaliações publicadas na ficha (lar.reviews.length no protótipo) */
+  avaliacoesPublicadas: number
+  /** das quais verificadas (de quem confirmou a entrada) */
+  avaliacoesVerificadas: number
+  /** o único excerto da versão grátis (avaliacoes_instituicao), quando carregado */
+  destaque?: ExcertoAvaliacao
+}
+
+/** Faixa de preço de um Lar completo, com a regra de faixaPreco (src/lib/acesso.ts): a mesma da vista pública. */
+export function faixaPrecoDe(lar: Pick<Lar, 'mensalidadeMin' | 'natureza'>): FaixaPreco {
+  if (lar.natureza !== 'privado') return 'conforme_rendimentos'
+  if (lar.mensalidadeMin < 1000) return 'ate_1000'
+  if (lar.mensalidadeMin < 2000) return '1000_2000'
+  return 'mais_2000'
+}
+
+/** "1.000 € a 2.000 €/mês" · "Conforme os rendimentos": o texto de faixaPreco para uma faixa da vista pública. */
+export function faixaPrecoTexto(f: FaixaPreco): string {
+  if (f === 'conforme_rendimentos') return faixaPreco({ natureza: 'ipss', mensalidadeMin: 0 })
+  return faixaPreco({ natureza: 'privado', mensalidadeMin: f === 'ate_1000' ? 0 : f === '1000_2000' ? 1000 : 2000 })
+}
+
+/**
+ * Excerto de uma opinião longa (o mesmo de excerto() na ficha grátis e de private.excerto_avaliacao na BD):
+ * corta numa palavra perto dos `max` carateres e acaba em "…".
+ */
+export function excertoAvaliacao(texto: string, max = 240): string {
+  if (texto.length <= max) return texto
+  const corte = texto.slice(0, max)
+  const espaco = corte.lastIndexOf(' ')
+  return `${(espaco > max * 0.6 ? corte.slice(0, espaco) : corte).replace(/[\s,;:.–—-]+$/, '')}…`
+}
+
+/** Linha de instituicoes_publicas (+ o excerto de avaliacoes_instituicao, se já carregado) → LarPublico. */
+export function larPublicoDeLinha(r: InstituicaoPublicaRow, destaque?: ExcertoAvaliacao): LarPublico {
+  const capa = obj(r.capa)
+  return {
+    id: r.id ?? '',
+    nome: r.nome ?? '',
+    tipo: r.tipo ?? 'erpi',
+    natureza: r.natureza ?? 'privado',
+    resumo: r.resumo ?? '',
+    descricao: r.descricao ?? '',
+    localidade: r.localidade ?? '',
+    concelho: r.concelho ?? '',
+    distrito: (r.distrito ?? 'Lisboa') as Distrito,
+    regiao: (r.regiao ?? 'Lisboa e Vale do Tejo') as Regiao,
+    lat: num(r.lat),
+    lng: num(r.lng),
+    capacidade: num(r.capacidade),
+    acordoSS: r.acordo_ss ?? false,
+    incluido: r.incluido ?? [],
+    extras: lista(r.extras_nomes).map((nome) => ({ nome: texto(nome) })),
+    graus: r.graus ?? [],
+    cuidados: (r.cuidados ?? []) as Cuidado[],
+    comodidades: (r.comodidades ?? []) as Comodidade[],
+    equipa: {
+      cuidadoresPor10: num(r.equipa_cuidadores_por_10),
+      enfermeiros: num(r.equipa_enfermeiros),
+      medicoHorasSemana: num(r.equipa_medico_horas_semana),
+    },
+    verificacao: {
+      estado: r.verificacao_estado ?? 'pendente',
+      data: iso(r.verificacao_data),
+      licenca: r.licenca ?? '',
+      licencaConfirmadaEm: iso(r.licenca_confirmada_em),
+      ultimaInspecao: iso(r.ultima_inspecao),
+    },
+    avaliacao: num(r.avaliacao_media),
+    numAvaliacoes: num(r.num_avaliacoes),
+    fundacao: num(r.fundacao, new Date().getFullYear()),
+    capa: { hue: num(capa.hue as number, 152), variante: num(capa.variante as number) },
+    faixaPreco: r.faixa_preco ?? 'ate_1000',
+    avaliacoesPublicadas: num(r.avaliacoes_publicadas),
+    avaliacoesVerificadas: num(r.avaliacoes_verificadas),
+    destaque,
+  }
+}
+
+/**
+ * Projeção grátis de um Lar completo: o mesmo LarPublico que a BD serve (modo demonstração e testes de ida e
+ * volta). O destaque é o da ficha grátis: a primeira verificada, senão a primeira (as avaliações vêm da mais
+ * recente para a mais antiga), só com o excerto do texto.
+ */
+export function larPublicoDe(lar: Lar): LarPublico {
+  const d = lar.reviews.find((r) => r.verificada) ?? lar.reviews[0]
+  return {
+    id: lar.id,
+    nome: lar.nome,
+    tipo: lar.tipo,
+    natureza: lar.natureza,
+    resumo: lar.resumo,
+    descricao: lar.descricao,
+    localidade: lar.localidade,
+    concelho: lar.concelho,
+    distrito: lar.distrito,
+    regiao: lar.regiao,
+    lat: lar.lat,
+    lng: lar.lng,
+    capacidade: lar.capacidade,
+    acordoSS: lar.acordoSS,
+    incluido: lar.incluido,
+    extras: lar.extras.map((e) => ({ nome: e.nome })),
+    graus: lar.graus,
+    cuidados: lar.cuidados,
+    comodidades: lar.comodidades,
+    equipa: lar.equipa,
+    verificacao: lar.verificacao,
+    avaliacao: lar.avaliacao,
+    numAvaliacoes: lar.numAvaliacoes,
+    fundacao: lar.fundacao,
+    capa: lar.capa,
+    faixaPreco: faixaPrecoDe(lar),
+    avaliacoesPublicadas: lar.reviews.length,
+    avaliacoesVerificadas: lar.reviews.filter((r) => r.verificada).length,
+    destaque: d && { id: d.id, autor: d.autor, relacao: d.relacao, data: d.data, nota: d.nota, texto: excertoAvaliacao(d.texto), verificada: d.verificada, excerto: true },
+  }
+}
+
+/** niveisVerificacao (src/lib/negocio.ts) para a versão grátis: as avaliações verificadas vêm contadas. */
+export function niveisDeLarPublico(l: Pick<LarPublico, 'verificacao' | 'avaliacoesVerificadas'>): NiveisVerificacao {
+  return niveisVerificacao({ verificacao: l.verificacao, reviews: l.avaliacoesVerificadas > 0 ? [{ verificada: true } as Review] : [] })
+}
+
+/**
+ * Linha de avaliacoes_instituicao() → Review (acesso completo: texto inteiro e notas por aspeto) ou
+ * ExcertoAvaliacao (versão grátis: no máximo uma, em excerto). Mostre o excerto tal como vem (já cortado).
+ */
+export function avaliacaoInstituicaoDeLinha(r: AvaliacaoInstituicaoRow): Review | ExcertoAvaliacao {
+  const comum = { id: String(r.id), autor: r.autor, relacao: r.relacao, data: isoObrigatorio(r.created_at), nota: r.nota, texto: r.texto, verificada: r.verificada }
+  if (r.excerto || r.aspeto_cuidados == null || r.aspeto_alimentacao == null || r.aspeto_instalacoes == null || r.aspeto_comunicacao == null) {
+    return { ...comum, excerto: true }
+  }
+  return {
+    ...comum,
+    aspetos: { cuidados: r.aspeto_cuidados, alimentacao: r.aspeto_alimentacao, instalacoes: r.aspeto_instalacoes, comunicacao: r.aspeto_comunicacao },
+  }
+}
+
+export const eExcertoAvaliacao = (r: Review | ExcertoAvaliacao): r is ExcertoAvaliacao => 'excerto' in r
+
+/**
+ * Linha de disponibilidade_agregada() → resumoDisponibilidade (src/lib/acesso.ts), com null quando a zona tem
+ * menos de MIN_AGREGADO fichas (aí "quantas" seria "quais": mostre só o total).
+ */
+export function disponibilidadeDeLinha(r: DisponibilidadeAgregadaRow | undefined): { total: number; comVaga: number | null; breve: number | null } {
+  return { total: num(r?.total), comVaga: r?.com_vaga ?? null, breve: r?.breve ?? null }
+}
+
+/**
+ * Pagamento de um passe (contrato da faturação para acesso_estado().pagamentos). A lista vem vazia até a
+ * faturação existir na base de dados.
+ */
+export interface PagamentoAcesso {
+  id: string
+  plano: PlanoFamiliaId
+  valorCentimos: number
+  metodo?: 'card' | 'mb_way' | 'multibanco'
+  estado: 'pendente' | 'a_aguardar_pagamento' | 'pago' | 'falhou' | 'expirado' | 'reembolsado'
+  criadoEm: string
+  pagoEm?: string
+  multibanco?: { entidade: string; referencia: string; expiraEm: string }
+  documento?: { numero: string; emitidoEm: string }
+}
+
+function pagamentoDeJson(v: Json): PagamentoAcesso {
+  const o = obj(v)
+  const mb = o.multibanco ? obj(o.multibanco) : undefined
+  const doc = o.documento ? obj(o.documento) : undefined
+  const metodo = texto(o.metodo)
+  return {
+    id: texto(o.id),
+    plano: texto(o.plano, 'acesso_90') as PlanoFamiliaId,
+    valorCentimos: num(o.valor_centimos as number),
+    metodo: metodo === 'card' || metodo === 'mb_way' || metodo === 'multibanco' ? metodo : undefined,
+    estado: texto(o.estado, 'pendente') as PagamentoAcesso['estado'],
+    criadoEm: isoObrigatorio(texto(o.criado_em) || null),
+    pagoEm: iso(texto(o.pago_em) || null),
+    multibanco: mb && { entidade: texto(mb.entidade), referencia: texto(mb.referencia), expiraEm: isoObrigatorio(texto(mb.expira_em) || null) },
+    documento: doc && { numero: texto(doc.numero), emitidoEm: isoObrigatorio(texto(doc.emitido_em) || null) },
+  }
+}
+
+/**
+ * Resultado de acesso_estado() → o que useAcesso() devolve no protótipo ({ completo, ativo, ate, plano,
+ * diasRestantes }) e os pagamentos. `completo` é o portão: escolhe instituicoes_completas/larDeLinha (true) ou
+ * instituicoes_publicas/larPublicoDeLinha (false). Sem sessão (anon) não se chama: é a versão grátis.
+ */
+export function acessoDeLinha(v: Json, agora = Date.now()): EstadoAcesso & { pagamentos: PagamentoAcesso[] } {
+  const o = obj(v)
+  const ate = iso(typeof o.ate === 'string' ? o.ate : null)
+  const plano = o.plano === 'acesso_30' || o.plano === 'acesso_90' ? o.plano : undefined
+  return {
+    completo: o.completo === true,
+    ativo: o.ativo === true,
+    ate,
+    plano,
+    // diasRestantes só lê o fim do passe
+    diasRestantes: diasRestantes(ate ? ({ ate } as AcessoFamilia) : undefined, agora),
+    pagamentos: lista(o.pagamentos).map(pagamentoDeJson),
   }
 }
 

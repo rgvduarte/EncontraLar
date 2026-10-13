@@ -400,7 +400,10 @@ describe('avaliações verificadas', () => {
     // a família sabe que já avaliou (minhas_avaliacoes); ninguém lê candidatura_id/user_id na tabela
     expect(await q(db, b.familia, 'select candidatura_id, verificada from public.minhas_avaliacoes()')).toEqual([{ candidatura_id: c.id, verificada: true }])
     expect(await erro(db, b.familia, 'select candidatura_id from public.avaliacoes')).toMatch(/permission denied/)
-    expect(await q(db, 'anon', 'select autor, verificada from public.avaliacoes where instituicao_id = $1', [b.instituicao])).toEqual([{ autor: 'Teresa M.', verificada: true }])
+    // a versão grátis (anon) não lê a tabela: só o excerto de avaliacoes_instituicao (acesso.test.ts)
+    expect(await erro(db, 'anon', 'select autor from public.avaliacoes')).toMatch(/permission denied/)
+    expect(await q(db, 'anon', 'select autor, verificada, excerto from public.avaliacoes_instituicao($1)', [b.instituicao])).toEqual([{ autor: 'Teresa M.', verificada: true, excerto: true }])
+    expect(await q(db, b.familia, 'select autor, verificada from public.avaliacoes where instituicao_id = $1', [b.instituicao])).toEqual([{ autor: 'Teresa M.', verificada: true }])
     // o autor pode apagar a sua (os agregados voltam atrás)
     expect(await q(db, b.familia, 'delete from public.avaliacoes where id = $1 returning id', [av!.id])).toHaveLength(1)
     expect((await adm<{ n: number }>('select num_avaliacoes n from public.instituicoes where id = $1', [b.instituicao]))[0]!.n).toBe(0)

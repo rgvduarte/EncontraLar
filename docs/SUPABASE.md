@@ -11,7 +11,7 @@ Este documento explica como pôr a base de dados real a funcionar, passo a passo
 | `supabase/migrations/*.sql` | Esquema, segurança (RLS), lógica de negócio, Realtime e trabalhos agendados. Aplicar **por ordem**. |
 | `supabase/seed.sql` | 162 fichas **fictícias** (demonstração), com o hash do link de confirmação e a modalidade dos 2 lares privados que a escolheram, e 84 pesquisas sem vagas. **Nunca em produção.** |
 | `supabase/demo/contas-demo.json` | As 12 contas de demonstração (geradas a partir de `src/data/seed.ts`), incluindo a assistente social e a equipa de terreno. |
-| `supabase/demo/utilizadores-demo.sql` | Liga essas contas aos dados de demonstração (pedidos, casos, avaliação, as 6 visitas da equipa). **Nunca em produção.** |
+| `supabase/demo/utilizadores-demo.sql` | Liga essas contas aos dados de demonstração (pedidos, casos, avaliação, as 6 visitas da equipa, o Acesso Família da família de demonstração). **Nunca em produção.** |
 | `scripts/criar-contas-demo.mjs` | Cria as contas de demonstração pela Auth Admin API. |
 | `scripts/gerar-seed-sql.ts` | Gera os três ficheiros de demonstração (`npm run db:seed-sql`). |
 | `supabase/tests/` | Testes das migrações em PGlite (Postgres em WASM), sem rede: `npm test`. |
@@ -60,10 +60,16 @@ Este documento explica como pôr a base de dados real a funcionar, passo a passo
 - **Avaliações verificadas**: só pela RPC `avaliar_lar`, por **famílias** que fizeram o pedido e **confirmaram a
   entrada**, uma por pedido (um profissional confirma a entrada em nome da pessoa, mas não avalia). Não há
   escrita direta na tabela.
-- **RPC sem sessão**: só três — `registar_procura` (pesquisa anónima, limitada), `vagas_por_token` e
-  `confirmar_vagas_por_token` (link de confirmação das vagas). Para isso `anon` tem `USAGE` no schema
-  `private` e `EXECUTE` **apenas** nas três funções internas correspondentes (o teste de migrações falha se
-  `anon` ganhar `EXECUTE` em mais alguma).
+- **Acesso Família (secção 14)**: a camada viva — que instituições têm vaga e quantos lugares, preços por quarto,
+  lista de espera e previsão, frescura das vagas, contactos e morada — **não sai da base de dados** para quem não
+  tem acesso completo (famílias com passe em vigor, profissionais, equipa; o dono, só a sua ficha). A vista pública
+  só tem a versão grátis; a completa vem de `instituicoes_completas()`; pedidos, visitas e alertas de vaga exigem o
+  acesso. Imposto por privilégios de coluna, RLS e funções do servidor, não pela interface.
+- **RPC sem sessão**: só cinco — `registar_procura` (pesquisa anónima, limitada), `vagas_por_token` e
+  `confirmar_vagas_por_token` (link de confirmação das vagas), `disponibilidade_agregada` e `avaliacoes_instituicao`
+  (versão grátis do Acesso Família). Para isso `anon` tem `USAGE` no schema `private` e `EXECUTE` **apenas** nas
+  cinco funções internas correspondentes e em `private.resumo_publico` (faixa de preço e contagens de avaliações da
+  vista pública) — o teste de migrações falha se `anon` ganhar `EXECUTE` em mais alguma.
 
 ---
 
@@ -111,9 +117,10 @@ passar a usar o CLI, alinhe o histórico com `supabase migration repair` antes d
 | `20261012190800_modelo_negocio.sql` | Modelo de negócio: casos, encaminhamentos, entradas e taxa, duas fases, avaliações verificadas, procura anónima, link de confirmação, RPC novas e pg_cron da procura. |
 | `20261013100000_equipa_modalidade_tipos.sql` | Valores novos dos enums: `role_utilizador` `equipa`, `taxa_entrada` `incluida` (ficheiro à parte, pela mesma razão do `0700`). |
 | `20261013100100_equipa_modalidade.sql` | Equipa de terreno e modalidade (secção 13): `instituicoes.plano`/`plano_desde`, `escolher_plano_instituicao`, taxa `incluida`, papel `equipa`, tabela `visitas`, `registar_visita`, `painel_equipa`, `painel_instituicao` com a modalidade, `licenca_confirmada_em` (também na vista pública). |
+| `20261013110000_acesso_familia.sql` | Acesso Família no servidor (secção 14): `acessos_familia`, `tem_acesso_completo`, `estender_acesso`, `acesso_estado`; vista pública só com a versão grátis (`faixa_preco`, `extras_nomes`, contagens de avaliações); `instituicoes_completas`, `disponibilidade_agregada`, `avaliacoes_instituicao`; quartos, saídas e avaliações só com acesso; pedidos, visitas e alertas de vaga só com acesso. Sem valores novos em enums existentes (por isso sem ficheiro `_tipos`). |
 
 As migrações já aplicadas **nunca se editam**: qualquer mudança é um ficheiro novo com um prefixo maior (hoje, maior
-do que `20261013100100`).
+do que `20261013110000`).
 
 ---
 
@@ -252,6 +259,10 @@ A vista pública expõe `demonstracao` para a interface poder mostrar um aviso.
    na mensalidade) e a licença confirmada das fichas "pendentes" (há 45 dias, como no protótipo) já vêm do
    `seed.sql`. Uma base de demonstração carregada antes de `20261013100100` não as ganha ao repetir o seed (as
    fichas já existem: `on conflict do nothing`): crie um ramo novo.
+   A família de demonstração (`familia@exemplo.pt`) fica com o **Acesso Família** (passe de 90 dias, com o mesmo fim
+   relativo do protótipo: termina 80 dias depois de o script correr). Este passo corre antes da saída "já ligados":
+   repetir o script numa base de demonstração já ligada dá o passe (ou renova-o, se já tiver terminado) sem mexer em
+   mais nada. Para ver a versão grátis numa base de demonstração, entre sem sessão ou com outra conta de família.
 4. Com o Supabase ligado, o acesso de demonstração do ecrã de entrada (`DemoAccess`) deve ser escondido ou
    apontar para o ramo.
 
@@ -294,8 +305,12 @@ RLS: `owner_id`, `visualizacoes_30d`, `confirmacao_token_*`, `plano`, `plano_des
 `avaliacoes.user_id` e `avaliacoes.candidatura_id` existem nos tipos mas não podem ser selecionados pelos
 clientes (use listas de colunas explícitas, `painel_instituicao()`, `painel_equipa()` e `minhas_avaliacoes()`);
 `procuras_anonimas` aparece nos tipos mas só se usa pelas RPC; `visitas` só devolve linhas a contas `equipa`. Os
-tipos de retorno `PedidoRecebido`, `VagasPorToken` e `PlanoDaInstituicao` (no topo do ficheiro escrito à mão)
-passam a vir inline no ficheiro gerado.
+tipos de retorno `PedidoRecebido`, `VagasPorToken`, `PlanoDaInstituicao`, `InstituicaoCompleta` e
+`AvaliacaoInstituicao` (no topo do ficheiro escrito à mão) passam a vir inline no ficheiro gerado.
+Acesso Família: as colunas `morada`, `codigo_postal`, `telefone`, `email`, `website`, `lista_espera_offline`,
+`lista_espera_online`, `estadia_media_meses`, `extras`, `atualizado_em` e `updated_at` de `instituicoes` estão nos tipos
+mas não são legíveis por `anon`/`authenticated` (use `instituicoes_completas()`); `quartos`, `saidas_mensais` e
+`avaliacoes` não são legíveis por `anon` e, para as contas, só devolvem linhas com acesso completo (ou do dono).
 
 ---
 
@@ -323,8 +338,20 @@ passam a vir inline no ficheiro gerado.
   dono na tabela, `escolher_plano_instituicao` (só o dono de um privado, mesma modalidade, compromisso com a data
   no erro), a natureza que deixa de ser privada; taxa `aplicavel`/`incluida`/`isenta` fixada na primeira
   confirmação; a migração sobre uma base já em uso.
-- `prototipo.test.ts` — seed + contas de demonstração = `createSeed`: 162 fichas (com os níveis de verificação),
-  14 pedidos (lidos por quem os fez e, no painel do lar, só o resumo dos que não foram aceites), 3 casos, procura
+- `acesso.test.ts` — Acesso Família (secção 14): anon, famílias sem passe ou com o passe terminado e outras
+  instituições não leem nenhuma coluna nem valor da camada completa por nenhum caminho (tabela, vista, RPC, quartos,
+  saídas, avaliações); famílias com passe, profissionais e equipa leem tudo (a conta de demonstração com passe só as
+  fichas de demonstração); o dono, a sua ficha; o passe termina no instante `ate`; `estender_acesso` = `novoAte` (soma
+  ao fim em vigor, ou a partir de agora; só servidor); `acesso_estado`; a faixa de preço; os agregados = `resumoDisponibilidade`
+  do protótipo em todos os distritos e concelhos do seed (ficha a ficha, com as constantes da previsão), `null`
+  abaixo de 5; pedidos, visitas e alertas recusados sem passe (e livres com ele; cancelar, responder a uma vaga e
+  confirmar a entrada continuam livres); avisos de vaga (quem segue só com acesso; a lista de espera sempre); um só
+  excerto de avaliação na versão grátis (o mesmo corte da ficha); a migração sobre uma base já em uso.
+- `prototipo.test.ts` — seed + contas de demonstração = `createSeed`: a vista pública = a projeção grátis do protótipo
+  (`larPublicoDe`, com a faixa, os níveis de verificação e o excerto), `instituicoes_completas()` (pela família de
+  demonstração, com passe) = as 162 fichas completas (com os níveis de verificação); o passe da família de
+  demonstração (`acesso_estado` = `useAcesso`); 14 pedidos (lidos por quem os fez e, no painel do lar, só o resumo
+  dos que não foram aceites), 3 casos, procura
   do distrito, link de confirmação, a modalidade (pela gestora e pela equipa) e as 6 visitas (só pela equipa), de
   ida e volta pelos mappers; a gestora muda para a mensalidade (entrada seguinte `incluida`) e a equipa regista uma
   adesão.
@@ -357,6 +384,14 @@ passam a vir inline no ficheiro gerado.
   tinha, `registar_visita` atualiza as vagas mas não avisa as famílias em lista de espera nem quem segue a ficha
   (o lar, com `definir_vagas`, avisa). Se o cliente quiser, basta chamar `private.avisar_nova_vaga` por tipo de
   quarto que subiu.
+- **Coordenadas na versão grátis** (fica como no protótipo): a pesquisa grátis mostra os alfinetes nas coordenadas da
+  instituição, por isso `lat`/`lng` são públicas (a ficha grátis só mostra o mapa da zona, mas a pesquisa já as dá). Se
+  o cliente quiser a localização exata só com o Acesso Família, primeiro o mapa da pesquisa grátis passa a posições
+  aproximadas (ex.: centro do concelho) e depois a vista pública deixa de ter `lat`/`lng` (ou arredonda-as).
+- **Contagens agregadas e diferenças** (secção 14): `disponibilidade_agregada` esconde as contagens abaixo de 5 fichas,
+  mas a diferença entre o distrito e os seus concelhos com 5 ou mais fichas pode dizer quantas têm vaga num concelho
+  pequeno (com uma só casa, qual). O protótipo tem o mesmo limite. Se for preciso mais rigor: supressão
+  complementar (esconder também o concelho cujo resto do distrito tenha menos de 5) ou ruído nas contagens.
 - **Fichas por publicar e a equipa**: a equipa só vê na pesquisa as fichas publicadas (RLS), por isso visita as do
   catálogo; um rascunho registado por um lar é publicado pelo administrador antes da visita. O selo da equipa
   passa a ficha a "verificada" — com gestor e publicada, recebe pedidos (e dados de saúde). Se o cliente quiser uma
@@ -548,11 +583,11 @@ demonstração; a equipa real só as reais (`private.mundo_equipa()`, na políti
 | Função do store | Supabase | Mapper (`src/lib/supabase-mappers.ts`) |
 | --- | --- | --- |
 | `escolherPlanoInstituicao(plano)` | `rpc('escolher_plano_instituicao', { p_plano })` | `planoDeLinha` |
-| `lar.planoInstituicao` / `planoDesde` (dono) | `rpc('painel_instituicao')` | `painelDeLinha(r).dono` → `larDeLinha(linha, reviews, dono)` |
+| `lar.planoInstituicao` / `planoDesde` (dono) | `rpc('painel_instituicao')` + a sua ficha em `rpc('instituicoes_completas')` | `painelDeLinha(r).dono` → `larDeLinha(linha, reviews, dono)` |
 | `lar.planoInstituicao` / `ownerId` (equipa) | `rpc('painel_equipa')` | `painelEquipaDeLinha` (`temGestor`, `dono`) |
 | `registarVisita(input)` | `rpc('registar_visita', visitaParaRpc(input))` | `visitaDeLinha`; `selo` = licença e instalações confirmadas |
 | `useVisitas()` | `from('visitas').select('*').order('data', { ascending: false })` | `visitaDeLinha` |
-| `lar.verificacao.licencaConfirmadaEm` | `instituicoes_publicas.licenca_confirmada_em` | `larDeLinha` (→ `niveisVerificacao`) |
+| `lar.verificacao.licencaConfirmadaEm` | `licenca_confirmada_em` em `instituicoes_publicas` e em `instituicoes_completas()` | `larPublicoDeLinha` (→ `niveisDeLarPublico`) / `larDeLinha` (→ `niveisVerificacao`) |
 | `registarVisita({ criarConta: true })` | Edge Function de convite (TODO abaixo) | — |
 
 ### TODO (produção) — conta do responsável na adesão: convite por Edge Function
@@ -579,6 +614,8 @@ protótipo**. Na produção:
 
 ### TODO — faturação (Stripe + Moloni), por desenhar
 
+(Do lado das famílias, o direito de acesso já existe: secção 14, "Ganchos para a faturação".)
+
 A faturação ainda não existe na base de dados. Ganchos para quando for desenhada:
 
 - **Por entrada**: cada `candidaturas` com `entrada_taxa = 'aplicavel'` (fixada na primeira confirmação) e a
@@ -590,3 +627,158 @@ A faturação ainda não existe na base de dados. Ganchos para quando for desenh
   `registar_visita` (adesão) — e, por exceção, pelo administrador. Hoje fica só a modalidade atual e `plano_desde`:
   para faturar com segurança vai ser preciso um histórico das modalidades (tabela própria, ou o registo do Stripe).
 - Fichas de demonstração (`demonstracao = true`) nunca chegam à faturação.
+
+---
+
+## 14. Acesso Família no servidor (`20261013110000`)
+
+Contrato: `docs/MODELO-NEGOCIO.md` (modelo de dois lados) e o que a versão grátis da interface mostra
+(`src/features/lar-detail`, `src/features/search`, `src/lib/acesso.ts`). Até aqui a divisão era só de apresentação:
+qualquer pessoa lia vagas, preços por quarto, contactos e as entradas da previsão na vista pública, por isso vender o
+passe não fazia sentido. Agora a camada viva **não sai da base de dados** para quem não tem acesso.
+
+### Quem tem acesso completo
+
+`private.tem_acesso_completo(uid default auth.uid())`, o `temAcessoCompleto` do protótipo:
+
+| Conta | Acesso completo |
+| --- | --- |
+| `profissional` (assistente social) | sempre, sem custos |
+| `equipa` (equipa de terreno) | sempre (confirma vagas e preços nas visitas) |
+| `familia` | enquanto `acessos_familia.ate > now()` (passe em vigor) |
+| `lar` (instituição) | nunca: vê a versão grátis das outras fichas; a **sua** ficha vê-a sempre inteira (`instituicoes_completas`, `painel_instituicao`, as suas linhas de quartos, saídas e avaliações) |
+| anon | nunca |
+
+As contas de demonstração (palavra-passe pública) só têm a camada completa das fichas de demonstração: o mesmo
+isolamento dos pedidos e das visitas. Uma linha em `acessos_familia` de uma conta que não é `familia` não dá acesso.
+
+### Público vs completo
+
+| | Versão grátis (anon, famílias sem passe, instituições) | Acesso completo |
+| --- | --- | --- |
+| Quem existe, nome, tipo, natureza, localidade, concelho, distrito, região | `instituicoes_publicas` | idem |
+| Coordenadas (`lat`, `lng`) | públicas: a pesquisa grátis mostra os alfinetes (a ficha grátis só a zona) — secção 11 | idem |
+| Resumo, descrição, capacidade, incluído, graus, cuidados, comodidades, equipa, fundação, capa | públicos | idem |
+| Verificação (estado, data, licença, licença confirmada, última inspeção) | públicos (níveis de verificação) | idem |
+| Avaliação geral e nº de avaliações; publicadas e verificadas | `avaliacao_media`, `num_avaliacoes`, `avaliacoes_publicadas`, `avaliacoes_verificadas` | idem |
+| Avaliações | **um** excerto (a verificada mais recente, senão a mais recente; 240 carateres; sem notas por aspeto) — `avaliacoes_instituicao()` | todas, completas (`avaliacoes_instituicao()` ou a tabela) |
+| Preço | **faixa** (`faixa_preco`: `ate_1000`, `1000_2000`, `mais_2000`, `conforme_rendimentos`), como `faixaPreco` | quartos com preço mínimo e máximo, `mensalidade_min/max` |
+| Extras | só os nomes (`extras_nomes`) | com os valores (`extras`) |
+| Vagas, lugares livres por quarto, lista de espera | — (só as contagens agregadas por zona) | `quartos`, `vagas_livres`, `lista_espera` |
+| Previsão (estadia média, histórico de saídas) e frescura das vagas | — | `estadia_media_meses`, `historico_saidas`, `atualizado_em` |
+| Contactos e morada | — | `morada`, `codigo_postal`, `telefone`, `email`, `website` |
+| Pedidos a várias casas, visitas, alertas de vaga | recusados pela BD (42501, `hint = 'acesso_familia'`) | permitidos |
+
+Como é imposto (desenho): **privilégios por coluna** na tabela `instituicoes` (as colunas da camada completa deixam
+de ser legíveis por `anon`/`authenticated`; `extras_nomes` é uma coluna gerada, pública), **RLS** nas tabelas que são
+inteiras da camada completa (`quartos`, `saidas_mensais`, `avaliacoes`: sem privilégio para `anon`; para as contas, só
+com `tem_acesso_completo()`, o dono e — nas avaliações — o autor) e uma **RPC `SECURITY DEFINER`** para a ficha
+inteira. Porquê assim:
+
+- a vista pública continua `security_invoker` e simples (só colunas públicas da tabela), por isso os filtros do
+  PostgREST continuam a usar os índices; o que ela calcula a partir de dados fechados (faixa de preço e contagens de
+  avaliações) vem de uma função pequena (`private.resumo_publico`) que só devolve esses valores genéricos;
+- os privilégios por coluna não dependem do passe (são por papel), por isso a ficha inteira não pode vir da tabela
+  para as famílias com passe: vem de `instituicoes_completas()`, que verifica o acesso no servidor e devolve a forma
+  da antiga vista pública (o `larDeLinha` não muda);
+- quartos, saídas e avaliações continuam legíveis na tabela com acesso completo, por isso o **Realtime dos quartos**
+  (vagas em direto) só chega a quem tem acesso — a versão grátis nunca recebe os lugares livres.
+
+### Regras
+
+1. **Passe** (`acessos_familia`: `user_id`, `plano` `acesso_30`/`acesso_90`, `ate`, `criado_em`, `atualizado_em`): o
+   próprio lê a sua linha; ninguém a escreve diretamente (nem a `service_role`). `private.estender_acesso(user_id,
+   plano)` é a única escrita: soma os dias (30 ou 90, de 24 h exatas) ao fim em vigor ou, se não houver ou já terminou,
+   a partir de agora — o `novoAte` do protótipo; bloqueia a linha (duas compras simultâneas somam as duas) e avisa a
+   família ("Acesso Família ativo — tem acesso completo até …; não há renovação automática"), como `comprarAcessoDemo`.
+   Só `service_role`/`postgres` a executam. O acesso termina no instante `ate` (sem renovação automática).
+2. **Ficha completa** (`instituicoes_completas(p_ids)`): com acesso completo, as fichas publicadas (contas de
+   demonstração: só as de demonstração); o dono sem acesso, só a sua (publicada ou não); outras contas → erro 42501
+   (`hint = 'acesso_familia'`); `anon` nem a executa. `p_ids` (opcional) limita às fichas indicadas.
+3. **Agregados** (`disponibilidade_agregada(p_distrito, p_concelho)`): fichas publicadas do distrito (ou do concelho do
+   distrito; os dois a `null` = o país) → `total`, `com_vaga`, `breve`; `com_vaga` e `breve` a `null` com menos de 5
+   fichas (`MIN_AGREGADO`). Um concelho exige o distrito (há nomes repetidos: Calheta). Definições de
+   `src/lib/forecast.ts`, ficha a ficha:
+   - `com_vaga` = `vagaParaNovos`: lista efetiva (40 % da lista, arredondada) abaixo dos lugares livres;
+   - `breve` = sem lugares livres e P(vaga em 90 dias) ≥ 50 % (`disponibilidade = 'breve'`); uma ficha com lugares livres
+     já prometidos à lista não conta em nenhum dos dois (como `resumoDisponibilidade`);
+   - P(vaga) = `poissonAtLeast(lista efetiva + 1, Λ)`, com a taxa de `taxaSaidasMensal` (metade histórico dos últimos 12
+     meses, metade residentes ÷ estadia média, mínimo 6) e a sazonalidade de `SAZONALIDADE`, a partir de hoje (Lisboa).
+   - **Aproximação**: o protótipo soma Λ dia a dia (`taxa × fator ÷ dias do mês`); a BD calcula `taxa × Σ(fator ÷ dias do
+     mês)` — a mesma conta com outra ordem de arredondamento (≈ 1e-14), sem efeito no limiar de 50 %. O teste compara
+     ficha a ficha e zona a zona com o protótipo, no seed inteiro.
+   - Limite conhecido: diferenças entre zonas (secção 11).
+4. **Avaliações** (`avaliacoes_instituicao(p_instituicao_id)`): ficha publicada (ou a do dono); com acesso completo ou
+   para o dono, todas (da mais recente para a mais antiga, `excerto = false`); senão no máximo uma, a verificada mais
+   recente (senão a mais recente), com o texto em excerto (`private.excerto_avaliacao` = `excertoAvaliacao`: 240
+   carateres, corte numa palavra, "…") e as notas por aspeto a `null` (`excerto = true`). Na tabela, `anon` não lê nada.
+5. **Ações pagas**:
+   - `candidatar` (pedido, com ou sem visita) e `pedir_visita` (também num pedido já feito): sem acesso completo → 42501,
+     "Os pedidos de vaga e as visitas fazem parte do Acesso Família.", `hint = 'acesso_familia'`;
+   - continuam livres, mesmo com o passe terminado: cancelar o pedido, responder a uma vaga proposta, confirmar a entrada,
+     avaliar — são do pedido que a família já fez;
+   - favoritos: guardar é livre; sem acesso o alerta fica desligado ao guardar (o valor por omissão `true` só vale com
+     acesso, como `toggleFavorito`); ligar o alerta num favorito guardado → 42501 (`hint = 'acesso_familia'`); um
+     *upsert* com `alerta = true` fica desligado; desligar e apagar, sempre;
+   - os profissionais (acesso completo) enviam casos como antes (`enviar_caso`).
+6. **Avisos de vaga** (`avisar_nova_vaga`): quem está na lista de espera é sempre avisado (já tem uma relação com a
+   instituição); quem segue a ficha com alerta só com acesso completo no momento do aviso (senão o aviso diria quais têm
+   vaga) e, numa conta de demonstração, só de fichas de demonstração. Um alerta ligado com o passe fica ligado quando o
+   passe termina e volta a avisar com um passe novo.
+
+### RPC novas (todas `SECURITY DEFINER` em `private`, invólucro `SECURITY INVOKER` em `public`)
+
+| RPC | Quem | Faz |
+| --- | --- | --- |
+| `acesso_estado()` | conta com sessão | `{ completo, ativo, ate, plano, pagamentos }` (`pagamentos` vem `[]` até existir a faturação). |
+| `instituicoes_completas(p_ids)` | acesso completo; o dono (a sua) | A ficha inteira, com a forma da antiga vista pública. |
+| `disponibilidade_agregada(p_distrito, p_concelho)` | **anon** e todos | Contagens da zona; `null` abaixo de 5 fichas. |
+| `avaliacoes_instituicao(p_instituicao_id)` | **anon** e todos | Todas (acesso completo / dono) ou um excerto (versão grátis). |
+| `private.estender_acesso(user_id, plano)` | só servidor | Soma os dias do passe (`novoAte`) e avisa a família. |
+
+### Do protótipo para o Supabase (como a interface muda quando ligar)
+
+A regra é uma: **`useAcesso().completo` escolhe a chamada e o mapper**. Sem sessão não se chama `acesso_estado`: é a
+versão grátis.
+
+| Protótipo | Supabase | Mapper (`src/lib/supabase-mappers.ts`) |
+| --- | --- | --- |
+| `useAcesso()` | `rpc('acesso_estado')` (com sessão) | `acessoDeLinha` → `{ completo, ativo, ate, plano, diasRestantes, pagamentos }` |
+| `useLares()` / `useLar(id)` com `completo` | `rpc('instituicoes_completas')` / `rpc('instituicoes_completas', { p_ids: [id] })` + avaliações | `larDeLinha` (→ `Lar`) |
+| `useLares()` / `useLar(id)` sem `completo` | `from('instituicoes_publicas').select('*')` (+ `rpc('avaliacoes_instituicao', { p_instituicao_id })` na ficha) | `larPublicoDeLinha(linha, destaque)` (→ `LarPublico`); destaque por `avaliacaoInstituicaoDeLinha` |
+| `lar.reviews` (ficha completa) | `rpc('avaliacoes_instituicao', { p_instituicao_id })` ou `from('avaliacoes').select(COLUNAS_AVALIACAO)` | `avaliacaoInstituicaoDeLinha` / `reviewDeLinha` |
+| `faixaPreco(lar)` na versão grátis | `instituicoes_publicas.faixa_preco` | `faixaPrecoTexto(l.faixaPreco)` (o mesmo texto de `faixaPreco`) |
+| `niveisVerificacao(lar)` na versão grátis | `licenca_confirmada_em`, `verificacao_*`, `avaliacoes_verificadas` | `niveisDeLarPublico(l)` |
+| `resumoDisponibilidade(lares)` (versão grátis: página inicial, quadro de vagas, pesquisa, questionário) | `rpc('disponibilidade_agregada', { p_distrito, p_concelho })` | `disponibilidadeDeLinha` (`null` = mostrar só o total) |
+| `candidatar(...)` / `pedirVisita(...)` sem acesso | erro 42501 com `hint = 'acesso_familia'` | abrir a folha do Acesso Família (`AcessoNecessarioModal`) em vez de mostrar o erro |
+| `toggleFavorito` / `setAlerta(id, true)` sem acesso | o insert grava `alerta = false`; o update dá 42501 (`acesso_familia`) | `favoritoDeLinha` (ler o `alerta` devolvido) |
+| `comprarAcessoDemo(plano, metodo)` | Stripe Checkout (Edge Function da faturação); o passe só muda por `estender_acesso` | `acessoDeLinha` depois do regresso |
+| Realtime de `quartos` | só chega com acesso completo (RLS) | — |
+| Ficha do próprio lar (painel, pré-visualização) | `rpc('instituicoes_completas')` (devolve só a sua) + `painel_instituicao` | `larDeLinha(linha, reviews, painelDeLinha(p).dono)` |
+
+Notas para a interface (o protótipo calcula tudo no navegador, a versão com servidor não pode):
+
+- **Contagens da pesquisa grátis**: hoje a versão grátis conta "x com vaga agora" sobre o conjunto filtrado (raio,
+  filtros). No servidor só há contagens por zona (distrito/concelho/país): uma RPC com um conjunto livre de ids
+  permitiria saber o estado de cada casa por diferença (o conjunto com e sem ela), por isso não existe. A pesquisa grátis
+  deve mostrar a contagem da zona (ou nenhuma) quando filtra por raio ou por outros critérios.
+- **Questionário grátis** (`src/features/match`): o protótipo calcula a compatibilidade com os preços por quarto e as
+  vagas; na versão grátis com servidor só há a faixa de preço, os graus, os cuidados e a distância.
+- **Excerto**: o texto de `avaliacoes_instituicao` na versão grátis já vem cortado — mostrar tal como vem (cortá-lo
+  outra vez, se tiver mais de 240 carateres sem espaços, mudaria o texto).
+- `registar_procura(p_com_vaga)`: na versão grátis o navegador não sabe quantas têm vaga — enviar 0 (ou a contagem da zona).
+- `LarPublico` não tem `reviews`, `quartos`, `mensalidadeMin`, `atualizadoEm`, `telefone`… — os componentes da versão
+  grátis passam a receber `LarPublico` (`larPublicoDe(lar)` dá o mesmo objeto no modo demonstração).
+
+### Ganchos para a faturação
+
+- O pagamento confirmado (cartão, MB WAY, ou Multibanco pago) chama `private.estender_acesso(user_id, plano)` — numa
+  função `SECURITY DEFINER` da faturação ou com a `service_role`. O aviso "Acesso Família ativo" já vem daqui: a
+  faturação não o repete. Um reembolso **não** encurta o acesso (decisão de operações).
+- `private.acesso_estado()` devolve `pagamentos: []`: a migração da faturação substitui-a (`create or replace`) para
+  preencher a lista com os `pagamentos_familia` do próprio (`{ id, plano, valor_centimos, metodo, estado, criado_em,
+  pago_em, multibanco?: { entidade, referencia, expira_em }, documento?: { numero, emitido_em } }`, como em
+  `PagamentoAcesso` nos mappers).
+- `public.plano_familia` (`acesso_30`, `acesso_90`) e `private.dias_plano_familia(plano)` servem para os pagamentos; os
+  valores (€) não vivem na base de dados de acesso.
+- Contas de demonstração: o passe da família de demonstração vem de `utilizadores-demo.sql`, nunca de um pagamento.

@@ -65,6 +65,11 @@ export interface NovoUtilizador {
   anonimo?: boolean
   /** e-mail confirmado (por omissão: sim, exceto contas anónimas) */
   confirmado?: boolean
+  /**
+   * Acesso Família em vigor (90 dias), como a faturação o daria (private.estender_acesso, sem o aviso). Só numa
+   * base que já tem a tabela acessos_familia (20261013110000); nas bases "antigas" é ignorado.
+   */
+  acesso?: boolean
 }
 
 export async function criarUtilizador(db: PGlite, u: NovoUtilizador): Promise<string> {
@@ -76,7 +81,25 @@ export async function criarUtilizador(db: PGlite, u: NovoUtilizador): Promise<st
      values ($1, $2, $3, $4, case when $5 then now() end) returning id`,
     [u.email, JSON.stringify(app), JSON.stringify(meta), u.anonimo ?? false, confirmado],
   )
-  return r.rows[0]!.id
+  const id = r.rows[0]!.id
+  if (u.acesso) await darAcesso(db, id)
+  return id
+}
+
+/**
+ * Dá (ou prolonga) o Acesso Família a uma conta, como administrador: `dias` a partir de agora (negativo = já
+ * terminou). Ignorado numa base anterior a 20261013110000 (sem a tabela acessos_familia).
+ */
+export async function darAcesso(db: PGlite, userId: string, dias = 90): Promise<void> {
+  await db.query(
+    `do $$ begin
+       if to_regclass('public.acessos_familia') is not null then
+         insert into public.acessos_familia (user_id, plano, ate)
+         values ('${userId}', 'acesso_90', now() + make_interval(days => ${Math.trunc(dias)}))
+         on conflict (user_id) do update set ate = excluded.ate, atualizado_em = now();
+       end if;
+     end $$`,
+  )
 }
 
 // ————————————————————————————————————————— troca de papel (simula a Data API)
@@ -180,7 +203,8 @@ export interface Cenario {
 
 /**
  * Cria um lar verificado e publicado ('lar-real', gerido por `lar`), com quartos, e uma família com
- * um perfil de saúde. Publicar/verificar é feito como administrador (como o faria a equipa).
+ * um perfil de saúde e o Acesso Família (os pedidos e as visitas são da camada paga). Publicar/verificar
+ * é feito como administrador (como o faria a equipa).
  */
 export async function cenarioBase(
   db: PGlite,
@@ -188,7 +212,7 @@ export async function cenarioBase(
 ): Promise<Cenario & { instituicao: string }> {
   const s = opcoes.sufixo ?? ''
   const lar = await criarUtilizador(db, { email: `lar${s}@teste.pt`, nome: `Gestora${s}`, roleAdmin: 'lar' })
-  const familia = await criarUtilizador(db, { email: `fam${s}@teste.pt`, nome: `Família${s}`, telefone: '912 000 000', roleAdmin: 'familia' })
+  const familia = await criarUtilizador(db, { email: `fam${s}@teste.pt`, nome: `Família${s}`, telefone: '912 000 000', roleAdmin: 'familia', acesso: true })
   // o id (slug) é gerado a partir do nome: 'Real' → 'lar-real', 'Real B' → 'lar-real-b'
   const [ins] = await q<{ id: string }>(
     db,

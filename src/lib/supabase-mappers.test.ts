@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Candidatura, ProcuraAnonima, Review } from '@/types'
 import { faixaEtaria, resumirProcuras, resumoAnonimo } from './negocio'
+import { faixaPreco } from './acesso'
 import {
   avaliacaoParaRpc,
   candidaturaDeLinha,
@@ -22,7 +23,17 @@ import {
   utilizadorDeLinha,
   vagasPorTokenDeLinha,
   type CandidaturaRow,
+  type InstituicaoCompletaRow,
   type InstituicaoPublicaRow,
+  acessoDeLinha,
+  avaliacaoInstituicaoDeLinha,
+  disponibilidadeDeLinha,
+  eExcertoAvaliacao,
+  excertoAvaliacao,
+  faixaPrecoDe,
+  faixaPrecoTexto,
+  larPublicoDeLinha,
+  niveisDeLarPublico,
   type PedidoRecebidoRow,
 } from './supabase-mappers'
 
@@ -98,7 +109,7 @@ describe('larDeLinha', () => {
   })
 
   it('ordena as avaliações da mais recente para a mais antiga e só mostra dados do dono quando indicados', () => {
-    const linha = { id: 'lar-x', nome: 'X', capa: { hue: 1, variante: 0 } } as unknown as InstituicaoPublicaRow
+    const linha = { id: 'lar-x', nome: 'X', capa: { hue: 1, variante: 0 } } as unknown as InstituicaoCompletaRow
     const lar = larDeLinha(linha, [review('1', '2026-01-01T00:00:00Z'), review('2', '2026-03-01T00:00:00Z'), review('3', '2026-02-01T00:00:00Z')])
     expect(lar.reviews.map((r) => r.id)).toEqual(['2', '3', '1'])
     expect(lar.ownerId).toBeUndefined()
@@ -281,5 +292,54 @@ describe('modelo de negócio: casos, avaliações, procura, link e conta', () =>
     const u = utilizadorDeLinha({ id: 'u', role: 'profissional', nome: 'Marta', telefone: null, created_at: '2026-10-01T10:00:00Z', updated_at: '2026-10-01T10:00:00Z',
       organizacao: { nome: 'Hospital X', tipo: 'hospital', servico: 'Serviço Social' } }, 'm@h.pt')
     expect(u.organizacao).toEqual({ nome: 'Hospital X', tipo: 'hospital', servico: 'Serviço Social' })
+  })
+})
+
+describe('versão grátis do Acesso Família (instituicoes_publicas, avaliacoes_instituicao, acesso_estado)', () => {
+  it('a faixa de preço da BD tem o texto de faixaPreco (o mesmo limite: 1.000 € já é a faixa do meio)', () => {
+    for (const v of [0, 999, 1000, 1999, 2000, 4800]) {
+      const lar = { natureza: 'privado' as const, mensalidadeMin: v }
+      expect(faixaPrecoTexto(faixaPrecoDe(lar))).toBe(faixaPreco(lar))
+    }
+    expect(faixaPrecoDe({ natureza: 'misericordia', mensalidadeMin: 2500 })).toBe('conforme_rendimentos')
+    expect(faixaPrecoTexto('conforme_rendimentos')).toBe(faixaPreco({ natureza: 'ipss', mensalidadeMin: 0 }))
+  })
+
+  it('larPublicoDeLinha: só a camada grátis (nomes dos extras, faixa, contagens de avaliações) e os níveis de verificação', () => {
+    const linha = {
+      id: 'lar-x', nome: 'X', tipo: 'erpi', natureza: 'privado', extras_nomes: ['Cabeleireiro'], faixa_preco: '1000_2000',
+      avaliacoes_publicadas: 3, avaliacoes_verificadas: 1, licenca: '1/2020', verificacao_estado: 'pendente',
+      licenca_confirmada_em: '2026-09-01T10:00:00+00:00', capa: { hue: 10, variante: 1 }, lat: 41.1, lng: -8.6,
+    } as unknown as InstituicaoPublicaRow
+    const l = larPublicoDeLinha(linha)
+    expect(l).toMatchObject({ extras: [{ nome: 'Cabeleireiro' }], faixaPreco: '1000_2000', avaliacoesPublicadas: 3, avaliacoesVerificadas: 1, lat: 41.1 })
+    for (const k of ['quartos', 'listaEspera', 'telefone', 'morada', 'mensalidadeMin', 'atualizadoEm', 'historicoSaidas']) expect(l).not.toHaveProperty(k)
+    expect(niveisDeLarPublico(l)).toEqual({ licenca: true, visitado: false, avaliacoesVerificadas: true })
+  })
+
+  it('avaliacoes_instituicao: excerto (versão grátis) ou opinião completa; excertoAvaliacao corta numa palavra', () => {
+    const base = { id: 7, instituicao_id: 'lar-x', autor: 'Ana F.', relacao: 'Filha', nota: 5, texto: 'Bom.', verificada: true, created_at: '2026-10-01T10:00:00+00:00' }
+    const ex = avaliacaoInstituicaoDeLinha({ ...base, aspeto_cuidados: null, aspeto_alimentacao: null, aspeto_instalacoes: null, aspeto_comunicacao: null, excerto: true })
+    expect(eExcertoAvaliacao(ex) && ex).toMatchObject({ id: '7', excerto: true })
+    expect(ex).not.toHaveProperty('aspetos')
+    const cheia = avaliacaoInstituicaoDeLinha({ ...base, aspeto_cuidados: 5, aspeto_alimentacao: 4, aspeto_instalacoes: 4, aspeto_comunicacao: 5, excerto: false })
+    expect(cheia).toMatchObject({ aspetos: { cuidados: 5, comunicacao: 5 } })
+    const longo = `${'palavra '.repeat(40)}fim.`
+    const e = excertoAvaliacao(longo)
+    expect(e.length).toBeLessThanOrEqual(241)
+    expect(e).toMatch(/palavra…$/)
+    expect(excertoAvaliacao('curto')).toBe('curto')
+  })
+
+  it('disponibilidade_agregada e acesso_estado', () => {
+    expect(disponibilidadeDeLinha({ total: 3, com_vaga: null, breve: null })).toEqual({ total: 3, comVaga: null, breve: null })
+    expect(disponibilidadeDeLinha(undefined)).toEqual({ total: 0, comVaga: null, breve: null })
+    const agora = Date.parse('2026-10-13T10:00:00Z')
+    expect(acessoDeLinha({ completo: true, ativo: true, ate: '2026-10-20T10:00:00+00:00', plano: 'acesso_30', pagamentos: [] }, agora)).toEqual({
+      completo: true, ativo: true, ate: '2026-10-20T10:00:00.000Z', plano: 'acesso_30', diasRestantes: 7, pagamentos: [],
+    })
+    expect(acessoDeLinha({ completo: false, ativo: false, ate: null, plano: null, pagamentos: [] }, agora)).toEqual({
+      completo: false, ativo: false, ate: undefined, plano: undefined, diasRestantes: 0, pagamentos: [],
+    })
   })
 })

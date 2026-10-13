@@ -9,9 +9,17 @@ import type { PGlite } from '@electric-sql/pglite'
 import { createHash } from 'node:crypto'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { createSeed, DEMO_EQUIPA_ID, DEMO_FAMILIA_ID, DEMO_LAR_ID, DEMO_LAR_USER_ID, DEMO_PRO_ID } from '@/data/seed'
-import { cobrancaEntradaTexto, compromissoAte, planoDoLar } from '@/lib/acesso'
+import { acessoAtivo, cobrancaEntradaTexto, compromissoAte, diasRestantes, faixaPreco, planoDoLar, temAcessoCompleto } from '@/lib/acesso'
+import type { Json } from '@/lib/database.types'
 import { niveisVerificacao, origemDe, resumirProcuras, resumoAnonimo } from '@/lib/negocio'
 import {
+  acessoDeLinha,
+  avaliacaoInstituicaoDeLinha,
+  eExcertoAvaliacao,
+  faixaPrecoTexto,
+  larPublicoDe,
+  larPublicoDeLinha,
+  niveisDeLarPublico,
   candidaturaDeLinha,
   casoDeLinha,
   eCandidaturaMinimizada,
@@ -27,7 +35,10 @@ import {
   visitaParaRpc,
 } from '@/lib/supabase-mappers'
 import type {
+  AvaliacaoInstituicaoRow,
   AvaliacaoPublicaRow,
+  InstituicaoCompletaRow,
+  LarPublico,
   CandidaturaEventoRow,
   CandidaturaRow,
   CasoRow,
@@ -121,7 +132,8 @@ describe('script das contas de demonstração (utilizadores-demo.sql)', () => {
     expect(painel.filter((c) => c.posicao != null).map((c) => c.posicao)).toEqual([2, 3, 4, 6])
     expect(painel.filter((c) => c.estado === 'aceite')).toHaveLength(doLarDemo.filter((c) => c.estado === 'aceite').length)
     expect(painel.filter((c) => c.estado === 'admitida')).toHaveLength(doLarDemo.filter((c) => c.estado === 'admitida').length)
-    const [v] = await q<{ lista_espera: number }>(db, 'anon', 'select lista_espera from public.instituicoes_publicas where id = $1', [DEMO_LAR_ID])
+    // a lista de espera é da camada completa: a gestora lê-a na sua ficha (instituicoes_completas)
+    const [v] = await q<{ lista_espera: number }>(db, lar, 'select lista_espera from public.instituicoes_completas(array[$1])', [DEMO_LAR_ID])
     expect(v!.lista_espera).toBe(proto.lares.find((l) => l.id === DEMO_LAR_ID)!.listaEspera)
     // todas as contas ficam marcadas como demonstração; a assistente social com a organização
     const [d] = await adm<{ n: number }>('select count(*)::int n from public.perfis_utilizador where demonstracao')
@@ -151,7 +163,7 @@ describe('script das contas de demonstração (utilizadores-demo.sql)', () => {
 
 describe('isolamento demonstração ↔ real', () => {
   it('uma família real não envia dados de saúde a fichas de demonstração; a família de demonstração só ao lar com gestora', async () => {
-    const real = await criarUtilizador(db, { email: 'real@familia.pt', roleAdmin: 'familia' })
+    const real = await criarUtilizador(db, { email: 'real@familia.pt', roleAdmin: 'familia', acesso: true })
     const [p] = await q<{ id: string }>(db, real, `insert into public.perfis_cuidados (nome, idade, grau, local_lat, local_lng, notas)
       values ('Pessoa real', 90, 'grave', 41, -8, 'Dados reais') returning id`)
     expect(await erro(db, real, 'select public.candidatar($1, $2, true)', [DEMO_LAR_ID, p!.id])).toMatch(/ficha é de demonstração/)
@@ -170,9 +182,69 @@ describe('isolamento demonstração ↔ real', () => {
 })
 
 describe('ida e volta: base de demonstração → mappers = createSeed', () => {
-  it('as 162 fichas da vista pública coincidem com o protótipo (exceto dados internos do dono e o token do link)', async () => {
+  it('a família de demonstração tem o Acesso Família do protótipo (acesso_estado = useAcesso)', async () => {
+    const ana = proto.users.find((u) => u.id === DEMO_FAMILIA_ID)!
+    const [r] = await q<{ e: Json }>(db, uuid.get(DEMO_FAMILIA_ID)!, 'select public.acesso_estado() as e')
+    const estado = acessoDeLinha(r!.e)
+    expect({ ...estado, ate: undefined }).toEqual({
+      completo: temAcessoCompleto(ana, AGORA_SEED), ativo: acessoAtivo(ana.acesso, AGORA_SEED), ate: undefined, plano: ana.acesso!.plano,
+      diasRestantes: diasRestantes(ana.acesso, AGORA_SEED), pagamentos: [],
+    })
+    // o mesmo fim relativo (o script corre depois de AGORA_SEED: desloca como as outras datas)
+    expect(Math.abs(Date.parse(estado.ate!) - Date.parse(desloca(ana.acesso!.ate, desvioDemo)!))).toBeLessThan(5_000)
+    // as outras contas de família do protótipo não têm passe; profissional e equipa têm sempre acesso completo
+    for (const u of proto.users) {
+      const [x] = await q<{ e: Json }>(db, uuid.get(u.id)!, 'select public.acesso_estado() as e')
+      expect(acessoDeLinha(x!.e).completo, u.id).toBe(temAcessoCompleto(u, AGORA_SEED))
+    }
+  })
+
+  it('a vista pública (versão grátis) coincide com a projeção grátis do protótipo e não traz a camada viva', async () => {
     const linhas = await json<InstituicaoPublicaRow>(db, 'anon', 'select * from public.instituicoes_publicas order by id')
-    const avaliacoes = await json<AvaliacaoPublicaRow>(db, 'anon',
+    expect(linhas).toHaveLength(proto.lares.length)
+    const semData = (l: LarPublico) => {
+      const quando = (iso: string | undefined) => iso && Date.parse(iso)
+      const { destaque, verificacao, ...resto } = l
+      return {
+        ...resto,
+        verificacao: { ...verificacao, data: quando(verificacao.data), ultimaInspecao: quando(verificacao.ultimaInspecao), licencaConfirmadaEm: quando(verificacao.licencaConfirmadaEm) },
+        destaque: destaque && { ...destaque, id: undefined, data: Date.parse(destaque.data) },
+      }
+    }
+    for (const l of proto.lares) {
+      const r = linhas.find((x) => x.id === l.id)
+      expect(r, l.id).toBeDefined()
+      // o excerto da versão grátis vem de avaliacoes_instituicao (anon: no máximo uma, em excerto)
+      const ex = (await json<AvaliacaoInstituicaoRow>(db, 'anon', 'select * from public.avaliacoes_instituicao($1)', [l.id])).map(avaliacaoInstituicaoDeLinha)
+      expect(ex.length, l.id).toBe(Math.min(1, l.reviews.length))
+      const destaque = ex[0]
+      if (destaque && !eExcertoAvaliacao(destaque)) throw new Error(`${l.id}: a versão grátis recebeu a avaliação completa`)
+      const daBd = larPublicoDeLinha(r!, destaque)
+      const esperado = larPublicoDe({
+        ...l,
+        verificacao: {
+          ...l.verificacao,
+          data: desloca(l.verificacao.data),
+          ultimaInspecao: desloca(l.verificacao.ultimaInspecao),
+          licencaConfirmadaEm: desloca(l.verificacao.licencaConfirmadaEm),
+        },
+        reviews: l.reviews.map((rv) => ({ ...rv, data: desloca(rv.data)! })),
+      })
+      expect(semData(daBd), l.id).toEqual(semData(esperado))
+      // a faixa é a da ficha grátis (faixaPreco) e os níveis de verificação são os do protótipo
+      expect(faixaPrecoTexto(daBd.faixaPreco), l.id).toBe(faixaPreco(l))
+      expect(niveisDeLarPublico(daBd), l.id).toEqual(niveisVerificacao(l))
+      // nada da camada viva: nem nas colunas, nem nos valores
+      const texto = JSON.stringify(r)
+      for (const segredo of [l.telefone, l.email, l.morada, l.codigoPostal, ...l.extras.map((e) => e.preco)]) if (segredo) expect(texto, l.id).not.toContain(segredo)
+      for (const k of ['quartos', 'vagas_livres', 'lista_espera', 'mensalidade_min', 'historico_saidas', 'atualizado_em', 'estadia_media_meses']) expect(r, l.id).not.toHaveProperty(k)
+    }
+  })
+
+  it('as 162 fichas completas (Acesso Família da família de demonstração) coincidem com o protótipo (exceto dados internos do dono e o token do link)', async () => {
+    const ana = uuid.get(DEMO_FAMILIA_ID)!
+    const linhas = await json<InstituicaoCompletaRow>(db, ana, 'select * from public.instituicoes_completas()')
+    const avaliacoes = await json<AvaliacaoPublicaRow>(db, ana,
       'select id, instituicao_id, autor, relacao, nota, aspeto_cuidados, aspeto_alimentacao, aspeto_instalacoes, aspeto_comunicacao, texto, verificada, created_at from public.avaliacoes')
     const porLar = new Map<string, AvaliacaoPublicaRow[]>()
     for (const a of avaliacoes) porLar.set(a.instituicao_id, [...(porLar.get(a.instituicao_id) ?? []), a])
@@ -192,6 +264,9 @@ describe('ida e volta: base de demonstração → mappers = createSeed', () => {
       const r = linhas.find((x) => x.id === l.id)
       expect(r, l.id).toBeDefined()
       const daBd = larDeLinha(r!, (porLar.get(l.id) ?? []).map(reviewDeLinha))
+      // e as avaliações completas também pela RPC da ficha (a mesma lista, por data)
+      const rpcAv = (await json<AvaliacaoInstituicaoRow>(db, ana, 'select * from public.avaliacoes_instituicao($1)', [l.id])).map(avaliacaoInstituicaoDeLinha)
+      expect(rpcAv.map((x) => [x.texto, eExcertoAvaliacao(x)]), l.id).toEqual(daBd.reviews.map((x) => [x.texto, false]))
       // os níveis públicos de verificação (licença confirmada, visitada, avaliações verificadas) são os do protótipo
       expect(niveisVerificacao(daBd), l.id).toEqual(niveisVerificacao(l))
       const esperado = semInternos({
@@ -305,8 +380,8 @@ describe('ida e volta: base de demonstração → mappers = createSeed', () => {
     const painel = painelDeLinha(p!, gestora)
     expect(painel.dono).toMatchObject({ planoInstituicao: lar.planoInstituicao, planoDesde: desloca(lar.planoDesde) })
     expect(painel.compromissoAte).toBeUndefined()
-    // o painel privado da gestora mostra o mesmo que o protótipo
-    const [v] = await json<InstituicaoPublicaRow>(db, gestora, 'select * from public.instituicoes_publicas where id = $1', [DEMO_LAR_ID])
+    // o painel privado da gestora mostra o mesmo que o protótipo (a sua ficha completa, sem Acesso Família)
+    const [v] = await json<InstituicaoCompletaRow>(db, gestora, 'select * from public.instituicoes_completas(array[$1])', [DEMO_LAR_ID])
     const daBd = larDeLinha(v!, [], painel.dono)
     expect(cobrancaEntradaTexto(daBd)).toBe(cobrancaEntradaTexto(lar))
     expect(planoDoLar(daBd)).toBe('por_entrada')
@@ -409,7 +484,7 @@ describe('a base de demonstração continua a funcionar pelas RPC', () => {
       criarConta: true,
     }))
     expect(visitaDeLinha(r[0]!)).toMatchObject({ larId: alvo.id, equipaId: equipa, resultado: 'aderiu', plano: 'mensal' })
-    const [ficha] = await json<InstituicaoPublicaRow>(db, 'anon', 'select * from public.instituicoes_publicas where id = $1', [alvo.id])
+    const [ficha] = await json<InstituicaoCompletaRow>(db, equipa, 'select * from public.instituicoes_completas(array[$1])', [alvo.id])
     const daBd = larDeLinha(ficha!)
     expect(niveisVerificacao(daBd)).toMatchObject({ licenca: true, visitado: true })
     expect(daBd.quartos.find((x) => x.tipo === quarto!.tipo)).toMatchObject({ livres: Math.min(1, quarto!.total), precoMin: quarto!.precoMin, precoMax: quarto!.precoMax })

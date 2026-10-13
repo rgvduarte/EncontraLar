@@ -23,7 +23,14 @@
  *     pedidos_recebidos(), que devolve o resumo sem identificação;
  *   * procuras_anonimas não é legível nem gravável pelos clientes (registar_procura / procura_na_zona);
  *   * publicado, demonstracao, lista_espera_offline e os campos de verificação (incluindo
- *     licenca_confirmada_em, que é legível) não são graváveis pelos clientes (só pelo servidor/administrador).
+ *     licenca_confirmada_em, que é legível) não são graváveis pelos clientes (só pelo servidor/administrador);
+ *   * ACESSO FAMÍLIA (20261013110000): a camada completa de instituicoes (morada, codigo_postal, telefone, email,
+ *     website, lista_espera_offline/online, estadia_media_meses, extras, atualizado_em, updated_at) não é legível
+ *     por anon/authenticated — use instituicoes_completas() (acesso completo; o dono, a sua ficha). quartos,
+ *     saidas_mensais e avaliacoes não são legíveis por anon e, para as contas, só com acesso completo (RLS; o dono
+ *     lê os da sua ficha, o autor a sua avaliação). A versão grátis usa instituicoes_publicas,
+ *     disponibilidade_agregada() e avaliacoes_instituicao(). acessos_familia: o próprio lê a sua linha; só o
+ *     servidor escreve (private.estender_acesso).
  */
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
@@ -81,6 +88,79 @@ type VagasPorToken = {
   atualizado_em: string
 }
 
+/**
+ * Linha de instituicoes_completas() (Acesso Família, profissionais, equipa; o dono, só a sua ficha): a ficha
+ * inteira, com a forma da antiga vista pública (quartos com preços e livres, lista de espera, previsão, contactos).
+ */
+type InstituicaoCompleta = {
+  id: string
+  nome: string
+  tipo: Database['public']['Enums']['tipo_resposta']
+  natureza: Database['public']['Enums']['natureza']
+  resumo: string
+  descricao: string
+  morada: string
+  codigo_postal: string | null
+  localidade: string
+  concelho: string
+  distrito: string
+  regiao: string
+  lat: number
+  lng: number
+  telefone: string | null
+  email: string | null
+  website: string | null
+  capacidade: number
+  lista_espera: number
+  estadia_media_meses: number
+  acordo_ss: boolean
+  incluido: string[]
+  extras: Json
+  graus: Database['public']['Enums']['grau_dependencia'][]
+  cuidados: string[]
+  comodidades: string[]
+  equipa_cuidadores_por_10: number
+  equipa_enfermeiros: number
+  equipa_medico_horas_semana: number
+  licenca: string
+  verificacao_estado: Database['public']['Enums']['estado_verificacao']
+  verificacao_data: string | null
+  ultima_inspecao: string | null
+  avaliacao_media: number
+  num_avaliacoes: number
+  fundacao: number | null
+  atualizado_em: string
+  capa: Json
+  publicado: boolean
+  demonstracao: boolean
+  vagas_livres: number
+  mensalidade_min: number | null
+  mensalidade_max: number | null
+  quartos: Json
+  historico_saidas: number[]
+  licenca_confirmada_em: string | null
+}
+
+/**
+ * Linha de avaliacoes_instituicao(): com acesso completo todas (excerto false, com as notas por aspeto); na
+ * versão grátis no máximo uma, com o texto em excerto e sem as notas por aspeto (null; excerto true).
+ */
+type AvaliacaoInstituicao = {
+  id: number
+  instituicao_id: string
+  autor: string
+  relacao: string
+  nota: number
+  aspeto_cuidados: number | null
+  aspeto_alimentacao: number | null
+  aspeto_instalacoes: number | null
+  aspeto_comunicacao: number | null
+  texto: string
+  verificada: boolean
+  created_at: string
+  excerto: boolean
+}
+
 /** Linha de escolher_plano_instituicao(): a modalidade em vigor depois da escolha (null = por entrada). */
 type PlanoDaInstituicao = {
   instituicao_id: string
@@ -95,6 +175,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      acessos_familia: {
+        Row: {
+          user_id: string
+          plano: Database['public']['Enums']['plano_familia']
+          ate: string
+          criado_em: string
+          atualizado_em: string
+        }
+        Insert: {
+          user_id: string
+          plano: Database['public']['Enums']['plano_familia']
+          ate: string
+          criado_em?: string
+          atualizado_em?: string
+        }
+        Update: {
+          user_id?: string
+          plano?: Database['public']['Enums']['plano_familia']
+          ate?: string
+          criado_em?: string
+          atualizado_em?: string
+        }
+        Relationships: []
+      }
       avaliacoes: {
         Row: {
           id: number
@@ -367,6 +471,8 @@ export type Database = {
           acordo_ss: boolean
           incluido: string[]
           extras: Json
+          /** gerada: os nomes dos extras, sem os valores (pública) */
+          extras_nomes: Json
           graus: Database['public']['Enums']['grau_dependencia'][]
           cuidados: string[]
           comodidades: string[]
@@ -419,6 +525,7 @@ export type Database = {
           acordo_ss?: boolean
           incluido?: string[]
           extras?: Json
+          extras_nomes?: never
           graus?: Database['public']['Enums']['grau_dependencia'][]
           cuidados?: string[]
           comodidades?: string[]
@@ -471,6 +578,7 @@ export type Database = {
           acordo_ss?: boolean
           incluido?: string[]
           extras?: Json
+          extras_nomes?: never
           graus?: Database['public']['Enums']['grau_dependencia'][]
           cuidados?: string[]
           comodidades?: string[]
@@ -826,23 +934,17 @@ export type Database = {
           natureza: Database['public']['Enums']['natureza'] | null
           resumo: string | null
           descricao: string | null
-          morada: string | null
-          codigo_postal: string | null
           localidade: string | null
           concelho: string | null
           distrito: string | null
           regiao: string | null
           lat: number | null
           lng: number | null
-          telefone: string | null
-          email: string | null
-          website: string | null
           capacidade: number | null
-          lista_espera: number | null
-          estadia_media_meses: number | null
           acordo_ss: boolean | null
           incluido: string[] | null
-          extras: Json | null
+          /** nomes dos extras (sem os valores, que são do Acesso Família) */
+          extras_nomes: Json | null
           graus: Database['public']['Enums']['grau_dependencia'][] | null
           cuidados: string[] | null
           comodidades: string[] | null
@@ -853,24 +955,26 @@ export type Database = {
           verificacao_estado: Database['public']['Enums']['estado_verificacao'] | null
           verificacao_data: string | null
           ultima_inspecao: string | null
+          licenca_confirmada_em: string | null
           avaliacao_media: number | null
           num_avaliacoes: number | null
+          avaliacoes_publicadas: number | null
+          avaliacoes_verificadas: number | null
           fundacao: number | null
-          atualizado_em: string | null
           capa: Json | null
           publicado: boolean | null
           demonstracao: boolean | null
-          vagas_livres: number | null
-          mensalidade_min: number | null
-          mensalidade_max: number | null
-          quartos: Json | null
-          historico_saidas: number[] | null
-          licenca_confirmada_em: string | null
+          faixa_preco: Database['public']['Enums']['faixa_preco'] | null
         }
         Relationships: []
       }
     }
     Functions: {
+      acesso_estado: {
+        Args: never
+        /** { completo, ativo, ate, plano, pagamentos } — pagamentos vem vazio até existir a faturação */
+        Returns: Json
+      }
       aceitar_candidatura: {
         Args: { p_candidatura_id: string }
         Returns: Database['public']['Tables']['candidaturas']['Row']
@@ -901,6 +1005,10 @@ export type Database = {
           p_visita_hora?: string
         }
         Returns: Database['public']['Tables']['candidaturas']['Row']
+      }
+      avaliacoes_instituicao: {
+        Args: { p_instituicao_id: string }
+        Returns: AvaliacaoInstituicao[]
       }
       avaliar_lar: {
         Args: { p_candidatura_id: string; p_nota: number; p_texto: string; p_aspetos: Json }
@@ -934,6 +1042,11 @@ export type Database = {
         }
         Returns: number
       }
+      disponibilidade_agregada: {
+        /** p_distrito null (com p_concelho null) = o país inteiro; um concelho exige o distrito */
+        Args: { p_distrito: string | null; p_concelho?: string | null }
+        Returns: { total: number; com_vaga: number | null; breve: number | null }[]
+      }
       enviar_caso: {
         Args: { p_caso_id: string; p_instituicao_ids: string[]; p_mensagem?: string }
         Returns: Database['public']['Tables']['candidaturas']['Row'][]
@@ -941,6 +1054,10 @@ export type Database = {
       escolher_plano_instituicao: {
         Args: { p_plano: Database['public']['Enums']['plano_instituicao'] }
         Returns: PlanoDaInstituicao[]
+      }
+      instituicoes_completas: {
+        Args: { p_ids?: string[] }
+        Returns: InstituicaoCompleta[]
       }
       marcar_entrada: {
         Args: { p_candidatura_id: string; p_data: string }
@@ -1056,9 +1173,11 @@ export type Database = {
       estado_caso: 'aberto' | 'colocado' | 'fechado'
       estado_verificacao: 'verificado' | 'pendente' | 'nao_verificado'
       estado_visita: 'pedida' | 'confirmada' | 'realizada'
+      faixa_preco: 'ate_1000' | '1000_2000' | 'mais_2000' | 'conforme_rendimentos'
       grau_dependencia: 'autonomo' | 'ligeira' | 'moderada' | 'grave'
       natureza: 'ipss' | 'misericordia' | 'privado'
       origem_pedido: 'familia' | 'profissional'
+      plano_familia: 'acesso_30' | 'acesso_90'
       plano_instituicao: 'por_entrada' | 'mensal'
       resultado_visita: 'aderiu' | 'interessado' | 'voltar' | 'recusou'
       role_utilizador: 'familia' | 'lar' | 'profissional' | 'equipa'
@@ -1094,9 +1213,11 @@ export const Constants = {
       estado_caso: ['aberto', 'colocado', 'fechado'],
       estado_verificacao: ['verificado', 'pendente', 'nao_verificado'],
       estado_visita: ['pedida', 'confirmada', 'realizada'],
+      faixa_preco: ['ate_1000', '1000_2000', 'mais_2000', 'conforme_rendimentos'],
       grau_dependencia: ['autonomo', 'ligeira', 'moderada', 'grave'],
       natureza: ['ipss', 'misericordia', 'privado'],
       origem_pedido: ['familia', 'profissional'],
+      plano_familia: ['acesso_30', 'acesso_90'],
       plano_instituicao: ['por_entrada', 'mensal'],
       resultado_visita: ['aderiu', 'interessado', 'voltar', 'recusou'],
       role_utilizador: ['familia', 'lar', 'profissional', 'equipa'],

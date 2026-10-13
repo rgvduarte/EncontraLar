@@ -15,7 +15,7 @@ import {
   planoDeLinha,
   visitaDeLinha,
   visitaParaRpc,
-  type InstituicaoPublicaRow,
+  type InstituicaoCompletaRow,
   type PainelEquipaRow,
   type PainelInstituicaoRow,
   type PlanoDaInstituicaoRow,
@@ -72,9 +72,13 @@ const quartos = (id: string) =>
   adm<{ tipo: string; total: number; livres: number; preco_min: number; preco_max: number }>(
     'select tipo, total, livres, preco_min::int, preco_max::int from public.quartos where instituicao_id = $1 order by tipo', [id],
   )
-/** a ficha como a app a vê (vista pública + mappers) */
-const larDaVista = async (id: string, dono?: Parameters<typeof larDeLinha>[2]) =>
-  larDeLinha((await json<InstituicaoPublicaRow>(db, 'anon', 'select * from public.instituicoes_publicas where id = $1', [id]))[0]!, [], dono)
+/** quem lê a camada completa nestes testes (a equipa tem acesso completo; as fichas são publicadas) */
+let leitor: string | undefined
+/** a ficha como a app com acesso completo a vê (instituicoes_completas + mappers) */
+const larDaVista = async (id: string, dono?: Parameters<typeof larDeLinha>[2]) => {
+  leitor ??= await criarUtilizador(db, { email: 'leitor-equipa@encontralar.pt', roleAdmin: 'equipa' })
+  return larDeLinha((await json<InstituicaoCompletaRow>(db, leitor, 'select * from public.instituicoes_completas(array[$1])', [id]))[0]!, [], dono)
+}
 /** "agora" da base de dados */
 const agoraBd = async () => Date.parse((await adm<{ t: string }>("select to_json(now())#>>'{}' t"))[0]!.t)
 
