@@ -10,7 +10,8 @@ import { dataLocal } from './format'
 /** Uma entrada conta para a plataforma até 12 meses depois do primeiro contacto (o pedido). */
 export const JANELA_ATRIBUICAO_DIAS = 365
 
-export const taxaPara = (lar: Pick<Lar, 'natureza'>): TaxaEntrada => (lar.natureza === 'privado' ? 'aplicavel' : 'isenta')
+export const taxaPara = (lar: Pick<Lar, 'natureza' | 'planoInstituicao'>): TaxaEntrada =>
+  lar.natureza !== 'privado' ? 'isenta' : lar.planoInstituicao === 'mensal' ? 'incluida' : 'aplicavel'
 
 /**
  * O lar já vê o contacto e o perfil completo? Só depois de aceitar o pedido (ou de o fazer avançar, que o aceita).

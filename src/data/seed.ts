@@ -936,11 +936,12 @@ export function createSeed(agora = Date.now()): DB {
   // ——— equipa de terreno: visitas no distrito do Porto (região piloto)
   const demoLar = lares[0]!
   demoLar.planoInstituicao = 'por_entrada'
+  demoLar.planoDesde = iso(64)
   const privadosPorto = lares.filter((l) => l.id !== DEMO_LAR_ID && l.distrito === 'Porto' && l.natureza === 'privado' && l.tipo !== 'centro_dia')
   const sociaisPorto = lares.filter((l) => l.distrito === 'Porto' && l.natureza !== 'privado' && l.tipo === 'erpi' && l.id !== ipss.id)
   const [pMensal, pInteressado, pVoltar, pRecusou] = privadosPorto
   const sAderiu = sociaisPorto[0]
-  if (pMensal) pMensal.planoInstituicao = 'mensal'
+  if (pMensal) Object.assign(pMensal, { planoInstituicao: 'mensal', planoDesde: iso(21) })
   const verifTudo = { licencaConfirmada: true, instalacoesVistas: true, vagasConfirmadas: true, precosConfirmados: true }
   const verifNada = { licencaConfirmada: false, instalacoesVistas: false, vagasConfirmadas: false, precosConfirmados: false }
   const visitas: Visita[] = [

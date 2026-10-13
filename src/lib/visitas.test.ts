@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DEMO_EQUIPA_EMAIL, DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_LAR_ID, DEMO_PASSWORD } from '@/data/seed'
 import type { Visita } from '@/types'
-import { cobrancaEntradaTexto, planoDoLar } from './acesso'
-import { niveisVerificacao } from './negocio'
-import { escolherPlanoInstituicao, getCurrentUser, getDB, login, logout, register, registarVisita, resetDemo, setAlerta } from './store'
+import { cobrancaEntradaTexto, compromissoAte, ENTRADAS_ANO_MENSAL_COMPENSA, planoDoLar, podeMudarPlano } from './acesso'
+import { niveisVerificacao, taxaPara } from './negocio'
+import { escolherPlanoInstituicao, getCurrentUser, getDB, login, logout, marcarEntrada, register, registarVisita, resetDemo, setAlerta } from './store'
 
 const tudo: Visita['verificacao'] = { licencaConfirmada: true, instalacoesVistas: true, vagasConfirmadas: true, precosConfirmados: true }
 const nada: Visita['verificacao'] = { licencaConfirmada: false, instalacoesVistas: false, vagasConfirmadas: false, precosConfirmados: false }
@@ -132,14 +132,36 @@ describe('modalidade das instituições privadas', () => {
   it('o lar privado escolhe entre por entrada e mensalidade; mais ninguém', () => {
     expect(planoDoLar(lar(DEMO_LAR_ID))).toBe('por_entrada')
     expect(cobranca(DEMO_LAR_ID)).toBe('Taxa fixa: 150 € + IVA por entrada')
+    expect(ENTRADAS_ANO_MENSAL_COMPENSA).toBe(3)
     expect(escolherPlanoInstituicao('mensal').ok).toBe(false)
     login(DEMO_FAMILIA_EMAIL, DEMO_PASSWORD)
     expect(escolherPlanoInstituicao('mensal').ok).toBe(false)
     login(DEMO_LAR_EMAIL, DEMO_PASSWORD)
+    expect(escolherPlanoInstituicao('por_entrada').ok).toBe(true) // já está: nada muda
     expect(escolherPlanoInstituicao('mensal').ok).toBe(true)
     expect(planoDoLar(lar(DEMO_LAR_ID))).toBe('mensal')
-    expect(escolherPlanoInstituicao('por_entrada').ok).toBe(true)
-    expect(planoDoLar(lar(DEMO_LAR_ID))).toBe('por_entrada')
+    expect(cobranca(DEMO_LAR_ID)).toBe('Incluída na mensalidade (29 € + IVA por mês)')
+  })
+
+  it('mensalidade: compromisso de 12 meses e entradas incluídas, sem taxa', () => {
+    login(DEMO_LAR_EMAIL, DEMO_PASSWORD)
+    escolherPlanoInstituicao('mensal')
+    const l = lar(DEMO_LAR_ID)
+    const ate = compromissoAte(l)!
+    expect(Math.round((Date.parse(ate) - Date.parse(l.planoDesde!)) / 86_400_000)).toBeGreaterThanOrEqual(365)
+    expect(podeMudarPlano(l)).toBe(false)
+    expect(podeMudarPlano(l, Date.parse(ate) + 1)).toBe(true)
+    // voltar já à taxa por entrada não dá (senão mudava-se só no mês de uma entrada)
+    const r = escolherPlanoInstituicao('por_entrada')
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.erro).toMatch(/compromisso de 12 meses/)
+    expect(planoDoLar(lar(DEMO_LAR_ID))).toBe('mensal')
+    // a entrada fica com a taxa da modalidade em vigor quando é confirmada
+    expect(taxaPara(lar(DEMO_LAR_ID))).toBe('incluida')
+    const c = getDB().candidaturas.find((x) => x.larId === DEMO_LAR_ID && x.estado === 'aceite' && !x.entrada)
+    expect(c).toBeDefined()
+    marcarEntrada(c!.id, '2026-10-20')
+    expect(getDB().candidaturas.find((x) => x.id === c!.id)?.entrada?.taxa).toBe('incluida')
   })
 })
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Candidatura, Lar } from '@/types'
+import type { Candidatura, Lar, TaxaEntrada } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { InputField } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
@@ -10,8 +10,12 @@ import { taxaPara } from '@/lib/negocio'
 import { diaCurto } from '../shared/pedidoBits'
 import type { Acao } from './acoes'
 
-/** Linha da taxa — sem valores: o valor está no contrato, não no site. */
-export const TAXA_TEXTO = { aplicavel: 'Taxa fixa por entrada · conforme contrato', isenta: 'Isenta — setor social' } as const
+/** Linha da taxa de uma entrada (fixada quando a entrada é confirmada). */
+export const TAXA_TEXTO: Record<TaxaEntrada, string> = {
+  aplicavel: 'Taxa fixa por entrada · conforme contrato',
+  incluida: 'Incluída na mensalidade',
+  isenta: 'Isenta — setor social',
+}
 
 /**
  * "Marcar entrada": o dia em que a pessoa entrou (hoje, por omissão). Se a família já confirmou do lado dela,

@@ -168,7 +168,7 @@ describe('ida e volta: base de demonstração → mappers = createSeed', () => {
     expect(linhas).toHaveLength(proto.lares.length)
     const semInternos = (l: Lar) => {
       // planoInstituicao: modalidade comercial (contrato) — fica fora da vista pública
-      const { ownerId: _o, visualizacoes30d: _v, confirmacaoToken: _t, planoInstituicao: _p, reviews, atualizadoEm, verificacao, ...resto } = l
+      const { ownerId: _o, visualizacoes30d: _v, confirmacaoToken: _t, planoInstituicao: _p, planoDesde: _pd, reviews, atualizadoEm, verificacao, ...resto } = l
       return { ...resto, atualizadoEm: Date.parse(atualizadoEm), verificacao: { ...verificacao, data: verificacao.data && Date.parse(verificacao.data), ultimaInspecao: verificacao.ultimaInspecao && Date.parse(verificacao.ultimaInspecao) }, reviews: reviews.map(({ id: _i, data, ...r }) => ({ ...r, data: Date.parse(data) })) }
     }
     for (const l of proto.lares) {

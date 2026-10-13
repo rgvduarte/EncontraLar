@@ -132,6 +132,8 @@ export interface Lar {
   confirmacaoToken?: string
   /** só privados: modalidade escolhida (ausente = por entrada) */
   planoInstituicao?: PlanoInstituicao
+  /** ISO — desde quando vigora a modalidade (a mensalidade tem compromisso de 12 meses) */
+  planoDesde?: string
 }
 
 /**
@@ -256,8 +258,11 @@ export interface Encaminhamento {
   altaPrevista?: string
 }
 
-/** Só os lares privados pagam a taxa fixa por entrada; IPSS e Misericórdias estão isentas. */
-export type TaxaEntrada = 'aplicavel' | 'isenta'
+/**
+ * Fixada na primeira confirmação da entrada: aplicavel = lar privado por entrada (taxa fixa); incluida = lar privado
+ * com mensalidade (sem taxa por entrada); isenta = IPSS e Misericórdias.
+ */
+export type TaxaEntrada = 'aplicavel' | 'incluida' | 'isenta'
 
 export interface Entrada {
   /** dia da entrada (AAAA-MM-DD) */

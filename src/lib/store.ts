@@ -33,10 +33,10 @@ import { LOCALIDADES, LUGARES } from '@/data/localidades'
 import { hashPassword } from './hash'
 import { uid } from './random'
 import { ESTADO_CANDIDATURA_LABEL } from './labels'
-import { diaPorExtenso, horaPt, isoDia } from './format'
+import { dataLonga, diaPorExtenso, horaPt, isoDia } from './format'
 import { aoLar, doLar, larPlural, maiuscula, noLar, oLar } from './artigos'
 import { contactoVisivel, faixaEtaria, taxaPara } from './negocio'
-import { acessoAtivo, diasRestantes, novoAte, planoFamilia, temAcessoCompleto } from './acesso'
+import { acessoAtivo, compromissoAte, COMPROMISSO_MENSAL_MESES, diasRestantes, novoAte, planoFamilia, podeMudarPlano, temAcessoCompleto } from './acesso'
 
 const DB_KEY = 'encontralar:db'
 const SESSION_KEY = 'encontralar:sessao'
@@ -1284,13 +1284,22 @@ export function comprarAcessoDemo(planoId: PlanoFamiliaId, metodo: MetodoPagamen
 
 // ————————————————————————————————————————— modalidade das instituições privadas
 
-/** O lar privado escolhe: por entrada ou mensalidade fixa (no protótipo, muda logo; na versão real, no contrato). */
+/**
+ * O lar privado escolhe: por entrada ou mensalidade fixa. Para a mensalidade, muda já (com compromisso de 12 meses);
+ * de volta à taxa por entrada, só no fim do compromisso. As entradas ficam com a taxa da modalidade em vigor no dia
+ * em que são confirmadas.
+ */
 export function escolherPlanoInstituicao(plano: PlanoInstituicao): { ok: true } | { ok: false; erro: string } {
   const user = getCurrentUser()
   const lar = user?.role === 'lar' ? db.lares.find((l) => l.id === user.larId) : undefined
   if (!lar) return { ok: false, erro: 'Só a instituição pode escolher a modalidade.' }
   if (lar.natureza !== 'privado') return { ok: false, erro: 'As IPSS e Misericórdias não têm custos.' }
-  commit({ ...db, lares: patchLar(db.lares, lar.id, (l) => ({ ...l, planoInstituicao: plano })) })
+  if ((lar.planoInstituicao ?? 'por_entrada') === plano) return { ok: true }
+  if (!podeMudarPlano(lar)) {
+    const ate = compromissoAte(lar)!
+    return { ok: false, erro: `A mensalidade tem um compromisso de ${COMPROMISSO_MENSAL_MESES} meses: pode mudar a partir de ${dataLonga(ate)}.` }
+  }
+  commit({ ...db, lares: patchLar(db.lares, lar.id, (l) => ({ ...l, planoInstituicao: plano, planoDesde: nowIso() })) })
   return { ok: true }
 }
 
@@ -1367,7 +1376,7 @@ export function registarVisita(input: RegistoVisitaInput): RegistoVisitaResultad
     novoLar = { ...novoLar, quartos, mensalidadeMin: Math.min(...precos), mensalidadeMax: Math.max(...precos), atualizadoEm: agora }
   }
   if (input.cuidados) novoLar = { ...novoLar, cuidados: input.cuidados }
-  if (input.resultado === 'aderiu' && lar.natureza === 'privado') novoLar = { ...novoLar, planoInstituicao: input.plano ?? 'por_entrada' }
+  if (input.resultado === 'aderiu' && lar.natureza === 'privado') novoLar = { ...novoLar, planoInstituicao: input.plano ?? 'por_entrada', planoDesde: agora }
 
   let users = db.users
   let conta: { email: string; palavraPasse: string } | undefined

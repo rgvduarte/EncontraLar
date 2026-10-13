@@ -59,6 +59,27 @@ export const PLANOS_INSTITUICAO: Record<PlanoInstituicao, PlanoInstituicaoInfo> 
   mensal: { id: 'mensal', nome: 'Mensalidade', valorCentimos: 2900, unidade: 'por mês', resumo: 'Valor fixo por mês, sem taxa por entrada.' },
 }
 
+/** A mensalidade tem compromisso mínimo: assim ninguém muda para ela só no mês de uma entrada e volta logo a seguir. */
+export const COMPROMISSO_MENSAL_MESES = 12
+
+/** A partir de quantas entradas por ano a mensalidade sai mais barata (12 × 29 € = 348 € < 3 × 150 € = 450 €): 3. */
+export const ENTRADAS_ANO_MENSAL_COMPENSA = Math.ceil((PLANOS_INSTITUICAO.mensal.valorCentimos * 12) / PLANOS_INSTITUICAO.por_entrada.valorCentimos)
+
+/** Até quando a instituição fica na mensalidade (ISO), ou null se pode mudar já. */
+export function compromissoAte(lar: Pick<Lar, 'natureza' | 'planoInstituicao' | 'planoDesde'>): string | null {
+  if (lar.natureza !== 'privado' || lar.planoInstituicao !== 'mensal' || !lar.planoDesde) return null
+  const d = new Date(lar.planoDesde)
+  d.setMonth(d.getMonth() + COMPROMISSO_MENSAL_MESES)
+  return d.toISOString()
+}
+
+/** Pode mudar de modalidade agora? (para a mensalidade, sempre; de volta à taxa por entrada, só no fim do compromisso) */
+export function podeMudarPlano(lar: Pick<Lar, 'natureza' | 'planoInstituicao' | 'planoDesde'>, agora = Date.now()): boolean {
+  if (lar.natureza !== 'privado') return false
+  const ate = compromissoAte(lar)
+  return !ate || Date.parse(ate) <= agora
+}
+
 /** Modalidade em vigor: null para IPSS e Misericórdias (sem custos); por omissão, por entrada. */
 export const planoDoLar = (lar: Pick<Lar, 'natureza' | 'planoInstituicao'>): PlanoInstituicao | null =>
   lar.natureza !== 'privado' ? null : (lar.planoInstituicao ?? 'por_entrada')
