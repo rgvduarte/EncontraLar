@@ -20,7 +20,7 @@ import {
 } from '../functions/_shared/portas.ts'
 import { ivaDaRegiao, regiaoFiscal } from '../functions/_shared/faturacao/regiao.ts'
 import { DADOS_PESSOAIS, type BDFalsa } from './funcoes/fakes.ts'
-import { admin, como, q, type Quem } from './helpers'
+import { admin, q, type Quem } from './helpers'
 
 // ————————————————————————————————————————————————————————————— portas sobre o PGlite
 
@@ -91,6 +91,15 @@ export class UtilizadorPGlite implements PortaUtilizador {
   }
 }
 
+/**
+ * Esvazia a base (contas, fichas e tudo o que delas depende, eventos, alertas, arrendamentos e os stubs do pg_net e
+ * do Vault) mantendo o esquema: entre testes é muito mais rápido do que criar ou clonar uma base.
+ */
+export async function limparBase(db: PGlite): Promise<void> {
+  await db.exec(`truncate auth.users, public.instituicoes, public.stripe_eventos, private.alertas_faturacao,
+                          private.execucoes_faturacao, net.pedidos_teste, vault.secrets cascade`)
+}
+
 // ————————————————————————————————————————————————————————————— montagem do cenário (falsa e SQL)
 
 export interface FamiliaMontagem {
@@ -122,7 +131,8 @@ export interface EntradaMontagem {
 
 export interface Montagem {
   familia(id: string, extra?: FamiliaMontagem): Promise<void>
-  lar(id: string, extra?: LarMontagem): Promise<void>
+  /** devolve o gestor do lar (SQL) */
+  lar(id: string, extra?: LarMontagem): Promise<unknown>
   entrada(e: EntradaMontagem): Promise<void>
 }
 
@@ -178,7 +188,8 @@ export class MontagemSql implements Montagem {
     if (extra.demonstracao) await admin(this.db, 'update public.perfis_utilizador set demonstracao = true where id = $1', [id])
   }
 
-  async lar(id: string, extra: LarMontagem = {}) {
+  /** Cria o lar (com um gestor, que devolve) e os dados de faturação. */
+  async lar(id: string, extra: LarMontagem = {}): Promise<string> {
     const dono = await criarConta(this.db, null, 'lar', false, `gestor-${id}@teste.pt`)
     const natureza = extra.natureza ?? 'privado'
     await admin(
@@ -197,11 +208,12 @@ export class MontagemSql implements Montagem {
         `insert into public.dados_faturacao (instituicao_id, razao_social, nif, morada, codigo_postal, localidade, email,
                                              stripe_customer_id, stripe_payment_method_id, metodo_tipo, metodo_ultimos4,
                                              metodo_mandato_ref, metodo_atualizado_em)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, case when $10::text is null then null else now() end)`,
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, case when $13::boolean then now() end)`,
         [id, dados.razao_social, dados.nif, dados.morada, dados.codigo_postal, dados.localidade, dados.email,
-          extra.stripe_customer_id ?? null, m?.pm ?? null, m?.tipo ?? null, m?.ultimos4 ?? null, m?.mandato_ref ?? null],
+          extra.stripe_customer_id ?? null, m?.pm ?? null, m?.tipo ?? null, m?.ultimos4 ?? null, m?.mandato_ref ?? null, !!m],
       )
     }
+    return dono
   }
 
   async entrada(e: EntradaMontagem) {
@@ -287,24 +299,25 @@ export function estadoFalso(bd: BDFalsa): EstadoCanonico {
 }
 
 export async function estadoSql(db: PGlite): Promise<EstadoCanonico> {
-  const sel = async (sql: string) => (await admin<{ j: unknown[] }>(db, `select coalesce(json_agg(t), '[]'::json) as j from (${sql}) t`))[0]!.j
-  return {
-    pagamentos: await sel(`
+  // uma só ida à base (os testes de conformidade leem o estado depois de cada passo)
+  const lista = (sql: string) => `(select coalesce(json_agg(t), '[]'::json) from (${sql}) t)`
+  const [{ j }] = await admin<{ j: EstadoCanonico }>(db, `select json_build_object(
+    'pagamentos', ${lista(`
       select p.id, p.user_id, p.plano, p.valor_centimos, p.dias, p.metodo, p.estado, p.stripe_checkout_session_id as session_id,
              p.stripe_payment_intent_id as payment_intent_id,
              case when coalesce(p.multibanco_entidade, p.multibanco_referencia, p.multibanco_expira_em::text) is null then null
                   else json_build_object('entidade', p.multibanco_entidade, 'referencia', p.multibanco_referencia, 'expira_em', p.multibanco_expira_em) end as multibanco,
              p.criado_em, p.pago_em, p.motivo_falha, p.fatura_nif as nif, p.fatura_nome as nome_fiscal, p.documento_id, p.reembolsado_centimos
-        from public.pagamentos_familia p order by p.ordem`),
-    consentimentos: await sel(`
+        from public.pagamentos_familia p order by p.ordem`)},
+    'consentimentos', ${lista(`
       select c.user_id, c.pagamento_id, c.plano, c.texto_versao, c.aceite_em, c.ip_truncado
-        from public.consentimentos_acesso c join public.pagamentos_familia p on p.id = c.pagamento_id order by p.ordem`),
-    acessos: await sel('select a.user_id, a.plano, a.ate from public.acessos_familia a order by a.user_id::text'),
-    linhas: await sel(`
+        from public.consentimentos_acesso c join public.pagamentos_familia p on p.id = c.pagamento_id order by p.ordem`)},
+    'acessos', ${lista('select a.user_id, a.plano, a.ate from public.acessos_familia a order by a.user_id::text')},
+    'linhas', ${lista(`
       select l.id, l.instituicao_id, l.candidatura_id, l.referencia, l.entrada_data, l.valor_centimos, l.iva_percent, l.iva_centimos,
              l.fatura_id, l.documento_id
-        from public.fatura_linhas l order by l.ordem`),
-    faturas: await sel(`
+        from public.fatura_linhas l order by l.ordem`)},
+    'faturas', ${lista(`
       select f.id, f.instituicao_id, f.origem, f.periodo, f.estado, f.cobranca, f.stripe_invoice_id, f.numero, f.url_pagamento as url,
              f.debito_em, f.emitida_em, f.paga_em, f.falhou_em, f.motivo_falha as motivo, f.metodo_pago as metodo,
              f.subtotal_centimos, f.iva_centimos, f.total_centimos,
@@ -312,27 +325,26 @@ export async function estadoSql(db: PGlite): Promise<EstadoCanonico> {
                     'periodo_inicio', f.periodo_inicio, 'periodo_fim', f.periodo_fim) end as subscricao,
              f.divergente, f.tentativas,
              (select coalesce(json_agg(l.id order by l.ordem), '[]'::json) from public.fatura_linhas l where l.fatura_id = f.id) as linhas
-        from public.faturas f order by f.ordem`),
-    documentos: await sel(`
+        from public.faturas f order by f.ordem`)},
+    'documentos', ${lista(`
       select d.id, d.tipo, d.chave, d.estado, d.origem, d.instituicao_id, d.user_id, d.pagamento_id, d.fatura_id, d.data, d.vencimento,
              d.cliente, d.linhas, d.pagamento,
              case when d.tipo = 'RC' then (select coalesce(json_agg(a.id order by a.ordem), '[]'::json) from public.documentos_fiscais a
                                             where a.fatura_id = d.fatura_id and a.tipo = 'FT') else '[]'::json end as associados,
              d.total_centimos, d.iva_centimos, d.tentativas, d.ultimo_erro, d.externo_id, d.numero, d.emitido_em, d.emissor
-        from public.documentos_fiscais d order by d.ordem`),
-    subscricoes: await sel(`
+        from public.documentos_fiscais d order by d.ordem`)},
+    'subscricoes', ${lista(`
       select s.instituicao_id, s.stripe_subscription_id, s.estado, s.inicio, s.compromisso_ate
-        from public.subscricoes_instituicao s order by s.instituicao_id`),
-    instituicoes: await sel(`
+        from public.subscricoes_instituicao s order by s.instituicao_id`)},
+    'instituicoes', ${lista(`
       select i.id, d.stripe_customer_id, d.stripe_payment_method_id,
              case when d.metodo_tipo is null then null
                   else json_build_object('tipo', d.metodo_tipo, 'ultimos4', d.metodo_ultimos4, 'mandato_ref', d.metodo_mandato_ref) end as metodo
-        from public.instituicoes i left join public.dados_faturacao d on d.instituicao_id = i.id order by i.id`),
-    alertas: ((await sel('select a.tipo, a.ref from private.alertas_faturacao a order by a.id')) as { tipo: string }[]).filter((a) =>
-      ALERTAS_DO_CONTRATO.has(a.tipo),
-    ),
-    eventos: await sel('select e.id, e.processado_em is not null as processado, e.tentativas, e.erro from public.stripe_eventos e order by e.id'),
-  }
+        from public.instituicoes i left join public.dados_faturacao d on d.instituicao_id = i.id order by i.id`)},
+    'alertas', ${lista('select a.tipo, a.ref from private.alertas_faturacao a order by a.id')},
+    'eventos', ${lista('select e.id, e.processado_em is not null as processado, e.tentativas, e.erro from public.stripe_eventos e order by e.id')}
+  ) as j`)
+  return { ...j, alertas: (j.alertas as { tipo: string }[]).filter((a) => ALERTAS_DO_CONTRATO.has(a.tipo)) }
 }
 
 // ————————————————————————————————————————————————————————————— normalização

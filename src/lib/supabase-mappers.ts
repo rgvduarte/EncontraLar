@@ -23,6 +23,10 @@
  *     com acesso completo (useAcesso().completo), instituicoes_completas() → larDeLinha (Lar inteiro).
  *     O estado do passe vem de acesso_estado() → acessoDeLinha; as contagens de disponibilidade_agregada()
  *     → disponibilidadeDeLinha; as avaliações de avaliacoes_instituicao() → avaliacaoInstituicaoDeLinha.
+ *     Os pagamentos do passe vêm em acesso_estado().pagamentos (pagamentos_familia, escritos só pelo servidor);
+ *   * FATURAÇÃO (docs/SUPABASE.md, secção 15): o lar lê a sua página Faturação de faturacao_resumo() →
+ *     faturacaoDeResumo; grava os dados fiscais com dadosFaturacaoParaRpc e contesta uma entrada com
+ *     contestacaoParaRpc. Nenhum cliente escreve nas tabelas da faturação nem lê as referências do Stripe/Moloni.
  */
 import type {
   AcessoFamilia,
@@ -369,20 +373,25 @@ export function disponibilidadeDeLinha(r: DisponibilidadeAgregadaRow | undefined
   return { total: num(r?.total), comVaga: r?.com_vaga ?? null, breve: r?.breve ?? null }
 }
 
+/** Motivo normalizado de um pagamento falhado (nunca a mensagem do Stripe): o texto vem de stripe/motivos.ts. */
+export type MotivoFalha = Database['public']['Enums']['motivo_falha']
+
 /**
- * Pagamento de um passe (contrato da faturação para acesso_estado().pagamentos). A lista vem vazia até a
- * faturação existir na base de dados.
+ * Pagamento de um passe (acesso_estado().pagamentos, AcessoEstadoRpc em supabase/functions/_shared/portas.ts):
+ * do mais recente para o mais antigo. `multibanco` só existe quando há referência para pagar; `documento` só
+ * quando a Fatura-Recibo já foi emitida (o PDF pede-se à função faturacao-documento com documento.id).
  */
 export interface PagamentoAcesso {
   id: string
   plano: PlanoFamiliaId
   valorCentimos: number
   metodo?: 'card' | 'mb_way' | 'multibanco'
-  estado: 'pendente' | 'a_aguardar_pagamento' | 'pago' | 'falhou' | 'expirado' | 'reembolsado'
+  estado: Database['public']['Enums']['estado_pagamento_familia']
   criadoEm: string
   pagoEm?: string
-  multibanco?: { entidade: string; referencia: string; expiraEm: string }
-  documento?: { numero: string; emitidoEm: string }
+  motivoFalha?: MotivoFalha
+  multibanco?: { entidade: string; referencia: string; expiraEm?: string }
+  documento?: { id: string; numero: string; emitidoEm: string }
 }
 
 function pagamentoDeJson(v: Json): PagamentoAcesso {
@@ -398,8 +407,9 @@ function pagamentoDeJson(v: Json): PagamentoAcesso {
     estado: texto(o.estado, 'pendente') as PagamentoAcesso['estado'],
     criadoEm: isoObrigatorio(texto(o.criado_em) || null),
     pagoEm: iso(texto(o.pago_em) || null),
-    multibanco: mb && { entidade: texto(mb.entidade), referencia: texto(mb.referencia), expiraEm: isoObrigatorio(texto(mb.expira_em) || null) },
-    documento: doc && { numero: texto(doc.numero), emitidoEm: isoObrigatorio(texto(doc.emitido_em) || null) },
+    motivoFalha: (texto(o.motivo_falha) || undefined) as MotivoFalha | undefined,
+    multibanco: mb && { entidade: texto(mb.entidade), referencia: texto(mb.referencia), expiraEm: iso(texto(mb.expira_em) || null) },
+    documento: doc && { id: texto(doc.id), numero: texto(doc.numero), emitidoEm: isoObrigatorio(texto(doc.emitido_em) || null) },
   }
 }
 
@@ -1112,5 +1122,262 @@ export function dadosRegisto(input: Pick<RegisterInput, 'role' | 'nome' | 'telef
     ...(org?.nome.trim()
       ? { organizacao: { nome: org.nome.trim(), tipo: org.tipo, ...(org.servico?.trim() ? { servico: org.servico.trim() } : {}) } }
       : {}),
+  }
+}
+
+// ————————————————————————————————————————— faturação (dono de um lar privado)
+//
+// A página Faturação lê tudo de faturacao_resumo() (ResumoFaturacaoRpc em supabase/functions/_shared/portas.ts) →
+// faturacaoDeResumo. Os dados fiscais gravam-se com guardar_dados_faturacao (dadosFaturacaoParaRpc) e uma entrada
+// confirmada só pela família contesta-se com contestar_entrada (contestacaoParaRpc). O método de pagamento, a
+// cobrança e o PDF passam pelas Edge Functions (faturacao-checkout, faturacao-portal, faturacao-documento). Datas:
+// instantes em ISO (UTC); dias ('AAAA-MM-DD': período, dia da próxima cobrança, entrada) como vêm.
+
+export type EstadoFatura = Exclude<Database['public']['Enums']['estado_fatura'], 'rascunho'>
+export type EstadoContestacao = Database['public']['Enums']['estado_contestacao']
+export type EstadoSubscricao = Database['public']['Enums']['estado_subscricao']
+export type TipoDocumentoFiscal = Database['public']['Enums']['tipo_documento_fiscal']
+export type RegiaoFiscal = Database['public']['Enums']['regiao_fiscal']
+/** classificarEntrada (supabase/functions/_shared/faturacao/regras.ts) = private.classificar_entrada */
+export type EstadoFaturacaoEntrada =
+  | 'por_confirmar'
+  | 'isenta'
+  | 'incluida'
+  | 'faturada'
+  | 'fora_janela'
+  | 'dispensada'
+  | 'contestada'
+  | 'faturavel'
+  | 'a_aguardar'
+
+/** Dados fiscais do lar (o cliente das faturas). */
+export interface DadosFaturacao {
+  razaoSocial: string
+  nif: string
+  morada: string
+  codigoPostal: string
+  localidade: string
+  email: string
+}
+
+export interface DocumentoFiscalResumo {
+  id: string
+  tipo: TipoDocumentoFiscal
+  numero: string
+  emitidoEm: string
+  totalCentimos: number
+}
+
+export interface LinhaProximaFatura {
+  /** ausente se o pedido já foi apagado (a linha guarda a referência) */
+  candidaturaId?: string
+  referencia: string
+  entradaData: string
+  valorCentimos: number
+  ivaPercent: number
+  ivaCentimos: number
+  totalCentimos: number
+  /** número da FT da entrada, quando já emitida */
+  documentoNumero?: string
+}
+
+export interface EntradaFaturacaoResumo {
+  candidaturaId: string
+  estado: EstadoFaturacaoEntrada
+  faturavelDesde?: string
+  /** fim do prazo de contestação (entradas confirmadas só pela família) */
+  contestavelAte?: string
+  contestacao?: { estado: EstadoContestacao; contestadaEm: string; motivo: string; resolvidaEm?: string; nota?: string }
+  faturaId?: string
+  documentoNumero?: string
+}
+
+export interface FaturaResumo {
+  id: string
+  origem: 'entradas' | 'subscricao'
+  /** 'AAAA-MM-01' */
+  periodo: string
+  estado: EstadoFatura
+  /** número do documento de cobrança do Stripe (não é a fatura legal: essa está em documentos) */
+  numero?: string
+  documentos: DocumentoFiscalResumo[]
+  subtotalCentimos: number
+  ivaCentimos: number
+  totalCentimos: number
+  cobranca: 'debito_automatico' | 'pagamento_por_link'
+  emitidaEm?: string
+  debitoEm?: string
+  pagaEm?: string
+  falhouEm?: string
+  motivoFalha?: MotivoFalha
+  urlPagamento?: string
+}
+
+export interface ResumoFaturacao {
+  larId: string
+  /** IPSS/Misericórdia: sem custos (o resto vem vazio) */
+  isenta: boolean
+  agora: string
+  plano?: PlanoInstituicao
+  planoDesde?: string
+  compromissoAte?: string
+  subscricao?: { estado: EstadoSubscricao; inicio?: string; compromissoAte?: string }
+  contrato?: { referencia: string; taxaEntradaCentimos: number; ivaPercent: number; regiaoFiscal: RegiaoFiscal; inicio: string; fim?: string }
+  dados?: DadosFaturacao & { atualizadoEm: string }
+  metodo?: { tipo: 'sepa_debit' | 'card'; ultimos4: string; banco?: string; validade?: string; mandatoRef?: string; atualizadoEm: string }
+  proxima: {
+    /** dia da próxima cobrança ('AAAA-MM-01') */
+    data: string
+    /** dia previsto do débito (com método de pagamento e entradas por cobrar) */
+    debitoEm?: string
+    linhas: LinhaProximaFatura[]
+    subtotalCentimos: number
+    ivaCentimos: number
+    totalCentimos: number
+  }
+  entradas: EntradaFaturacaoResumo[]
+  faturas: FaturaResumo[]
+  /** há uma cobrança por resolver: pagamento falhado ou por pagar por link */
+  porResolver: boolean
+}
+
+const textoOpcional = (v: Json | undefined): string | undefined => (typeof v === 'string' && v ? v : undefined)
+
+/** guardar_dados_faturacao() → DadosFaturacao (+ atualizadoEm). */
+export function dadosFaturacaoDeJson(v: Json): DadosFaturacao & { atualizadoEm: string } {
+  const o = obj(v)
+  return {
+    razaoSocial: texto(o.razao_social),
+    nif: texto(o.nif),
+    morada: texto(o.morada),
+    codigoPostal: texto(o.codigo_postal),
+    localidade: texto(o.localidade),
+    email: texto(o.email),
+    atualizadoEm: isoObrigatorio(texto(o.atualizado_em) || null),
+  }
+}
+
+/** Formulário dos dados fiscais → argumentos de guardar_dados_faturacao (o servidor normaliza e valida o NIF). */
+export function dadosFaturacaoParaRpc(d: DadosFaturacao): ArgsRpc<'guardar_dados_faturacao'> {
+  return {
+    p_razao_social: d.razaoSocial.trim(),
+    p_nif: d.nif.trim(),
+    p_morada: d.morada.trim(),
+    p_codigo_postal: d.codigoPostal.trim(),
+    p_localidade: d.localidade.trim(),
+    p_email: d.email.trim(),
+  }
+}
+
+/** Contestar uma entrada (motivo com 10 a 1000 carateres; o servidor valida o prazo e as regras). */
+export function contestacaoParaRpc(candidaturaId: string, motivo: string): ArgsRpc<'contestar_entrada'> {
+  return { p_candidatura_id: candidaturaId, p_motivo: motivo.trim() }
+}
+
+/** contestar_entrada() → { candidaturaId, estado, contestadaEm }. */
+export function contestacaoDeJson(v: Json): { candidaturaId: string; estado: EstadoContestacao; contestadaEm: string } {
+  const o = obj(v)
+  return { candidaturaId: texto(o.candidatura_id), estado: texto(o.estado, 'aberta') as EstadoContestacao, contestadaEm: isoObrigatorio(texto(o.contestada_em) || null) }
+}
+
+function documentoResumoDeJson(v: Json): DocumentoFiscalResumo {
+  const o = obj(v)
+  return { id: texto(o.id), tipo: texto(o.tipo, 'FT') as TipoDocumentoFiscal, numero: texto(o.numero), emitidoEm: isoObrigatorio(texto(o.emitido_em) || null), totalCentimos: num(o.total_centimos as number) }
+}
+
+/** faturacao_resumo() → ResumoFaturacao (o que a página Faturação do lar mostra). */
+export function faturacaoDeResumo(v: Json): ResumoFaturacao {
+  const o = obj(v)
+  const sub = o.subscricao ? obj(o.subscricao) : undefined
+  const ct = o.contrato ? obj(o.contrato) : undefined
+  const met = o.metodo ? obj(o.metodo) : undefined
+  const prox = obj(o.proxima)
+  const faturas: FaturaResumo[] = lista(o.faturas).map((f) => {
+    const x = obj(f)
+    return {
+      id: texto(x.id),
+      origem: x.origem === 'subscricao' ? 'subscricao' : 'entradas',
+      periodo: texto(x.periodo),
+      estado: texto(x.estado, 'emitida') as EstadoFatura,
+      numero: textoOpcional(x.numero),
+      documentos: lista(x.documentos).map(documentoResumoDeJson),
+      subtotalCentimos: num(x.subtotal_centimos as number),
+      ivaCentimos: num(x.iva_centimos as number),
+      totalCentimos: num(x.total_centimos as number),
+      cobranca: x.cobranca === 'pagamento_por_link' ? 'pagamento_por_link' : 'debito_automatico',
+      emitidaEm: iso(textoOpcional(x.emitida_em)),
+      debitoEm: iso(textoOpcional(x.debito_em)),
+      pagaEm: iso(textoOpcional(x.paga_em)),
+      falhouEm: iso(textoOpcional(x.falhou_em)),
+      motivoFalha: textoOpcional(x.motivo_falha) as MotivoFalha | undefined,
+      urlPagamento: textoOpcional(x.url_pagamento),
+    }
+  })
+  return {
+    larId: texto(o.instituicao_id),
+    isenta: o.isenta === true,
+    agora: isoObrigatorio(texto(o.agora) || null),
+    plano: (textoOpcional(o.plano) as PlanoInstituicao | undefined),
+    planoDesde: iso(textoOpcional(o.plano_desde)),
+    compromissoAte: iso(textoOpcional(o.compromisso_ate)),
+    subscricao: sub && { estado: texto(sub.estado, 'incompleta') as EstadoSubscricao, inicio: iso(textoOpcional(sub.inicio)), compromissoAte: iso(textoOpcional(sub.compromisso_ate)) },
+    contrato: ct && {
+      referencia: texto(ct.referencia),
+      taxaEntradaCentimos: num(ct.taxa_entrada_centimos as number),
+      ivaPercent: num(ct.iva_percent as number),
+      regiaoFiscal: texto(ct.regiao_fiscal, 'continente') as RegiaoFiscal,
+      inicio: texto(ct.inicio),
+      fim: textoOpcional(ct.fim),
+    },
+    dados: o.dados ? dadosFaturacaoDeJson(o.dados) : undefined,
+    metodo: met && {
+      tipo: met.tipo === 'card' ? 'card' : 'sepa_debit',
+      ultimos4: texto(met.ultimos4),
+      banco: textoOpcional(met.banco),
+      validade: textoOpcional(met.validade),
+      mandatoRef: textoOpcional(met.mandato_ref),
+      atualizadoEm: isoObrigatorio(texto(met.atualizado_em) || null),
+    },
+    proxima: {
+      data: texto(prox.data),
+      debitoEm: textoOpcional(prox.debito_em),
+      linhas: lista(prox.linhas).map((l) => {
+        const x = obj(l)
+        return {
+          candidaturaId: textoOpcional(x.candidatura_id),
+          referencia: texto(x.referencia),
+          entradaData: texto(x.entrada_data),
+          valorCentimos: num(x.valor_centimos as number),
+          ivaPercent: num(x.iva_percent as number),
+          ivaCentimos: num(x.iva_centimos as number),
+          totalCentimos: num(x.total_centimos as number),
+          documentoNumero: textoOpcional(x.documento_numero),
+        }
+      }),
+      subtotalCentimos: num(prox.subtotal_centimos as number),
+      ivaCentimos: num(prox.iva_centimos as number),
+      totalCentimos: num(prox.total_centimos as number),
+    },
+    entradas: lista(o.entradas).map((e) => {
+      const x = obj(e)
+      const c = x.contestacao ? obj(x.contestacao) : undefined
+      return {
+        candidaturaId: texto(x.candidatura_id),
+        estado: texto(x.estado, 'por_confirmar') as EstadoFaturacaoEntrada,
+        faturavelDesde: iso(textoOpcional(x.faturavel_desde)),
+        contestavelAte: iso(textoOpcional(x.contestavel_ate)),
+        contestacao: c && {
+          estado: texto(c.estado, 'aberta') as EstadoContestacao,
+          contestadaEm: isoObrigatorio(texto(c.contestada_em) || null),
+          motivo: texto(c.motivo),
+          resolvidaEm: iso(textoOpcional(c.resolvida_em)),
+          nota: textoOpcional(c.nota),
+        },
+        faturaId: textoOpcional(x.fatura_id),
+        documentoNumero: textoOpcional(x.documento_numero),
+      }
+    }),
+    faturas,
+    porResolver: faturas.some((f) => f.estado === 'falhou' || (f.estado === 'emitida' && f.cobranca === 'pagamento_por_link')),
   }
 }

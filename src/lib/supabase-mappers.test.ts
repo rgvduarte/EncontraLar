@@ -35,6 +35,11 @@ import {
   larPublicoDeLinha,
   niveisDeLarPublico,
   type PedidoRecebidoRow,
+  contestacaoDeJson,
+  contestacaoParaRpc,
+  dadosFaturacaoDeJson,
+  dadosFaturacaoParaRpc,
+  faturacaoDeResumo,
 } from './supabase-mappers'
 
 const REGISTO = {
@@ -341,5 +346,79 @@ describe('versão grátis do Acesso Família (instituicoes_publicas, avaliacoes_
     expect(acessoDeLinha({ completo: false, ativo: false, ate: null, plano: null, pagamentos: [] }, agora)).toEqual({
       completo: false, ativo: false, ate: undefined, plano: undefined, diasRestantes: 0, pagamentos: [],
     })
+  })
+})
+
+describe('faturação: acesso_estado().pagamentos e faturacao_resumo()', () => {
+  it('acessoDeLinha: pagamentos com Multibanco, documento emitido e motivo de falha (campos opcionais ausentes quando não há)', () => {
+    const r = acessoDeLinha({
+      completo: true, ativo: true, ate: '2026-11-12T09:00:00+00:00', plano: 'acesso_30',
+      pagamentos: [
+        { id: 'p3', plano: 'acesso_30', valor_centimos: 1490, metodo: null, estado: 'falhou', criado_em: '2026-10-13T10:00:00+00:00', pago_em: null, motivo_falha: 'cartao_recusado' },
+        { id: 'p2', plano: 'acesso_90', valor_centimos: 2990, metodo: 'multibanco', estado: 'a_aguardar_pagamento', criado_em: '2026-10-13T09:30:00+00:00', pago_em: null, motivo_falha: null,
+          multibanco: { entidade: '11249', referencia: '123456789', expira_em: '2026-10-16T09:30:00+00:00' } },
+        { id: 'p1', plano: 'acesso_30', valor_centimos: 1490, metodo: 'card', estado: 'pago', criado_em: '2026-10-13T09:00:00+00:00', pago_em: '2026-10-13T09:01:00+00:00', motivo_falha: null,
+          documento: { id: 'd1', numero: 'FR F2026/1', emitido_em: '2026-10-13T09:02:00+00:00' } },
+      ],
+    }, Date.parse('2026-10-13T10:00:00Z'))
+    expect(r.pagamentos).toEqual([
+      { id: 'p3', plano: 'acesso_30', valorCentimos: 1490, metodo: undefined, estado: 'falhou', criadoEm: '2026-10-13T10:00:00.000Z', pagoEm: undefined, motivoFalha: 'cartao_recusado', multibanco: undefined, documento: undefined },
+      { id: 'p2', plano: 'acesso_90', valorCentimos: 2990, metodo: 'multibanco', estado: 'a_aguardar_pagamento', criadoEm: '2026-10-13T09:30:00.000Z', pagoEm: undefined, motivoFalha: undefined,
+        multibanco: { entidade: '11249', referencia: '123456789', expiraEm: '2026-10-16T09:30:00.000Z' }, documento: undefined },
+      { id: 'p1', plano: 'acesso_30', valorCentimos: 1490, metodo: 'card', estado: 'pago', criadoEm: '2026-10-13T09:00:00.000Z', pagoEm: '2026-10-13T09:01:00.000Z', motivoFalha: undefined,
+        multibanco: undefined, documento: { id: 'd1', numero: 'FR F2026/1', emitidoEm: '2026-10-13T09:02:00.000Z' } },
+    ])
+    expect(r.diasRestantes).toBe(30)
+  })
+
+  it('faturacaoDeResumo: lar com contrato, método, próxima cobrança, entradas e faturas (porResolver com um débito falhado)', () => {
+    const r = faturacaoDeResumo({
+      instituicao_id: 'lar-x', isenta: false, agora: '2026-10-13T09:00:00+00:00', plano: null, plano_desde: null, compromisso_ate: null, subscricao: null,
+      contrato: { referencia: 'CT-D2025-007', taxa_entrada_centimos: 15000, iva_percent: 23, regiao_fiscal: 'continente', inicio: '2025-09-01', fim: null },
+      dados: { razao_social: 'Cuidados, Lda.', nif: '599999993', morada: 'Rua A, 1', codigo_postal: '4200-187', localidade: 'Porto', email: 'f@lar.pt', atualizado_em: '2026-10-01T10:00:00+00:00' },
+      metodo: { tipo: 'sepa_debit', ultimos4: '3000', banco: null, validade: null, mandato_ref: 'M-1', atualizado_em: '2026-10-01T10:05:00+00:00' },
+      proxima: { data: '2026-11-01', debito_em: '2026-11-04', subtotal_centimos: 15000, iva_centimos: 3450, total_centimos: 18450,
+        linhas: [{ candidatura_id: 'c1', referencia: 'EL-3F9A2B1C', entrada_data: '2026-09-30', valor_centimos: 15000, iva_percent: 23, iva_centimos: 3450, total_centimos: 18450, documento_numero: 'FT F2026/3' }] },
+      entradas: [
+        { candidatura_id: 'c1', estado: 'faturada', faturavel_desde: '2026-10-01T10:00:00+00:00', contestavel_ate: null, contestacao: null, fatura_id: null, documento_numero: 'FT F2026/3' },
+        { candidatura_id: 'c2', estado: 'contestada', faturavel_desde: null, contestavel_ate: '2026-10-20T10:00:00+00:00',
+          contestacao: { estado: 'aberta', contestada_em: '2026-10-10T10:00:00+00:00', motivo: 'Não chegou a entrar.', resolvida_em: null, nota: null }, fatura_id: null, documento_numero: null },
+      ],
+      faturas: [{ id: 'f1', origem: 'entradas', periodo: '2026-09-01', estado: 'falhou', numero: 'EL-0001',
+        documentos: [{ id: 'd1', tipo: 'FT', numero: 'FT F2026/1', emitido_em: '2026-09-20T06:13:00+00:00', total_centimos: 18450 }],
+        subtotal_centimos: 15000, iva_centimos: 3450, total_centimos: 18450, cobranca: 'debito_automatico', emitida_em: '2026-10-01T07:07:00+00:00',
+        debito_em: '2026-10-04T00:00:00+00:00', paga_em: null, falhou_em: '2026-10-04T06:13:00+00:00', motivo_falha: 'saldo_insuficiente', url_pagamento: 'https://invoice.stripe.com/i/in_1' }],
+    })
+    expect(r).toMatchObject({
+      larId: 'lar-x', isenta: false, plano: undefined, subscricao: undefined, porResolver: true,
+      contrato: { referencia: 'CT-D2025-007', taxaEntradaCentimos: 15000, ivaPercent: 23, regiaoFiscal: 'continente', inicio: '2025-09-01', fim: undefined },
+      dados: { razaoSocial: 'Cuidados, Lda.', nif: '599999993', codigoPostal: '4200-187', atualizadoEm: '2026-10-01T10:00:00.000Z' },
+      metodo: { tipo: 'sepa_debit', ultimos4: '3000', banco: undefined, mandatoRef: 'M-1' },
+      proxima: { data: '2026-11-01', debitoEm: '2026-11-04', totalCentimos: 18450, linhas: [{ candidaturaId: 'c1', referencia: 'EL-3F9A2B1C', documentoNumero: 'FT F2026/3' }] },
+    })
+    expect(r.entradas[1]).toEqual({
+      candidaturaId: 'c2', estado: 'contestada', faturavelDesde: undefined, contestavelAte: '2026-10-20T10:00:00.000Z',
+      contestacao: { estado: 'aberta', contestadaEm: '2026-10-10T10:00:00.000Z', motivo: 'Não chegou a entrar.', resolvidaEm: undefined, nota: undefined },
+      faturaId: undefined, documentoNumero: undefined,
+    })
+    expect(r.faturas[0]).toMatchObject({ estado: 'falhou', motivoFalha: 'saldo_insuficiente', falhouEm: '2026-10-04T06:13:00.000Z', documentos: [{ tipo: 'FT', numero: 'FT F2026/1', totalCentimos: 18450 }] })
+  })
+
+  it('faturacaoDeResumo: IPSS isenta; uma cobrança por link por pagar também está por resolver', () => {
+    const vazio = { linhas: [], data: '2026-11-01', debito_em: null, subtotal_centimos: 0, iva_centimos: 0, total_centimos: 0 }
+    expect(faturacaoDeResumo({ instituicao_id: 'ipss', isenta: true, agora: '2026-10-13T09:00:00+00:00', proxima: vazio, entradas: [], faturas: [] })).toMatchObject({ isenta: true, porResolver: false, faturas: [], entradas: [] })
+    const link = faturacaoDeResumo({ instituicao_id: 'l', isenta: false, agora: '2026-10-13T09:00:00+00:00', proxima: vazio, entradas: [],
+      faturas: [{ id: 'f', origem: 'subscricao', periodo: '2026-10-01', estado: 'emitida', documentos: [], subtotal_centimos: 2900, iva_centimos: 667, total_centimos: 3567, cobranca: 'pagamento_por_link' }] })
+    expect(link.porResolver).toBe(true)
+    expect(link.faturas[0]!.origem).toBe('subscricao')
+  })
+
+  it('dados fiscais e contestação: para as RPC e de volta', () => {
+    expect(dadosFaturacaoParaRpc({ razaoSocial: ' Cuidados, Lda. ', nif: ' 599 999 993', morada: 'Rua A, 1 ', codigoPostal: '4200-187', localidade: 'Porto', email: ' f@lar.pt ' })).toEqual({
+      p_razao_social: 'Cuidados, Lda.', p_nif: '599 999 993', p_morada: 'Rua A, 1', p_codigo_postal: '4200-187', p_localidade: 'Porto', p_email: 'f@lar.pt',
+    })
+    expect(dadosFaturacaoDeJson({ razao_social: 'X', nif: '599999993', morada: 'M', codigo_postal: '4200-187', localidade: 'Porto', email: 'f@lar.pt', atualizado_em: '2026-10-13T09:00:00+00:00' })).toMatchObject({ razaoSocial: 'X', atualizadoEm: '2026-10-13T09:00:00.000Z' })
+    expect(contestacaoParaRpc('c1', '  A pessoa não entrou.  ')).toEqual({ p_candidatura_id: 'c1', p_motivo: 'A pessoa não entrou.' })
+    expect(contestacaoDeJson({ candidatura_id: 'c1', estado: 'aberta', contestada_em: '2026-10-13T09:00:00+00:00' })).toEqual({ candidaturaId: 'c1', estado: 'aberta', contestadaEm: '2026-10-13T09:00:00.000Z' })
   })
 })

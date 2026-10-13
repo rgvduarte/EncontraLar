@@ -65,6 +65,10 @@ Este documento explica como pôr a base de dados real a funcionar, passo a passo
   tem acesso completo (famílias com passe em vigor, profissionais, equipa; o dono, só a sua ficha). A vista pública
   só tem a versão grátis; a completa vem de `instituicoes_completas()`; pedidos, visitas e alertas de vaga exigem o
   acesso. Imposto por privilégios de coluna, RLS e funções do servidor, não pela interface.
+- **Faturação (secção 15)**: nenhum cliente escreve nas tabelas de dinheiro; o lar lê as suas linhas (sem as
+  referências do Stripe/Moloni), a família as suas compras e Fatura-Recibo, só documentos emitidos. As funções
+  `servico_*` (contrato das Edge Functions) só correm com a chave secreta (`service_role`), e verificam-no outra vez lá
+  dentro. As fichas e contas de demonstração nunca chegam às tarefas em lote nem ao Moloni.
 - **RPC sem sessão**: só cinco — `registar_procura` (pesquisa anónima, limitada), `vagas_por_token` e
   `confirmar_vagas_por_token` (link de confirmação das vagas), `disponibilidade_agregada` e `avaliacoes_instituicao`
   (versão grátis do Acesso Família). Para isso `anon` tem `USAGE` no schema `private` e `EXECUTE` **apenas** nas
@@ -118,9 +122,11 @@ passar a usar o CLI, alinhe o histórico com `supabase migration repair` antes d
 | `20261013100000_equipa_modalidade_tipos.sql` | Valores novos dos enums: `role_utilizador` `equipa`, `taxa_entrada` `incluida` (ficheiro à parte, pela mesma razão do `0700`). |
 | `20261013100100_equipa_modalidade.sql` | Equipa de terreno e modalidade (secção 13): `instituicoes.plano`/`plano_desde`, `escolher_plano_instituicao`, taxa `incluida`, papel `equipa`, tabela `visitas`, `registar_visita`, `painel_equipa`, `painel_instituicao` com a modalidade, `licenca_confirmada_em` (também na vista pública). |
 | `20261013110000_acesso_familia.sql` | Acesso Família no servidor (secção 14): `acessos_familia`, `tem_acesso_completo`, `estender_acesso`, `acesso_estado`; vista pública só com a versão grátis (`faixa_preco`, `extras_nomes`, contagens de avaliações); `instituicoes_completas`, `disponibilidade_agregada`, `avaliacoes_instituicao`; quartos, saídas e avaliações só com acesso; pedidos, visitas e alertas de vaga só com acesso. Sem valores novos em enums existentes (por isso sem ficheiro `_tipos`). |
+| `20261013120000_faturacao.sql` | Faturação (secção 15): contratos, dados fiscais, contestações, subscrições, pagamentos e consentimentos do Acesso Família, faturas, linhas, documentos fiscais (fila), eventos do Stripe; `faturacao_resumo`, `guardar_dados_faturacao`, `contestar_entrada`, `acesso_estado` com os pagamentos, `marcar_entrada` (retira a contestação) e as RPC `servico_*` do contrato das Edge Functions. Só tipos novos (sem `_tipos`). |
+| `20261013120100_faturacao_agendamento.sql` | pg_net (se existir), `private.invocar_faturacao` (Vault → `faturar-mes`), retenção dos eventos do Stripe e os 3 trabalhos do pg_cron da faturação. Sem pg_net/Vault/segredos, não faz nada. |
 
 As migrações já aplicadas **nunca se editam**: qualquer mudança é um ficheiro novo com um prefixo maior (hoje, maior
-do que `20261013110000`).
+do que `20261013120100`).
 
 ---
 
@@ -282,6 +288,9 @@ em `src/data/seed.ts` (gerador independente por ficha) e subir `SEED_VERSION`.
 | `encontralar-expirar-propostas` | `*/15 * * * *` | `private.expirar_propostas()`: propostas sem resposta em 48 h voltam à lista (mesma posição) e as duas partes são avisadas. |
 | `encontralar-minimizar-pedidos` | `17 3 * * *` | `private.minimizar_candidaturas_encerradas(30)`: pedidos cancelados/recusados há mais de 30 dias ficam só com nome e idade. |
 | `encontralar-limpar-procuras` | `41 3 * * *` | `private.limpar_procuras_anonimas(365)`: apaga pesquisas sem vagas com mais de um ano (`20261012190800`). |
+| `encontralar-faturar-diario` | `13 6 * * *` | `private.invocar_faturacao('diario')` → Edge Function `faturar-mes` (secção 15). |
+| `encontralar-cobrar-mes` | `7 7 1 * *` | `private.invocar_faturacao('cobranca')` → `faturar-mes` (dia 1, depois da diária). |
+| `encontralar-limpar-eventos-stripe` | `29 3 * * *` | `private.limpar_stripe_eventos(90)`: eventos do webhook aplicados há mais de 90 dias. |
 
 Estas funções **não** são invocáveis pela Data API (nem pela `service_role`: o schema `private` não está
 exposto). Se o pg_cron não existir, a migração apenas avisa; agende então à mão:
@@ -290,6 +299,9 @@ exposto). Se o pg_cron não existir, a migração apenas avisa; agende então à
 select cron.schedule('encontralar-expirar-propostas', '*/15 * * * *', 'select private.expirar_propostas()');
 select cron.schedule('encontralar-minimizar-pedidos', '17 3 * * *', 'select private.minimizar_candidaturas_encerradas(30)');
 select cron.schedule('encontralar-limpar-procuras', '41 3 * * *', 'select private.limpar_procuras_anonimas(365)');
+select cron.schedule('encontralar-faturar-diario', '13 6 * * *', 'select private.invocar_faturacao(''diario'')');
+select cron.schedule('encontralar-cobrar-mes', '7 7 1 * *', 'select private.invocar_faturacao(''cobranca'')');
+select cron.schedule('encontralar-limpar-eventos-stripe', '29 3 * * *', 'select private.limpar_stripe_eventos(90)');
 -- histórico de execuções
 select jobid, status, return_message, start_time from cron.job_run_details order by start_time desc limit 20;
 ```
@@ -311,6 +323,11 @@ Acesso Família: as colunas `morada`, `codigo_postal`, `telefone`, `email`, `web
 `lista_espera_online`, `estadia_media_meses`, `extras`, `atualizado_em` e `updated_at` de `instituicoes` estão nos tipos
 mas não são legíveis por `anon`/`authenticated` (use `instituicoes_completas()`); `quartos`, `saidas_mensais` e
 `avaliacoes` não são legíveis por `anon` e, para as contas, só devolvem linhas com acesso completo (ou do dono).
+Faturação: as colunas `stripe_*`, `moloni_*`, `externo_id`, `emissor`, `cliente`, `chave`, `tentativas`… aparecem nos
+tipos mas não são legíveis pelos clientes (secção 15); os clientes não escrevem em nenhuma das tabelas; as funções
+`servico_*` e `resolver_contestacao` estão nos tipos (o gerador inclui tudo o que está em `public`) mas só a
+`service_role` as executa. Os tipos da app para a página Faturação (`ResumoFaturacao`…) vivem em
+`supabase-mappers.ts`, porque o resumo chega como `Json`.
 
 ---
 
@@ -347,6 +364,15 @@ mas não são legíveis por `anon`/`authenticated` (use `instituicoes_completas(
   abaixo de 5; pedidos, visitas e alertas recusados sem passe (e livres com ele; cancelar, responder a uma vaga e
   confirmar a entrada continuam livres); avisos de vaga (quem segue só com acesso; a lista de espera sempre); um só
   excerto de avaliação na versão grátis (o mesmo corte da ficha); a migração sobre uma base já em uso.
+- **Faturação (secção 15)** — `faturacao-conformidade.test.ts` (os mesmos cenários na BD falsa das Edge Functions e no
+  SQL, comparados passo a passo: resultado de cada RPC e estado inteiro), `faturacao-fluxos.test.ts` (os handlers
+  verdadeiros das Edge Functions contra o SQL: compra do Acesso Família, mês por entrada com contestação, mensalidade),
+  `faturacao-regras.test.ts` (paridade SQL ↔ regras puras: IVA, NIF, região, datas de Lisboa com a mudança de hora,
+  matriz de `classificarEntrada`), `faturacao.test.ts` e `faturacao-lares.test.ts` (RPC dos donos e da família,
+  contestações, fila, cobranças, subscrições, demonstração, minimização, escrita), `faturacao-agendamento.test.ts`
+  (pg_cron → pg_net com o Vault; retenção; a migração sobre uma base em uso). Partilham `faturacao-bd.ts` (as portas
+  `PortaBD`/`PortaUtilizador` sobre o PGlite, a montagem nas duas bases e o estado canónico) e `faturacao-contexto.ts`.
+  `bootstrap.sql` imita também o pg_net (`net.http_post` → `net.pedidos_teste`) e o Vault — só em testes.
 - `prototipo.test.ts` — seed + contas de demonstração = `createSeed`: a vista pública = a projeção grátis do protótipo
   (`larPublicoDe`, com a faixa, os níveis de verificação e o excerto), `instituicoes_completas()` (pela família de
   demonstração, com passe) = as 162 fichas completas (com os níveis de verificação); o passe da família de
@@ -612,21 +638,11 @@ protótipo**. Na produção:
 4. Até lá, o administrador cria a conta pela Auth Admin API (`app_metadata: { role: 'lar' }`) e liga-a à ficha
    (`update public.instituicoes set owner_id = '<uuid>' where id = 'lar-x'`).
 
-### TODO — faturação (Stripe + Moloni), por desenhar
+### Faturação
 
-(Do lado das famílias, o direito de acesso já existe: secção 14, "Ganchos para a faturação".)
-
-A faturação ainda não existe na base de dados. Ganchos para quando for desenhada:
-
-- **Por entrada**: cada `candidaturas` com `entrada_taxa = 'aplicavel'` (fixada na primeira confirmação) e a
-  entrada dentro da janela de atribuição de 12 meses do pedido (`entrada_data` até 365 dias depois de
-  `created_at`, como `entradaAtribuida` no protótipo) é uma linha de fatura. `incluida` e `isenta` nunca se faturam.
-- **Mensalidade**: `instituicoes.plano = 'mensal'` desde `plano_desde`, com o compromisso até
-  `private.compromisso_ate(...)`; uma subscrição mensal.
-- **Onde avisar o serviço de faturação**: a modalidade só muda em `escolher_plano_instituicao` (dono) e em
-  `registar_visita` (adesão) — e, por exceção, pelo administrador. Hoje fica só a modalidade atual e `plano_desde`:
-  para faturar com segurança vai ser preciso um histórico das modalidades (tabela própria, ou o registo do Stripe).
-- Fichas de demonstração (`demonstracao = true`) nunca chegam à faturação.
+Desenhada e implementada na secção 15. A taxa de cada entrada fica fixada na primeira confirmação
+(`entrada_taxa`), por isso faturar por entrada não precisa de um histórico das modalidades; a mensalidade vem da
+subscrição do Stripe (`subscricoes_instituicao`).
 
 ---
 
@@ -730,7 +746,7 @@ inteira. Porquê assim:
 
 | RPC | Quem | Faz |
 | --- | --- | --- |
-| `acesso_estado()` | conta com sessão | `{ completo, ativo, ate, plano, pagamentos }` (`pagamentos` vem `[]` até existir a faturação). |
+| `acesso_estado()` | conta com sessão | `{ completo, ativo, ate, plano, pagamentos }` (os pagamentos do passe: secção 15). |
 | `instituicoes_completas(p_ids)` | acesso completo; o dono (a sua) | A ficha inteira, com a forma da antiga vista pública. |
 | `disponibilidade_agregada(p_distrito, p_concelho)` | **anon** e todos | Contagens da zona; `null` abaixo de 5 fichas. |
 | `avaliacoes_instituicao(p_instituicao_id)` | **anon** e todos | Todas (acesso completo / dono) ou um excerto (versão grátis). |
@@ -770,15 +786,227 @@ Notas para a interface (o protótipo calcula tudo no navegador, a versão com se
 - `LarPublico` não tem `reviews`, `quartos`, `mensalidadeMin`, `atualizadoEm`, `telefone`… — os componentes da versão
   grátis passam a receber `LarPublico` (`larPublicoDe(lar)` dá o mesmo objeto no modo demonstração).
 
-### Ganchos para a faturação
+### Ganchos para a faturação (feitos na secção 15)
 
-- O pagamento confirmado (cartão, MB WAY, ou Multibanco pago) chama `private.estender_acesso(user_id, plano)` — numa
-  função `SECURITY DEFINER` da faturação ou com a `service_role`. O aviso "Acesso Família ativo" já vem daqui: a
-  faturação não o repete. Um reembolso **não** encurta o acesso (decisão de operações).
-- `private.acesso_estado()` devolve `pagamentos: []`: a migração da faturação substitui-a (`create or replace`) para
-  preencher a lista com os `pagamentos_familia` do próprio (`{ id, plano, valor_centimos, metodo, estado, criado_em,
-  pago_em, multibanco?: { entidade, referencia, expira_em }, documento?: { numero, emitido_em } }`, como em
-  `PagamentoAcesso` nos mappers).
-- `public.plano_familia` (`acesso_30`, `acesso_90`) e `private.dias_plano_familia(plano)` servem para os pagamentos; os
-  valores (€) não vivem na base de dados de acesso.
+- O pagamento confirmado (cartão, MB WAY, ou Multibanco pago) chama `private.estender_acesso(user_id, plano)` uma vez
+  por pagamento (operação `acesso_pago` do webhook). O aviso "Acesso Família ativo" vem daqui: a faturação não o repete.
+  Um reembolso **não** encurta o acesso (decisão de operações: playbook).
+- `private.acesso_estado()` devolve agora os `pagamentos_familia` do próprio (`AcessoEstadoRpc` em `portas.ts`).
 - Contas de demonstração: o passe da família de demonstração vem de `utilizadores-demo.sql`, nunca de um pagamento.
+
+---
+
+## 15. Faturação: base de dados (`20261013120000` e `20261013120100`)
+
+Três fluxos de dinheiro (decisões de 13/10/2026, `docs/MODELO-NEGOCIO.md`; desenho: plano v1 e v2):
+
+| Fluxo | Quem | Como paga | Documento (Moloni) |
+| --- | --- | --- | --- |
+| Acesso Família | família | Stripe Checkout, pagamento único (cartão, MB WAY, Multibanco) | Fatura-Recibo (FR) por compra, NIF opcional |
+| Lar privado, por entrada | empresa | cobrança mensal no Stripe, débito SEPA (cartão ou link como alternativa) | FT por entrada faturável + RC quando paga |
+| Lar privado, mensalidade | empresa | subscrição Stripe Billing, 29 € + IVA, compromisso de 12 meses | FT por fatura da subscrição + RC quando paga |
+
+IPSS, Misericórdias e profissionais nunca pagam. **Esta fase é só modo de teste**: Stripe de teste e o emissor falso
+(`FATURACAO_EMISSOR=falso`), sem dinheiro real nem Moloni.
+
+**O contrato** entre as Edge Functions (`supabase/functions`) e a base de dados é
+`supabase/functions/_shared/portas.ts`: nomes das RPC e dos argumentos, formas JSON, códigos de erro (`42501` → 403,
+`22023` → 409, `P0002` → 404; qualquer outro é erro interno) e o vocabulário de operações do webhook. As funções foram
+testadas contra uma BD falsa (`supabase/tests/funcoes/fakes.ts::BDFalsa`); o SQL comporta-se como ela — os testes de
+conformidade correm os mesmos cenários nas duas e comparam passo a passo — e é mais robusto onde ela simplifica
+(concorrência, bloqueios, RLS: ver "Diferenças", abaixo).
+
+### Tabelas
+
+| Tabela | O que guarda | Quem lê (RLS + colunas) | Quem escreve |
+| --- | --- | --- | --- |
+| `contratos` | taxa por entrada (150 € por omissão), IVA e região fiscal, período (sem sobreposição) | o dono do lar, sem `notas` | a equipa (`postgres`) |
+| `dados_faturacao` | razão social, NIF (domínio `public.nif`), morada fiscal, email; cliente e método do Stripe; resumo do método | o dono, sem `stripe_*`/`moloni_*` | `guardar_dados_faturacao` (dono); Stripe/método só o servidor |
+| `contestacoes_entrada` | contestação de uma entrada confirmada só pela família | o dono do lar (a família não: tabela à parte, sem evento no histórico) | `contestar_entrada`, `resolver_contestacao`, `marcar_entrada` |
+| `subscricoes_instituicao` | a subscrição da mensalidade (uma por lar) | o dono, sem `stripe_subscription_id` | servidor |
+| `pagamentos_familia` | compras do Acesso Família: plano, valor, método, estado, sessão/PI do Stripe, referência Multibanco, NIF/nome da FR, reembolso, documento | a família, sem `stripe_*` nem `demonstracao` | servidor (`servico_acesso_*`, webhook) |
+| `consentimentos_acesso` | versão do texto, quando, IP truncado (um por pagamento) | a família: versão e hora | servidor |
+| `faturas` | cobranças no Stripe (mensal das entradas ou fatura da subscrição) — documento de cobrança, não a fatura legal | o dono, sem rascunhos nem `stripe_*`/`tentativas`/`divergente` | servidor |
+| `fatura_linhas` | uma linha por entrada faturada (referência `EL-XXXXXXXX`, data, valor, IVA da linha); anular permite refaturar | o dono | servidor (equipa: anular) |
+| `documentos_fiscais` | FT, FR, RC, NC e a **fila de emissão** (outbox): chave única, cliente, linhas, pagamento, totais, número, id no emissor | só **emitidos**: o lar as suas FT/RC, a família as suas FR; poucas colunas (sem `externo_id`, `cliente`, `chave`…) | servidor |
+| `stripe_eventos` | eventos do webhook (idempotência e auditoria) | ninguém | servidor |
+| `private.execucoes_faturacao` | arrendamento das tarefas (`diario`, `cobranca`) e o último resumo | ninguém | servidor |
+| `private.alertas_faturacao` | alertas para a equipa (playbook) | `postgres` | servidor |
+
+Chaves estrangeiras para `instituicoes` nas tabelas fiscais: `on delete restrict` (as faturas guardam-se 10 anos: um
+lar com faturas despublica-se, não se apaga). `fatura_linhas.candidatura_id` é `on delete set null` (apagar a conta
+da família apaga os pedidos; a linha guarda a referência e a data). `pagamentos_familia.user_id` e
+`documentos_fiscais.user_id` são `on delete set null` pela mesma razão.
+
+### Regras
+
+- **Estado de uma entrada** (`private.classificar_entrada`, igual a `classificarEntrada` em `_shared/faturacao/regras.ts`,
+  provado numa matriz de 1 920 casos): `por_confirmar` → `isenta` → `incluida` → `faturada` → `fora_janela` →
+  `dispensada` (contestação aceite) → `contestada` (aberta) → `faturavel` desde a confirmação do lar → desde a decisão
+  (contestação rejeitada) → desde `familia_em + 14 dias` → senão `a_aguardar`. `isenta` e `incluida` vêm antes de
+  `faturada`: nunca faturam. `private.entradas_faturacao(lar, agora)` aplica-a a todas as entradas (o `agora` é um
+  argumento: a regra dos 14 dias testa-se sem mexer no relógio).
+- **14 dias em hora de parede de Lisboa** (`private.fim_contestacao`), com as regras do `Date` do ECMAScript na mudança
+  de hora (hora repetida de outubro → a primeira; o Postgres sozinho daria a de inverno). **Janela de atribuição**: a
+  entrada até ao dia do pedido em Lisboa + 365 dias.
+- **Valor da linha**: o contrato em vigor na data da entrada (senão o de hoje); sem contrato, 150 € e o IVA da região
+  fiscal do código postal da morada fiscal (9000–9499 Madeira 22 %, 9500–9999 Açores 16 %, resto 23 %). **IVA por linha**,
+  `round(valor × taxa / 100)`; nos passes das famílias o IVA (23 %) está incluído e separa-se ao cêntimo (1490 → 279,
+  2990 → 559).
+- **Passes** (`private.preco_plano_familia`): 1490 / 30 dias e 2990 / 90 dias; `servico_acesso_iniciar` grava o valor e
+  `acesso_pago` recusa (exceção: o evento repete-se e a equipa vê-o) um valor pago diferente.
+- **Demonstração**: as RPC de contexto (`servico_contexto_instituicao`, `servico_subscricao_contexto`,
+  `servico_acesso_iniciar`) devolvem `demonstracao` (a função recusa-a em produção); as de lote (reservar, pendentes,
+  preparar, a debitar, a sincronizar) excluem-na sempre. Os documentos de uma conta ou ficha de demonstração ficam
+  `demonstracao = true`, nunca saem da fila e a base de dados recusa marcá-los como emitidos pelo Moloni.
+- **Minimização**: as linhas dos documentos são estruturadas (`{tipo: 'entrada', referencia, entrada_data, valor,
+  iva}`, `{tipo: 'mensalidade', periodo…}`, `{tipo: 'acesso', plano…}`); as descrições fazem-se em TypeScript a partir
+  delas (`documentos.ts`). Nunca nomes, notas, necessidades nem o nome do lar.
+
+### RPC
+
+Dono de um lar e família (invólucros `SECURITY INVOKER` em `public`, lógica `SECURITY DEFINER` em `private`):
+
+| RPC | Quem | Faz |
+| --- | --- | --- |
+| `faturacao_resumo()` | dono (não anónimo); senão 42501 | `ResumoFaturacaoRpc`: plano, compromisso, subscrição, contrato, dados, método, próxima cobrança (linhas reservadas + entradas faturáveis, com o débito previsto ao fim do pré-aviso), entradas com o estado e a contestação, faturas (sem rascunhos) com os documentos. IPSS: `isenta` e o resto vazio. → `faturacaoDeResumo` |
+| `guardar_dados_faturacao(...)` | dono de um lar privado | Valida (NIF B2B como `nif.ts`, código postal, email) com mensagens em português; normaliza o NIF (`PT 599 999 993` → `599999993`). → `dadosFaturacaoParaRpc` |
+| `contestar_entrada(p_candidatura_id, p_motivo)` | dono | Só uma entrada `aplicavel` confirmada só pela família, dentro dos 14 dias e da janela, sem contestação nem linha; motivo 10–1000 carateres. Avisa o lar ("Contestação recebida"). |
+| `acesso_estado()` | conta com sessão | Também `pagamentos` (os 50 mais recentes): `multibanco` só com referência, `documento {id, numero, emitido_em}` só com a FR emitida, `motivo_falha`. → `acessoDeLinha` |
+| `marcar_entrada` (substituída) | dono | Como antes, e uma contestação aberta passa a `retirada` (fatura-se desde a marcação). |
+
+Servidor (só `service_role`; `private.exigir_servico()` volta a verificar lá dentro): `servico_iniciar_execucao`,
+`servico_terminar_execucao`, `servico_contexto_instituicao`, `servico_definir_cliente_stripe`,
+`servico_reservar_documentos`, `servico_documentos_pendentes`, `servico_documento_emitido`, `servico_documento_falhou`,
+`servico_documento_externo`, `servico_preparar_cobrancas`, `servico_cobranca_criada`, `servico_cobrancas_a_debitar`,
+`servico_cobranca_debito_iniciado`, `servico_evento_iniciar`, `servico_evento_aplicar`, `servico_evento_falhou`,
+`servico_acesso_iniciar`, `servico_acesso_sessao_criada`, `servico_subscricao_contexto`, `servico_subscricao_registar`,
+`servico_subscricoes_a_sincronizar` e `resolver_contestacao` (equipa). Assinaturas e formas: `portas.ts`.
+
+### Webhook (`servico_evento_iniciar` / `_aplicar` / `_falhou`)
+
+`iniciar` devolve `repetido` só se o evento já foi aplicado (um que falhou volta a ser `novo`, com `tentativas + 1`).
+`aplicar` bloqueia o evento (duas entregas simultâneas aplicam uma vez), aplica as operações **por ordem numa
+transação** e carimba `processado_em`; uma exceção desfaz tudo e o Stripe volta a tentar (`falhou` guarda o erro, sem
+dados pessoais). Operações (idempotentes; transições inválidas e referências desconhecidas ignoradas):
+
+| Operação | Efeito |
+| --- | --- |
+| `acesso_pago` | pagamento pela sessão (ou pelo `pagamento_id` da metadata, que lhe liga a sessão); valor tem de bater; `pago`, `private.estender_acesso` **uma vez**, FR `FR:pag:<id>` na fila (cliente: NIF/nome ou consumidor final). Um pagamento já pago ou reembolsado não muda. |
+| `acesso_a_aguardar` | Multibanco: `a_aguardar_pagamento` com entidade, referência e validade (só de `pendente`). |
+| `acesso_falhou` / `acesso_expirado` | `falhou` com o motivo normalizado / `expirado` (só de `pendente`). |
+| `acesso_reembolsado` | marca o valor reembolsado (e `reembolsado` se total) e alerta a equipa; **não** encurta o acesso. |
+| `subscricao_estado` | cria/atualiza a subscrição do lar; não substitui outra ainda viva (alerta `subscricao_conflito`); metadata de outro lar → alerta `metadata_divergente`, sem aplicar. |
+| `fatura_estado` | pela fatura do Stripe (ou `metadata.fatura_id`, se ainda não ligada; outra fatura do Stripe para a mesma cobrança → alerta `fatura_duplicada`). Subscrição desconhecida: cria a fatura (29 € + IVA do lar) e a FT `FT:sub:<invoice>` — total diferente → `divergente`, sem FT, alerta; a primeira fatura antes do registo liga-se pela metadata (`incompleta`). Transições do v1; `paga` põe o RC (ou FR no modo `fatura_recibo_mensal`) na fila; `falhou` avisa o lar e a equipa; `anulada` alerta a equipa. |
+| `metodo_definido` / `metodo_removido` | resumo do método (SEPA: últimos 4, banco, mandato; cartão: validade) pelo cliente Stripe / limpa-o, avisa o lar e alerta. |
+| `disputa` | alerta para a equipa (reembolso SEPA de 8 semanas ou disputa de cartão). |
+
+### Fila de documentos (outbox)
+
+- Os documentos nascem `pendente` na mesma transação do facto: FT por entrada em `servico_reservar_documentos` (modo
+  `fatura_por_entrada`), FT global na cobrança (`fatura_mensal`), FT da mensalidade no webhook, RC/FR quando a fatura é
+  paga, FR do Acesso Família no `acesso_pago`.
+- `servico_documentos_pendentes(p_agora, p_limite)` devolve os prontos (FT/FR antes de RC; um RC só depois de todas as
+  FT da sua fatura emitidas; nunca NC nem demonstração) e **reserva-os 10 minutos** (o webhook e a tarefa diária não
+  emitem o mesmo documento em duplicado; se a função morrer, voltam depois disso).
+- `servico_documento_falhou` → `erro` com recuo exponencial (15 min, 30 min, 1 h… até 24 h); à 10.ª tentativa alerta
+  `documento_bloqueado`. `servico_documento_emitido` confere o total e o IVA com os esperados (exceção se diferirem),
+  é idempotente (e alerta `documento_duplicado` se o emissor devolver outro id para o mesmo documento) e avisa o lar
+  ("Fatura emitida") numa FT.
+
+### Cobranças das entradas (dia 1)
+
+`servico_preparar_cobrancas` cria uma fatura `rascunho` por lar (sem demonstração, com cliente Stripe) com as linhas
+por cobrar — no modo por entrada **só as que já têm a FT emitida** (nunca se cobra uma fatura que ainda não existe; as
+outras ficam para o mês seguinte) — e **devolve outra vez os rascunhos** de uma execução que caiu antes de
+`servico_cobranca_criada` (retoma). Uma cobrança das entradas por lar e mês. `servico_cobranca_criada` liga a fatura
+do Stripe (recusa outra), passa a `emitida` e avisa o lar ("Cobrança de outubro de 2026: … por débito direto a …").
+`servico_cobrancas_a_debitar` devolve as `emitida` com débito automático vencido; `servico_cobranca_debito_iniciado`
+regista o resultado de `invoices.pay`.
+
+### Tarefas agendadas (pg_cron → pg_net → `faturar-mes`)
+
+`private.invocar_faturacao(fase)` lê do **Vault** `encontralar_url_projeto` (tem de ser `https://<ref>.supabase.co`;
+outro URL dá erro, visível no histórico do pg_cron) e `encontralar_segredo_cron`, e chama
+`POST /functions/v1/faturar-mes {"fase": …}` com o cabeçalho `x-encontralar-cron` — nunca a chave de serviço (o pg_net
+guarda os cabeçalhos na sua fila; o segredo do cron só dispara trabalho idempotente). Sem pg_net, Vault ou segredos,
+não faz nada (só um aviso). Configurar (SQL Editor, como `postgres`):
+
+```sql
+select vault.create_secret('https://kdyvsxzputvuyauddmwg.supabase.co', 'encontralar_url_projeto');
+select vault.create_secret('<o mesmo valor de FATURACAO_CRON_SECRET>', 'encontralar_segredo_cron');
+-- correr à mão / ver o resultado
+select private.invocar_faturacao('diario');
+select id, status_code, content::text from net._http_response order by created desc limit 5;
+select * from private.execucoes_faturacao;   -- arrendamentos e o último resumo (só contagens)
+```
+
+### Diferenças em relação à BD falsa (o SQL é mais robusto; testes próprios)
+
+| Onde | BD falsa | SQL |
+| --- | --- | --- |
+| Contestações | ignora-as | contam (`contestada`, `dispensada`, faturável desde a decisão) |
+| Valor da entrada | sempre 150 € e o IVA do lar | o contrato em vigor na data da entrada |
+| `servico_preparar_cobrancas` | cobra linhas com a FT por emitir; não retoma | só FT emitidas; devolve os rascunhos (retoma); modos mensais criam as linhas |
+| Fila | devolve tudo sempre; documentos de demonstração incluídos | reserva de 10 min, recuo exponencial, sem demonstração nem NC |
+| Ids do Stripe | sobrepõe | recusa/alerta (fatura ligada a outra, cobrança duplicada, subscrição viva, metadata de outro lar) |
+| Concorrência | — | bloqueios por linha (evento, pagamento, fatura, pedido com `skip locked`), índice único de uma linha ativa por entrada |
+| NIF da família | guarda o texto | normaliza; 999999990 = sem NIF |
+| Compras iniciadas | sem limite | no máximo 10 por hora e por conta |
+
+Conflitos com o contrato: nenhum — o SQL implementa `portas.ts` tal como está; as diferenças acima são comportamentos
+mais seguros dentro das mesmas formas e códigos de erro.
+
+### Playbook de operações (como `postgres`, no SQL Editor)
+
+```sql
+-- alertas por resolver (reembolso, disputa, pagamento_falhou, metodo_removido, subscricao_divergente,
+-- subscricao_conflito, metadata_divergente, fatura_duplicada, fatura_anulada, documento_duplicado, documento_bloqueado)
+select id, tipo, ref, dados, criado_em from private.alertas_faturacao where resolvido_em is null order by criado_em;
+update private.alertas_faturacao set resolvido_em = now(), nota = 'Tratado: …' where id = 123;
+
+-- contrato de um lar privado (a taxa por entrada e o IVA da região)
+insert into public.contratos (instituicao_id, referencia, taxa_entrada_centimos, iva_percent, regiao_fiscal, inicio)
+values ('lar-x', 'CT-2026-001', 15000, 23, 'continente', '2026-11-01');
+```
+
+- **Contestações** (SLA a definir; o lar foi avisado): ver as abertas —
+  `select c.candidatura_id, c.instituicao_id, c.motivo, c.contestada_em from public.contestacoes_entrada c where c.estado = 'aberta';`
+  — e decidir: `select public.resolver_contestacao('<candidatura>', 'aceite', 'Nota para o lar');` (não se fatura) ou
+  `'rejeitada'` (fatura-se na tarefa diária seguinte). O lar é avisado. Uma contestação aceite depois de faturada não
+  existe (a contestação só é possível antes da linha).
+- **Reembolsos às famílias** (falha técnica, ou não conseguiu usar o acesso nas primeiras 48 h): reembolsar no painel do
+  Stripe → `charge.refunded` marca `reembolsado` e alerta. A FR emitida anula-se com uma **nota de crédito** no Moloni e
+  regista-se: `insert into public.documentos_fiscais (tipo, origem, estado, chave, user_id, pagamento_id, documento_origem_id,
+  data, cliente, linhas, total_centimos, iva_centimos, numero, externo_id, emissor, emitido_em) …` (valores negativos).
+  O acesso não encurta sozinho; se for preciso, `update public.acessos_familia set ate = now() where user_id = '…';`.
+- **Fatura anulada no Stripe** (`fatura_anulada`): as linhas ficam ligadas a ela. Para voltar a cobrar: anular as
+  linhas e emitir NC das FT (`update public.fatura_linhas set anulada_em = now(), motivo_anulacao = '…' where fatura_id = '…';`
+  — a entrada volta a `faturavel` e a tarefa diária refatura-a com uma chave nova); para perdoar: NC das FT e anular as
+  linhas com uma contestação aceite registada pela equipa.
+- **Pagamento falhado**: o lar foi avisado e paga na página da fatura (`url_pagamento`) ou a equipa volta a debitar no
+  Stripe (o webhook atualiza). Disputa SEPA (8 semanas): alerta `disputa`; tratar com o lar.
+- **Documento bloqueado**: ver `ultimo_erro`, corrigir a causa (credenciais do Moloni, dados do cliente) e voltar a
+  tentar já: `update public.documentos_fiscais set proxima_tentativa_em = now() where id = '…';`. Duplicado no emissor:
+  anular um com NC.
+- **Subscrição divergente** (rateio, cupão): a fatura não tem FT; emitir à mão no Moloni ou acertar no Stripe.
+- **Arranque**: as entradas anteriores ao início da faturação que não se querem faturar ficam dispensadas com uma
+  contestação aceite registada pela equipa (antes de ligar o cron):
+  `insert into public.contestacoes_entrada (candidatura_id, instituicao_id, estado, motivo, resolvida_em, nota_resolucao)
+   select id, instituicao_id, 'aceite', 'Entrada anterior ao início da faturação.', now(), 'Arranque' from public.candidaturas
+   where entrada_taxa = 'aplicavel' and entrada_data < '2026-11-01';`
+
+### Ordem para ligar (go-live)
+
+1. Migrações `20261013120000` e `20261013120100` (`db push`); `db advisors` (as tabelas `stripe_eventos` e `private.*`
+   sem políticas são esperadas).
+2. Ativar pg_net e confirmar o pg_cron e o Vault; **ainda sem** os segredos do Vault (o cron não faz nada).
+3. Stripe em **modo teste**: métodos, produtos fixos, webhook e chave restrita (`supabase/functions/README.md`); segredos das
+   Edge Functions com `STRIPE_MODO=teste` e `FATURACAO_EMISSOR=falso`; publicar as funções.
+4. Contratos e dados de faturação dos lares-piloto; decidir as entradas anteriores ao arranque (playbook).
+5. Segredos do Vault → o cron começa. Ensaio completo num ramo/projeto de teste: compra (cartão, MB WAY, Multibanco),
+   mês por entrada, mensalidade, reembolso, contestação.
+6. Moloni: conta, série comunicada à AT, credenciais e ids (`MOLONI_*`); verificar cada endpoint numa série de testes.
+7. Ligar a interface (`faturacaoDeResumo`, `acessoDeLinha`, as funções `acesso-checkout`, `faturacao-*`, `plano-instituicao`).
+8. Produção: `STRIPE_MODO=producao`, chave `rk_live_…`, webhook de produção, `FATURACAO_EMISSOR=moloni` (a configuração
+   recusa `falso` em produção). Contabilista: as perguntas de `supabase/functions/README.md`.

@@ -31,6 +31,14 @@
  *     lê os da sua ficha, o autor a sua avaliação). A versão grátis usa instituicoes_publicas,
  *     disponibilidade_agregada() e avaliacoes_instituicao(). acessos_familia: o próprio lê a sua linha; só o
  *     servidor escreve (private.estender_acesso).
+ *   * FATURAÇÃO (20261013120000): nenhum cliente escreve nestas tabelas (só as funções do servidor). O dono do lar
+ *     lê as suas linhas de contratos (sem notas), dados_faturacao (sem as colunas stripe_ e moloni_), contestacoes_entrada,
+ *     subscricoes_instituicao (sem stripe_subscription_id), faturas (sem rascunhos nem as colunas stripe_, tentativas,
+ *     divergente) e fatura_linhas; a família as suas pagamentos_familia (sem as colunas stripe_ nem demonstracao) e
+ *     consentimentos_acesso (sem user_id/ip_truncado). documentos_fiscais: só emitidos, o lar as suas FT/RC e a
+ *     família as suas FR, e só id, tipo, origem, estado, numero, data, emitido_em, total_centimos, iva_centimos,
+ *     fatura_id e pagamento_id. stripe_eventos não é legível. A página Faturação usa faturacao_resumo() →
+ *     faturacaoDeResumo; as funções servico_… e resolver_contestacao são só da service_role (Edge Functions).
  */
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
@@ -417,6 +425,449 @@ export type Database = {
           FK<'casos_perfil_id_fkey', 'perfil_id', 'perfis_cuidados'>,
         ]
       }
+      consentimentos_acesso: {
+        Row: {
+          id: string
+          user_id: string | null
+          pagamento_id: string
+          plano: Database['public']['Enums']['plano_familia']
+          texto_versao: string
+          aceite_em: string
+          ip_truncado: string | null
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          pagamento_id: string
+          plano: Database['public']['Enums']['plano_familia']
+          texto_versao: string
+          aceite_em?: string
+          ip_truncado?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          pagamento_id?: string
+          plano?: Database['public']['Enums']['plano_familia']
+          texto_versao?: string
+          aceite_em?: string
+          ip_truncado?: string | null
+        }
+        Relationships: [
+          FK<'consentimentos_acesso_pagamento_id_fkey', 'pagamento_id', 'pagamentos_familia'>,
+        ]
+      }
+      contestacoes_entrada: {
+        Row: {
+          candidatura_id: string
+          instituicao_id: string
+          estado: Database['public']['Enums']['estado_contestacao']
+          motivo: string
+          contestada_em: string
+          resolvida_em: string | null
+          nota_resolucao: string | null
+        }
+        Insert: {
+          candidatura_id: string
+          instituicao_id: string
+          estado?: Database['public']['Enums']['estado_contestacao']
+          motivo: string
+          contestada_em?: string
+          resolvida_em?: string | null
+          nota_resolucao?: string | null
+        }
+        Update: {
+          candidatura_id?: string
+          instituicao_id?: string
+          estado?: Database['public']['Enums']['estado_contestacao']
+          motivo?: string
+          contestada_em?: string
+          resolvida_em?: string | null
+          nota_resolucao?: string | null
+        }
+        Relationships: [
+          FK<'contestacoes_entrada_candidatura_id_fkey', 'candidatura_id', 'candidaturas'>,
+          FK<'contestacoes_entrada_instituicao_id_fkey', 'instituicao_id', 'instituicoes'>,
+          FK<'contestacoes_entrada_instituicao_id_fkey', 'instituicao_id', 'instituicoes_publicas'>,
+        ]
+      }
+      contratos: {
+        Row: {
+          id: string
+          instituicao_id: string
+          referencia: string
+          taxa_entrada_centimos: number
+          iva_percent: number
+          regiao_fiscal: Database['public']['Enums']['regiao_fiscal']
+          inicio: string
+          fim: string | null
+          notas: string | null
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          instituicao_id: string
+          referencia: string
+          taxa_entrada_centimos?: number
+          iva_percent?: number
+          regiao_fiscal?: Database['public']['Enums']['regiao_fiscal']
+          inicio: string
+          fim?: string | null
+          notas?: string | null
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          instituicao_id?: string
+          referencia?: string
+          taxa_entrada_centimos?: number
+          iva_percent?: number
+          regiao_fiscal?: Database['public']['Enums']['regiao_fiscal']
+          inicio?: string
+          fim?: string | null
+          notas?: string | null
+          criado_em?: string
+        }
+        Relationships: [
+          FK<'contratos_instituicao_id_fkey', 'instituicao_id', 'instituicoes'>,
+          FK<'contratos_instituicao_id_fkey', 'instituicao_id', 'instituicoes_publicas'>,
+        ]
+      }
+      dados_faturacao: {
+        Row: {
+          instituicao_id: string
+          razao_social: string
+          nif: string
+          morada: string
+          codigo_postal: string
+          localidade: string
+          email: string
+          stripe_customer_id: string | null
+          stripe_payment_method_id: string | null
+          moloni_cliente_id: string | null
+          metodo_tipo: Database['public']['Enums']['metodo_pagamento_b2b'] | null
+          metodo_ultimos4: string | null
+          metodo_banco: string | null
+          metodo_validade: string | null
+          metodo_mandato_ref: string | null
+          metodo_atualizado_em: string | null
+          criado_em: string
+          atualizado_em: string
+        }
+        Insert: {
+          instituicao_id: string
+          razao_social: string
+          nif: string
+          morada: string
+          codigo_postal: string
+          localidade: string
+          email: string
+          stripe_customer_id?: string | null
+          stripe_payment_method_id?: string | null
+          moloni_cliente_id?: string | null
+          metodo_tipo?: Database['public']['Enums']['metodo_pagamento_b2b'] | null
+          metodo_ultimos4?: string | null
+          metodo_banco?: string | null
+          metodo_validade?: string | null
+          metodo_mandato_ref?: string | null
+          metodo_atualizado_em?: string | null
+          criado_em?: string
+          atualizado_em?: string
+        }
+        Update: {
+          instituicao_id?: string
+          razao_social?: string
+          nif?: string
+          morada?: string
+          codigo_postal?: string
+          localidade?: string
+          email?: string
+          stripe_customer_id?: string | null
+          stripe_payment_method_id?: string | null
+          moloni_cliente_id?: string | null
+          metodo_tipo?: Database['public']['Enums']['metodo_pagamento_b2b'] | null
+          metodo_ultimos4?: string | null
+          metodo_banco?: string | null
+          metodo_validade?: string | null
+          metodo_mandato_ref?: string | null
+          metodo_atualizado_em?: string | null
+          criado_em?: string
+          atualizado_em?: string
+        }
+        Relationships: [
+          FK<'dados_faturacao_instituicao_id_fkey', 'instituicao_id', 'instituicoes'>,
+          FK<'dados_faturacao_instituicao_id_fkey', 'instituicao_id', 'instituicoes_publicas'>,
+        ]
+      }
+      documentos_fiscais: {
+        Row: {
+          id: string
+          ordem: number
+          tipo: Database['public']['Enums']['tipo_documento_fiscal']
+          origem: Database['public']['Enums']['origem_documento']
+          estado: Database['public']['Enums']['estado_documento_fiscal']
+          chave: string
+          instituicao_id: string | null
+          user_id: string | null
+          pagamento_id: string | null
+          fatura_id: string | null
+          documento_origem_id: string | null
+          data: string
+          vencimento: string | null
+          cliente: Json
+          linhas: Json
+          pagamento: Json | null
+          total_centimos: number
+          iva_centimos: number
+          numero: string | null
+          externo_id: string | null
+          emissor: Database['public']['Enums']['emissor_documento'] | null
+          emitido_em: string | null
+          tentativas: number
+          ultimo_erro: string | null
+          proxima_tentativa_em: string | null
+          demonstracao: boolean
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          ordem?: never
+          tipo: Database['public']['Enums']['tipo_documento_fiscal']
+          origem: Database['public']['Enums']['origem_documento']
+          estado?: Database['public']['Enums']['estado_documento_fiscal']
+          chave: string
+          instituicao_id?: string | null
+          user_id?: string | null
+          pagamento_id?: string | null
+          fatura_id?: string | null
+          documento_origem_id?: string | null
+          data: string
+          vencimento?: string | null
+          cliente: Json
+          linhas?: Json
+          pagamento?: Json | null
+          total_centimos: number
+          iva_centimos: number
+          numero?: string | null
+          externo_id?: string | null
+          emissor?: Database['public']['Enums']['emissor_documento'] | null
+          emitido_em?: string | null
+          tentativas?: number
+          ultimo_erro?: string | null
+          proxima_tentativa_em?: string | null
+          demonstracao?: boolean
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          ordem?: never
+          tipo?: Database['public']['Enums']['tipo_documento_fiscal']
+          origem?: Database['public']['Enums']['origem_documento']
+          estado?: Database['public']['Enums']['estado_documento_fiscal']
+          chave?: string
+          instituicao_id?: string | null
+          user_id?: string | null
+          pagamento_id?: string | null
+          fatura_id?: string | null
+          documento_origem_id?: string | null
+          data?: string
+          vencimento?: string | null
+          cliente?: Json
+          linhas?: Json
+          pagamento?: Json | null
+          total_centimos?: number
+          iva_centimos?: number
+          numero?: string | null
+          externo_id?: string | null
+          emissor?: Database['public']['Enums']['emissor_documento'] | null
+          emitido_em?: string | null
+          tentativas?: number
+          ultimo_erro?: string | null
+          proxima_tentativa_em?: string | null
+          demonstracao?: boolean
+          criado_em?: string
+        }
+        Relationships: [
+          FK<'documentos_fiscais_instituicao_id_fkey', 'instituicao_id', 'instituicoes'>,
+          FK<'documentos_fiscais_instituicao_id_fkey', 'instituicao_id', 'instituicoes_publicas'>,
+          FK<'documentos_fiscais_pagamento_id_fkey', 'pagamento_id', 'pagamentos_familia'>,
+          FK<'documentos_fiscais_fatura_id_fkey', 'fatura_id', 'faturas'>,
+          FK<'documentos_fiscais_documento_origem_id_fkey', 'documento_origem_id', 'documentos_fiscais'>,
+        ]
+      }
+      fatura_linhas: {
+        Row: {
+          id: string
+          ordem: number
+          instituicao_id: string
+          candidatura_id: string | null
+          fatura_id: string | null
+          documento_id: string | null
+          contrato_id: string | null
+          referencia: string
+          entrada_data: string
+          faturavel_desde: string
+          valor_centimos: number
+          iva_percent: number
+          iva_centimos: number
+          total_centimos: number
+          anulada_em: string | null
+          motivo_anulacao: string | null
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          ordem?: never
+          instituicao_id: string
+          candidatura_id?: string | null
+          fatura_id?: string | null
+          documento_id?: string | null
+          contrato_id?: string | null
+          referencia: string
+          entrada_data: string
+          faturavel_desde: string
+          valor_centimos: number
+          iva_percent: number
+          iva_centimos: number
+          total_centimos?: never
+          anulada_em?: string | null
+          motivo_anulacao?: string | null
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          ordem?: never
+          instituicao_id?: string
+          candidatura_id?: string | null
+          fatura_id?: string | null
+          documento_id?: string | null
+          contrato_id?: string | null
+          referencia?: string
+          entrada_data?: string
+          faturavel_desde?: string
+          valor_centimos?: number
+          iva_percent?: number
+          iva_centimos?: number
+          total_centimos?: never
+          anulada_em?: string | null
+          motivo_anulacao?: string | null
+          criado_em?: string
+        }
+        Relationships: [
+          FK<'fatura_linhas_instituicao_id_fkey', 'instituicao_id', 'instituicoes'>,
+          FK<'fatura_linhas_instituicao_id_fkey', 'instituicao_id', 'instituicoes_publicas'>,
+          FK<'fatura_linhas_candidatura_id_fkey', 'candidatura_id', 'candidaturas'>,
+          FK<'fatura_linhas_fatura_id_fkey', 'fatura_id', 'faturas'>,
+          FK<'fatura_linhas_documento_id_fkey', 'documento_id', 'documentos_fiscais'>,
+          FK<'fatura_linhas_contrato_id_fkey', 'contrato_id', 'contratos'>,
+        ]
+      }
+      faturas: {
+        Row: {
+          id: string
+          ordem: number
+          instituicao_id: string
+          origem: Database['public']['Enums']['origem_fatura']
+          contrato_id: string | null
+          periodo: string
+          estado: Database['public']['Enums']['estado_fatura']
+          modo_documento: Database['public']['Enums']['modo_documento'] | null
+          cliente: Json | null
+          subtotal_centimos: number
+          iva_centimos: number
+          total_centimos: number
+          moeda: string
+          cobranca: Database['public']['Enums']['cobranca_fatura']
+          debito_em: string | null
+          stripe_invoice_id: string | null
+          stripe_subscription_id: string | null
+          numero: string | null
+          url_pagamento: string | null
+          periodo_inicio: string | null
+          periodo_fim: string | null
+          emitida_em: string | null
+          paga_em: string | null
+          falhou_em: string | null
+          anulada_em: string | null
+          motivo_falha: Database['public']['Enums']['motivo_falha'] | null
+          metodo_pago: string | null
+          tentativas: number
+          divergente: boolean
+          criado_em: string
+          atualizado_em: string
+        }
+        Insert: {
+          id?: string
+          ordem?: never
+          instituicao_id: string
+          origem: Database['public']['Enums']['origem_fatura']
+          contrato_id?: string | null
+          periodo: string
+          estado?: Database['public']['Enums']['estado_fatura']
+          modo_documento?: Database['public']['Enums']['modo_documento'] | null
+          cliente?: Json | null
+          subtotal_centimos: number
+          iva_centimos: number
+          total_centimos: number
+          moeda?: string
+          cobranca?: Database['public']['Enums']['cobranca_fatura']
+          debito_em?: string | null
+          stripe_invoice_id?: string | null
+          stripe_subscription_id?: string | null
+          numero?: string | null
+          url_pagamento?: string | null
+          periodo_inicio?: string | null
+          periodo_fim?: string | null
+          emitida_em?: string | null
+          paga_em?: string | null
+          falhou_em?: string | null
+          anulada_em?: string | null
+          motivo_falha?: Database['public']['Enums']['motivo_falha'] | null
+          metodo_pago?: string | null
+          tentativas?: number
+          divergente?: boolean
+          criado_em?: string
+          atualizado_em?: string
+        }
+        Update: {
+          id?: string
+          ordem?: never
+          instituicao_id?: string
+          origem?: Database['public']['Enums']['origem_fatura']
+          contrato_id?: string | null
+          periodo?: string
+          estado?: Database['public']['Enums']['estado_fatura']
+          modo_documento?: Database['public']['Enums']['modo_documento'] | null
+          cliente?: Json | null
+          subtotal_centimos?: number
+          iva_centimos?: number
+          total_centimos?: number
+          moeda?: string
+          cobranca?: Database['public']['Enums']['cobranca_fatura']
+          debito_em?: string | null
+          stripe_invoice_id?: string | null
+          stripe_subscription_id?: string | null
+          numero?: string | null
+          url_pagamento?: string | null
+          periodo_inicio?: string | null
+          periodo_fim?: string | null
+          emitida_em?: string | null
+          paga_em?: string | null
+          falhou_em?: string | null
+          anulada_em?: string | null
+          motivo_falha?: Database['public']['Enums']['motivo_falha'] | null
+          metodo_pago?: string | null
+          tentativas?: number
+          divergente?: boolean
+          criado_em?: string
+          atualizado_em?: string
+        }
+        Relationships: [
+          FK<'faturas_instituicao_id_fkey', 'instituicao_id', 'instituicoes'>,
+          FK<'faturas_instituicao_id_fkey', 'instituicao_id', 'instituicoes_publicas'>,
+          FK<'faturas_contrato_id_fkey', 'contrato_id', 'contratos'>,
+        ]
+      }
       favoritos: {
         Row: {
           user_id: string
@@ -649,6 +1100,86 @@ export type Database = {
           FK<'notificacoes_candidatura_id_fkey', 'candidatura_id', 'candidaturas'>,
         ]
       }
+      pagamentos_familia: {
+        Row: {
+          id: string
+          ordem: number
+          user_id: string | null
+          plano: Database['public']['Enums']['plano_familia']
+          valor_centimos: number
+          dias: number
+          metodo: Database['public']['Enums']['metodo_familia'] | null
+          estado: Database['public']['Enums']['estado_pagamento_familia']
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          multibanco_entidade: string | null
+          multibanco_referencia: string | null
+          multibanco_expira_em: string | null
+          fatura_nif: string | null
+          fatura_nome: string | null
+          motivo_falha: Database['public']['Enums']['motivo_falha'] | null
+          reembolsado_centimos: number
+          reembolsado_em: string | null
+          demonstracao: boolean
+          criado_em: string
+          atualizado_em: string
+          pago_em: string | null
+          documento_id: string | null
+        }
+        Insert: {
+          id?: string
+          ordem?: never
+          user_id?: string | null
+          plano: Database['public']['Enums']['plano_familia']
+          valor_centimos: number
+          dias: number
+          metodo?: Database['public']['Enums']['metodo_familia'] | null
+          estado?: Database['public']['Enums']['estado_pagamento_familia']
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          multibanco_entidade?: string | null
+          multibanco_referencia?: string | null
+          multibanco_expira_em?: string | null
+          fatura_nif?: string | null
+          fatura_nome?: string | null
+          motivo_falha?: Database['public']['Enums']['motivo_falha'] | null
+          reembolsado_centimos?: number
+          reembolsado_em?: string | null
+          demonstracao?: boolean
+          criado_em?: string
+          atualizado_em?: string
+          pago_em?: string | null
+          documento_id?: string | null
+        }
+        Update: {
+          id?: string
+          ordem?: never
+          user_id?: string | null
+          plano?: Database['public']['Enums']['plano_familia']
+          valor_centimos?: number
+          dias?: number
+          metodo?: Database['public']['Enums']['metodo_familia'] | null
+          estado?: Database['public']['Enums']['estado_pagamento_familia']
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          multibanco_entidade?: string | null
+          multibanco_referencia?: string | null
+          multibanco_expira_em?: string | null
+          fatura_nif?: string | null
+          fatura_nome?: string | null
+          motivo_falha?: Database['public']['Enums']['motivo_falha'] | null
+          reembolsado_centimos?: number
+          reembolsado_em?: string | null
+          demonstracao?: boolean
+          criado_em?: string
+          atualizado_em?: string
+          pago_em?: string | null
+          documento_id?: string | null
+        }
+        Relationships: [
+          FK<'pagamentos_familia_documento_id_fkey', 'documento_id', 'documentos_fiscais'>,
+        ]
+      }
       perfis_cuidados: {
         Row: {
           id: string
@@ -853,6 +1384,78 @@ export type Database = {
           FK<'saidas_mensais_instituicao_id_fkey', 'instituicao_id', 'instituicoes_publicas'>,
         ]
       }
+      stripe_eventos: {
+        Row: {
+          id: string
+          tipo: string
+          livemode: boolean
+          criado_em: string
+          recebido_em: string
+          processado_em: string | null
+          tentativas: number
+          erro: string | null
+          operacoes: Json | null
+        }
+        Insert: {
+          id: string
+          tipo: string
+          livemode: boolean
+          criado_em: string
+          recebido_em?: string
+          processado_em?: string | null
+          tentativas?: number
+          erro?: string | null
+          operacoes?: Json | null
+        }
+        Update: {
+          id?: string
+          tipo?: string
+          livemode?: boolean
+          criado_em?: string
+          recebido_em?: string
+          processado_em?: string | null
+          tentativas?: number
+          erro?: string | null
+          operacoes?: Json | null
+        }
+        Relationships: []
+      }
+      subscricoes_instituicao: {
+        Row: {
+          instituicao_id: string
+          stripe_subscription_id: string
+          estado: Database['public']['Enums']['estado_subscricao']
+          inicio: string | null
+          compromisso_ate: string | null
+          cancelada_em: string | null
+          criado_em: string
+          atualizado_em: string
+        }
+        Insert: {
+          instituicao_id: string
+          stripe_subscription_id: string
+          estado: Database['public']['Enums']['estado_subscricao']
+          inicio?: string | null
+          compromisso_ate?: string | null
+          cancelada_em?: string | null
+          criado_em?: string
+          atualizado_em?: string
+        }
+        Update: {
+          instituicao_id?: string
+          stripe_subscription_id?: string
+          estado?: Database['public']['Enums']['estado_subscricao']
+          inicio?: string | null
+          compromisso_ate?: string | null
+          cancelada_em?: string | null
+          criado_em?: string
+          atualizado_em?: string
+        }
+        Relationships: [
+          FK<'subscricoes_instituicao_instituicao_id_fkey', 'instituicao_id', 'instituicoes'>,
+          FK<'subscricoes_instituicao_instituicao_id_fkey', 'instituicao_id', 'instituicoes_publicas'>,
+        ]
+      }
       visitas: {
         Row: {
           id: string
@@ -1014,6 +1617,11 @@ export type Database = {
         Args: { p_candidatura_id: string; p_nota: number; p_texto: string; p_aspetos: Json }
         Returns: Database['public']['Tables']['avaliacoes']['Row']
       }
+      contestar_entrada: {
+        Args: { p_candidatura_id: string; p_motivo: string }
+        /** { candidatura_id, estado: 'aberta', contestada_em } */
+        Returns: Json
+      }
       confirmar_entrada_familia: {
         Args: { p_candidatura_id: string; p_data: string }
         Returns: Database['public']['Tables']['candidaturas']['Row']
@@ -1054,6 +1662,16 @@ export type Database = {
       escolher_plano_instituicao: {
         Args: { p_plano: Database['public']['Enums']['plano_instituicao'] }
         Returns: PlanoDaInstituicao[]
+      }
+      faturacao_resumo: {
+        Args: never
+        /** ResumoFaturacaoRpc (supabase/functions/_shared/portas.ts) → faturacaoDeResumo */
+        Returns: Json
+      }
+      guardar_dados_faturacao: {
+        Args: { p_razao_social: string; p_nif: string; p_morada: string; p_codigo_postal: string; p_localidade: string; p_email: string }
+        /** { razao_social, nif, morada, codigo_postal, localidade, email, atualizado_em } */
+        Returns: Json
       }
       instituicoes_completas: {
         Args: { p_ids?: string[] }
@@ -1159,9 +1777,99 @@ export type Database = {
         Args: never
         Returns: string
       }
+      resolver_contestacao: {
+        /** só service_role (equipa) */
+        Args: { p_candidatura_id: string; p_decisao: string; p_nota?: string | null }
+        Returns: Json
+      }
       responder_vaga: {
         Args: { p_candidatura_id: string; p_aceitar: boolean }
         Returns: Database['public']['Tables']['candidaturas']['Row']
+      }
+      // ——— só service_role (Edge Functions com a chave secreta): o contrato de supabase/functions/_shared/portas.ts
+      servico_acesso_iniciar: {
+        Args: { p_user_id: string; p_plano: string; p_texto_versao: string; p_ip?: string | null; p_nif?: string | null; p_nome_fiscal?: string | null }
+        Returns: Json
+      }
+      servico_acesso_sessao_criada: {
+        Args: { p_pagamento_id: string; p_session_id: string }
+        Returns: undefined
+      }
+      servico_cobranca_criada: {
+        Args: { p_fatura_id: string; p_stripe_invoice_id: string; p_numero: string | null; p_url: string | null; p_cobranca: string; p_debito_em: string | null }
+        Returns: undefined
+      }
+      servico_cobranca_debito_iniciado: {
+        Args: { p_fatura_id: string; p_estado: string; p_motivo: string | null; p_em: string }
+        Returns: undefined
+      }
+      servico_cobrancas_a_debitar: {
+        Args: { p_agora: string; p_limite: number }
+        Returns: Json
+      }
+      servico_contexto_instituicao: {
+        Args: { p_instituicao_id: string }
+        Returns: Json
+      }
+      servico_definir_cliente_stripe: {
+        Args: { p_instituicao_id: string; p_customer_id: string }
+        Returns: string
+      }
+      servico_documento_emitido: {
+        Args: { p_id: string; p_externo_id: string; p_numero: string; p_total_centimos: number; p_iva_centimos: number; p_emitido_em: string; p_emissor: string }
+        Returns: undefined
+      }
+      servico_documento_externo: {
+        Args: { p_id: string }
+        Returns: Json
+      }
+      servico_documento_falhou: {
+        Args: { p_id: string; p_erro: string }
+        Returns: undefined
+      }
+      servico_documentos_pendentes: {
+        Args: { p_agora: string; p_limite: number }
+        Returns: Json
+      }
+      servico_evento_aplicar: {
+        Args: { p_id: string; p_operacoes: Json }
+        Returns: boolean
+      }
+      servico_evento_falhou: {
+        Args: { p_id: string; p_erro: string }
+        Returns: undefined
+      }
+      servico_evento_iniciar: {
+        Args: { p_id: string; p_tipo: string; p_livemode: boolean; p_criado_em: string }
+        Returns: string
+      }
+      servico_iniciar_execucao: {
+        Args: { p_fase: string; p_duracao_segundos: number }
+        Returns: boolean
+      }
+      servico_preparar_cobrancas: {
+        Args: { p_modo: string; p_agora: string; p_limite: number }
+        Returns: Json
+      }
+      servico_reservar_documentos: {
+        Args: { p_modo: string; p_agora: string; p_limite: number }
+        Returns: Json
+      }
+      servico_subscricao_contexto: {
+        Args: { p_instituicao_id: string }
+        Returns: Json
+      }
+      servico_subscricao_registar: {
+        Args: { p_instituicao_id: string; p_stripe_subscription_id: string; p_estado: string; p_inicio: string | null }
+        Returns: undefined
+      }
+      servico_subscricoes_a_sincronizar: {
+        Args: { p_limite: number }
+        Returns: Json
+      }
+      servico_terminar_execucao: {
+        Args: { p_fase: string; p_resumo: Json }
+        Returns: undefined
       }
       vagas_por_token: {
         Args: { p_token: string }
@@ -1169,19 +1877,34 @@ export type Database = {
       }
     }
     Enums: {
+      cobranca_fatura: 'debito_automatico' | 'pagamento_por_link'
+      emissor_documento: 'moloni' | 'falso'
       estado_candidatura: 'enviada' | 'em_analise' | 'lista_espera' | 'vaga_proposta' | 'aceite' | 'admitida' | 'recusada' | 'cancelada'
       estado_caso: 'aberto' | 'colocado' | 'fechado'
+      estado_contestacao: 'aberta' | 'aceite' | 'rejeitada' | 'retirada'
+      estado_documento_fiscal: 'pendente' | 'emitido' | 'erro' | 'anulado'
+      estado_fatura: 'rascunho' | 'emitida' | 'em_processamento' | 'paga' | 'falhou' | 'anulada'
+      estado_pagamento_familia: 'pendente' | 'a_aguardar_pagamento' | 'pago' | 'falhou' | 'expirado' | 'reembolsado'
+      estado_subscricao: 'incompleta' | 'ativa' | 'em_atraso' | 'cancelada'
       estado_verificacao: 'verificado' | 'pendente' | 'nao_verificado'
       estado_visita: 'pedida' | 'confirmada' | 'realizada'
       faixa_preco: 'ate_1000' | '1000_2000' | 'mais_2000' | 'conforme_rendimentos'
       grau_dependencia: 'autonomo' | 'ligeira' | 'moderada' | 'grave'
+      metodo_familia: 'card' | 'mb_way' | 'multibanco'
+      metodo_pagamento_b2b: 'sepa_debit' | 'card'
+      modo_documento: 'fatura_por_entrada' | 'fatura_mensal' | 'fatura_recibo_mensal'
+      motivo_falha: 'saldo_insuficiente' | 'mandato_revogado' | 'cartao_recusado' | 'cartao_expirado' | 'autenticacao_falhou' | 'referencia_expirada' | 'pagamento_cancelado' | 'outro'
       natureza: 'ipss' | 'misericordia' | 'privado'
+      origem_documento: 'entradas' | 'subscricao' | 'acesso'
+      origem_fatura: 'entradas' | 'subscricao'
       origem_pedido: 'familia' | 'profissional'
       plano_familia: 'acesso_30' | 'acesso_90'
       plano_instituicao: 'por_entrada' | 'mensal'
+      regiao_fiscal: 'continente' | 'madeira' | 'acores'
       resultado_visita: 'aderiu' | 'interessado' | 'voltar' | 'recusou'
       role_utilizador: 'familia' | 'lar' | 'profissional' | 'equipa'
       taxa_entrada: 'aplicavel' | 'incluida' | 'isenta'
+      tipo_documento_fiscal: 'FT' | 'FR' | 'RC' | 'NC'
       tipo_notificacao: 'vaga' | 'candidatura' | 'visita' | 'sistema'
       tipo_quarto: 'individual' | 'duplo' | 'casal'
       tipo_resposta: 'erpi' | 'residencia' | 'centro_dia'
@@ -1209,19 +1932,34 @@ export type Enums<T extends keyof PublicSchema['Enums']> = PublicSchema['Enums']
 export const Constants = {
   public: {
     Enums: {
+      cobranca_fatura: ['debito_automatico', 'pagamento_por_link'],
+      emissor_documento: ['moloni', 'falso'],
       estado_candidatura: ['enviada', 'em_analise', 'lista_espera', 'vaga_proposta', 'aceite', 'admitida', 'recusada', 'cancelada'],
       estado_caso: ['aberto', 'colocado', 'fechado'],
+      estado_contestacao: ['aberta', 'aceite', 'rejeitada', 'retirada'],
+      estado_documento_fiscal: ['pendente', 'emitido', 'erro', 'anulado'],
+      estado_fatura: ['rascunho', 'emitida', 'em_processamento', 'paga', 'falhou', 'anulada'],
+      estado_pagamento_familia: ['pendente', 'a_aguardar_pagamento', 'pago', 'falhou', 'expirado', 'reembolsado'],
+      estado_subscricao: ['incompleta', 'ativa', 'em_atraso', 'cancelada'],
       estado_verificacao: ['verificado', 'pendente', 'nao_verificado'],
       estado_visita: ['pedida', 'confirmada', 'realizada'],
       faixa_preco: ['ate_1000', '1000_2000', 'mais_2000', 'conforme_rendimentos'],
       grau_dependencia: ['autonomo', 'ligeira', 'moderada', 'grave'],
+      metodo_familia: ['card', 'mb_way', 'multibanco'],
+      metodo_pagamento_b2b: ['sepa_debit', 'card'],
+      modo_documento: ['fatura_por_entrada', 'fatura_mensal', 'fatura_recibo_mensal'],
+      motivo_falha: ['saldo_insuficiente', 'mandato_revogado', 'cartao_recusado', 'cartao_expirado', 'autenticacao_falhou', 'referencia_expirada', 'pagamento_cancelado', 'outro'],
       natureza: ['ipss', 'misericordia', 'privado'],
+      origem_documento: ['entradas', 'subscricao', 'acesso'],
+      origem_fatura: ['entradas', 'subscricao'],
       origem_pedido: ['familia', 'profissional'],
       plano_familia: ['acesso_30', 'acesso_90'],
       plano_instituicao: ['por_entrada', 'mensal'],
+      regiao_fiscal: ['continente', 'madeira', 'acores'],
       resultado_visita: ['aderiu', 'interessado', 'voltar', 'recusou'],
       role_utilizador: ['familia', 'lar', 'profissional', 'equipa'],
       taxa_entrada: ['aplicavel', 'incluida', 'isenta'],
+      tipo_documento_fiscal: ['FT', 'FR', 'RC', 'NC'],
       tipo_notificacao: ['vaga', 'candidatura', 'visita', 'sistema'],
       tipo_quarto: ['individual', 'duplo', 'casal'],
       tipo_resposta: ['erpi', 'residencia', 'centro_dia'],

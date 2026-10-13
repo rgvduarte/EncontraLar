@@ -1684,7 +1684,7 @@ begin
   end if;
   update public.documentos_fiscais d
      set estado = 'emitido', externo_id = p_externo_id, numero = p_numero, emitido_em = coalesce(p_emitido_em, now()),
-         emissor = p_emissor::public.emissor_documento, ultimo_erro = null, proxima_tentativa_em = null
+         emissor = p_emissor::public.emissor_documento, proxima_tentativa_em = null   -- ultimo_erro fica (auditoria)
    where d.id = v_d.id;
 
   if v_d.tipo = 'FT' and v_d.instituicao_id is not null then
@@ -2047,7 +2047,8 @@ begin
     end if;
     perform private.aplicar_operacao_evento(v_op.op);
   end loop;
-  update public.stripe_eventos e set processado_em = now(), erro = null, operacoes = p_operacoes where e.id = p_id;
+  -- erro fica com a última falha (auditoria): processado_em diz que acabou por ser aplicado
+  update public.stripe_eventos e set processado_em = now(), operacoes = p_operacoes where e.id = p_id;
   return true;
 end;
 $$;

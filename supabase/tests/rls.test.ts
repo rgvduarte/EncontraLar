@@ -238,3 +238,64 @@ describe('papéis e sessões em como()', () => {
     expect(r[0]!.a).toBe('true')
   })
 })
+
+describe('faturação: quem lê o quê (RLS e privilégios por coluna)', () => {
+  it('o lar lê as suas linhas sem stripe_*/moloni_*; a família as suas compras e FR; ninguém mais; só documentos emitidos', async () => {
+    const { BDPGlite, MontagemSql, criarConta } = await import('./faturacao-bd')
+    const bd = new BDPGlite(db)
+    const m = new MontagemSql(db)
+    const agora = Date.now()
+    const em = (ms: number) => new Date(agora + ms).toISOString()
+    const dono = await m.lar('lar-rls-fat', { stripe_customer_id: 'cus_rls', metodo: { tipo: 'sepa_debit', ultimos4: '3000', mandato_ref: 'M-R', pm: 'pm_rls' } })
+    const outroDono = await m.lar('lar-rls-outro')
+    await adm("insert into public.contratos (instituicao_id, referencia, inicio, notas) values ('lar-rls-fat', 'CT-RLS-1', current_date - 10, 'interno')")
+    await m.entrada({ candidatura_id: 'cafe0001-0000-4000-8000-000000000001', instituicao_id: 'lar-rls-fat', pedido_criado_em: em(-30 * 86_400_000), entrada_data: em(-6 * 86_400_000).slice(0, 10), lar_em: em(-5 * 86_400_000), familia_em: null, taxa: 'aplicavel' })
+    await bd.rpc('servico_reservar_documentos', { p_modo: 'fatura_por_entrada', p_agora: em(0), p_limite: 10 })
+    const fam = await criarConta(db, null, 'familia', false)
+    const outraFam = await criarConta(db, null, 'familia', false)
+    const ini = await bd.rpc('servico_acesso_iniciar', { p_user_id: fam, p_plano: 'acesso_30', p_texto_versao: 'v', p_ip: null, p_nif: null, p_nome_fiscal: null })
+    await bd.rpc('servico_evento_iniciar', { p_id: 'evt_rls', p_tipo: 'x', p_livemode: false, p_criado_em: em(0) })
+    await bd.rpc('servico_evento_aplicar', { p_id: 'evt_rls', p_operacoes: [{ op: 'acesso_pago', session_id: 'cs_test_rls', pagamento_id: ini.pagamento_id, payment_intent_id: 'pi_rls', metodo: 'card', valor_centimos: 1490, pago_em: em(0) }] })
+
+    // pendentes: ninguém os vê (nem o dono, nem a família)
+    const docs = await adm<{ id: string; tipo: string }>('select id, tipo from public.documentos_fiscais order by ordem')
+    expect(docs.map((d) => d.tipo)).toEqual(['FT', 'FR'])
+    expect(await q(db, dono, 'select id from public.documentos_fiscais')).toEqual([])
+    expect(await q(db, fam, 'select id from public.documentos_fiscais')).toEqual([])
+    for (const d of await bd.rpc('servico_documentos_pendentes', { p_agora: em(0), p_limite: 10 })) {
+      await bd.rpc('servico_documento_emitido', { p_id: d.id, p_externo_id: `falso:${d.chave}`, p_numero: `${d.tipo} F/1`, p_total_centimos: d.total_centimos, p_iva_centimos: d.iva_centimos, p_emitido_em: em(0), p_emissor: 'falso' })
+    }
+    const [ft, fr] = docs
+    // emitidos: o lar a sua FT, a família a sua FR (é o que faturacao-documento usa para provar a posse)
+    expect(await q(db, dono, 'select id, tipo, numero from public.documentos_fiscais')).toEqual([{ id: ft!.id, tipo: 'FT', numero: 'FT F/1' }])
+    expect(await q(db, fam, 'select id, tipo from public.documentos_fiscais')).toEqual([{ id: fr!.id, tipo: 'FR' }])
+    for (const quem of [outroDono, outraFam]) expect(await q(db, quem, 'select id from public.documentos_fiscais where id = any($1)', [[ft!.id, fr!.id]])).toEqual([])
+    expect(await erro(db, dono, 'select externo_id from public.documentos_fiscais')).toMatch(/permission denied/)
+    expect(await erro(db, fam, 'select cliente from public.documentos_fiscais')).toMatch(/permission denied/)
+
+    // dados fiscais e método: o dono sem as referências do Stripe/Moloni; mais ninguém
+    expect(await q(db, dono, 'select nif, metodo_ultimos4 from public.dados_faturacao')).toEqual([{ nif: '599999993', metodo_ultimos4: '3000' }])
+    expect(await erro(db, dono, 'select stripe_customer_id from public.dados_faturacao')).toMatch(/permission denied/)
+    expect(await erro(db, dono, 'select * from public.dados_faturacao')).toMatch(/permission denied/)
+    for (const quem of [outroDono, fam]) expect(await q(db, quem, "select instituicao_id from public.dados_faturacao where instituicao_id = 'lar-rls-fat'")).toEqual([])
+    expect(await q(db, outroDono, 'select instituicao_id from public.dados_faturacao')).toEqual([{ instituicao_id: 'lar-rls-outro' }])
+    // contrato sem as notas; linhas do próprio
+    expect(await q(db, dono, 'select referencia, taxa_entrada_centimos from public.contratos')).toEqual([{ referencia: 'CT-RLS-1', taxa_entrada_centimos: 15000 }])
+    expect(await erro(db, dono, 'select notas from public.contratos')).toMatch(/permission denied/)
+    expect(await q(db, dono, 'select valor_centimos from public.fatura_linhas')).toEqual([{ valor_centimos: 15000 }])
+    expect(await q(db, outroDono, 'select 1 from public.fatura_linhas')).toEqual([])
+    expect(await q(db, fam, 'select 1 from public.contratos')).toEqual([])
+
+    // a família: as suas compras sem stripe_*; o lar não as vê
+    expect(await q(db, fam, 'select estado, metodo from public.pagamentos_familia')).toEqual([{ estado: 'pago', metodo: 'card' }])
+    expect(await erro(db, fam, 'select stripe_payment_intent_id from public.pagamentos_familia')).toMatch(/permission denied/)
+    expect(await q(db, dono, 'select 1 from public.pagamentos_familia')).toEqual([])
+    expect(await q(db, outraFam, 'select 1 from public.consentimentos_acesso')).toEqual([])
+
+    // stripe_eventos: nenhum cliente; anon nem a tabela
+    expect(await erro(db, dono, 'select id from public.stripe_eventos')).toMatch(/permission denied/)
+    for (const t of ['dados_faturacao', 'faturas', 'documentos_fiscais', 'pagamentos_familia', 'stripe_eventos', 'subscricoes_instituicao']) {
+      expect(await erro(db, 'anon', `select 1 from public.${t}`), t).toMatch(/permission denied/)
+    }
+  })
+})
