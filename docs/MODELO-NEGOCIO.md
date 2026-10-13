@@ -49,6 +49,7 @@ Regras que não mudam:
 - **A versão grátis não expõe o negócio:** a camada viva (quais têm vaga, quantos lugares, preços, previsão, contactos) é do Acesso Família.
   - No protótipo o bloqueio é só de apresentação, porque os dados vivem no navegador.
   - Na versão com servidor, esses dados **não saem da base de dados** para quem não tem acesso: uma vista pública genérica e outra completa, com verificação do direito de acesso no servidor.
+  - **Exemplos nas páginas de conteúdo** (`/sobre`, `/para-lares`): no protótipo usam a instituição de demonstração, anónima («Casa de exemplo») na versão grátis. Em produção, o exemplo tem de ser uma casa **fictícia e fixa**, nunca os dados vivos de uma instituição real, mesmo anonimizados (`useExampleLar` cai hoje para "o primeiro lar com lista de espera" se a de demonstração não existir).
 - **A família de demonstração** (`familia@exemplo.pt`) tem um passe de 90 dias ativo. Para ver a versão grátis, explore sem entrar ou crie uma conta.
 
 Contrato técnico (protótipo):
