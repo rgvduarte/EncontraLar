@@ -56,7 +56,11 @@ export function ProximosPassos({
     {
       id: 'perfil',
       titulo: 'Descrever a pessoa de quem cuida',
-      detalhe: perfil ? `${nomeCurto(perfil.nome)}, ${perfil.idade} anos.` : 'As sugestões e os avisos passam a ser à medida.',
+      detalhe: perfil
+        ? `${nomeCurto(perfil.nome)}, ${perfil.idade} anos.`
+        : completo
+          ? 'As sugestões e os avisos passam a ser à medida.'
+          : 'As sugestões passam a ser à medida.',
       feito: Boolean(perfil),
       acao: { to: '/familia/perfil', label: 'Criar perfil' },
     },

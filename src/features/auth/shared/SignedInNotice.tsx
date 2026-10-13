@@ -3,10 +3,10 @@ import { Button, ButtonLink } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/misc'
 import { toast } from '@/components/ui/Toast'
 import { painelPath } from '@/components/layout/Header'
-import { logout, useLares, useMeuLar } from '@/lib/store'
+import { logout, useAcesso, useLares, useMeuLar } from '@/lib/store'
 import { AuthShell } from './AuthShell'
 import { Appear, cascade } from './Appear'
-import { motivoDoDestino } from './redirect'
+import { ehAcesso, motivoDoDestino, precisaDeAcesso } from './redirect'
 
 /** O botão para o painel diz o que lá está. */
 const IR_PARA_PAINEL: Record<Role, string> = {
@@ -24,6 +24,17 @@ function identificacao(user: User, nomeLar: string | undefined): string {
 }
 
 /**
+ * "Já pode …" só quando é verdade. O Acesso Família é das famílias: outra conta a caminho de /acesso segue sem
+ * frase (a página explica-lhe o seu caso). Numa família sem passe, pedir vaga, visita e alertas precisam dele.
+ */
+function fraseDoMotivo(motivo: string | null, destino: string, role: Role, completo: boolean): string | null {
+  if (!motivo) return null
+  if (ehAcesso(destino)) return role === 'familia' ? `Já pode ${motivo}.` : null
+  if (role === 'familia' && !completo && precisaDeAcesso(destino)) return `Para ${motivo}, precisa do Acesso Família.`
+  return `Já pode ${motivo}.`
+}
+
+/**
  * Já com sessão iniciada: quem é, continuar (para o painel ou para onde ia) ou terminar a sessão.
  * O botão diz para onde leva: "Ir para o painel" só quando o destino é o painel; senão "Continuar",
  * com uma frase a lembrar o que estava a fazer (ex.: pedir vaga num lar).
@@ -31,8 +42,10 @@ function identificacao(user: User, nomeLar: string | undefined): string {
 export function SignedInNotice({ user, destino, contexto }: { user: User; destino: string; contexto: 'entrar' | 'registar' }) {
   const lar = useMeuLar()
   const lares = useLares()
+  const { completo } = useAcesso()
   const paraPainel = destino === painelPath(user.role)
   const motivo = paraPainel ? null : motivoDoDestino(destino, lares)
+  const frase = contexto === 'registar' ? 'Para criar outra conta, termine primeiro esta sessão.' : fraseDoMotivo(motivo, destino, user.role, completo)
   const sair = () => {
     logout()
     toast.info('Sessão terminada')
@@ -46,11 +59,9 @@ export function SignedInNotice({ user, destino, contexto }: { user: User; destin
       title={<>Sessão iniciada como {user.nome}</>}
       subtitle={<span className="break-words">{identificacao(user, lar?.nome)}</span>}
     >
-      {(contexto === 'registar' || motivo) && (
+      {frase && (
         <Appear delay={cascade(0)} variant="fade">
-          <p className="mb-8 text-center text-balance text-ink-mute">
-            {contexto === 'registar' ? 'Para criar outra conta, termine primeiro esta sessão.' : `Já pode ${motivo}.`}
-          </p>
+          <p className="mb-8 text-center text-balance text-ink-mute">{frase}</p>
         </Appear>
       )}
       <Appear delay={cascade(1)} variant="up" className="flex flex-col gap-3">

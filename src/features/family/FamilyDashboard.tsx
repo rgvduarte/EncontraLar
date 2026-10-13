@@ -2,7 +2,7 @@ import { useEffect, type ComponentType, type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router'
 import { FileText, Heart, LayoutGrid, Settings, UserRound } from 'lucide-react'
 import { DashboardShell, type DashboardNavItem } from '@/components/layout/DashboardShell'
-import { useCurrentUser } from '@/lib/store'
+import { useAcesso, useCurrentUser } from '@/lib/store'
 import { prefersReducedMotion } from '@/lib/motion'
 import { usePedidos, usePerfisOrdenados } from './shared/data'
 import { DraftBanner } from './shared/DraftBanner'
@@ -34,12 +34,19 @@ const TITULOS: Record<Exclude<Seccao, ''>, { title: string; subtitle: string }> 
   pedidos: { title: 'Pedidos', subtitle: 'Em que ponto está cada pedido e quanto deverá esperar.' },
   guardados: { title: 'Guardados', subtitle: 'Compare lado a lado e saiba logo quando abre vaga.' },
   perfil: { title: 'Perfil de cuidados', subtitle: 'Quem precisa de cuidados, de quais e onde.' },
-  conta: { title: 'Conta', subtitle: 'Contactos, avisos e sessão.' },
+  conta: { title: 'Conta', subtitle: 'Contactos, Acesso Família, avisos e sessão.' },
+}
+
+/** Versão grátis: sem prometer o que é do Acesso Família (previsão, comparação, avisos de vaga). */
+const SUBTITULOS_GRATIS: Partial<Record<Exclude<Seccao, ''>, string>> = {
+  pedidos: 'Em que ponto está cada pedido.',
+  guardados: 'As instituições que guardou, sempre à mão.',
 }
 
 /** Painel da família: rotas aninhadas em /familia/*, dentro do DashboardShell (que desenha o h1). */
 export default function FamilyDashboard() {
   const user = useCurrentUser()!
+  const { completo } = useAcesso()
   const { pathname } = useLocation()
   const { principal } = usePerfisOrdenados()
   const { ativos, emCurso, admitidos } = usePedidos()
@@ -64,7 +71,7 @@ export default function FamilyDashboard() {
   let subtitle: ReactNode
   if (seccao && Pagina) {
     title = TITULOS[seccao].title
-    subtitle = TITULOS[seccao].subtitle
+    subtitle = (!completo && SUBTITULOS_GRATIS[seccao]) || TITULOS[seccao].subtitle
   } else {
     title = (
       <>

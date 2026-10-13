@@ -34,9 +34,11 @@ export function BloqueioCartao({ titulo, texto, voltar, compacto = false, classN
   )
 
   if (compacto) {
+    // numa linha quando cabe (texto com pelo menos 16rem), senão o botão passa para baixo: depende do espaço do
+    // próprio bloco (pode estar numa coluna estreita), não da largura do ecrã
     return (
-      <div className={cn('flex flex-col gap-4 rounded-3xl bg-sand p-5 sm:flex-row sm:items-center sm:gap-6', className)}>
-        <div className="flex min-w-0 flex-1 items-start gap-3">
+      <div className={cn('flex flex-wrap items-center gap-x-6 gap-y-4 rounded-3xl bg-sand p-5', className)}>
+        <div className="flex min-w-0 flex-[1_1_16rem] items-start gap-3">
           <Lock aria-hidden className="mt-1 size-4 shrink-0 text-ink-mute" />
           <div className="min-w-0">
             <p className="font-semibold text-ink">{titulo}</p>
@@ -44,9 +46,9 @@ export function BloqueioCartao({ titulo, texto, voltar, compacto = false, classN
           </div>
         </div>
         {cta && (
-          <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 sm:flex-row-reverse">
+          <div className="flex shrink-0 flex-col items-center gap-1 max-sm:w-full">
             {cta}
-            <span className="text-sm text-ink-mute max-sm:w-full max-sm:text-center">{ACESSO_DESDE}</span>
+            <span className="text-sm text-ink-mute">{ACESSO_DESDE}</span>
           </div>
         )}
       </div>

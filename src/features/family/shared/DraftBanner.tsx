@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/Button'
 import { InputField } from '@/components/ui/Field'
 import { toast } from '@/components/ui/Toast'
-import { savePerfil, usePerfis } from '@/lib/store'
+import { savePerfil, useAcesso, usePerfis } from '@/lib/store'
 import { GRAU_LABEL } from '@/lib/labels'
 import { euro } from '@/lib/format'
 import { apagarRascunho, lerRascunho } from '../perfil/perfilModel'
@@ -18,6 +18,8 @@ export function DraftBanner() {
   const [erro, setErro] = useState<string | null>(null)
   const perfis = usePerfis()
   const navigate = useNavigate()
+  // os avisos de vaga são do Acesso Família: sem passe, o aviso não os promete
+  const { completo } = useAcesso()
   if (!draft) return null
 
   const existente = nome.trim() ? perfis.find((p) => p.nome.trim().toLowerCase() === nome.trim().toLowerCase()) : undefined
@@ -32,7 +34,10 @@ export function DraftBanner() {
     apagarRascunho()
     setDraft(null)
     if (p) {
-      toast.success(existente ? 'Perfil atualizado' : 'Perfil guardado', 'As sugestões e os avisos de vaga já usam estes dados.')
+      toast.success(
+        existente ? 'Perfil atualizado' : 'Perfil guardado',
+        completo ? 'As sugestões e os avisos de vaga já usam estes dados.' : 'As sugestões já usam estes dados.',
+      )
       navigate(`/familia/perfil?id=${p.id}`)
     }
   }

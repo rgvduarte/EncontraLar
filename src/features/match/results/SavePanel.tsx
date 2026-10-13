@@ -3,12 +3,14 @@ import { ChevronRight } from 'lucide-react'
 import type { User } from '@/types'
 import { Button, ButtonLink, TextLink } from '@/components/ui/Button'
 import { InputField } from '@/components/ui/Field'
+import { useAcesso } from '@/lib/store'
 import { cn } from '@/lib/cn'
 import type { Rascunho } from '../model'
 import { primeiroNome, useGuardarPerfil } from './useGuardarPerfil'
 
 /**
- * Guardar o perfil (família com sessão) ou convidar a criar conta para receber alertas de vaga.
+ * Guardar o perfil (família com sessão) ou convidar a criar conta para o guardar (os alertas de vaga são do
+ * Acesso Família: sem passe, o painel não os promete).
  * Sem sessão, o rascunho já está no sessionStorage (ResultsView) — o painel oferece-se para o guardar depois.
  */
 export function SavePanel({
@@ -34,6 +36,8 @@ export function SavePanel({
   const [nome, setNome] = useState(r.nome)
   const [erro, setErro] = useState<string>()
   const [guardado, setGuardado] = useState<{ nome: string; alterado: boolean } | null>(null)
+  // os alertas de vaga e os pedidos são do Acesso Família: sem passe, o painel não os promete
+  const { completo } = useAcesso()
 
   if (user?.role === 'lar') {
     return (
@@ -42,8 +46,7 @@ export function SavePanel({
           Guardar perfis é para famílias
         </h2>
         <p className="mx-auto mt-3 max-w-lg text-lg text-ink-mute">
-          Tem sessão iniciada com uma conta de instituição. Para guardar este perfil e receber alertas, entre com uma conta de
-          família.
+          Tem sessão iniciada com uma conta de instituição. Para guardar este perfil, entre com uma conta de família.
         </p>
       </section>
     )
@@ -60,10 +63,11 @@ export function SavePanel({
         )}
       >
         <h2 id="guardar-t" className="mx-auto max-w-2xl text-4xl font-semibold text-white sm:text-5xl">
-          Saiba quando abrir <em>vaga</em>.
+          Guarde estas <em>respostas</em>.
         </h2>
         <p className="mx-auto mt-5 max-w-xl text-lg text-white/70 sm:text-xl">
-          Com uma conta gratuita, estas respostas passam para o seu painel e avisamos quando houver lugar.
+          Com uma conta gratuita, o perfil passa para o seu painel e não tem de responder outra vez. Com o Acesso Família,
+          avisamos quando abrir vaga.
         </p>
         <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <ButtonLink
@@ -72,8 +76,7 @@ export function SavePanel({
             size="lg"
             className="w-full max-w-sm text-center whitespace-normal sm:w-auto sm:max-w-full"
           >
-            <span className="sm:hidden">Criar conta gratuita</span>
-            <span className="max-sm:hidden">Criar conta para receber alertas</span>
+            Criar conta gratuita
           </ButtonLink>
           <TextLink to={`/entrar?voltar=${encodeURIComponent('/familia')}`} tone="light" className="min-h-12 px-3 text-lg">
             Já tenho conta
@@ -105,7 +108,9 @@ export function SavePanel({
             : `O perfil de ${n} está guardado.`}
         </h2>
         <p className="mx-auto mt-4 max-w-lg text-lg text-ink-mute">
-          Avisamos quando abrir vaga. Os pedidos aos lares usam este perfil, sem repetir nada.
+          {completo
+            ? 'Avisamos quando abrir vaga. Os pedidos aos lares usam este perfil, sem repetir nada.'
+            : 'Está no seu painel. Com o Acesso Família, os pedidos aos lares usam este perfil, sem repetir nada.'}
         </p>
         <ButtonLink to="/familia" size="lg" className="mt-8 w-full max-w-sm sm:w-auto" iconRight={<ChevronRight aria-hidden />}>
           Ir para o meu painel
@@ -120,7 +125,9 @@ export function SavePanel({
         {r.id ? 'Guardar as alterações' : 'Guardar este perfil'}
       </h2>
       <p className="mx-auto mt-4 max-w-lg text-lg text-ink-mute">
-        Para receber alertas de vaga e fazer pedidos sem repetir respostas.
+        {completo
+          ? 'Para receber alertas de vaga e fazer pedidos sem repetir respostas.'
+          : 'Fica no seu painel, para não repetir respostas. Com o Acesso Família, serve para pedir vaga em várias casas de uma vez.'}
       </p>
       <div className="mx-auto mt-8 flex max-w-md flex-col items-stretch gap-4 text-left">
         {precisaNome && (

@@ -13,9 +13,10 @@ import { PAUSA_SUCESSO } from './LoginForm'
 
 const CONTAS: { role: Role; titulo: string; descricao: string; email: string }[] = [
   {
+    // a família de demonstração tem um passe de 90 dias: mostra a experiência completa
     role: 'familia',
     titulo: 'Entrar como família',
-    descricao: 'Pedidos, lista de espera e alertas de vaga.',
+    descricao: 'Com o Acesso Família ativo: vagas, pedidos e alertas de vaga.',
     email: DEMO_FAMILIA_EMAIL,
   },
   {
@@ -109,7 +110,10 @@ function Divisoria() {
   )
 }
 
-/** "ou experimente sem conta": três contas fictícias (família, instituição, assistente social), um toque e está dentro. */
+/**
+ * "ou experimente sem conta": três contas fictícias (família, instituição, assistente social), um toque e está dentro.
+ * A família tem o Acesso Família ativo; a versão grátis vê-se sem entrar ou com uma conta nova.
+ */
 export function DemoAccess({
   onSuccess,
   onPending,
@@ -160,6 +164,9 @@ export function DemoAccess({
           </Appear>
         ))}
       </ul>
+      <Appear delay={delay + 80 + CONTAS.length * 80} variant="fade">
+        <p className="mt-4 text-center text-sm text-balance text-ink-mute">Para ver a versão grátis, explore sem entrar ou crie uma conta.</p>
+      </Appear>
     </section>
   )
 }

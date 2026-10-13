@@ -42,13 +42,16 @@ const VTIMEZONE: Record<string, string[]> = {
   ],
 }
 
-/** `contactos: false` (versão grátis): sem telefone nem email da instituição (são do Acesso Família). */
+/**
+ * `contactos: false` (versão grátis): sem telefone, email, morada nem coordenadas da instituição (são do Acesso
+ * Família, como na ficha) — o local fica a localidade.
+ */
 export function visitaICS(c: Candidatura, lar: Lar, guiaUrl: string, { contactos = true }: { contactos?: boolean } = {}): string | null {
   if (!c.visita) return null
   const tz = lar.distrito === 'Açores' ? 'Atlantic/Azores' : 'Europe/Lisbon'
   const inicio = dataLocal(c.visita.data, c.visita.hora)
   const fim = new Date(inicio.getTime() + 60 * 60_000)
-  const morada = [lar.morada, `${lar.codigoPostal} ${lar.localidade}`.trim()].filter(Boolean).join(', ')
+  const morada = contactos ? [lar.morada, `${lar.codigoPostal} ${lar.localidade}`.trim()].filter(Boolean).join(', ') : lar.localidade
   const descricao = [
     `Visita às instalações ${doLar(lar.nome)} (pedido para ${c.perfil.nome}).`,
     c.visita.estado === 'confirmada' ? 'Visita confirmada pela instituição.' : 'A aguardar confirmação da instituição.',
@@ -71,7 +74,7 @@ export function visitaICS(c: Candidatura, lar: Lar, guiaUrl: string, { contactos
     `DTEND;TZID=${tz}:${local(fim)}`,
     `SUMMARY:${esc(`Visita ${aoLar(lar.nome)}`)}`,
     `LOCATION:${esc(morada)}`,
-    `GEO:${lar.lat.toFixed(5)};${lar.lng.toFixed(5)}`,
+    ...(contactos ? [`GEO:${lar.lat.toFixed(5)};${lar.lng.toFixed(5)}`] : []),
     `DESCRIPTION:${esc(descricao)}`,
     'BEGIN:VALARM',
     'ACTION:DISPLAY',

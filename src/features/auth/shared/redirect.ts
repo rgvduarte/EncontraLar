@@ -14,9 +14,26 @@ export function isInternalPath(path: string | null | undefined): path is string 
 }
 
 /**
+ * A página do Acesso Família (`/acesso?plano=…&voltar=…`). É pública: segue como qualquer outro `voltar`,
+ * com a pesquisa inteira, para todos os tipos de conta (a própria página explica o caso das instituições e dos profissionais).
+ */
+export function ehAcesso(path: string | null): boolean {
+  return isInternalPath(path) && /^\/acesso(?:[/?#]|$)/.test(path)
+}
+
+/**
+ * Ligação para entrar ou criar conta que leva o `voltar` inteiro, codificado uma vez
+ * (ex.: `/acesso?plano=acesso_90&voltar=%2Flar%2Fx` chega intacto ao outro lado, com os dois parâmetros).
+ */
+export function comVoltar(caminho: '/entrar' | '/registar', voltar: string | null): string {
+  return isInternalPath(voltar) ? `${caminho}?voltar=${encodeURIComponent(voltar)}` : caminho
+}
+
+/**
  * Para onde ir depois de iniciar sessão: o parâmetro `voltar` quando é um caminho interno
  * e compatível com o tipo de conta; caso contrário, o painel do utilizador.
- * O `voltar` segue inteiro, com a pesquisa (ex.: `/lar/x?acao=pedir`), para a página retomar o que estava a fazer.
+ * O `voltar` segue inteiro, com a pesquisa (ex.: `/lar/x?acao=pedir`, `/acesso?plano=…&voltar=…`),
+ * para a página retomar o que estava a fazer.
  */
 export function destinoAposEntrar(voltar: string | null, role: Role): string {
   if (!isInternalPath(voltar)) return painelPath(role)
@@ -28,7 +45,8 @@ export function destinoAposEntrar(voltar: string | null, role: Role): string {
 
 /**
  * Depois de criar uma conta de família: volta à página pública de onde veio, com a intenção intacta
- * (ex.: a ficha de um lar, a meio de um pedido de vaga: `/lar/x?acao=pedir`); caso contrário, null.
+ * (ex.: a ficha de um lar, a meio de um pedido de vaga: `/lar/x?acao=pedir`; ou o Acesso Família,
+ * `/acesso?plano=…&voltar=…`, para escolher o passe); caso contrário, null.
  */
 export function voltarPublico(voltar: string | null): string | null {
   if (!isInternalPath(voltar) || voltar === '/') return null
@@ -74,6 +92,7 @@ const DESTINOS: [RegExp, string][] = [
   [/^\/casos/, 'os seus casos'],
   [/^\/encontrar/, 'o questionário "Ajuda-me a escolher"'],
   [/^\/pesquisa/, 'a pesquisa que estava a fazer'],
+  [/^\/acesso(?:[/?#]|$)/, 'a página do Acesso Família'],
 ]
 
 type Artigo = 'o' | 'a' | 'os' | 'as'
@@ -165,10 +184,23 @@ export function descreverDestino(path: string | null, lares: Lar[]): string | nu
 }
 
 /**
+ * Numa conta de família, a ação interrompida precisa do Acesso Família? Pedir vaga, marcar visita e receber
+ * alertas, sim; guardar uma instituição é livre.
+ */
+export function precisaDeAcesso(path: string | null): boolean {
+  if (ehAcesso(path)) return false
+  const i = intencaoDe(path)
+  return !!i && i.acao !== 'guardar'
+}
+
+/**
  * Para que é preciso entrar, como continuação de "Inicie sessão para …":
- * a ação interrompida ("pedir vaga na Casa X", "guardar o Lar Y") ou, sem ela, "abrir <destino>".
+ * a ação interrompida ("pedir vaga na Casa X", "guardar o Lar Y"), "ativar o Acesso Família"
+ * ou, sem nada disto, "abrir <destino>".
  */
 export function motivoDoDestino(path: string | null, lares: Lar[]): string | null {
+  // antes da intenção: um `voltar` mal codificado dentro do /acesso não pode parecer "pedir vaga"
+  if (ehAcesso(path)) return 'ativar o Acesso Família'
   const intencao = intencaoDe(path)
   if (intencao) {
     const porId = (id: string | null) => (id ? lares.find((l) => l.id === id) : undefined)

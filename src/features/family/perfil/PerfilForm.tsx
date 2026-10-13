@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { PerfilIdoso, TipoQuarto, Urgencia } from '@/types'
 import { deletePerfil, savePerfil, useLares, type PerfilInput } from '@/lib/store'
 import { Button } from '@/components/ui/Button'
@@ -52,6 +52,7 @@ export function PerfilForm({
   onSaved,
   onDeleted,
   onDirtyChange,
+  depoisDeGuardar,
 }: {
   perfil: PerfilIdoso | undefined
   /** perfil de referência para a zona de um perfil novo */
@@ -59,6 +60,8 @@ export function PerfilForm({
   onSaved: (p: PerfilIdoso) => void
   onDeleted: () => void
   onDirtyChange: (dirty: boolean) => void
+  /** linha por baixo da barra de gravação depois de guardar (sem alterações por guardar) */
+  depoisDeGuardar?: ReactNode
 }) {
   const inicial = useMemo(() => (perfil ? perfilParaInput(perfil) : perfilVazio(base)), [perfil, base])
   const [form, setForm] = useState<PerfilInput>(inicial)
@@ -331,6 +334,8 @@ export function PerfilForm({
           </div>
         </div>
       </div>
+
+      {depoisDeGuardar && !dirty && <div className="mt-6 px-2 motion-safe:animate-[fade-up_.6s_cubic-bezier(.16,1,.3,1)_both]">{depoisDeGuardar}</div>}
 
       <ConfirmModal
         open={apagar}

@@ -58,7 +58,7 @@ function Palavras({ texto, de, enfase }: { texto: string; de: number; enfase?: b
  * Gancho: o título entra palavra a palavra, a pesquisa sobe a seguir e o mapa "acende-se" de norte para sul.
  * Tudo isto é a entrada da página (não depende do scroll); com movimento reduzido aparece logo no estado final.
  */
-export function Hero({ lares, agora, comVaga }: { lares: Lar[]; agora: number; comVaga: number }) {
+export function Hero({ lares, agora, comVaga, completo }: { lares: Lar[]; agora: number; comVaga: number; completo: boolean }) {
   return (
     <section aria-labelledby="home-titulo" className="overflow-x-clip">
       <div className="container-page flex flex-col items-center pt-12 pb-16 text-center sm:pt-24 sm:pb-24 lg:pt-28 lg:pb-28">
@@ -81,7 +81,7 @@ export function Hero({ lares, agora, comVaga }: { lares: Lar[]; agora: number; c
         </p>
 
         <div className="hm-in relative z-20 mt-8 w-full sm:mt-12" style={entrada(700, 'hm-rise', 900)}>
-          <SearchPill lares={lares} />
+          <SearchPill lares={lares} completo={completo} />
         </div>
         <p className="hm-in mt-4 text-ink-mute sm:mt-5" style={entrada(840, 'hm-fade', 900)}>
           Não sabe por onde começar?{' '}
@@ -92,7 +92,7 @@ export function Hero({ lares, agora, comVaga }: { lares: Lar[]; agora: number; c
         </p>
 
         <div className="mt-10 w-full sm:mt-20">
-          <HeroMap lares={lares} agora={agora} comVaga={comVaga} />
+          <HeroMap lares={lares} agora={agora} comVaga={comVaga} completo={completo} />
         </div>
       </div>
     </section>

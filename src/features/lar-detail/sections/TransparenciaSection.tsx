@@ -10,7 +10,8 @@ import { Cascata } from '../motion'
 
 const mesAnoLongo = (iso: string) => new Date(iso).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
 
-export function TransparenciaSection({ lar }: { lar: Lar }) {
+/** Verificação da instituição. Versão grátis (`completo` falso): sem a data de atualização das vagas (camada viva). */
+export function TransparenciaSection({ lar, completo }: { lar: Lar; completo: boolean }) {
   const v = lar.verificacao
   const verificado = v.estado === 'verificado'
   const revVerificadas = lar.reviews.filter((r) => r.verificada).length
@@ -48,7 +49,7 @@ export function TransparenciaSection({ lar }: { lar: Lar }) {
         <Linha termo="Licença de funcionamento" valor={v.licenca ? `n.º ${v.licenca}` : 'Por indicar'} />
         <Linha termo="Natureza" valor={`${NATUREZA_LABEL[lar.natureza]}${lar.acordoSS ? ', com acordo da Segurança Social' : ''}`} />
         <Linha termo="Última inspeção conhecida" valor={v.ultimaInspecao ? dataLonga(v.ultimaInspecao) : 'Sem informação'} />
-        <Linha termo="Vagas atualizadas" valor={`${dataLonga(lar.atualizadoEm)} (${tempoRelativo(lar.atualizadoEm)})`} />
+        {completo && <Linha termo="Vagas atualizadas" valor={`${dataLonga(lar.atualizadoEm)} (${tempoRelativo(lar.atualizadoEm)})`} />}
         <Linha
           termo="Avaliações verificadas"
           nota="De famílias cuja entrada foi confirmada"

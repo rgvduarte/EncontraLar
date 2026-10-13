@@ -1,12 +1,12 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import type { Cuidado, Natureza, TipoResposta } from '@/types'
+import { ACESSO_DISPONIVEL } from '@/components/acesso'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Checkbox, Switch } from '@/components/ui/Field'
 import { CUIDADO_LABEL, CUIDADOS_ORDEM, GRAU_DESCRICAO, GRAU_LABEL, GRAUS_ORDEM, NATUREZA_LABEL, TIPO_LABEL, TIPO_RESUMO } from '@/lib/labels'
-import { cn } from '@/lib/cn'
-import { BudgetSlider } from './BudgetControl'
-import { TogglePill } from './Chips'
+import { BudgetFaixas, BudgetSlider } from './BudgetControl'
+import { PilulaBloqueada, RadioPills, TogglePill } from './Chips'
 import { useNumeroAnimado } from './motion'
 import { centroDe, FILTROS_VAZIOS, filtrosDe, NATUREZAS, opcoesRaio, TIPOS, VAGA_LABEL, type Filtros, type SearchState } from './searchState'
 
@@ -24,6 +24,13 @@ interface Props {
   /** mensalidades na zona (histograma do orçamento) */
   precos: number[]
   onApply: (r: Rascunho) => void
+  /**
+   * Camada completa (Acesso Família). Na versão grátis a disponibilidade fica à vista mas fechada
+   * (`onBloqueado` abre o convite) e o orçamento vai por faixas.
+   */
+  completo?: boolean
+  /** versão grátis: tocou num filtro fechado; recebe o rascunho com esse filtro, para voltar com tudo aplicado */
+  onBloqueado?: (patch: Partial<SearchState>) => void
 }
 
 /** Secção da folha; as primeiras assentam em cascata quando a folha abre (--i = ordem). */
@@ -34,36 +41,6 @@ function Secao({ titulo, ajuda, children }: { titulo: string; ajuda?: ReactNode;
       {ajuda && <div className="mt-0.5 text-sm text-ink-mute">{ajuda}</div>}
       <div className="mt-4">{children}</div>
     </fieldset>
-  )
-}
-
-/** Grupo de rádios nativos com aspeto de pílula (preta quando escolhida). */
-function RadioPills<T extends string | number | null>({
-  opcoes,
-  value,
-  onChange,
-}: {
-  opcoes: { v: T; label: string }[]
-  value: T
-  onChange: (v: T) => void
-}) {
-  const name = useId()
-  return (
-    <div className="flex flex-wrap gap-2">
-      {opcoes.map((o) => (
-        <label
-          key={String(o.v)}
-          className={cn(
-            'inline-flex min-h-12 cursor-pointer items-center rounded-full px-4.5 text-sm font-medium transition-colors duration-200',
-            'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
-            value === o.v ? 'bg-ink text-white' : 'bg-sand text-ink hover:bg-sand-deep',
-          )}
-        >
-          <input type="radio" name={name} className="sr-only" checked={value === o.v} onChange={() => onChange(o.v)} />
-          {o.label}
-        </label>
-      ))}
-    </div>
   )
 }
 
@@ -88,7 +65,7 @@ function AjudaTipo({ tipos }: { tipos: TipoResposta[] }) {
 const AJUDA_NATUREZA = 'IPSS e Misericórdia: sem fins lucrativos, mensalidade conforme os rendimentos. Privado: preço fixo por tipo de quarto.'
 
 /** "Mais filtros" (desktop) ou todos os filtros (telemóvel, folha inferior), com contagem ao vivo. */
-export function FiltersModal({ open, onClose, modo, state, contar, precos, onApply }: Props) {
+export function FiltersModal({ open, onClose, modo, state, contar, precos, onApply, completo = true, onBloqueado }: Props) {
   const inicial = (): Rascunho => ({ ...filtrosDe(state), raio: state.raio })
   const [r, setR] = useState<Rascunho>(inicial)
   useEffect(() => {
@@ -102,6 +79,7 @@ export function FiltersModal({ open, onClose, modo, state, contar, precos, onApp
   const nVisivel = useNumeroAnimado(n, 380)
   const todos = modo === 'todos'
   const centro = centroDe(state.local)
+  const fechado = useId()
 
   const limpar = () => set(todos ? { ...FILTROS_VAZIOS, q: r.q } : { grau: null, cuidados: [], ss: false, naturezas: [] })
 
@@ -137,7 +115,23 @@ export function FiltersModal({ open, onClose, modo, state, contar, precos, onApp
       }
     >
       <div className="flex flex-col gap-10 pb-2 [&>*:nth-child(2)]:[--i:1] [&>*:nth-child(3)]:[--i:2] [&>*:nth-child(4)]:[--i:3] [&>*:nth-child(n+5)]:[--i:4]">
-        {todos && (
+        {todos && !completo && (
+          <Secao titulo="Disponibilidade" ajuda="Mostramos todas as instituições. Filtrar por vaga está disponível com o Acesso Família.">
+            <div className="flex flex-wrap gap-2">
+              <PilulaBloqueada descricao={fechado} onClick={() => onBloqueado?.({ ...r, vaga: 'agora' })}>
+                {VAGA_LABEL.agora}
+              </PilulaBloqueada>
+              <PilulaBloqueada descricao={fechado} onClick={() => onBloqueado?.({ ...r, vaga: 'breve' })}>
+                {VAGA_LABEL.breve}
+              </PilulaBloqueada>
+              <span id={fechado} hidden>
+                {ACESSO_DISPONIVEL}
+              </span>
+            </div>
+          </Secao>
+        )}
+
+        {todos && completo && (
           <Secao titulo="Disponibilidade" ajuda="Vagas indicadas pelas instituições; «em breve» é uma previsão.">
             <RadioPills
               value={r.vaga}
@@ -170,8 +164,12 @@ export function FiltersModal({ open, onClose, modo, state, contar, precos, onApp
         )}
 
         {todos && (
-          <Secao titulo="Orçamento">
-            <BudgetSlider value={r.max} onChange={(max) => set({ max })} precos={precos} />
+          <Secao titulo="Orçamento" ajuda={completo ? undefined : 'Por faixas de mensalidade, como nas fichas.'}>
+            {completo ? (
+              <BudgetSlider value={r.max} onChange={(max) => set({ max })} precos={precos} />
+            ) : (
+              <BudgetFaixas value={r.max} onChange={(max) => set({ max })} />
+            )}
           </Secao>
         )}
 

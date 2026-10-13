@@ -6,15 +6,29 @@ import { LarCard } from '@/components/lar/LarCard'
 import { Reveal } from '@/components/motion'
 import { useLares } from '@/lib/store'
 import { distanceKm } from '@/lib/geo'
+import { LUGARES } from '@/data/localidades'
 import { Cascata } from './motion'
 
 const PLURAL: Record<Lar['tipo'], string> = { erpi: 'lares', residencia: 'residências', centro_dia: 'centros de dia' }
 
 /**
+ * Pesquisa à volta desta instituição. Com acesso completo, a partir das coordenadas dela; na versão grátis, pelo
+ * concelho (ou distrito) — as coordenadas exatas são do Acesso Família e não vão para o DOM, nem num endereço.
+ */
+function pesquisaPerto(lar: Lar, completo: boolean): string {
+  if (completo) return `/pesquisa?lat=${lar.lat.toFixed(4)}&lng=${lar.lng.toFixed(4)}&raio=15&tipo=${lar.tipo}`
+  const concelho = LUGARES.some((l) => l.label === lar.concelho)
+  return concelho
+    ? `/pesquisa?lugar=${encodeURIComponent(lar.concelho)}&tipo=${lar.tipo}`
+    : `/pesquisa?distrito=${encodeURIComponent(lar.distrito)}&tipo=${lar.tipo}`
+}
+
+/**
  * Três instituições do mesmo tipo, as mais próximas desta — o "desfecho" da página.
  * Telemóvel: faixa deslizável com snap (cartões a 85% da largura, o seguinte espreita). Desktop: grelha.
+ * Os cartões (LarCard) seguem sozinhos o Acesso Família (versão grátis: faixa de preço, sem vagas).
  */
-export function SemelhantesSection({ lar }: { lar: Lar }) {
+export function SemelhantesSection({ lar, completo }: { lar: Lar; completo: boolean }) {
   const lares = useLares()
   const perto = useMemo(
     () =>
@@ -27,7 +41,7 @@ export function SemelhantesSection({ lar }: { lar: Lar }) {
   )
   if (!perto.length) return null
 
-  const pesquisa = `/pesquisa?lat=${lar.lat.toFixed(4)}&lng=${lar.lng.toFixed(4)}&raio=15&tipo=${lar.tipo}`
+  const pesquisa = pesquisaPerto(lar, completo)
 
   return (
     // no telemóvel/tablet o fundo reserva espaço para a barra de ação fixa

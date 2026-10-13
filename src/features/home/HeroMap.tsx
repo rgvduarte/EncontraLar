@@ -6,8 +6,11 @@ import { PT_VIEWBOX, projectPT } from '@/data/portugal-shape'
 import { vagaParaNovos, vagasLivres } from '@/lib/forecast'
 import { measureProgress, prefersReducedMotion, subscribeScroll, useInView } from '@/lib/motion'
 import { useMediaQuery } from '@/lib/hooks'
+import { num } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { tempoCurto, ultimasVagas } from './homeData'
+import { tempoCurto, ultimasVagas, vagasPorDistrito } from './homeData'
+import { urlPesquisa } from './search'
+import { MapaNeutro } from './MapaNeutro'
 import { entrada } from './coreografia'
 
 /** Onde pousa cada etiqueta em ecrãs largos (≥1280px): no mar a oeste e em Espanha a leste, longe dos pontos. */
@@ -75,17 +78,35 @@ function useProfundidade(el: RefObject<HTMLElement | null>, referencia: RefObjec
   }, [el, referencia, velocidade])
 }
 
+/** Etiqueta flutuante (pílula de vidro) à volta do mapa. */
+const ETIQUETA = cn(
+  'flex min-h-12 items-center gap-2.5 rounded-full bg-white/90 py-2 pr-5 pl-4 text-sm whitespace-nowrap shadow-card ring-1 ring-black/5 backdrop-blur-md',
+  'transition-transform duration-300 ease-[cubic-bezier(.25,.1,.25,1)] hover:-translate-y-0.5',
+)
+
 /**
  * O "produto como imagem": o mapa de Portugal em pontos, com as últimas vagas a flutuar à volta.
  * Entrada: o mapa acende-se de norte para sul quando entra no ecrã, as instituições com vaga começam a
  * pulsar e as etiquetas aparecem uma a uma.
  * Desktop largo: paralaxe subtil entre o mapa (mais longe) e as etiquetas (mais perto).
  * Passar o rato (ou o foco) numa etiqueta realça o ponto da instituição no mapa.
+ *
+ * Versão grátis (`completo` falso): pontos todos iguais (MapaNeutro), sem pulsação nem realce, e as etiquetas
+ * passam a contagens por distrito ("Porto · 6 com vaga agora") — o quantas, nunca o quais.
  */
-export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number; comVaga: number }) {
+export function HeroMap({ lares, agora, comVaga, completo }: { lares: Lar[]; agora: number; comVaga: number; completo: boolean }) {
   const navigate = useNavigate()
   const [destaque, setDestaque] = useState<string | null>(null)
-  const ultimas = useMemo(() => ultimasVagas(lares, 3), [lares])
+  const ultimas = useMemo(() => (completo ? ultimasVagas(lares, 3) : []), [lares, completo])
+  // versão grátis: os 3 distritos com mais vagas, mostrados de norte para sul; no ecrã estreito cabem 2 e sai o
+  // que tem menos (o último de vagasPorDistrito)
+  const distritos = useMemo(() => {
+    if (completo) return []
+    const top = vagasPorDistrito(lares, 3)
+    const menor = top.length > 2 ? top[top.length - 1]!.distrito : null
+    return [...top].sort((a, b) => b.lat - a.lat).map((d) => ({ ...d, soLargo: d.distrito === menor }))
+  }, [lares, completo])
+  const titulo = `Mapa de Portugal com ${lares.length} instituições, ${comVaga} com vaga agora.`
   const mapaRef = useRef<HTMLDivElement>(null)
   const [figRef, visto] = useInView<HTMLElement>({ threshold: 0.15, rootMargin: '0px' })
   const [montado] = useState(() => performance.now())
@@ -120,14 +141,18 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
     <figure ref={figRef} className="hm-map relative mx-auto w-full max-w-[19rem] sm:max-w-[30rem] lg:max-w-[34rem]">
       <div ref={camadaMapa} className={cn(largo && 'will-change-transform')}>
         <div ref={mapaRef} className={cn('relative overflow-hidden', visto ? 'hm-in' : 'hm-wait')} style={entrada(base, 'hm-settle', 900)}>
-          <PortugalMap
-            lares={lares}
-            pulse={false}
-            highlightId={destaque}
-            onSelect={ponteiroFino ? (l) => navigate(`/lar/${l.id}`) : undefined}
-            title={`Mapa de Portugal com ${lares.length} instituições, ${comVaga} com vaga agora.`}
-          />
-          {visto && <Pulsos lares={lares} atraso={base + VARRIMENTO + 150} pausado={!aVista} />}
+          {completo ? (
+            <PortugalMap
+              lares={lares}
+              pulse={false}
+              highlightId={destaque}
+              onSelect={ponteiroFino ? (l) => navigate(`/lar/${l.id}`) : undefined}
+              title={titulo}
+            />
+          ) : (
+            <MapaNeutro lares={lares} title={titulo} />
+          )}
+          {visto && completo && <Pulsos lares={lares} atraso={base + VARRIMENTO + 150} pausado={!aVista} />}
           {/* "acender" de norte para sul: uma cortina branca com a orla esbatida desce e destapa o mapa.
               Um só elemento animado com transform (compositor) — animar os ~2000 pontos um a um obrigava a
               recalcular o estilo e repintar o SVG inteiro em cada frame. */}
@@ -135,38 +160,53 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
         </div>
       </div>
 
-      {ultimas.length > 0 && (
+      {(ultimas.length > 0 || distritos.length > 0) && (
         // no ecrã largo as etiquetas flutuam à volta do mapa e andam um pouco mais depressa do que ele (profundidade)
         <div ref={camadaEtiquetas} className="relative z-10 mt-8 xl:pointer-events-none xl:absolute xl:inset-0 xl:mt-0 xl:will-change-transform">
-          <ul aria-label="Vagas atualizadas há menos tempo" className="flex flex-col items-center gap-3 xl:block xl:h-full">
-            {ultimas.map((l, i) => {
-              const n = vagasLivres(l)
-              return (
-                <li
-                  key={l.id}
-                  className={cn('xl:pointer-events-auto', POSICAO[i], i === 2 && 'max-xl:hidden', visto ? 'hm-in' : 'hm-wait')}
-                  style={entrada(base + VARRIMENTO + 380 + i * 190, 'hm-pop', 900)}
-                >
-                  <Link
-                    to={`/lar/${l.id}`}
-                    onMouseEnter={() => setDestaque(l.id)}
-                    onMouseLeave={() => setDestaque(null)}
-                    onFocus={() => setDestaque(l.id)}
-                    onBlur={() => setDestaque(null)}
-                    className={cn(
-                      'flex min-h-12 items-center gap-2.5 rounded-full bg-white/90 py-2 pr-5 pl-4 text-sm whitespace-nowrap shadow-card ring-1 ring-black/5 backdrop-blur-md',
-                      'transition-transform duration-300 ease-[cubic-bezier(.25,.1,.25,1)] hover:-translate-y-0.5',
-                    )}
+          <ul
+            aria-label={completo ? 'Vagas atualizadas há menos tempo' : 'Vagas por distrito'}
+            className="flex flex-col items-center gap-3 xl:block xl:h-full"
+          >
+            {completo
+              ? ultimas.map((l, i) => {
+                  const n = vagasLivres(l)
+                  return (
+                    <li
+                      key={l.id}
+                      className={cn('xl:pointer-events-auto', POSICAO[i], i === 2 && 'max-xl:hidden', visto ? 'hm-in' : 'hm-wait')}
+                      style={entrada(base + VARRIMENTO + 380 + i * 190, 'hm-pop', 900)}
+                    >
+                      <Link
+                        to={`/lar/${l.id}`}
+                        onMouseEnter={() => setDestaque(l.id)}
+                        onMouseLeave={() => setDestaque(null)}
+                        onFocus={() => setDestaque(l.id)}
+                        onBlur={() => setDestaque(null)}
+                        className={ETIQUETA}
+                      >
+                        <span aria-hidden className="size-2 shrink-0 animate-pulse-ring rounded-full bg-leaf-500" />
+                        <span className="max-w-[10rem] truncate font-medium text-ink sm:max-w-[15rem]">{l.nome}</span>
+                        <span className="text-ink-mute">
+                          · {n} {n === 1 ? 'vaga' : 'vagas'} · {tempoCurto(l.atualizadoEm, agora)}
+                        </span>
+                      </Link>
+                    </li>
+                  )
+                })
+              : // versão grátis: quantas casas com vaga em cada distrito (leva à pesquisa do distrito, que é grátis)
+                distritos.map((d, i) => (
+                  <li
+                    key={d.distrito}
+                    className={cn('xl:pointer-events-auto', POSICAO[i], d.soLargo && 'max-xl:hidden', visto ? 'hm-in' : 'hm-wait')}
+                    style={entrada(base + VARRIMENTO + 380 + i * 190, 'hm-pop', 900)}
                   >
-                    <span aria-hidden className="size-2 shrink-0 animate-pulse-ring rounded-full bg-leaf-500" />
-                    <span className="max-w-[10rem] truncate font-medium text-ink sm:max-w-[15rem]">{l.nome}</span>
-                    <span className="text-ink-mute">
-                      · {n} {n === 1 ? 'vaga' : 'vagas'} · {tempoCurto(l.atualizadoEm, agora)}
-                    </span>
-                  </Link>
-                </li>
-              )
-            })}
+                    <Link to={urlPesquisa({ kind: 'distrito', distrito: d.distrito })} className={ETIQUETA}>
+                      <span aria-hidden className="size-2 shrink-0 rounded-full bg-leaf-500" />
+                      <span className="font-medium text-ink">{d.distrito}</span>
+                      <span className="text-ink-mute">· {num(d.comVaga)} com vaga agora</span>
+                    </Link>
+                  </li>
+                ))}
           </ul>
         </div>
       )}
@@ -175,7 +215,14 @@ export function HeroMap({ lares, agora, comVaga }: { lares: Lar[]; agora: number
         className={cn('mt-8 flex justify-center xl:mt-10', visto ? 'hm-in' : 'hm-wait')}
         style={entrada(base + VARRIMENTO + 300, 'hm-fade', 900)}
       >
-        <MapLegend className="justify-center" />
+        {completo ? (
+          <MapLegend className="justify-center" />
+        ) : (
+          <p className="inline-flex items-center gap-2 text-sm text-ink-mute">
+            <span aria-hidden className="size-2.5 rounded-full bg-dusk-700" />
+            Cada ponto é uma instituição
+          </p>
+        )}
       </figcaption>
     </figure>
   )

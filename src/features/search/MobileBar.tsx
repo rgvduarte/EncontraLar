@@ -133,6 +133,7 @@ export const MobileBar = forwardRef<HTMLDivElement, Props>(function MobileBar({ 
           onLocal={(local) => update({ local })}
           onGeo={geo.localizar}
           onTexto={(q) => update({ q })}
+          completo={model.completo}
         />
       </div>
       {/* linha deslizante com encaixe (snap) e esbatimento nas pontas: percebe-se que há mais à direita */}

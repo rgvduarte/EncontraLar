@@ -1,13 +1,15 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
 import { InputField, Switch } from '@/components/ui/Field'
 import { toast } from '@/components/ui/Toast'
+import { ACESSO_SEM_PRIORIDADE, AcessoNecessarioModal } from '@/components/acesso'
 import { terminarSessao } from '@/components/layout/RequireAuth'
 import { useReporDemo } from '@/components/layout/useReporDemo'
 import {
   getDB,
   updateUser,
+  useAcesso,
   useCurrentUser,
   useFavoritos,
   useMinhasCandidaturas,
@@ -16,6 +18,8 @@ import {
 } from '@/lib/store'
 import { useDocumentTitle } from '@/lib/hooks'
 import { dataLonga } from '@/lib/format'
+import { linkAcesso, PLANOS_FAMILIA, planoFamilia, precoTexto } from '@/lib/acesso'
+import { BENEFICIOS_LINHA, faltamDias, METODO_LABEL } from '../shared/acesso'
 import { descarregarFicheiro } from '../shared/ics'
 import { Tween, enterCls, stagger, useSeen } from '../shared/motion'
 import { cn } from '@/lib/cn'
@@ -49,6 +53,71 @@ function Bloco({ id, titulo, texto, ordem = 0, children }: { id: string; titulo:
   )
 }
 
+const PASSES_TEXTO = PLANOS_FAMILIA.map((p) => `${p.nome} por ${precoTexto(p.precoCentimos)}`).join(' ou ')
+
+/** Linha "rótulo · valor" da lista de detalhes do passe. */
+function Detalhe({ rotulo, children }: { rotulo: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-4 py-3 sm:grid-cols-[11rem_minmax(0,1fr)]">
+      <dt className="text-ink-mute">{rotulo}</dt>
+      <dd className="font-medium text-ink">{children}</dd>
+    </div>
+  )
+}
+
+/**
+ * Acesso Família na conta: com passe, os detalhes da compra (plano, datas, método, valor) e "Somar dias";
+ * sem passe, o que acrescenta e "Ver o Acesso Família". Sem renovação automática, por isso não há nada para cancelar.
+ */
+function AcessoConta() {
+  const user = useCurrentUser()!
+  const { ativo, diasRestantes } = useAcesso()
+  const a = user.acesso
+  const voltar = '/familia/conta'
+
+  if (ativo && a) {
+    const plano = planoFamilia(a.plano)
+    return (
+      <>
+        <dl className="divide-y divide-line border-y border-line">
+          <Detalhe rotulo="Plano">{plano.nome}</Detalhe>
+          <Detalhe rotulo="Comprado a">{dataLonga(a.compradoEm)}</Detalhe>
+          <Detalhe rotulo="Válido até">
+            {dataLonga(a.ate)} <span className="font-normal text-ink-mute">· {faltamDias(diasRestantes)}</span>
+          </Detalhe>
+          {a.metodo && <Detalhe rotulo="Método">{METODO_LABEL[a.metodo]}</Detalhe>}
+          <Detalhe rotulo="Valor">
+            {precoTexto(a.valorCentimos ?? plano.precoCentimos)} <span className="font-normal text-ink-mute">· IVA incluído</span>
+          </Detalhe>
+        </dl>
+        <p className="mt-4 text-sm text-ink-mute">Fatura-recibo enviada por email — simulada nesta demonstração.</p>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5">
+          <ButtonLink to={linkAcesso(voltar)} variant="subtle" className="w-full sm:w-auto">
+            Somar dias
+          </ButtonLink>
+          <p className="text-sm text-ink-mute">Uma nova compra soma os dias aos que faltam.</p>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <p className="text-lg font-semibold">Versão grátis</p>
+      <p className="mt-1 text-ink-soft">
+        Pode explorar as instituições, guardar as que lhe interessam e preparar o perfil de cuidados. {BENEFICIOS_LINHA}
+      </p>
+      {a && <p className="mt-3 text-sm text-ink-mute">O último passe terminou a {dataLonga(a.ate)}.</p>}
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5">
+        <ButtonLink to={linkAcesso(voltar)} className="w-full sm:w-auto">
+          Ver o Acesso Família
+        </ButtonLink>
+        <p className="text-sm text-ink-mute">{PASSES_TEXTO}, IVA incluído.</p>
+      </div>
+    </>
+  )
+}
+
 export default function ContaPage() {
   useDocumentTitle('A minha conta')
   const user = useCurrentUser()!
@@ -57,6 +126,9 @@ export default function ContaPage() {
   const favs = useFavoritos()
   const notifs = useNotificacoes()
   const navigate = useNavigate()
+  const { completo } = useAcesso()
+  // os avisos de vaga são do Acesso Família: na versão grátis o interruptor explica-o em vez de ligar
+  const [alertaModal, setAlertaModal] = useState(false)
   const [nome, setNome] = useState(user.nome)
   const [telefone, setTelefone] = useState(user.telefone ?? '')
   const [erroNome, setErroNome] = useState<string | null>(null)
@@ -83,7 +155,7 @@ export default function ContaPage() {
     const db = getDB()
     const dados = {
       exportadoEm: new Date().toISOString(),
-      conta: { nome: user.nome, email: user.email, telefone: user.telefone, criadoEm: user.criadoEm },
+      conta: { nome: user.nome, email: user.email, telefone: user.telefone, criadoEm: user.criadoEm, acessoFamilia: user.acesso ?? null },
       perfis,
       pedidos: cands.map((c) => ({ ...c, instituicao: db.lares.find((l) => l.id === c.larId)?.nome })),
       guardados: favs.map((f) => ({ ...f, instituicao: db.lares.find((l) => l.id === f.larId)?.nome })),
@@ -135,26 +207,41 @@ export default function ContaPage() {
         </form>
       </Bloco>
 
-      <Bloco id="conta-avisos" ordem={1} titulo="Avisos" texto="Também aparecem no sino, no topo da página.">
+      <Bloco id="conta-acesso" ordem={1} titulo="Acesso Família" texto={`Sem renovação automática. ${ACESSO_SEM_PRIORIDADE}`}>
+        <AcessoConta />
+      </Bloco>
+
+      <Bloco id="conta-avisos" ordem={2} titulo="Avisos" texto="Também aparecem no sino, no topo da página.">
         <div className="divide-y divide-line border-y border-line">
-          {AVISOS.map((a) => (
-            <Switch
-              key={a.id}
-              className="py-2"
-              checked={avisos[a.id] ?? false}
-              disabled={a.id === 'sms' && !user.telefone}
-              onChange={(v) => setAvisos((s) => ({ ...s, [a.id]: v }))}
-              label={a.label}
-              description={a.id === 'email' ? user.email : a.id === 'sms' ? (user.telefone ?? 'Indique primeiro o telemóvel.') : undefined}
-            />
-          ))}
+          {AVISOS.map((a) => {
+            const pago = a.id === 'vaga' && !completo
+            return (
+              <Switch
+                key={a.id}
+                className="py-2"
+                checked={pago ? false : (avisos[a.id] ?? false)}
+                disabled={a.id === 'sms' && !user.telefone}
+                onChange={(v) => (pago ? setAlertaModal(true) : setAvisos((s) => ({ ...s, [a.id]: v })))}
+                label={a.label}
+                description={
+                  pago
+                    ? 'Com o Acesso Família.'
+                    : a.id === 'email'
+                      ? user.email
+                      : a.id === 'sms'
+                        ? (user.telefone ?? 'Indique primeiro o telemóvel.')
+                        : undefined
+                }
+              />
+            )
+          })}
         </div>
         <p className="mt-4 text-sm text-ink-mute">
           Protótipo: não são enviados emails nem SMS, e estas escolhas não ficam guardadas.
         </p>
       </Bloco>
 
-      <Bloco id="conta-dados" ordem={2} titulo="Os seus dados" texto="RGPD, artigos 15.º e 20.º.">
+      <Bloco id="conta-dados" ordem={3} titulo="Os seus dados" texto="RGPD, artigos 15.º e 20.º.">
         {/* os números contam ao aparecer */}
         <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
           {(
@@ -183,14 +270,14 @@ export default function ContaPage() {
         </div>
       </Bloco>
 
-      <Bloco id="conta-demo" ordem={3} titulo="Demonstração" texto="Afeta apenas este navegador.">
+      <Bloco id="conta-demo" ordem={4} titulo="Demonstração" texto="Afeta apenas este navegador.">
         <p className="text-ink-soft">Volta ao exemplo inicial: perfis, pedidos, guardados e notificações.</p>
         <Button variant="subtle" className="mt-5 w-full sm:w-auto" onClick={repor.pedir}>
           Repor dados de demonstração
         </Button>
       </Bloco>
 
-      <Bloco id="conta-sessao" ordem={4} titulo="Sessão">
+      <Bloco id="conta-sessao" ordem={5} titulo="Sessão">
         <p className="text-ink-soft">Num computador partilhado, termine sempre a sessão.</p>
         <Button className="mt-5 w-full sm:w-auto" onClick={() => void terminarSessao(navigate)}>
           Terminar sessão
@@ -198,6 +285,7 @@ export default function ContaPage() {
       </Bloco>
 
       {repor.modal}
+      {!completo && <AcessoNecessarioModal open={alertaModal} onClose={() => setAlertaModal(false)} acao="alerta" voltar="/familia/conta" />}
     </div>
   )
 }

@@ -51,7 +51,7 @@ export default function GuidePage() {
             Escolher um lar com calma, <em>mesmo com pressa</em>.
           </>
         }
-        subtitle="O que é cada resposta, o que ver na visita, que apoios existem e a quem ligar."
+        subtitle="O que é cada resposta, o que ver na visita, que apoios existem e a quem ligar. Gratuito e sem conta."
         className="print:hidden"
       >
         <p className="text-base text-ink-mute">Se tem pressa:</p>

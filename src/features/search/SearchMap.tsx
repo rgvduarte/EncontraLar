@@ -9,10 +9,9 @@ import { DispDot } from './Chips'
 import { dispVisivel, livreComLista, type Entrada } from './filtering'
 import { MapController, REGIOES_MAPA } from './MapController'
 import { MapPeekCard, MapPopupContent } from './MapCards'
-import { clusterIcon, descricaoMarcador, pinIcon, type ClusterLike } from './mapIcons'
+import { clusterIcon, clusterIconNeutro, descricaoGenerica, descricaoMarcador, pinIcon, pontoIcon, type ClusterLike } from './mapIcons'
 import { useSaida } from './motion'
 import { centroDe, type Bounds, type Local } from './searchState'
-
 
 interface Props {
   resultados: Entrada[]
@@ -26,6 +25,11 @@ interface Props {
   onZona: (b: Bounds) => void
   /** telemóvel: sem popups, cartão no fundo */
   mobile: boolean
+  /**
+   * Camada completa (Acesso Família). Na versão grátis: pontos neutros (sem cor de vaga nem preço),
+   * agrupamentos só com o total, popup e cartão genéricos e sem legenda das vagas.
+   */
+  completo: boolean
   /** deve incluir o posicionamento (relative/absolute) e o tamanho */
   className?: string
 }
@@ -34,6 +38,7 @@ interface PinProps {
   e: Entrada
   ativo: boolean
   popup: boolean
+  completo: boolean
   onHover: (id: string | null) => void
   onSelect: (id: string | null) => void
   registar: (id: string, m: L.Marker | null) => void
@@ -43,22 +48,23 @@ interface PinProps {
 const PAN_TL: [number, number] = [24, 128]
 const PAN_BR: [number, number] = [72, 24]
 
-const PinMarker = memo(function PinMarker({ e, ativo, popup, onHover, onSelect, registar }: PinProps) {
+const PinMarker = memo(function PinMarker({ e, ativo, popup, completo, onHover, onSelect, registar }: PinProps) {
   const id = e.lar.id
   const { lat, lng } = e.lar
   // posição estável: um array novo a cada render faz o agrupamento retirar e repor o marcador (e fecha o popup)
   const position = useMemo<[number, number]>(() => [lat, lng], [lat, lng])
-  // a cor segue o cartão: um lugar livre já prometido à lista de espera aparece a laranja
-  const disp = dispVisivel(e)
-  const listaAFrente = livreComLista(e)
-  const icon = useMemo(() => pinIcon(e.lar, disp, listaAFrente), [e.lar, disp, listaAFrente])
+  // a cor segue o cartão: um lugar livre já prometido à lista de espera aparece a laranja.
+  // Versão grátis: o estado nem chega ao marcador (ícone, título e ordem de sobreposição iguais para todos)
+  const disp = completo ? dispVisivel(e) : null
+  const listaAFrente = completo && livreComLista(e)
+  const icon = useMemo(() => (disp ? pinIcon(e.lar, disp, listaAFrente) : pontoIcon(e.lar)), [e.lar, disp, listaAFrente])
 
   // realce por classe no elemento existente → a pílula transita para preto (sem trocar o ícone)
   const markerRef = useRef<L.Marker | null>(null)
   const ativoRef = useRef(ativo)
   ativoRef.current = ativo
   const pintar = useCallback(() => {
-    markerRef.current?.getElement()?.querySelector('.el-pin')?.classList.toggle('is-active', ativoRef.current)
+    markerRef.current?.getElement()?.querySelector('.el-pin, .el-dot')?.classList.toggle('is-active', ativoRef.current)
   }, [])
   useEffect(() => {
     pintar()
@@ -94,7 +100,7 @@ const PinMarker = memo(function PinMarker({ e, ativo, popup, onHover, onSelect, 
       ref={ref}
       position={position}
       icon={icon}
-      title={descricaoMarcador(e.lar, disp, listaAFrente)}
+      title={disp ? descricaoMarcador(e.lar, disp, listaAFrente) : descricaoGenerica(e.lar)}
       alt={e.lar.nome}
       keyboard
       riseOnHover
@@ -103,7 +109,7 @@ const PinMarker = memo(function PinMarker({ e, ativo, popup, onHover, onSelect, 
     >
       {popup && (
         <Popup className="el-popup" minWidth={280} maxWidth={280} autoPanPaddingTopLeft={PAN_TL} autoPanPaddingBottomRight={PAN_BR}>
-          <MapPopupContent e={e} />
+          <MapPopupContent e={e} completo={completo} />
         </Popup>
       )}
     </Marker>
@@ -132,7 +138,7 @@ const raioAgrupamento = (zoom: number) => (zoom >= 12 ? 64 : 80)
 const vidro = 'bg-white/90 shadow-card ring-1 ring-black/5 backdrop-blur-xl'
 
 /** Mapa de resultados (Leaflet): pílulas de preço, agrupamentos, raio, "Pesquisar nesta zona". */
-export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId, onHover, onSelect, onZona, mobile, className }: Props) {
+export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId, onHover, onSelect, onZona, mobile, completo, className }: Props) {
   const [map, setMap] = useState<L.Map | null>(null)
   const [mexeu, setMexeu] = useState(false)
   const markers = useRef(new Map<string, L.Marker>())
@@ -232,12 +238,17 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
               interactive={false}
               pathOptions={{ className: 'el-raio', weight: 1.5, dashArray: '4 7', lineCap: 'round' }}
             />
+            {/* versão grátis: as instituições já são pontos a tinta, por isso o centro da pesquisa passa a anel */}
             <CircleMarker
-              key={local.tipo}
+              key={`${local.tipo}-${completo}`}
               center={centroLL}
               radius={6}
               interactive={false}
-              pathOptions={{ className: cn('el-centro', local.tipo === 'coords' && 'el-centro--gps'), weight: 3, fillOpacity: 1 }}
+              pathOptions={{
+                className: cn('el-centro', local.tipo === 'coords' ? 'el-centro--gps' : !completo && 'el-centro--anel'),
+                weight: 3,
+                fillOpacity: 1,
+              }}
             />
           </>
         )}
@@ -249,14 +260,16 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
           />
         )}
 
+        {/* a chave refaz os agrupamentos se o acesso mudar (o ícone do agrupamento é escolhido quando ele nasce) */}
         <MarkerClusterGroup
+          key={completo ? 'completo' : 'gratis'}
           ref={clusterRef}
           chunkedLoading
           showCoverageOnHover={false}
           spiderfyOnMaxZoom
           maxClusterRadius={raioAgrupamento}
           disableClusteringAtZoom={13}
-          iconCreateFunction={(c: ClusterLike) => clusterIcon(c)}
+          iconCreateFunction={(c: ClusterLike) => (completo ? clusterIcon(c) : clusterIconNeutro(c))}
         >
           {resultados.map((e) => (
             <PinMarker
@@ -264,6 +277,7 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
               e={e}
               ativo={e.lar.id === hoverId || e.lar.id === selectedId}
               popup={!mobile}
+              completo={completo}
               onHover={onHover}
               onSelect={onSelect}
               registar={registar}
@@ -287,24 +301,27 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
             </button>
           ))}
         </nav>
-        {/* no telemóvel a legenda ocupa duas linhas (grelha que se ajusta ao texto); cada estado fica inteiro */}
-        <ul
-          aria-label="Legenda"
-          className={cn(
-            'pointer-events-auto grid grid-cols-[auto_auto] gap-x-3 gap-y-1 rounded-[1.125rem] px-3.5 py-2 text-xs text-ink-soft sm:flex sm:rounded-full',
-            'transition-[opacity,visibility] duration-200',
-            // com a folha do marcador aberta (telemóvel) o estado já está escrito no cartão: a legenda sai e o marcador tem espaço
-            selecionado && 'invisible opacity-0',
-            vidro,
-          )}
-        >
-          {LEGENDA.map((l) => (
-            <li key={l.d} className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <DispDot disp={l.d} className="size-2.5" />
-              {l.t}
-            </li>
-          ))}
-        </ul>
+        {/* no telemóvel a legenda ocupa duas linhas (grelha que se ajusta ao texto); cada estado fica inteiro.
+            Versão grátis: os pontos não têm cor de vaga, por isso não há legenda */}
+        {completo && (
+          <ul
+            aria-label="Legenda"
+            className={cn(
+              'pointer-events-auto grid grid-cols-[auto_auto] gap-x-3 gap-y-1 rounded-[1.125rem] px-3.5 py-2 text-xs text-ink-soft sm:flex sm:rounded-full',
+              'transition-[opacity,visibility] duration-200',
+              // com a folha do marcador aberta (telemóvel) o estado já está escrito no cartão: a legenda sai e o marcador tem espaço
+              selecionado && 'invisible opacity-0',
+              vidro,
+            )}
+          >
+            {LEGENDA.map((l) => (
+              <li key={l.d} className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                <DispDot disp={l.d} className="size-2.5" />
+                {l.t}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {zonaBtn.item && (
@@ -330,7 +347,7 @@ export function SearchMap({ resultados, local, raio, fitKey, hoverId, selectedId
 
       {folha.item && (
         <div ref={folhaRef} className="pointer-events-none absolute inset-x-3 bottom-20 z-[1001]">
-          <MapPeekCard e={folha.item} saindo={folha.saindo} onClose={() => onSelect(null)} />
+          <MapPeekCard e={folha.item} saindo={folha.saindo} onClose={() => onSelect(null)} completo={completo} />
         </div>
       )}
     </div>

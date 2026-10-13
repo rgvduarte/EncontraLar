@@ -83,15 +83,20 @@ function Admitida({ c }: { c: Candidatura }) {
   )
 }
 
-/** Estado do pedido que a família já fez a esta instituição (substitui "Pedir vaga"); inclui a entrada ('admitida'). */
-export function CandidaturaAtiva({ lar, c, onVisita }: { lar: Lar; c: Candidatura; onVisita: () => void }) {
+/**
+ * Estado do pedido que a família já fez a esta instituição (substitui "Pedir vaga"); inclui a entrada ('admitida').
+ * Sem Acesso Família (o passe terminou), o pedido continua a ser da família: estado, lugar na lista e visita marcada
+ * ficam à vista; a previsão de espera não (nem vai para o DOM), e "Marcar visita" explica o Acesso Família.
+ */
+export function CandidaturaAtiva({ lar, c, completo = true, onVisita }: { lar: Lar; c: Candidatura; completo?: boolean; onVisita: () => void }) {
   if (c.estado === 'admitida') return <Admitida c={c} />
-  return <PedidoEmCurso lar={lar} c={c} onVisita={onVisita} />
+  return <PedidoEmCurso lar={lar} c={c} completo={completo} onVisita={onVisita} />
 }
 
-function PedidoEmCurso({ lar, c, onVisita }: { lar: Lar; c: Candidatura; onVisita: () => void }) {
+function PedidoEmCurso({ lar, c, completo, onVisita }: { lar: Lar; c: Candidatura; completo: boolean; onVisita: () => void }) {
   const naLista = c.estado === 'lista_espera' && c.posicao != null
-  const est = useMemo(() => (naLista ? estimarEspera(lar, { posicao: c.posicao }) : null), [lar, naLista, c.posicao])
+  // a previsão para a posição na lista é do Acesso Família: sem ele nem se calcula
+  const est = useMemo(() => (naLista && completo ? estimarEspera(lar, { posicao: c.posicao }) : null), [lar, naLista, completo, c.posicao])
   const primeiroNome = c.perfil.nome.split(' ')[0]
   const podeVisitar = !c.visita && ['enviada', 'em_analise', 'lista_espera'].includes(c.estado)
 
@@ -113,7 +118,7 @@ function PedidoEmCurso({ lar, c, onVisita }: { lar: Lar; c: Candidatura; onVisit
         </p>
       )}
 
-      {naLista && est && (
+      {naLista && (
         <div className="mt-5">
           <p className="flex items-baseline gap-3">
             <span className="text-6xl font-semibold tracking-tight text-ink tabular">
@@ -122,7 +127,7 @@ function PedidoEmCurso({ lar, c, onVisita }: { lar: Lar; c: Candidatura; onVisit
             </span>
             <span className="text-sm text-ink-soft">lugar na lista de espera</span>
           </p>
-          {est.imediata ? (
+          {!est ? null : est.imediata ? (
             <p className="mt-3 text-ink">Há lugar livre para si — a instituição deve contactá-lo(a).</p>
           ) : (
             <>

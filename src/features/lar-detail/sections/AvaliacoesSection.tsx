@@ -4,10 +4,12 @@ import { BadgeCheck, ChevronRight, Info } from 'lucide-react'
 import type { Lar, Review } from '@/types'
 import { Stars } from '@/components/ui/Stars'
 import { Button } from '@/components/ui/Button'
+import { AvisoAcesso } from '@/components/acesso'
 import { plural } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { Bloco, Secao } from '../Secao'
 import { Cascata, Contador } from '../motion'
+import { caminhoFicha } from '../helpers'
 
 const ASPETOS: { k: keyof Review['aspetos']; label: string }[] = [
   { k: 'cuidados', label: 'Cuidados' },
@@ -77,7 +79,15 @@ function SeloAvaliacao() {
   )
 }
 
-function Opiniao({ r, nova }: { r: Review; nova?: boolean }) {
+/** Excerto de uma opinião longa: corta numa palavra, perto dos `max` carateres. */
+function excerto(texto: string, max = 240): string {
+  if (texto.length <= max) return texto
+  const corte = texto.slice(0, max)
+  const espaco = corte.lastIndexOf(' ')
+  return `${(espaco > max * 0.6 ? corte.slice(0, espaco) : corte).replace(/[\s,;:.–—-]+$/, '')}…`
+}
+
+function Opiniao({ r, nova, curta }: { r: Review; nova?: boolean; curta?: boolean }) {
   return (
     <li className={cn('border-b border-line py-7', nova && 'ficha-troca')}>
       <div className="relative flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -85,7 +95,7 @@ function Opiniao({ r, nova }: { r: Review; nova?: boolean }) {
         {r.verificada && <SeloAvaliacao />}
       </div>
       <blockquote className="mt-3 max-w-[65ch] text-lg leading-relaxed text-ink">
-        <p>{r.texto}</p>
+        <p>{curta ? excerto(r.texto) : r.texto}</p>
       </blockquote>
       <p className="mt-3 text-sm text-ink-mute">
         <span className="font-medium text-ink-soft">{r.autor}</span> · {r.relacao} · {mesExtenso(r.data)}
@@ -94,7 +104,39 @@ function Opiniao({ r, nova }: { r: Review; nova?: boolean }) {
   )
 }
 
-export function AvaliacoesSection({ lar }: { lar: Lar }) {
+/**
+ * O que dizem as famílias. Versão grátis (`completo` falso): a média, o número de avaliações e um só excerto
+ * (de preferência de uma avaliação verificada); as restantes, as médias por aspeto e o filtro são do Acesso Família.
+ */
+export function AvaliacoesSection({ lar, completo }: { lar: Lar; completo: boolean }) {
+  if (!completo && (lar.numAvaliacoes > 0 || lar.reviews.length > 0)) return <AvaliacoesGratis lar={lar} />
+  return <AvaliacoesCompletas lar={lar} />
+}
+
+function AvaliacoesGratis({ lar }: { lar: Lar }) {
+  const destaque = lar.reviews.find((r) => r.verificada) ?? lar.reviews[0]
+  return (
+    <Secao id="ficha-avaliacoes" rotulo="Avaliações" titulo="O que dizem as famílias">
+      <Bloco>
+        <p className="text-7xl leading-none font-semibold tracking-tight text-ink tabular">
+          <Contador valor={lar.avaliacao} casas={1} />
+        </p>
+        <Stars value={lar.avaliacao} size="md" className="mt-4" />
+        <p className="mt-2 text-sm text-ink-mute">{plural(lar.numAvaliacoes, 'avaliação', 'avaliações')}</p>
+      </Bloco>
+      {destaque && (
+        <Cascata passo={110} className="mt-12 border-t border-line">
+          <Opiniao r={destaque} curta />
+        </Cascata>
+      )}
+      <Bloco>
+        <AvisoAcesso texto="Ler todas as avaliações" voltar={caminhoFicha(lar)} className="mt-4" />
+      </Bloco>
+    </Secao>
+  )
+}
+
+function AvaliacoesCompletas({ lar }: { lar: Lar }) {
   const [todas, setTodas] = useState(false)
   const [soVerificadas, setSoVerificadas] = useState(false)
   const reviews = lar.reviews

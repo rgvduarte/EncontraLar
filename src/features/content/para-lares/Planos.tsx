@@ -3,7 +3,8 @@
  * estar no EncontraLar é gratuito para todas as instituições, com todas as funcionalidades;
  * os lares privados pagam só uma taxa fixa por cada pessoa que entra através da plataforma
  * (valor acordado no contrato, nunca publicado); IPSS e Misericórdias não pagam nada;
- * grupos com várias casas falam connosco. Ninguém paga para aparecer primeiro.
+ * grupos com várias casas falam connosco. Ninguém paga para aparecer primeiro: nem as instituições,
+ * nem as famílias que compram o Acesso Família para ver as vagas em tempo real.
  */
 import { Check } from 'lucide-react'
 import type { Lar } from '@/types'
@@ -76,7 +77,7 @@ export function QuantoCusta({ lar }: { lar: Lar }) {
               </li>
             ))}
           </ul>
-          <p className="mt-8 text-base text-ink-mute lg:mt-auto lg:pt-8">Não há planos nem funcionalidades pagas.</p>
+          <p className="mt-8 text-base text-ink-mute lg:mt-auto lg:pt-8">Para as instituições, não há planos nem funcionalidades pagas.</p>
         </Reveal>
 
         <Reveal delay={120} className="rounded-[1.75rem] bg-white px-6 ring-1 ring-line ring-inset sm:px-10 lg:col-span-7">
@@ -107,7 +108,8 @@ export function QuantoCusta({ lar }: { lar: Lar }) {
       <Reveal variant="fade" className="mx-auto mt-16 flex max-w-[48ch] flex-col items-center text-center sm:mt-24">
         <h3 className="text-2xl font-semibold text-ink sm:text-3xl">Ninguém paga para aparecer primeiro.</h3>
         <p className="mt-3 text-lg text-ink-mute">
-          Não há posições pagas nem destaques à venda. A taxa não muda a ordem dos resultados, e o selo de verificação não se compra.
+          Não há posições pagas nem destaques à venda. A taxa não muda a ordem dos resultados, e o selo de verificação não se compra. As
+          famílias podem pagar um Acesso Família para ver as vagas em tempo real, mas isso nunca muda a ordem nem dá prioridade nas vagas.
         </p>
         <MoreLink to="/como-ordenamos" className="mt-1 text-lg">
           Como ordenamos

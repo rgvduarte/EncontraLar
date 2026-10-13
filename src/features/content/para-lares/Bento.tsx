@@ -75,7 +75,9 @@ function VistaFamilia({ ensaio }: { ensaio: Ensaio }) {
   return (
     <div className="flex flex-col gap-3">
       <div aria-live="polite">
-        <LarCard lar={ensaio.lar} layout="horizontal" className="shadow-soft" />
+        {/* o ensaio é o cartão da própria instituição (vista completa, para o botão o mudar); na versão grátis
+            a instituição de exemplo vem anónima (useExampleLar) */}
+        <LarCard lar={ensaio.lar} layout="horizontal" className="shadow-soft" vista="completa" />
       </div>
       {quarto && (
         <div className="flex items-center justify-between gap-4 rounded-[1.25rem] bg-white py-2 pr-2 pl-5 shadow-soft">

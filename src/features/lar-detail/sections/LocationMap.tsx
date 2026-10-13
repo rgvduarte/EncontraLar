@@ -27,8 +27,28 @@ function Gestos({ ativos }: { ativos: boolean }) {
  * Mapa pequeno da localização (Leaflet). Isolado num stacking context para não passar por cima do cabeçalho fixo.
  * Em ecrãs de toque não é uma "armadilha" de scroll: os gestos só ficam ativos depois de tocar no mapa,
  * e voltam a bloquear quando o mapa sai do ecrã.
+ *
+ * Sem `marcador` (versão grátis da ficha) é só a zona: o centro que recebe já é o do concelho, nunca o da
+ * instituição, e não há alfinete — a localização exata não vai para o DOM.
  */
-export default function LocationMap({ lat, lng, nome }: { lat: number; lng: number; nome: string }) {
+export default function LocationMap({
+  lat,
+  lng,
+  nome,
+  rotulo,
+  zoom = 15,
+  marcador = true,
+}: {
+  lat: number
+  lng: number
+  /** nome da instituição (alfinete e nome acessível do mapa) */
+  nome: string
+  /** nome acessível da região do mapa; por omissão "Mapa com a localização do Lar X" */
+  rotulo?: string
+  zoom?: number
+  /** alfinete no centro (a localização exata); falso para mostrar só a zona */
+  marcador?: boolean
+}) {
   const icon = useMemo(() => L.divIcon({ html: PIN_HTML, className: '', iconSize: [22, 22], iconAnchor: [11, 11] }), [])
   const toque = useMediaQuery('(pointer: coarse)')
   const [desbloqueado, setDesbloqueado] = useState(false)
@@ -47,10 +67,10 @@ export default function LocationMap({ lat, lng, nome }: { lat: number; lng: numb
   }, [desbloqueado])
 
   return (
-    <div ref={raiz} className="relative isolate h-full w-full" role="region" aria-label={`Mapa com a localização ${doLar(nome)}`}>
-      <MapContainer center={[lat, lng]} zoom={15} maxZoom={18} scrollWheelZoom={false} dragging={!toque} touchZoom={!toque} className="h-full w-full">
+    <div ref={raiz} className="relative isolate h-full w-full" role="region" aria-label={rotulo ?? `Mapa com a localização ${doLar(nome)}`}>
+      <MapContainer center={[lat, lng]} zoom={zoom} maxZoom={18} scrollWheelZoom={false} dragging={!toque} touchZoom={!toque} className="h-full w-full">
         <Basemap />
-        <Marker position={[lat, lng]} icon={icon} title={nome} alt={nome} keyboard={false} />
+        {marcador && <Marker position={[lat, lng]} icon={icon} title={nome} alt={nome} keyboard={false} />}
         {toque && <Gestos ativos={desbloqueado} />}
       </MapContainer>
 

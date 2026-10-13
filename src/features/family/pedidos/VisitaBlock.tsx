@@ -1,10 +1,11 @@
 import { useRef, useState, type FormEvent } from 'react'
-import { CalendarPlus } from 'lucide-react'
+import { CalendarPlus, Lock } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { SelectField } from '@/components/ui/Field'
 import { toast } from '@/components/ui/Toast'
-import { pedirVisita } from '@/lib/store'
+import { AcessoNecessarioModal } from '@/components/acesso'
+import { pedirVisita, useAcesso } from '@/lib/store'
 import { cn } from '@/lib/cn'
 import { descarregarVisita } from '../shared/ics'
 import { useChangeAnimation } from '../shared/motion'
@@ -62,21 +63,46 @@ function VisitaForm({ c, lar, inicial, onDone }: { c: Candidatura; lar: Lar; ini
   )
 }
 
-/** Visita de um pedido: marcada (com calendário), pedida, realizada — ou o formulário para a pedir. */
+/**
+ * Visita de um pedido: marcada (com calendário), pedida, realizada — ou o formulário para a pedir.
+ * Versão grátis (passe terminado): a visita já marcada continua à vista; marcar ou mudar a data é do Acesso Família.
+ */
 export function VisitaBlock({ c, lar }: { c: Candidatura; lar: Lar }) {
   const [editar, setEditar] = useState(false)
+  const [modal, setModal] = useState(false)
+  const { completo } = useAcesso()
   const v = c.visita
   const ref = useRef<HTMLDivElement>(null)
   // formulário ↔ visita marcada: a troca entra com uma transição curta
   useChangeAnimation(ref, `${v?.estado ?? 'nenhuma'}-${v?.data ?? ''}-${v?.hora ?? ''}-${editar}`)
   return (
     <div ref={ref}>
-      <VisitaConteudo c={c} lar={lar} editar={editar} setEditar={setEditar} />
+      <VisitaConteudo
+        c={c}
+        lar={lar}
+        completo={completo}
+        editar={editar}
+        // sem passe, "Alterar data" e "Marcar outra visita" explicam o Acesso Família em vez de abrir o formulário
+        setEditar={(on) => (on && !completo ? setModal(true) : setEditar(on))}
+      />
+      {!completo && <AcessoNecessarioModal open={modal} onClose={() => setModal(false)} acao="visita" />}
     </div>
   )
 }
 
-function VisitaConteudo({ c, lar, editar, setEditar }: { c: Candidatura; lar: Lar; editar: boolean; setEditar: (v: boolean) => void }) {
+function VisitaConteudo({
+  c,
+  lar,
+  completo,
+  editar,
+  setEditar,
+}: {
+  c: Candidatura
+  lar: Lar
+  completo: boolean
+  editar: boolean
+  setEditar: (v: boolean) => void
+}) {
   const v = c.visita
 
   if (v && v.estado === 'realizada') {
@@ -100,7 +126,10 @@ function VisitaConteudo({ c, lar, editar, setEditar }: { c: Candidatura; lar: La
               variant="subtle"
               size="sm"
               icon={<CalendarPlus aria-hidden />}
-              onClick={() => descarregarVisita(c, lar) && toast.success('Visita no calendário', 'Abra o ficheiro descarregado para a juntar ao seu calendário.')}
+              onClick={() =>
+                descarregarVisita(c, lar, { contactos: completo }) &&
+                toast.success('Visita no calendário', 'Abra o ficheiro descarregado para a juntar ao seu calendário.')
+              }
             >
               Adicionar ao calendário
             </Button>
@@ -109,6 +138,17 @@ function VisitaConteudo({ c, lar, editar, setEditar }: { c: Candidatura; lar: La
             {passou ? 'Marcar outra visita' : 'Alterar data'}
           </button>
         </div>
+      </div>
+    )
+  }
+
+  if (!completo) {
+    return (
+      <div>
+        <p className="mb-4 text-ink-mute">Ver as instalações ao vivo é o melhor teste.</p>
+        <Button variant="subtle" icon={<Lock aria-hidden />} className="w-full sm:w-auto" onClick={() => setEditar(true)}>
+          Pedir visita<span className="sr-only"> (disponível com o Acesso Família)</span>
+        </Button>
       </div>
     )
   }

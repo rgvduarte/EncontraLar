@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { Lar } from '@/types'
 import {
+  comVoltar,
   descreverDestino,
   destinoAposEntrar,
   destinoAposRegistoProfissional,
+  ehAcesso,
   intencaoDe,
   motivoDoDestino,
+  precisaDeAcesso,
   roleDoCaminho,
   voltarPublico,
 } from './redirect'
@@ -78,5 +81,59 @@ describe('área dos casos (profissional)', () => {
     expect(motivoDoDestino('/casos/caso-1', lares)).toBe('abrir a ficha do caso')
     expect(motivoDoDestino('/casos/novo?lar=lar-sao-bento', lares)).toBe('abrir um caso novo')
     expect(motivoDoDestino('/casos', lares)).toBe('abrir os seus casos')
+  })
+})
+
+describe('Acesso Família (/acesso)', () => {
+  // o que o bloqueio da ficha manda: /acesso com o plano e o caminho de volta (já codificado)
+  const acesso = `/acesso?plano=acesso_90&voltar=${encodeURIComponent('/lar/lar-sao-bento?acao=pedir')}`
+
+  it('é um voltar público: segue inteiro depois de entrar ou criar conta de família', () => {
+    expect(destinoAposEntrar(acesso, 'familia')).toBe(acesso)
+    expect(voltarPublico(acesso)).toBe(acesso)
+    expect(voltarPublico('/acesso')).toBe('/acesso')
+    expect(voltarPublico('/acesso?plano=acesso_30')).toBe('/acesso?plano=acesso_30')
+  })
+
+  it('instituições e profissionais seguem para lá sem tratamento especial (a página explica-lhes)', () => {
+    expect(destinoAposEntrar(acesso, 'lar')).toBe(acesso)
+    expect(destinoAposEntrar(acesso, 'profissional')).toBe(acesso)
+    expect(destinoAposRegistoProfissional(acesso)).toBe(acesso)
+  })
+
+  it('a pesquisa inteira sobrevive à ida e volta entre entrar e criar conta', () => {
+    for (const via of ['/entrar', '/registar'] as const) {
+      const link = comVoltar(via, acesso)
+      expect(link.startsWith(`${via}?voltar=`)).toBe(true)
+      const recebido = new URLSearchParams(link.slice(link.indexOf('?') + 1)).get('voltar')
+      expect(recebido).toBe(acesso)
+      // o voltar de dentro também chega intacto à página do Acesso Família
+      expect(new URLSearchParams(recebido!.split('?')[1]).get('voltar')).toBe('/lar/lar-sao-bento?acao=pedir')
+      expect(new URLSearchParams(recebido!.split('?')[1]).get('plano')).toBe('acesso_90')
+    }
+    expect(comVoltar('/entrar', null)).toBe('/entrar')
+    expect(comVoltar('/registar', '//exemplo.com')).toBe('/registar')
+  })
+
+  it('descreve a intenção, e não confunde o voltar de dentro com um pedido de vaga', () => {
+    expect(ehAcesso(acesso)).toBe(true)
+    expect(ehAcesso('/acesso')).toBe(true)
+    expect(ehAcesso('/acessos')).toBe(false)
+    expect(ehAcesso('/lar/x?voltar=/acesso')).toBe(false)
+    expect(intencaoDe(acesso)).toBeNull()
+    expect(motivoDoDestino(acesso, lares)).toBe('ativar o Acesso Família')
+    // mal codificado (o &acao do voltar de dentro solto): continua a ser o Acesso Família
+    expect(motivoDoDestino('/acesso?voltar=/lar/lar-sao-bento&acao=pedir', lares)).toBe('ativar o Acesso Família')
+    expect(descreverDestino('/acesso?plano=acesso_30', lares)).toBe('a página do Acesso Família')
+  })
+
+  it('sabe que ações precisam do passe (guardar é livre)', () => {
+    expect(precisaDeAcesso('/lar/lar-sao-bento?acao=pedir')).toBe(true)
+    expect(precisaDeAcesso('/lar/lar-sao-bento?acao=visita')).toBe(true)
+    expect(precisaDeAcesso('/pesquisa?alerta=lar-sao-bento')).toBe(true)
+    expect(precisaDeAcesso('/pesquisa?guardar=lar-sao-bento')).toBe(false)
+    expect(precisaDeAcesso('/lar/lar-sao-bento')).toBe(false)
+    expect(precisaDeAcesso(acesso)).toBe(false)
+    expect(precisaDeAcesso(null)).toBe(false)
   })
 })

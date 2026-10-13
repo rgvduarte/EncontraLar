@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useState, type FocusEvent } from 'react'
 import { Link } from 'react-router'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Lock } from 'lucide-react'
 import type { Lar } from '@/types'
 import { LarCard } from '@/components/lar/LarCard'
 import { HorizontalScroll } from '@/components/motion/HorizontalScroll'
 import { useLenis } from '@/components/motion/SmoothScroll'
+import { ButtonLink } from '@/components/ui/Button'
+import { ACESSO_CTA, ACESSO_DESDE, ACESSO_PARA_LARES, useVoltarAtual } from '@/components/acesso'
+import { linkAcesso } from '@/lib/acesso'
+import { useCurrentUser } from '@/lib/store'
 import { usePrefersReducedMotion } from '@/lib/motion'
 import { useMediaQuery } from '@/lib/hooks'
 import { num } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { Reveal } from './Entrada'
-import { comVagaAgora } from './homeData'
+import { comVagaAgora, contarComVaga } from './homeData'
 
 /**
  * Quantos cartões na faixa. No desktop a faixa é guiada pelo scroll (secção presa): 7 cartões + o cartão final
@@ -57,11 +61,96 @@ function useSetas(ativo: boolean) {
 }
 
 /**
- * Desfecho: "Com vaga agora" — galeria horizontal de cartões reais.
+ * Desfecho: "Com vaga agora". Com Acesso Família (ou para profissionais), a galeria das instituições com vaga;
+ * na versão grátis, quantas são e o convite para saber quais (nenhuma instituição nomeada).
+ */
+export function ComVagaSection({ lares, completo }: { lares: Lar[]; completo: boolean }) {
+  return completo ? <ComVagaGaleria lares={lares} /> : <ComVagaFechada lares={lares} />
+}
+
+/** Larguras das "linhas" dos cartões fechados (fixas: o mesmo desenho em cada visita). */
+const BARRAS = [
+  ['w-[72%]', 'w-[46%]'],
+  ['w-[58%]', 'w-[40%]'],
+  ['w-[66%]', 'w-[52%]'],
+  ['w-[50%]', 'w-[36%]'],
+] as const
+
+/**
+ * Versão grátis: o número de lares e residências com vaga agora (o "quantas"), cartões fechados com a forma de
+ * um cartão mas sem nenhum dado, e o convite para o Acesso Família. Explorar o mapa continua a ser grátis.
+ */
+function ComVagaFechada({ lares }: { lares: Lar[] }) {
+  const n = useMemo(() => contarComVaga(lares), [lares])
+  const voltar = useVoltarAtual()
+  // instituições veem a versão grátis, mas o convite não é para elas (como no BloqueioCartao)
+  const instituicao = useCurrentUser()?.role === 'lar'
+  return (
+    <section aria-labelledby="com-vaga-titulo" className="pt-20 pb-12 sm:pt-28 sm:pb-16">
+      <div className="container-page">
+        <Reveal variant="blur" className="max-w-3xl">
+          <h2 id="com-vaga-titulo" className="headline">
+            {n > 0 ? (
+              <>
+                {num(n)} {n === 1 ? 'lar ou residência' : 'lares e residências'} <em>com vaga agora.</em>
+              </>
+            ) : (
+              'Neste momento não há lugares livres.'
+            )}
+          </h2>
+          <p className="mt-4 text-xl text-ink-mute sm:text-2xl">
+            {n > 0
+              ? `Explorar é grátis. Para saber quais têm vaga, quantos lugares e a que preço, há o Acesso Família — ${ACESSO_DESDE}.`
+              : `As vagas abrem todas as semanas. Para ver onde se prevê a próxima e receber um alerta, há o Acesso Família — ${ACESSO_DESDE}.`}
+          </p>
+        </Reveal>
+
+        {n > 0 && (
+          // só formas, sem dados: decorativo (o título e a frase dizem o que está fechado)
+          <div aria-hidden className="mt-10 flex gap-4 overflow-hidden sm:mt-14 sm:gap-5 [mask-image:linear-gradient(to_right,#000_45%,transparent)]">
+            {BARRAS.map(([a, b], i) => (
+              <Reveal key={i} delay={Math.min(i, 3) * 90} duration={900} className={cn(item, 'flex-col')}>
+                <span className="relative flex aspect-[4/3] items-center justify-center rounded-[1.375rem] bg-sand">
+                  <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-sm font-medium text-ink">
+                    <span className="size-2 rounded-full bg-leaf-500" />
+                    Com vaga
+                  </span>
+                  <Lock className="size-6 text-ink-mute/50" />
+                </span>
+                <span className="flex flex-col gap-2.5 px-1 pt-4">
+                  <span className={cn('h-4 rounded-full bg-ink/[0.08]', a)} />
+                  <span className={cn('h-3 rounded-full bg-ink/[0.05]', b)} />
+                  <span className="mt-4 h-4 w-[30%] rounded-full bg-ink/[0.07]" />
+                </span>
+              </Reveal>
+            ))}
+          </div>
+        )}
+
+        <Reveal delay={160} className="mt-10 flex flex-col items-start gap-x-6 gap-y-2 sm:mt-12 sm:flex-row sm:items-center">
+          {instituicao ? (
+            <p className="text-lg text-ink-mute">{ACESSO_PARA_LARES}</p>
+          ) : (
+            <ButtonLink to={linkAcesso(voltar)} size="lg" className="w-full sm:w-auto">
+              {ACESSO_CTA}
+            </ButtonLink>
+          )}
+          <Link to="/pesquisa" className="link inline-flex min-h-12 items-center gap-0.5 text-lg max-sm:self-center">
+            Explorar o mapa
+            <ChevronRight aria-hidden className="size-4.5" />
+          </Link>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+/**
+ * "Com vaga agora" — galeria horizontal de cartões reais.
  * Desktop: a secção fica presa e o scroll vertical faz deslizar a faixa (sem sequestrar: a roda continua a descer
  * a página). Telemóvel e movimento reduzido: faixa deslizável com o dedo, com snap.
  */
-export function ComVagaSection({ lares }: { lares: Lar[] }) {
+function ComVagaGaleria({ lares }: { lares: Lar[] }) {
   const todas = useMemo(() => comVagaAgora(lares, Infinity), [lares])
   const lista = todas.slice(0, CARTOES)
   const lenis = useLenis()

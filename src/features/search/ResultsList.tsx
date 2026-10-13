@@ -29,12 +29,24 @@ interface Props {
   destaqueId: string | null
   onHover: (id: string | null) => void
   mostrarDistancia: boolean
+  /** camada completa (Acesso Família); na versão grátis a lista é uma só, sem grupos por vaga (diriam quais têm) */
+  completo: boolean
 }
 
 /** Lista de cartões horizontais, paginada de 20 em 20; separa "Com vaga agora" do resto quando ajuda. */
-export const ResultsList = memo(function ResultsList({ resultados, geracao, ordem, visiveis, onMais, destaqueId, onHover, mostrarDistancia }: Props) {
+export const ResultsList = memo(function ResultsList({
+  resultados,
+  geracao,
+  ordem,
+  visiveis,
+  onMais,
+  destaqueId,
+  onHover,
+  mostrarDistancia,
+  completo,
+}: Props) {
   const parte = useMemo(() => resultados.slice(0, visiveis), [resultados, visiveis])
-  const grupos = useMemo(() => dividir(parte, resultados, ordem), [parte, resultados, ordem])
+  const grupos = useMemo(() => (completo ? dividir(parte, resultados, ordem) : null), [completo, parte, resultados, ordem])
   const faltam = resultados.length - parte.length
 
   // cartões revelados ao entrar no ecrã, em cascata (ao abrir, ao mudar filtros, ao fazer scroll, "Mostrar mais")

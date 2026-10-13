@@ -23,7 +23,7 @@ const ComoOrdenamosPage = lazy(() => import('@/features/content/ComoOrdenamosPag
 const CasosApp = lazy(() => import('@/features/pro/CasosApp'))
 const ProfissionaisPage = lazy(() => import('@/features/pro/ProfissionaisPage'))
 const ConfirmarPage = lazy(() => import('@/features/confirmar/ConfirmarPage'))
-// Acesso Família: o passe das famílias (vagas, preços, previsão, contactos, pedidos) — docs/DESIGN.md
+// Acesso Família: o passe das famílias (vagas, preços, previsão, contactos, pedidos) — docs/DESIGN.md §12
 const AcessoPage = lazy(() => import('@/features/acesso/AcessoPage'))
 const NotFoundPage = lazy(() => import('@/features/content/NotFoundPage'))
 

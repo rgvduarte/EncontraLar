@@ -171,10 +171,11 @@ function FaixaGratis({ lar }: { lar: Lar }) {
         <span className="text-lg font-semibold">{valor}</span>
         {sufixo && <span className="text-sm text-ink-mute"> {sufixo}</span>}
       </p>
-      {/* cadeado em linha com o texto (alinha pela linha de base com a faixa de preço) */}
-      <p className="text-sm text-ink-mute">
-        <Lock aria-hidden className="mr-1.5 inline size-3.5 align-[-0.1em]" />
-        Vagas e preços com Acesso Família
+      {/* items-baseline: a linha alinha pela base do texto com a faixa de preço; se quebrar (cartões estreitos),
+          o texto fica recolhido à direita do cadeado */}
+      <p className="flex items-baseline gap-1.5 text-sm text-ink-mute">
+        <Lock aria-hidden className="size-3.5 shrink-0 translate-y-[0.1em]" />
+        <span>Vagas e preços com Acesso Família</span>
       </p>
     </>
   )

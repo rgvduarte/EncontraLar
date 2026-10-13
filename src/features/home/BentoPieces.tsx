@@ -1,12 +1,17 @@
 /**
  * Pedaços de UI real para a grelha "Tudo o que precisa para decidir" — dados verdadeiros do store,
  * compostos como capturas do produto.
+ *
+ * Versão grátis (sem Acesso Família): a previsão e a compatibilidade aparecem como exemplos sem nome (nada as liga
+ * a uma instituição), e o cartão de preços mostra a faixa de preço com o preço de cada quarto fechado.
  */
 import { Link } from 'react-router'
-import { Check, Minus, X } from 'lucide-react'
+import { Check, Lock, Minus, X } from 'lucide-react'
 import type { Lar } from '@/types'
 import { ForecastStrip } from '@/components/brand/ForecastStrip'
 import { SeloVerificado } from '@/components/brand/SeloVerificado'
+import { ACESSO_DISPONIVEL } from '@/components/acesso'
+import { faixaPreco } from '@/lib/acesso'
 import { resumoPrevisao } from '@/lib/forecast'
 import { NATUREZA_LABEL, QUARTO_CURTO, TIPO_LABEL } from '@/lib/labels'
 import { scoreLabel, type TipoRazao } from '@/lib/matching'
@@ -14,7 +19,7 @@ import { euro, num } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useMediaQuery } from '@/lib/hooks'
 import { useInView } from '@/lib/motion'
-import type { ExemploMatch, PrevisaoDestaque } from './homeData'
+import { razoesGratis, type ExemploMatch, type PrevisaoDestaque } from './homeData'
 
 const cartao = 'rounded-[1.375rem] bg-white p-5 sm:p-7'
 
@@ -24,6 +29,19 @@ function NomeLar({ lar, className }: { lar: Lar; className?: string }) {
     <Link to={`/lar/${lar.id}`} className={cn('font-semibold text-ink hover:underline', className)}>
       {lar.nome}
     </Link>
+  )
+}
+
+/** Linha "fechada" dentro de um cartão: o que o Acesso Família junta (sem nenhum valor por baixo). */
+function Fechado({ titulo, className }: { titulo: string; className?: string }) {
+  return (
+    <div className={cn('flex items-start gap-3 rounded-2xl bg-sand px-4 py-3.5', className)}>
+      <Lock aria-hidden className="mt-1 size-4 shrink-0 text-ink-mute" />
+      <p className="leading-snug">
+        <span className="block font-medium text-ink">{titulo}</span>
+        <span className="text-sm text-ink-mute">{ACESSO_DISPONIVEL}</span>
+      </p>
+    </div>
   )
 }
 
@@ -41,7 +59,21 @@ const ENCHER = cn(
 )
 const VAZIO = '[&_li]:translate-y-3 [&_li]:opacity-0 [&_.h-1>span]:scale-x-0'
 
-export function PrevisaoCard({ previsao, agora, animar }: { previsao: PrevisaoDestaque; agora: number; animar?: boolean }) {
+/**
+ * `anonimo` (versão grátis): a mesma previsão, como exemplo sem nome nem ligação — mostra o que o Acesso Família
+ * dá sem dizer de que instituição é.
+ */
+export function PrevisaoCard({
+  previsao,
+  agora,
+  animar,
+  anonimo,
+}: {
+  previsao: PrevisaoDestaque
+  agora: number
+  animar?: boolean
+  anonimo?: boolean
+}) {
   const { lar, est } = previsao
   // no telemóvel, três meses cabem numa linha; seis ficariam apertados
   const largo = useMediaQuery('(min-width: 640px)')
@@ -49,7 +81,11 @@ export function PrevisaoCard({ previsao, agora, animar }: { previsao: PrevisaoDe
   return (
     <div ref={ref} className={cartao}>
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-        <NomeLar lar={lar} className="leading-snug" />
+        {anonimo ? (
+          <p className="leading-snug font-semibold text-ink">Exemplo: uma casa sem vaga hoje</p>
+        ) : (
+          <NomeLar lar={lar} className="leading-snug" />
+        )}
         <p className="flex shrink-0 items-start gap-2 text-sm text-sun-800">
           <span aria-hidden className="mt-[0.45em] size-2 shrink-0 rounded-full bg-sun-500" />
           {resumoPrevisao(lar, est)}
@@ -61,13 +97,32 @@ export function PrevisaoCard({ previsao, agora, animar }: { previsao: PrevisaoDe
         inicio={new Date(agora)}
         className={cn('mt-6', animar && ENCHER, animar && !visto && VAZIO)}
       />
+      {anonimo && <Fechado titulo="A previsão de cada instituição" className="mt-6" />}
     </div>
   )
 }
 
 // ————————————————————————————————————————— preços
 
-export function PrecosCard({ lar }: { lar: Lar }) {
+/** `completo` falso (versão grátis): a faixa de preço e o preço de cada quarto fechado (os valores não vão para o DOM). */
+export function PrecosCard({ lar, completo = true }: { lar: Lar; completo?: boolean }) {
+  if (!completo) {
+    return (
+      <div className={cartao}>
+        <NomeLar lar={lar} className="block leading-snug" />
+        <p className="text-sm text-ink-mute">
+          {TIPO_LABEL[lar.tipo]} · {NATUREZA_LABEL[lar.natureza]} · {lar.localidade}
+        </p>
+        <dl className="mt-5 border-b border-line">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3">
+            <dt className="text-ink-soft">Faixa de preço</dt>
+            <dd className="font-semibold text-ink">{faixaPreco(lar)}</dd>
+          </div>
+        </dl>
+        <Fechado titulo="Preço de cada quarto" className="mt-4" />
+      </div>
+    )
+  }
   return (
     <div className={cartao}>
       <NomeLar lar={lar} className="block leading-snug" />
@@ -146,9 +201,13 @@ function Anel({ score }: { score: number }) {
   )
 }
 
-export function MatchCard({ exemplo }: { exemplo: ExemploMatch }) {
+/**
+ * `anonimo` (versão grátis): sem o nome da instituição e só com as razões que a versão grátis também mostra
+ * (cuidados e comodidades) — sem preço, distância nem vagas.
+ */
+export function MatchCard({ exemplo, anonimo }: { exemplo: ExemploMatch; anonimo?: boolean }) {
   const { lar, match, lugar } = exemplo
-  const razoes = match.razoes.slice(0, 3)
+  const razoes = (anonimo ? razoesGratis(exemplo) : match.razoes).slice(0, 3)
   return (
     <div className={cn(cartao, 'w-full')}>
       <p className="text-sm text-ink-mute">Exemplo: dependência moderada, demência, perto {deLugar(lugar.label)}</p>
@@ -161,7 +220,7 @@ export function MatchCard({ exemplo }: { exemplo: ExemploMatch }) {
         </div>
         <div className="min-w-0 leading-snug">
           <p className="font-semibold text-ink">{scoreLabel(match.score)}</p>
-          <NomeLar lar={lar} className="mt-1 block font-normal text-ink-soft" />
+          {!anonimo && <NomeLar lar={lar} className="mt-1 block font-normal text-ink-soft" />}
         </div>
       </div>
       <ul className="mt-6 flex flex-col gap-2.5">

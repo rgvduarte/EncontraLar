@@ -68,6 +68,11 @@
 .el-centro--gps {
   fill: var(--color-terra-600);
 }
+/* versão grátis: as instituições são pontos a tinta — o centro da pesquisa (lugar) é um anel, para não se confundir */
+.el-centro--anel {
+  fill: var(--color-white);
+  stroke: var(--color-ink);
+}
 
 /* ———————————————————————————————— pílula da instituição */
 
@@ -145,6 +150,44 @@
   outline-offset: 3px;
 }
 
+/* ———————————————————————————————— versão grátis: ponto neutro (sem preço nem estado de vaga) */
+
+.el-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  box-shadow:
+    0 0 0 2.5px var(--color-white),
+    0 2px 6px rgb(0 0 0 / 0.28);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition:
+    transform 0.22s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.22s ease;
+}
+/* alvo de toque (≈ 40px) maior do que o ponto, sem o desenhar */
+.el-dot::before {
+  content: '';
+  position: absolute;
+  inset: -13px;
+  border-radius: 50%;
+}
+.el-marker:hover .el-dot,
+.el-dot.is-active {
+  transform: translate(-50%, -50%) scale(1.45);
+  box-shadow:
+    0 0 0 2px var(--color-white),
+    0 6px 14px -4px rgb(0 0 0 / 0.45);
+}
+.el-marker:focus-visible .el-dot {
+  outline: 3px solid var(--color-terra-500);
+  outline-offset: 4px;
+}
+
 /* ———————————————————————————————— agrupamentos */
 
 .el-cluster {
@@ -199,6 +242,19 @@
 .el-cluster-icon:focus-visible .el-cluster {
   outline: 3px solid var(--color-terra-500);
   outline-offset: 4px;
+}
+/* versão grátis: o agrupamento é o ponto em grande, a tinta, só com o total */
+.el-cluster--neutro {
+  background: var(--color-ink);
+  color: var(--color-white);
+  box-shadow:
+    0 0 0 2.5px var(--color-white),
+    0 2px 4px rgb(0 0 0 / 0.1),
+    0 10px 22px -10px rgb(0 0 0 / 0.45);
+}
+.el-cluster-icon:hover .el-cluster--neutro,
+.el-cluster-icon.is-active .el-cluster--neutro {
+  background: var(--color-pine-600);
 }
 
 /* ———————————————————————————————— popup */
@@ -450,7 +506,8 @@
     transform: translateY(8px) scale(0.96);
   }
 }
-.el-pin {
+.el-pin,
+.el-dot {
   animation: el-pin-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 .el-cluster {
@@ -571,6 +628,7 @@ html[data-el-vista]::view-transition-group(el-vista-toggle) {
   .el-rise,
   .el-secao,
   .el-pin,
+  .el-dot,
   .el-cluster,
   .el-cluster__arc,
   .el-popup .leaflet-popup-content-wrapper,

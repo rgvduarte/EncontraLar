@@ -1,11 +1,14 @@
+import { useId } from 'react'
 import { Link } from 'react-router'
 import { X } from 'lucide-react'
 import type { TipoResposta } from '@/types'
+import { AvisoAcesso } from '@/components/acesso'
 import { CUIDADO_LABEL, GRAU_LABEL, NATUREZA_LABEL } from '@/lib/labels'
 import { euro, num } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { DispDot, QuietSelect } from './Chips'
 import { refTitulo } from './focoTitulo'
+import { agregadoVisivel, faixaDoOrcamento, ROTULO_FAIXA, type Ignorados } from './gratis'
 import { useNumeroAnimado, usePresenca } from './motion'
 import type { SearchModel } from './useSearch'
 import {
@@ -54,11 +57,14 @@ interface Pilula {
   patch: Partial<SearchState>
 }
 
-export function pilulasAtivas(s: SearchState): Pilula[] {
+/** Versão grátis (`completo = false`): o orçamento aparece como faixa ("Até 1.000 €"). */
+export function pilulasAtivas(s: SearchState, completo = true): Pilula[] {
   const out: Pilula[] = []
   if (s.vaga) out.push({ id: 'vaga', grupo: 'vaga', texto: VAGA_LABEL[s.vaga], patch: { vaga: null } })
   for (const t of s.tipos) out.push({ id: `t-${t}`, grupo: 'tipo', texto: TIPO_CURTO[t], patch: { tipos: s.tipos.filter((x) => x !== t) } })
-  if (s.max != null) out.push({ id: 'max', grupo: 'max', texto: `Até ${euro(s.max)}`, patch: { max: null } })
+  const faixa = faixaDoOrcamento(s.max)
+  if (s.max != null && completo) out.push({ id: 'max', grupo: 'max', texto: `Até ${euro(s.max)}`, patch: { max: null } })
+  else if (faixa != null) out.push({ id: 'max', grupo: 'max', texto: ROTULO_FAIXA[faixa], patch: { max: null } })
   if (s.grau) out.push({ id: 'grau', grupo: 'mais', texto: GRAU_LABEL[s.grau], patch: { grau: null } })
   for (const c of s.cuidados) out.push({ id: `c-${c}`, grupo: 'mais', texto: CUIDADO_LABEL[c], patch: { cuidados: s.cuidados.filter((x) => x !== c) } })
   if (s.ss) out.push({ id: 'ss', grupo: 'mais', texto: 'Acordo com a Segurança Social', patch: { ss: false } })
@@ -75,23 +81,39 @@ interface Props {
 
 const chavePilula = (p: Pilula) => p.id
 
+const VAGA_MAIS_CEDO = `«${ORDEM_LABEL.disponibilidade}»`
+
+/** Versão grátis: o que o endereço pedia (vaga, ordem por vaga) e porque não se aplica. */
+function textoIgnorados({ vaga, ordem }: Ignorados): string {
+  if (vaga && ordem) return `«${VAGA_LABEL[vaga]}» e ${VAGA_MAIS_CEDO} estão disponíveis com o Acesso Família. Mostramos todas, por relevância.`
+  if (vaga) return `«${VAGA_LABEL[vaga]}» está disponível com o Acesso Família. Mostramos todas as instituições.`
+  return `${VAGA_MAIS_CEDO} está disponível com o Acesso Família. Mostramos por relevância.`
+}
+
 /** Número que desliza entre valores quando os filtros mudam (visual; o leitor de ecrã lê o valor final). */
 function Contagem({ n }: { n: number }) {
   const v = useNumeroAnimado(n)
   return <span className="font-medium text-ink tabular">{num(v)}</span>
 }
 
-/** Cabeçalho calmo da lista: título, "N instituições · M com vaga agora", ordenação e filtros removíveis. */
+/**
+ * Cabeçalho calmo da lista: título, "N instituições · M com vaga agora", ordenação e filtros removíveis.
+ * Versão grátis: o mesmo total agregado (quantas, nunca quais; só a partir de 5 resultados), um convite numa linha,
+ * e «Vaga mais cedo» fechada na ordenação (escolhê-la abre o convite e a ordem fica como estava).
+ */
 export function ResultsSummary({ model, desktop }: Props) {
-  const { state, resultados, comVaga, update } = model
+  const { state, resultados, comVaga, update, completo, ignorados, pedirAcesso } = model
   const n = resultados.length
+  // versão grátis com poucos resultados: "1 com vaga agora" em 1 resultado diria qual
+  const agregado = n > 0 && (completo || agregadoVisivel(n))
   const centro = centroDe(state.local)
   const visiveis: Grupo[] = desktop ? ['mais'] : ['tipo', 'max', 'mais']
-  const pilulas = pilulasAtivas(state).filter((p) => visiveis.includes(p.grupo))
+  const pilulas = pilulasAtivas(state, completo).filter((p) => visiveis.includes(p.grupo))
   const presentes = usePresenca(pilulas, chavePilula)
   const total = contarTodosFiltros(state) + (state.q ? 1 : 0)
   const titulo = tituloPesquisa(state)
-  const resumo = `${num(n)} ${n === 1 ? 'instituição' : 'instituições'}${n > 0 ? `, ${num(comVaga)} com vaga agora` : ''}`
+  const resumo = `${num(n)} ${n === 1 ? 'instituição' : 'instituições'}${agregado ? `, ${num(comVaga)} com vaga agora` : ''}`
+  const ordemFechada = useId()
 
   return (
     <header className="px-5 pt-6 sm:px-6 lg:pt-8 xl:px-8">
@@ -109,7 +131,7 @@ export function ResultsSummary({ model, desktop }: Props) {
       <div className="mt-1 flex flex-wrap items-center justify-between gap-x-4">
         <p aria-hidden className="text-base text-ink-mute">
           <Contagem n={n} /> {n === 1 ? 'instituição' : 'instituições'}
-          {n > 0 && (
+          {agregado && (
             <>
               <span> · </span>
               <span className="inline-flex items-baseline gap-1.5">
@@ -124,15 +146,50 @@ export function ResultsSummary({ model, desktop }: Props) {
         <p className="sr-only" aria-live="polite" aria-atomic="true">
           {resumo}
         </p>
+        {/* versão grátis: o convite fica logo a seguir ao total; um endereço com filtro por vaga explica o que ficou de fora */}
+        {!completo && ignorados ? (
+          <div className="mt-2 mb-1 basis-full rounded-[1.25rem] bg-sand px-4 sm:px-5">
+            <AvisoAcesso texto={textoIgnorados(ignorados)} className="text-ink-soft" />
+          </div>
+        ) : (
+          !completo &&
+          n > 0 && (
+            <AvisoAcesso
+              texto={agregado && comVaga === 0 ? 'Saber quando deve abrir vaga e receber alertas' : 'Saber quais têm vaga e quantos lugares'}
+              className="-my-1 basis-full"
+            />
+          )
+        )}
         {n > 1 && (
           <div className="-mx-3 flex items-center gap-x-1 sm:mx-0 sm:-mr-3">
-            <QuietSelect label="Ordenar" value={state.ordem} onChange={(e) => update({ ordem: e.target.value as SearchState['ordem'] })}>
-              {ORDENS.filter((o) => o !== 'distancia' || centro).map((o) => (
+            <QuietSelect
+              label="Ordenar"
+              value={state.ordem}
+              aria-describedby={completo ? undefined : ordemFechada}
+              onChange={(e) => {
+                const ordem = e.target.value as SearchState['ordem']
+                // versão grátis: «Vaga mais cedo» abre o convite; o <select> controlado volta à ordem atual
+                if (!completo && ordem === 'disponibilidade') pedirAcesso({ ordem })
+                else update({ ordem })
+              }}
+            >
+              {ORDENS.filter((o) => (o !== 'distancia' || centro) && (completo || o !== 'disponibilidade')).map((o) => (
                 <option key={o} value={o}>
                   {ORDEM_LABEL[o]}
                 </option>
               ))}
+              {/* fechada, mas à vista (no fim, para as setas não passarem por ela a caminho das outras) */}
+              {!completo && (
+                <optgroup label="Com o Acesso Família">
+                  <option value="disponibilidade">{ORDEM_LABEL.disponibilidade}</option>
+                </optgroup>
+              )}
             </QuietSelect>
+            {!completo && (
+              <span id={ordemFechada} hidden>
+                {VAGA_MAIS_CEDO} está disponível com o Acesso Família.
+              </span>
+            )}
             <Link
               to="/como-ordenamos"
               className="inline-flex min-h-12 shrink-0 items-center rounded-full px-3 text-sm whitespace-nowrap text-terra-600 transition-colors hover:bg-sand hover:underline"

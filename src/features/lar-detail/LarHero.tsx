@@ -71,8 +71,9 @@ function Frescura({ lar }: { lar: Lar }) {
 /**
  * Título, linha de contexto e sinais de confiança — o "gancho" da página.
  * Entram em sequência com desfoque (título → contexto → confiança), como nas páginas de produto da Apple.
+ * Versão grátis (`completo` falso): sem a frescura das vagas ("Vagas atualizadas há…"), que é da camada viva.
  */
-export function LarHero({ lar }: { lar: Lar }) {
+export function LarHero({ lar, completo }: { lar: Lar; completo: boolean }) {
   const { prefixo, nucleo } = dividirNome(lar.nome)
   const irParaSecao = useIrParaSecao()
   const media = lar.avaliacao.toLocaleString('pt-PT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
@@ -114,7 +115,7 @@ export function LarHero({ lar }: { lar: Lar }) {
           )}
           {/* no telemóvel, o selo resumido; a partir do tablet, os três níveis por extenso na linha de baixo */}
           <VerifiedBadge lar={lar} size="md" showPending className="sm:hidden" />
-          <Frescura lar={lar} />
+          {completo && <Frescura lar={lar} />}
         </div>
       </Reveal>
       <Reveal variant="up" delay={340} className="max-sm:hidden">

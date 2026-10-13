@@ -4,6 +4,7 @@ import { ChevronRight, X } from 'lucide-react'
 import { LarCover } from '@/components/lar/LarCover'
 import { AvailabilityBadge } from '@/components/lar/badges'
 import { buttonClasses } from '@/components/ui/Button'
+import { faixaPreco } from '@/lib/acesso'
 import { resumoPrevisao } from '@/lib/forecast'
 import { TIPO_LABEL } from '@/lib/labels'
 import { euro, km } from '@/lib/format'
@@ -22,6 +23,11 @@ function Preco({ e }: { e: Entrada }) {
   )
 }
 
+/** Versão grátis: só a faixa de preço (o preço de cada quarto é do Acesso Família). */
+function Faixa({ e }: { e: Entrada }) {
+  return <p className="text-base leading-tight font-semibold text-ink">{faixaPreco(e.lar)}</p>
+}
+
 function Linha({ e }: { e: Entrada }) {
   const { lar } = e
   return (
@@ -32,8 +38,11 @@ function Linha({ e }: { e: Entrada }) {
   )
 }
 
-/** Popup do marcador (desktop): nome, estado, preço, "Ver ficha ›". */
-export function MapPopupContent({ e }: { e: Entrada }) {
+/**
+ * Popup do marcador (desktop): nome, estado, preço, "Ver ficha ›".
+ * Versão grátis (`completo` false): genérico — tipo, localidade, nome, faixa de preço e "Ver ficha ›".
+ */
+export function MapPopupContent({ e, completo = true }: { e: Entrada; completo?: boolean }) {
   const { lar } = e
   return (
     <div className="flex flex-col gap-3 p-5 font-sans text-ink">
@@ -41,13 +50,16 @@ export function MapPopupContent({ e }: { e: Entrada }) {
         <Linha e={e} />
         <p className="mt-1 text-lg leading-snug font-semibold tracking-[-0.015em]">{lar.nome}</p>
       </div>
-      <div className="flex flex-col items-start gap-1.5">
-        <AvailabilityBadge lar={lar} estado={e.disp} est={e.est} />
-        {/* sem vaga para quem pede hoje (inclui lugar livre com lista à frente): mostrar a espera estimada */}
-        {!comVagaAgora(e) && lar.tipo !== 'centro_dia' && <p className="text-sm text-ink-mute">{resumoPrevisao(lar, e.est)}</p>}
-      </div>
-      <div className="flex items-end justify-between gap-3">
-        <Preco e={e} />
+      {completo && (
+        <div className="flex flex-col items-start gap-1.5">
+          <AvailabilityBadge lar={lar} estado={e.disp} est={e.est} />
+          {/* sem vaga para quem pede hoje (inclui lugar livre com lista à frente): mostrar a espera estimada */}
+          {!comVagaAgora(e) && lar.tipo !== 'centro_dia' && <p className="text-sm text-ink-mute">{resumoPrevisao(lar, e.est)}</p>}
+        </div>
+      )}
+      {/* versão grátis: a faixa (texto mais comprido do que um preço) fica por cima da ligação, sem partir a meio */}
+      <div className={completo ? 'flex items-end justify-between gap-3' : 'flex flex-col items-start'}>
+        {completo ? <Preco e={e} /> : <Faixa e={e} />}
         <Link to={`/lar/${lar.id}`} className="inline-flex min-h-11 shrink-0 items-center font-medium text-terra-600! hover:underline">
           Ver ficha
           <ChevronRight aria-hidden className="size-4.5" />
@@ -114,8 +126,9 @@ function useArrastarParaFechar(onClose: () => void) {
 /**
  * Folha que sobe do fundo do mapa no telemóvel ao tocar num marcador.
  * Trocar de marcador só troca o conteúdo; deslizar para baixo, tocar no mapa ou em "Fechar" fecha-a.
+ * Versão grátis (`completo` false): genérica — nome, tipo, localidade, faixa de preço e "Ver ficha".
  */
-export function MapPeekCard({ e, saindo, onClose }: { e: Entrada; saindo?: boolean; onClose: () => void }) {
+export function MapPeekCard({ e, saindo, onClose, completo = true }: { e: Entrada; saindo?: boolean; onClose: () => void; completo?: boolean }) {
   const { lar } = e
   const { ref, handlers } = useArrastarParaFechar(onClose)
   const primeiro = useRef(lar.id)
@@ -136,9 +149,9 @@ export function MapPeekCard({ e, saindo, onClose }: { e: Entrada; saindo?: boole
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-1 pr-11">
           <p className="text-lg leading-snug font-semibold tracking-[-0.015em] text-ink">{lar.nome}</p>
           <Linha e={e} />
-          <AvailabilityBadge lar={lar} estado={e.disp} est={e.est} className="self-start" />
+          {completo && <AvailabilityBadge lar={lar} estado={e.disp} est={e.est} className="self-start" />}
           <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
-            <Preco e={e} />
+            {completo ? <Preco e={e} /> : <Faixa e={e} />}
             <Link to={`/lar/${lar.id}`} className={buttonClasses('primary', 'sm', 'min-h-12 px-5 transition-[background-color,scale] active:scale-[0.97]')}>
               Ver ficha
             </Link>

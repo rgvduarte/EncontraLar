@@ -427,15 +427,15 @@ function EntradaMenu({
     </>
   )
   // com descrição: etiqueta e descrição uma por baixo da outra
-  if (l.desc) className = cn(className, 'flex-col items-start gap-0.5')
+  const classes = l.desc ? cn(className, 'flex-col items-start gap-0.5') : className
   if (l.action)
     return (
-      <button type="button" onClick={() => onAcao(l)} className={className}>
+      <button type="button" onClick={() => onAcao(l)} className={classes}>
         {conteudo}
       </button>
     )
   return (
-    <Link to={l.to} onClick={(e) => onSeguir(e, l)} className={className}>
+    <Link to={l.to} onClick={(e) => onSeguir(e, l)} className={classes}>
       {conteudo}
     </Link>
   )

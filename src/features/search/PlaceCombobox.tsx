@@ -7,6 +7,7 @@ import { construirOpcoes, type Opcao } from './placeOptions'
 import { nomeDistrito, rotuloLocal, type Local } from './searchState'
 import { DispDot } from './Chips'
 import { pedirFocoNoTitulo } from './focoTitulo'
+import { agregadoVisivel } from './gratis'
 import type { GeoEstado } from './useGeolocation'
 
 interface Props {
@@ -20,6 +21,11 @@ interface Props {
   trailing?: ReactNode
   /** pílula mais baixa (barra do telemóvel) */
   compact?: boolean
+  /**
+   * Camada completa (Acesso Família). Na versão grátis as sugestões não dizem qual instituição tem vaga,
+   * e as contagens de vagas por lugar só aparecem quando o lugar tem instituições suficientes (gratis.ts).
+   */
+  completo?: boolean
   className?: string
 }
 
@@ -32,12 +38,12 @@ const ICON: Record<Opcao['kind'], typeof MapPin> = {
   texto: Type,
 }
 
-function Meta({ n, vagas }: { n: number; vagas: number }) {
+function Meta({ n, vagas, completo }: { n: number; vagas: number; completo: boolean }) {
   if (n === 0) return <span>sem instituições</span>
   return (
     <span className="inline-flex items-center gap-1.5 tabular">
       {n} {n === 1 ? 'instituição' : 'instituições'}
-      {vagas > 0 && (
+      {vagas > 0 && (completo || agregadoVisivel(n)) && (
         <>
           <span aria-hidden>·</span>
           <DispDot disp="disponivel" className="size-2.5" />
@@ -49,7 +55,7 @@ function Meta({ n, vagas }: { n: number; vagas: number }) {
 }
 
 /** Campo "Onde" — combobox acessível (padrão ARIA 1.2): localidades, distritos, códigos postais e nomes. */
-export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTexto, trailing, compact, className }: Props) {
+export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTexto, trailing, compact, completo = true, className }: Props) {
   const uid = useId()
   const inputId = `${uid}-input`
   const listId = `${uid}-list`
@@ -267,7 +273,7 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
                 >
                   <Icon aria-hidden className={cn('size-5 shrink-0', op.kind === 'geo' ? 'text-terra-600' : 'text-ink-mute')} strokeWidth={1.75} />
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <OpcaoTexto op={op} />
+                    <OpcaoTexto op={op} completo={completo} />
                   </span>
                 </div>
               )
@@ -279,7 +285,7 @@ export function PlaceCombobox({ local, entradas, geoEstado, onLocal, onGeo, onTe
   )
 }
 
-function OpcaoTexto({ op }: { op: Opcao }) {
+function OpcaoTexto({ op, completo }: { op: Opcao; completo: boolean }) {
   const sub = 'text-sm text-ink-mute'
   switch (op.kind) {
     case 'geo':
@@ -294,7 +300,7 @@ function OpcaoTexto({ op }: { op: Opcao }) {
         <>
           <span className="font-medium text-ink">Todo o país</span>
           <span className={sub}>
-            <Meta n={op.n} vagas={op.vagas} />
+            <Meta n={op.n} vagas={op.vagas} completo={completo} />
           </span>
         </>
       )
@@ -309,7 +315,7 @@ function OpcaoTexto({ op }: { op: Opcao }) {
           </span>
           <span className={sub}>
             {op.lugar.distrito !== cidade && `${op.lugar.distrito} · `}
-            <Meta n={op.n} vagas={op.vagas} />
+            <Meta n={op.n} vagas={op.vagas} completo={completo} />
           </span>
         </>
       )
@@ -319,7 +325,7 @@ function OpcaoTexto({ op }: { op: Opcao }) {
         <>
           <span className="font-medium text-ink">{nomeDistrito(op.distrito)}</span>
           <span className={sub}>
-            <Meta n={op.n} vagas={op.vagas} />
+            <Meta n={op.n} vagas={op.vagas} completo={completo} />
           </span>
         </>
       )
@@ -328,7 +334,7 @@ function OpcaoTexto({ op }: { op: Opcao }) {
         <>
           <span className="truncate font-medium text-ink">{op.lar.nome}</span>
           <span className={cn(sub, 'inline-flex items-center gap-1.5')}>
-            <DispDot disp={op.disp} className="size-2.5" />
+            {completo && <DispDot disp={op.disp} className="size-2.5" />}
             {op.lar.localidade} · abrir a ficha
           </span>
         </>

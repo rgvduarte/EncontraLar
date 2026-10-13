@@ -1,10 +1,12 @@
 /**
  * Ícones do mapa (L.divIcon): pílulas brancas com ponto de estado + preço, e círculos de agrupamento.
+ * Versão grátis: um ponto neutro a tinta (sem preço nem estado de vaga) e agrupamentos só com o total.
  * Estilos em search.css (o HTML dos marcadores é gerado fora do React).
  */
 import L from 'leaflet'
 import type { Disponibilidade, Lar } from '@/types'
-import { DISPONIBILIDADE_LABEL } from '@/lib/labels'
+import { faixaPreco } from '@/lib/acesso'
+import { DISPONIBILIDADE_LABEL, TIPO_LABEL } from '@/lib/labels'
 import { euro } from '@/lib/format'
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
@@ -53,6 +55,26 @@ export function pinIcon(lar: Lar, disp: Disponibilidade, listaAFrente = false): 
   return icon
 }
 
+/** Versão grátis: o que qualquer pessoa vê — nome, localidade, tipo e faixa de preço (nunca o estado da vaga). */
+export function descricaoGenerica(lar: Lar): string {
+  return `${lar.nome}, ${lar.localidade}. ${TIPO_LABEL[lar.tipo]}. ${faixaPreco(lar)}.`
+}
+
+/**
+ * Versão grátis: ponto neutro (o mesmo para todas as instituições). A classe do ícone também é neutra,
+ * para que nem o HTML do mapa nem a ordem de sobreposição digam qual tem vaga.
+ */
+export function pontoIcon(lar: Lar): L.DivIcon {
+  const descricao = descricaoGenerica(lar)
+  const key = `ponto|${lar.id}|${descricao}`
+  const hit = cache.get(key)
+  if (hit) return hit
+  const html = `<span class="el-dot" style="animation-delay:${atraso(lar.id)}ms"><span class="el-sr">${esc(descricao)}</span></span>`
+  const icon = L.divIcon({ html, className: 'el-marker el-marker--neutro', iconSize: [0, 0], iconAnchor: [0, 0] })
+  cache.set(key, icon)
+  return icon
+}
+
 /** Interface mínima do agrupamento (o leaflet.markercluster não tem tipos instalados). */
 export interface ClusterLike {
   getAllChildMarkers(): L.Marker[]
@@ -77,6 +99,19 @@ export function clusterIcon(cluster: ClusterLike): L.DivIcon {
       ? `<circle class="el-cluster__arc" style="--arco:${arco.toFixed(2)}" cx="${c}" cy="${c}" r="${r}" stroke-dasharray="${arco.toFixed(2)} ${perimetro.toFixed(2)}" transform="rotate(-90 ${c} ${c})" />`
       : '') +
     `</svg>` +
+    `<span class="el-cluster__n" aria-hidden="true">${n}</span>` +
+    `<span class="el-sr">${titulo}. Ampliar o mapa nesta zona.</span>` +
+    `</span>`
+  return L.divIcon({ html, className: 'el-cluster-icon', iconSize: [size, size] })
+}
+
+/** Versão grátis: círculo branco só com o total (sem o anel das vagas). */
+export function clusterIconNeutro(cluster: ClusterLike): L.DivIcon {
+  const n = cluster.getAllChildMarkers().length
+  const size = n < 10 ? 40 : n < 30 ? 46 : 52
+  const titulo = `${n} instituições`
+  const html =
+    `<span class="el-cluster el-cluster--neutro" style="width:${size}px;height:${size}px" title="${titulo}">` +
     `<span class="el-cluster__n" aria-hidden="true">${n}</span>` +
     `<span class="el-sr">${titulo}. Ampliar o mapa nesta zona.</span>` +
     `</span>`

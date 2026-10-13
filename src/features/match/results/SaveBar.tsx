@@ -1,7 +1,7 @@
 import { useEffect, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { BellRing } from 'lucide-react'
 import type { User } from '@/types'
+import { useAcesso } from '@/lib/store'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { useLenis } from '@/components/motion'
 import { subscribeScroll } from '@/lib/motion'
@@ -35,6 +35,8 @@ export function SaveBar({
   const lenis = useLenis()
   const { p, precisaNome, nomePorOmissao, semAlteracoes, guardar } = useGuardarPerfil(r, user, onGuardado)
   const [noSitio, setNoSitio] = useState(false)
+  // alertas de vaga só com o Acesso Família (visitantes e famílias sem passe: guardar as respostas)
+  const { completo } = useAcesso()
 
   useEffect(
     () =>
@@ -61,8 +63,8 @@ export function SaveBar({
       : p.primeiroNome
         ? `Perfil de ${p.primeiroNome}`
         : `Perfil ${p.de}`
-    : 'Alertas de vaga'
-  const sub = user ? (r.id ? 'Alterações por guardar' : 'Para receber alertas') : 'Conta gratuita'
+    : 'Guardar as respostas'
+  const sub = user ? (r.id ? 'Alterações por guardar' : completo ? 'Para receber alertas' : 'Fica no seu painel') : 'Conta gratuita'
 
   const aoGuardar = () => {
     if (!precisaNome) {
@@ -105,7 +107,6 @@ export function SaveBar({
             to="/registar"
             variant="accent"
             size="lg"
-            icon={<BellRing aria-hidden className="max-sm:hidden" />}
             className="shrink-0 px-6 max-lg:min-h-13 lg:px-7"
           >
             Criar conta

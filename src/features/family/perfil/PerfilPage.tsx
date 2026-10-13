@@ -2,6 +2,8 @@ import { useCallback, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Lock, Plus } from 'lucide-react'
 import { Avatar } from '@/components/ui/misc'
+import { AvisoAcesso } from '@/components/acesso'
+import { useAcesso } from '@/lib/store'
 import { useDocumentTitle } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
 import { usePerfisOrdenados } from '../shared/data'
@@ -23,6 +25,9 @@ export default function PerfilPage() {
   const [params, setParams] = useSearchParams()
   const dirty = useRef(false)
   const [pendente, setPendente] = useState<Selecao | null>(null)
+  // o perfil é sempre gratuito; depois de o guardar, a versão grátis diz numa linha o que o passe faz com ele
+  const { completo } = useAcesso()
+  const [guardadoId, setGuardadoId] = useState<string | null>(null)
 
   const novo = params.get('novo') === '1' || perfis.length === 0
   const selecionado = novo ? undefined : (perfis.find((p) => p.id === params.get('id')) ?? perfis[0])
@@ -100,7 +105,15 @@ export default function PerfilPage() {
         perfil={selecionado}
         base={principal}
         onDirtyChange={onDirty}
-        onSaved={(p) => aplicar({ tipo: 'perfil', id: p.id })}
+        onSaved={(p) => {
+          setGuardadoId(p.id)
+          aplicar({ tipo: 'perfil', id: p.id })
+        }}
+        depoisDeGuardar={
+          !completo && guardadoId != null && guardadoId === selecionado?.id ? (
+            <AvisoAcesso texto="Com o Acesso Família, envia este perfil a várias casas de uma vez." voltar="/familia/perfil" />
+          ) : undefined
+        }
         onDeleted={() => {
           dirty.current = false
           setParams({}, { replace: true })

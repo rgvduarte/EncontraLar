@@ -3,19 +3,24 @@ import { ChevronRight } from 'lucide-react'
 import type { Lar } from '@/types'
 import { ForecastStrip } from '@/components/brand/ForecastStrip'
 import { ForecastChart } from '@/components/lar/ForecastChart'
+import { BloqueioCartao } from '@/components/acesso'
 import { FATOR_LISTA_EFETIVA } from '@/lib/forecast'
 import { num, pct, plural } from '@/lib/format'
 import { Bloco, Secao, Subtitulo } from '../Secao'
 import { GraficoAnimado, PalavrasAcesas, TiraAnimada } from '../motion'
-import { esperaEstimada, noLar, type DadosLar } from '../helpers'
+import { caminhoFicha, esperaEstimada, noLar, type DadosLar } from '../helpers'
+
+const SABER_MAIS = 'mt-3 inline-flex min-h-12 items-center gap-0.5 text-lg text-terra-600 hover:underline'
 
 /**
  * O "clímax" da ficha: a frase-chave acende-se palavra a palavra, os meses da tira entram um a um com a
  * barra a encher, e o gráfico de 12 meses desenha-se (barras crescem, linha da probabilidade traça-se).
+ * Versão grátis (`completo` falso): o bloqueio padrão e o método em termos gerais — nenhum número da previsão,
+ * nem a tira nem o gráfico, chega ao DOM.
  */
-export function PrevisaoSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
-  const { est, previsao, unidade } = dados
-  const totalSaidas = lar.historicoSaidas.reduce((a, b) => a + b, 0)
+export function PrevisaoSection({ lar, dados, completo }: { lar: Lar; dados: DadosLar; completo: boolean }) {
+  const { unidade } = dados
+  const umaVaga = unidade.um === 'lugar' ? 'um lugar' : 'uma vaga'
 
   return (
     <Secao
@@ -26,8 +31,41 @@ export function PrevisaoSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
           Quando poderá haver <em>{unidade.um}</em>
         </>
       }
-      intro={`A probabilidade de lhe ser proposta ${unidade.um === 'lugar' ? 'um lugar' : 'uma vaga'} até ao fim de cada mês, se pedir hoje.`}
+      intro={`A probabilidade de lhe ser proposta ${umaVaga} até ao fim de cada mês, se pedir hoje.`}
     >
+      {completo ? (
+        <PrevisaoCompleta lar={lar} dados={dados} />
+      ) : (
+        <>
+          <Bloco>
+            <BloqueioCartao titulo="Previsão de espera para esta casa" voltar={caminhoFicha(lar)} />
+          </Bloco>
+          <Bloco className="mt-16 max-w-[65ch]">
+            <Subtitulo>Como calculamos</Subtitulo>
+            <p className="mt-3 text-lg leading-relaxed text-ink-soft">
+              Partimos das saídas registadas pela instituição nos últimos 12 meses e da estadia média dos residentes, ajustadas à
+              época do ano. Da lista de espera contamos só quem, em média, ainda aceita quando é contactado.
+            </p>
+            <p className="mt-4 text-lg leading-relaxed text-ink">
+              É uma estimativa, não é garantia. A decisão de atribuir {umaVaga} é sempre da equipa técnica.
+            </p>
+            <Link to="/sobre#previsao" className={SABER_MAIS}>
+              Saber mais sobre a previsão
+              <ChevronRight aria-hidden className="size-5" />
+            </Link>
+          </Bloco>
+        </>
+      )}
+    </Secao>
+  )
+}
+
+function PrevisaoCompleta({ lar, dados }: { lar: Lar; dados: DadosLar }) {
+  const { est, previsao, unidade } = dados
+  const totalSaidas = lar.historicoSaidas.reduce((a, b) => a + b, 0)
+
+  return (
+    <>
       <PalavrasAcesas
         aria-live="polite"
         className="max-w-2xl text-[1.75rem] leading-[1.2] font-semibold tracking-tight text-ink sm:text-4xl sm:leading-[1.15]"
@@ -78,11 +116,11 @@ export function PrevisaoSection({ lar, dados }: { lar: Lar; dados: DadosLar }) {
         <p className="mt-4 text-lg leading-relaxed text-ink">
           É uma estimativa, não é garantia. A decisão de atribuir {unidade.um === 'lugar' ? 'um lugar' : 'uma vaga'} é sempre da equipa técnica.
         </p>
-        <Link to="/sobre#previsao" className="mt-3 inline-flex min-h-12 items-center gap-0.5 text-lg text-terra-600 hover:underline">
+        <Link to="/sobre#previsao" className={SABER_MAIS}>
           Saber mais sobre a previsão
           <ChevronRight aria-hidden className="size-5" />
         </Link>
       </Bloco>
-    </Secao>
+    </>
   )
 }

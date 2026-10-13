@@ -4,9 +4,12 @@
  * de cada passo descreve o que mostram.
  *
  * Cada ecrã recebe `ativo`: ao ficar ativo, as peças entram por ordem (só opacity/transform).
+ *
+ * Versão grátis (`h.completo` falso): mapa com os pontos todos iguais, a faixa de preço em vez do preço de cada
+ * quarto, a previsão fechada e o alerta sem nome de instituição. Os valores fechados não chegam ao DOM.
  */
 import { memo, type CSSProperties, type ReactNode } from 'react'
-import { BellRing, Check, CircleUserRound, Compass, Heart, House, Map as MapIcon, Search } from 'lucide-react'
+import { BellRing, Check, CircleUserRound, Compass, Heart, House, Lock, Map as MapIcon, Search } from 'lucide-react'
 import type { Lar } from '@/types'
 import { PT_VIEWBOX, projectPT } from '@/data/portugal-shape'
 import { PortugalMap } from '@/components/brand/PortugalMap'
@@ -15,17 +18,22 @@ import { LarCard } from '@/components/lar/LarCard'
 import { LarCover } from '@/components/lar/LarCover'
 import { VerifiedBadge } from '@/components/lar/badges'
 import { LogoMark } from '@/components/layout/Logo'
+import { ACESSO_DISPONIVEL } from '@/components/acesso'
 import { resumoPrevisao, type EstimativaEspera } from '@/lib/forecast'
+import { faixaPreco } from '@/lib/acesso'
 import { NATUREZA_LABEL, QUARTO_CURTO, TIPO_LABEL } from '@/lib/labels'
 import { euro, num } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { useInView } from '@/lib/motion'
+import { MapaNeutro } from './MapaNeutro'
 
 export interface Historia {
   lar: Lar
   est: EstimativaEspera
   lares: Lar[]
   agora: number
+  /** com Acesso Família (ou profissional): vagas, preços por quarto e previsão; falso = versão grátis */
+  completo: boolean
 }
 
 const T = 'transition-[opacity,transform] duration-[900ms] ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none'
@@ -68,7 +76,7 @@ export function Telefone({ className, children }: { className?: string; children
 const ALVO = { x: 42, y: 40 }
 
 export const EcraMapa = memo(function EcraMapa({ h, ativo }: { h: Historia; ativo: boolean }) {
-  const { lar, lares } = h
+  const { lar, lares, completo } = h
   const p = projectPT(lar.lat, lar.lng)
   const ox = ((p.x - PT_VIEWBOX.x) / PT_VIEWBOX.w) * 100
   const oy = ((p.y - PT_VIEWBOX.y) / PT_VIEWBOX.h) * 100
@@ -85,12 +93,17 @@ export const EcraMapa = memo(function EcraMapa({ h, ativo }: { h: Historia; ativ
     <div ref={ref} className="absolute inset-0 bg-sand">
       <div className="absolute inset-x-0 top-0 aspect-[435/560] overflow-hidden">
         <div className={cn(T, 'absolute inset-x-0 top-0')} style={zoom}>
-          {perto && <PortugalMap lares={lares} labels={false} pulse={false} title="" />}
+          {perto &&
+            (completo ? (
+              <PortugalMap lares={lares} labels={false} pulse={false} title="" />
+            ) : (
+              <MapaNeutro lares={lares} labels={false} title="" />
+            ))}
         </div>
-        {/* a instituição escolhida */}
+        {/* a instituição escolhida (laranja = vaga em breve; na versão grátis, azul = só "escolhida") */}
         <span style={{ left: `${ALVO.x}%`, top: `${ALVO.y}%` }} className="absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center">
-          <span className="absolute inset-0 animate-ping rounded-full bg-sun-500/30 motion-reduce:hidden" />
-          <span className="relative size-3.5 rounded-full bg-sun-500 ring-[3px] ring-white" />
+          <span className={cn('absolute inset-0 animate-ping rounded-full motion-reduce:hidden', completo ? 'bg-sun-500/30' : 'bg-terra-500/25')} />
+          <span className={cn('relative size-3.5 rounded-full ring-[3px] ring-white', completo ? 'bg-sun-500' : 'bg-terra-600')} />
         </span>
       </div>
 
@@ -117,7 +130,7 @@ export const EcraMapa = memo(function EcraMapa({ h, ativo }: { h: Historia; ativ
 // ————————————————————————————————————————— 2 · comparar
 
 export const EcraFicha = memo(function EcraFicha({ h, ativo }: { h: Historia; ativo: boolean }) {
-  const { lar, est, agora } = h
+  const { lar, est, agora, completo } = h
   return (
     <div className="absolute inset-0 overflow-hidden bg-white">
       <Peca ativo={ativo} de={-10} className="h-[6.5rem]">
@@ -132,41 +145,68 @@ export const EcraFicha = memo(function EcraFicha({ h, ativo }: { h: Historia; at
           <VerifiedBadge lar={lar} className="mt-1.5" />
         </Peca>
 
-        <Peca ativo={ativo} atraso={200} className="mt-4">
-          <p className="text-xs font-semibold text-ink">Mensalidade</p>
-          <dl className="mt-1 divide-y divide-line text-sm">
-            {lar.quartos.slice(0, 2).map((q) => (
-              <div key={q.tipo} className="flex items-baseline justify-between gap-3 py-1.5">
-                <dt className="text-ink-soft">{QUARTO_CURTO[q.tipo]}</dt>
-                <dd className="font-semibold text-ink tabular">
-                  {q.precoMin === q.precoMax ? euro(q.precoMin) : `${num(q.precoMin)}–${euro(q.precoMax)}`}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </Peca>
+        {completo ? (
+          <>
+            <Peca ativo={ativo} atraso={200} className="mt-4">
+              <p className="text-xs font-semibold text-ink">Mensalidade</p>
+              <dl className="mt-1 divide-y divide-line text-sm">
+                {lar.quartos.slice(0, 2).map((q) => (
+                  <div key={q.tipo} className="flex items-baseline justify-between gap-3 py-1.5">
+                    <dt className="text-ink-soft">{QUARTO_CURTO[q.tipo]}</dt>
+                    <dd className="font-semibold text-ink tabular">
+                      {q.precoMin === q.precoMax ? euro(q.precoMin) : `${num(q.precoMin)}–${euro(q.precoMax)}`}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </Peca>
 
-        <Peca ativo={ativo} atraso={320} className="mt-4">
-          <p className="text-xs font-semibold text-ink">Previsão de vaga</p>
-          {/* no ecrã do telemóvel: só % e barra (sem o rótulo por baixo) */}
-          <ForecastStrip
-            curva={est.curva}
-            meses={3}
-            inicio={new Date(agora)}
-            className="mt-3 grid-cols-3 gap-x-3 sm:grid-cols-3 [&_.text-3xl]:text-[1.375rem] [&_li>span:last-child]:hidden"
-          />
-        </Peca>
+            <Peca ativo={ativo} atraso={320} className="mt-4">
+              <p className="text-xs font-semibold text-ink">Previsão de vaga</p>
+              {/* no ecrã do telemóvel: só % e barra (sem o rótulo por baixo) */}
+              <ForecastStrip
+                curva={est.curva}
+                meses={3}
+                inicio={new Date(agora)}
+                className="mt-3 grid-cols-3 gap-x-3 sm:grid-cols-3 [&_.text-3xl]:text-[1.375rem] [&_li>span:last-child]:hidden"
+              />
+            </Peca>
+          </>
+        ) : (
+          <>
+            <Peca ativo={ativo} atraso={200} className="mt-4">
+              <p className="text-xs font-semibold text-ink">Mensalidade</p>
+              <p className="mt-1 py-1.5 text-sm font-semibold text-ink">{faixaPreco(lar)}</p>
+            </Peca>
+
+            {/* o que o Acesso Família junta, fechado: nenhum valor real por baixo */}
+            <Peca ativo={ativo} atraso={320} className="mt-3">
+              <div className="flex items-start gap-2.5 rounded-2xl bg-sand px-3.5 py-3">
+                <Lock aria-hidden className="mt-0.5 size-3.5 shrink-0 text-ink-mute" />
+                <p className="text-xs leading-snug">
+                  <span className="block font-semibold text-ink">Vagas, preço de cada quarto e previsão</span>
+                  <span className="text-ink-mute">{ACESSO_DISPONIVEL}</span>
+                </p>
+              </div>
+            </Peca>
+          </>
+        )}
       </div>
 
-      {/* barra de ação da ficha, como no telemóvel: o preço e "Pedir vaga" (leva ao passo seguinte) */}
+      {/* barra de ação da ficha, como no telemóvel: o preço e "Pedir vaga" (leva ao passo seguinte); na versão
+          grátis a faixa de preço já está acima e não cabia ao lado do botão, por isso fica só a ação */}
       <Peca ativo={ativo} atraso={480} de={56} className="absolute inset-x-0 bottom-0">
         <div className="flex items-center justify-between gap-3 border-t border-black/[0.06] bg-white/90 px-4 pt-2.5 pb-4 backdrop-blur-xl">
-          <p className="leading-tight text-ink">
-            <span className="text-xs text-ink-mute">desde </span>
-            <span className="font-semibold tabular">{euro(lar.mensalidadeMin)}</span>
-            <span className="text-xs text-ink-mute">/mês</span>
-          </p>
-          <span className="rounded-full bg-ink px-4 py-2.5 text-sm font-medium whitespace-nowrap text-white">Pedir vaga</span>
+          {completo && (
+            <p className="leading-tight text-ink">
+              <span className="text-xs text-ink-mute">desde </span>
+              <span className="font-semibold tabular">{euro(lar.mensalidadeMin)}</span>
+              <span className="text-xs text-ink-mute">/mês</span>
+            </p>
+          )}
+          <span className={cn('rounded-full bg-ink px-4 py-2.5 text-sm font-medium whitespace-nowrap text-white', !completo && 'flex-1 text-center')}>
+            Pedir vaga
+          </span>
         </div>
       </Peca>
     </div>
@@ -184,7 +224,7 @@ const ABAS = [
 ] as const
 
 export const EcraAlerta = memo(function EcraAlerta({ h, ativo }: { h: Historia; ativo: boolean }) {
-  const { lar, est } = h
+  const { lar, est, completo } = h
   const quarto = lar.quartos[0] ? QUARTO_CURTO[lar.quartos[0].tipo].toLowerCase() : null
   return (
     <div className="absolute inset-0 flex flex-col items-center bg-sand px-5 pt-[10.5rem] text-center">
@@ -193,7 +233,8 @@ export const EcraAlerta = memo(function EcraAlerta({ h, ativo }: { h: Historia; 
           <Check aria-hidden className="size-7" strokeWidth={2.75} />
         </span>
         <p className="mt-4 text-lg font-semibold text-ink">Pedido enviado</p>
-        <p className="mt-0.5 text-sm leading-snug text-ink-mute">{lar.nome}</p>
+        {/* versão grátis: sem nomes neste ecrã (ao lado do aviso "Abriu uma vaga" pareceria uma vaga real) */}
+        <p className="mt-0.5 text-sm leading-snug text-ink-mute">{completo ? lar.nome : 'A 3 casas, com o perfil de cuidados'}</p>
       </Peca>
 
       <Peca ativo={ativo} atraso={180} className="mt-6 w-full">
@@ -208,7 +249,7 @@ export const EcraAlerta = memo(function EcraAlerta({ h, ativo }: { h: Historia; 
               <span className="absolute top-0.5 right-0.5 size-5 rounded-full bg-white shadow-soft" />
             </span>
           </div>
-          <p className="py-3 text-ink-mute">{resumoPrevisao(lar, est)}</p>
+          <p className="py-3 text-ink-mute">{completo ? resumoPrevisao(lar, est) : 'Avisamos quando abrir um lugar.'}</p>
         </div>
       </Peca>
 
@@ -240,9 +281,18 @@ export const EcraAlerta = memo(function EcraAlerta({ h, ativo }: { h: Historia; 
               agora
             </p>
             <p className="text-sm font-semibold text-ink">Abriu uma vaga</p>
+            {/* versão grátis: um exemplo de aviso, sem nome (nunca uma instituição real ao lado de uma vaga) */}
             <p className="line-clamp-2 text-xs text-ink-soft">
-              {lar.nome}
-              {quarto && `: quarto ${quarto} livre`}.
+              {completo ? (
+                <>
+                  {lar.nome}
+                  {quarto && `: quarto ${quarto} livre`}.
+                </>
+              ) : quarto ? (
+                `Quarto ${quarto} livre.`
+              ) : (
+                'Há um lugar livre.'
+              )}
             </p>
           </div>
         </div>

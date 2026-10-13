@@ -23,8 +23,9 @@ const ROADMAP = [
   },
 ] as const
 
-const CONTAS: { role: Role; nome: string; email: string; destino: string }[] = [
-  { role: 'familia', nome: 'Família', email: DEMO_FAMILIA_EMAIL, destino: '/familia' },
+const CONTAS: { role: Role; nome: string; nota?: string; email: string; destino: string }[] = [
+  // a família de demonstração tem um passe de 90 dias: mostra a experiência completa
+  { role: 'familia', nome: 'Família', nota: 'Com o Acesso Família ativo.', email: DEMO_FAMILIA_EMAIL, destino: '/familia' },
   { role: 'lar', nome: 'Instituição', email: DEMO_LAR_EMAIL, destino: '/gestao' },
 ]
 
@@ -96,7 +97,7 @@ export default function AboutPage() {
           <SectionTitle
             id="sobre-prototipo"
             title="Este é um protótipo."
-            subtitle="Instituições, pessoas, avaliações e vagas são fictícias. Tudo o que fizer fica guardado só neste navegador."
+            subtitle="Instituições, pessoas, avaliações e vagas são fictícias. Tudo o que fizer fica guardado só neste navegador, e os pagamentos são simulados."
             size="md"
             align="left"
           />
@@ -105,6 +106,7 @@ export default function AboutPage() {
               <li key={c.role} className="flex flex-col gap-4 border-t border-line py-5 sm:flex-row sm:items-center sm:justify-between">
                 <p>
                   <span className="block text-lg font-semibold text-ink">{c.nome}</span>
+                  {c.nota && <span className="block text-base text-ink-soft">{c.nota}</span>}
                   <span className="block text-base text-ink-mute">
                     {c.email} · palavra-passe {DEMO_PASSWORD}
                   </span>
@@ -115,6 +117,7 @@ export default function AboutPage() {
               </li>
             ))}
           </ul>
+          <p className="mt-6 text-base text-ink-mute">Para ver a versão grátis, explore sem entrar ou crie uma conta.</p>
         </Reveal>
       </section>
     </>

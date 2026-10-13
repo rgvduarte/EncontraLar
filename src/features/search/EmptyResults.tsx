@@ -6,10 +6,13 @@ import { calcularAlivios, noLocal } from './filtering'
 import { contarTodosFiltros, FILTROS_VAZIOS } from './searchState'
 import type { SearchModel } from './useSearch'
 
-/** Estado vazio com saídas concretas de um clique, calculadas a partir dos dados. */
+/**
+ * Estado vazio com saídas concretas de um clique, calculadas a partir dos dados.
+ * Versão grátis: as mesmas saídas, sem nada que dependa de saber quais têm vaga (o orçamento sobe por faixas).
+ */
 export function EmptyResults({ model }: { model: SearchModel }) {
-  const { state, entradas, update } = model
-  const alivios = useMemo(() => calcularAlivios(entradas, state), [entradas, state])
+  const { state, entradas, update, completo } = model
+  const alivios = useMemo(() => calcularAlivios(entradas, state, completo), [entradas, state, completo])
   const temFiltros = contarTodosFiltros(state) > 0 || Boolean(state.q)
   const naZona = useMemo(() => entradas.filter((e) => noLocal(e, state.local, state.raio)).length, [entradas, state.local, state.raio])
 

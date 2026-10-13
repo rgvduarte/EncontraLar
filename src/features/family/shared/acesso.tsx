@@ -1,7 +1,8 @@
 import { useId } from 'react'
 import type { MetodoPagamentoFamilia } from '@/types'
+import { ACESSO_DESDE } from '@/components/acesso'
 import { useAcesso } from '@/lib/store'
-import { linkAcesso, PLANOS_FAMILIA, precoTexto } from '@/lib/acesso'
+import { linkAcesso } from '@/lib/acesso'
 import { cn } from '@/lib/cn'
 import { MoreLink } from './ui'
 
@@ -26,9 +27,6 @@ export function diaAte(iso: string, agora = new Date()): string {
 }
 
 export const faltamDias = (n: number) => (n === 1 ? 'falta 1 dia' : `faltam ${n} dias`)
-
-/** "desde 14,90 €" (o passe mais curto). */
-export const DESDE = `desde ${precoTexto(Math.min(...PLANOS_FAMILIA.map((p) => p.precoCentimos)))}`
 
 /** O que o passe acrescenta, numa linha (palavras da lista canónica). */
 export const BENEFICIOS_LINHA =
@@ -78,7 +76,7 @@ export function AcessoEstado({ voltar = '/familia', className }: { voltar?: stri
         <MoreLink to={linkAcesso(voltar)}>
           Ver o Acesso Família
         </MoreLink>
-        <span className="text-sm text-ink-mute">{DESDE}</span>
+        <span className="text-sm text-ink-mute">{ACESSO_DESDE}</span>
       </div>
     </section>
   )

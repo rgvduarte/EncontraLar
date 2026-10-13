@@ -1,11 +1,14 @@
 /**
  * /como-ordenamos — transparência da ordenação (docs/MODELO-NEGOCIO.md: "Ninguém paga para aparecer primeiro").
  * Descreve o que o código faz de facto: `ordenar` em features/search/filtering.ts e os pesos de lib/matching.ts.
- * Se a ordenação mudar, esta página muda com ela.
+ * Se a ordenação mudar, esta página muda com ela. O que se paga (a taxa dos lares privados, o Acesso Família
+ * das famílias) não entra em nenhuma das duas.
  */
 import { useState, type ReactNode } from 'react'
 import { useDocumentTitle } from '@/lib/hooks'
+import { useAcesso } from '@/lib/store'
 import { PESOS } from '@/lib/matching'
+import { linkAcesso } from '@/lib/acesso'
 import { ORDEM_LABEL, ORDENS, type Ordem } from '@/features/search/searchState'
 import { ButtonLink } from '@/components/ui/Button'
 import { SeloVerificado } from '@/components/brand/SeloVerificado'
@@ -15,7 +18,14 @@ import { MoreLink, PageHero } from './shared/ui'
 const RESUMO = [
   'Por omissão, primeiro quem tem vaga para quem pede hoje.',
   'Em caso de empate, vêm primeiro as vagas confirmadas há menos tempo.',
-  'O que as instituições pagam não conta para a ordem.',
+  'O que as instituições e as famílias pagam não conta para a ordem.',
+] as const
+
+/** O mesmo resumo para quem está na versão grátis: a ordem que essa pessoa vê não usa as vagas. */
+const RESUMO_GRATIS = [
+  'Por omissão, primeiro as mais bem avaliadas pelas famílias.',
+  'Em caso de empate, as que têm mais avaliações.',
+  'O que as instituições e as famílias pagam não conta para a ordem.',
 ] as const
 
 /** O que cada opção de «Ordenar» faz (a mesma ordem e os mesmos nomes da pesquisa). */
@@ -74,6 +84,7 @@ function Bloco({ titulo, extra, children }: { titulo: string; extra?: ReactNode;
 export default function ComoOrdenamosPage() {
   useDocumentTitle('Como ordenamos')
   const [voltar] = useState(ultimaPesquisa)
+  const { completo } = useAcesso()
 
   return (
     <>
@@ -83,8 +94,8 @@ export default function ComoOrdenamosPage() {
         subtitle="O que decide a ordem dos resultados, sem letra pequena."
         titleWidth="max-w-[15ch]"
       >
-        <ul className="mx-auto flex max-w-[44ch] flex-col gap-2 text-left text-lg text-ink sm:text-center">
-          {RESUMO.map((r) => (
+        <ul className="mx-auto flex max-w-[44ch] flex-col gap-2 text-left text-lg text-balance text-ink sm:text-center">
+          {(completo ? RESUMO : RESUMO_GRATIS).map((r) => (
             <li key={r}>{r}</li>
           ))}
         </ul>
@@ -111,6 +122,19 @@ export default function ComoOrdenamosPage() {
             </p>
           </Bloco>
 
+          {/* o que `ordenar(…, completo = false)` faz (features/search/filtering.ts) */}
+          <Bloco titulo="Na versão grátis">
+            <p>
+              Sem o Acesso Família, a pesquisa não mostra que instituições têm vaga, por isso também não usa as vagas para ordenar. Por omissão,
+              aparecem primeiro as mais bem avaliadas pelas famílias; em caso de empate, as que têm mais avaliações e, depois, por ordem
+              alfabética.
+            </p>
+            <p>
+              «{ORDEM_LABEL.preco}» ordena por faixa de preço. «{ORDEM_LABEL.disponibilidade}» e os filtros de vaga fazem parte do Acesso
+              Família.
+            </p>
+          </Bloco>
+
           <Bloco titulo="No questionário «Ajuda-me a escolher»">
             <p>
               Aqui a ordem é a <strong>compatibilidade</strong> com a pessoa de quem cuida. Cada instituição recebe até 100 pontos:
@@ -133,6 +157,7 @@ export default function ComoOrdenamosPage() {
               Se a instituição não admite o grau de dependência, não assegura um cuidado essencial (como enfermagem 24 horas ou cuidados na demência)
               ou fica mais de 50% acima do orçamento, passa para o fim da lista, com o motivo à vista.
             </p>
+            <p>Na versão grátis, o questionário diz quantas instituições são compatíveis; a lista ordenada faz parte do Acesso Família.</p>
             <MoreLink to="/encontrar" className="self-start">
               Responder ao questionário
             </MoreLink>
@@ -191,18 +216,29 @@ export default function ComoOrdenamosPage() {
               selo de verificação não se compra.
             </p>
             <p className="mt-4 text-lg leading-relaxed text-ink-soft">
+              <strong className="font-semibold text-ink">
+                O Acesso Família (pago pelas famílias) não muda a ordem dos resultados, não dá prioridade nas vagas e não é visível para as
+                instituições.
+              </strong>
+            </p>
+            <p className="mt-4 text-lg leading-relaxed text-ink-soft">
               Se um dia houver lugares pagos, vão estar sempre assinalados de forma clara e nunca misturados na ordenação, em cumprimento das regras
               europeias de transparência para plataformas em linha.
             </p>
           </Reveal>
 
-          <div className="mt-12 flex flex-col items-stretch gap-x-8 gap-y-2 sm:mt-16 sm:flex-row sm:items-center">
+          <div className="mt-12 flex flex-col items-stretch gap-y-3 sm:mt-16 sm:items-start">
             <ButtonLink to={voltar ?? '/pesquisa'} size="lg" className="w-full sm:w-auto">
               {voltar ? 'Voltar à pesquisa' : 'Ver o mapa de vagas'}
             </ButtonLink>
-            <MoreLink to="/para-lares#quanto-custa" className="justify-center text-lg">
-              Quanto custa para as instituições
-            </MoreLink>
+            <div className="flex flex-col gap-x-8 sm:flex-row sm:flex-wrap">
+              <MoreLink to="/para-lares#quanto-custa" className="justify-center text-lg">
+                Quanto custa para as instituições
+              </MoreLink>
+              <MoreLink to={linkAcesso('/como-ordenamos')} className="justify-center text-lg">
+                Quanto custa para as famílias
+              </MoreLink>
+            </div>
           </div>
         </div>
       </div>

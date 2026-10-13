@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
-import type { Role } from '@/types'
+import type { Lar, Role } from '@/types'
 import { useDocumentTitle } from '@/lib/hooks'
 import { useCurrentUser, useLares } from '@/lib/store'
+import { ACESSO_DESDE } from '@/components/acesso'
 import { TextLink } from '@/components/ui/Button'
 import { AccountSwitch } from './register/AccountSwitch'
 import { FamilyForm } from './register/FamilyForm'
@@ -13,7 +14,7 @@ import { PrototypeNote } from './shared/PrototypeNote'
 import { SignedInNotice } from './shared/SignedInNotice'
 import { SlideSwitch } from './shared/SlideSwitch'
 import { Appear, cascade } from './shared/Appear'
-import { destinoAposEntrar, intencaoDe, isInternalPath, motivoDoDestino, roleDoCaminho } from './shared/redirect'
+import { comVoltar, destinoAposEntrar, ehAcesso, intencaoDe, motivoDoDestino, precisaDeAcesso, roleDoCaminho } from './shared/redirect'
 
 const ROLES: Role[] = ['familia', 'lar', 'profissional']
 const TITULO: Record<Role, string> = { familia: 'Criar conta', lar: 'Registar instituição', profissional: 'Criar conta profissional' }
@@ -26,9 +27,22 @@ function tipoDe(params: URLSearchParams): Role {
 }
 
 const DESCRICAO: Record<Role, string> = {
-  familia: 'Gratuita. Guarde lares, peça vaga e receba alertas.',
+  familia: `Criar conta é gratuito. Explore à vontade; o Acesso Família (${ACESSO_DESDE}) mostra vagas, preços e previsão.`,
   lar: 'Publique as vagas e receba pedidos de famílias.',
   profissional: 'Para assistentes sociais: envie o mesmo pedido a várias instituições.',
+}
+
+/**
+ * Família a meio de alguma coisa: o que vem depois de criar a conta, sem prometer o que é pago.
+ * A caminho do Acesso Família → ativá-lo; pedir vaga, visita ou alertas → precisam do passe; guardar → é livre.
+ */
+function descricaoFamilia(voltar: string | null, lares: Lar[]): string | null {
+  if (ehAcesso(voltar)) return 'Criar conta é gratuito. A\u00a0seguir, ativa o Acesso Família.'
+  const motivo = intencaoDe(voltar) ? motivoDoDestino(voltar, lares) : null
+  if (!motivo) return null
+  return precisaDeAcesso(voltar)
+    ? `Criar conta é gratuito. Para ${motivo}, precisa do Acesso Família (${ACESSO_DESDE}).`
+    : `Criar conta é gratuito. A\u00a0seguir, pode ${motivo}.`
 }
 
 export default function RegisterPage() {
@@ -62,10 +76,9 @@ export default function RegisterPage() {
     )
   }
 
-  const entrar = isInternalPath(voltar) ? `/entrar?voltar=${encodeURIComponent(voltar)}` : '/entrar'
-  // a meio de uma ação (ex.: pedir vaga num lar): lembrar que, criada a conta, continua de onde estava
-  const motivo = intencaoDe(voltar) ? motivoDoDestino(voltar, lares) : null
-  const descricao = tipo === 'familia' && motivo ? `Gratuita. A seguir, pode ${motivo}.` : DESCRICAO[tipo]
+  const entrar = comVoltar('/entrar', voltar)
+  // a meio de uma ação (ex.: pedir vaga num lar) ou a caminho do Acesso Família: dizer o que vem a seguir
+  const descricao = (tipo === 'familia' && descricaoFamilia(voltar, lares)) || DESCRICAO[tipo]
 
   return (
     <AuthShell title="Criar conta">

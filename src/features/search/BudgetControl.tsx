@@ -1,8 +1,10 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { AvisoAcesso } from '@/components/acesso'
 import { euro } from '@/lib/format'
 import { useDebounced } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
-import { pillClasses } from './Chips'
+import { pillClasses, RadioPills } from './Chips'
+import { FAIXAS_ORCAMENTO, faixaDoOrcamento, ROTULO_FAIXA } from './gratis'
 import { PillPopover } from './PillPopover'
 
 export const TETO = 5000
@@ -90,8 +92,42 @@ export function BudgetSlider({ value, onChange, precos, className }: SliderProps
         </button>
       </div>
 
-      <p className="text-sm text-ink-mute">Nas IPSS e Misericórdias conta o valor mais baixo; o final depende dos rendimentos.</p>
+      <p className="text-sm text-ink-mute">{NOTA_SOCIAIS}</p>
     </div>
+  )
+}
+
+const NOTA_SOCIAIS = 'Nas IPSS e Misericórdias conta o valor mais baixo; o final depende dos rendimentos.'
+
+const OPCOES_FAIXA: { v: number | null; label: string }[] = [
+  ...FAIXAS_ORCAMENTO.map((f) => ({ v: f, label: ROTULO_FAIXA[f] })),
+  { v: null, label: 'Sem limite' },
+]
+
+/**
+ * Versão grátis: orçamento por faixas, as mesmas das fichas (`faixaPreco`). Sem régua nem histograma:
+ * os preços exatos (e quantas casas há a cada preço) são do Acesso Família.
+ */
+export function BudgetFaixas({ value, onChange, className }: { value: number | null; onChange: (v: number | null) => void; className?: string }) {
+  return (
+    <div className={cn('flex flex-col gap-4', className)}>
+      <RadioPills label="Mensalidade máxima" value={faixaDoOrcamento(value)} onChange={onChange} opcoes={OPCOES_FAIXA} />
+      <p className="text-sm text-ink-mute">{NOTA_SOCIAIS}</p>
+      <AvisoAcesso texto="Preço de cada quarto: disponível com o Acesso Família." className="-mt-2" />
+    </div>
+  )
+}
+
+/** Versão grátis: pílula "Orçamento" / "Até 1.000 €" com as faixas num painel (aplica logo ao escolher). */
+export function BudgetFaixasPill({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+  const faixa = faixaDoOrcamento(value)
+  return (
+    <PillPopover active={faixa != null} label={faixa != null ? ROTULO_FAIXA[faixa] : 'Orçamento'} panelLabel="Mensalidade máxima" panelClassName="w-[27rem]">
+      <p aria-hidden className="mb-3 text-sm text-ink-mute">
+        Mensalidade máxima
+      </p>
+      <BudgetFaixas value={value} onChange={onChange} />
+    </PillPopover>
   )
 }
 

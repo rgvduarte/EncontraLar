@@ -8,23 +8,27 @@ import { useInView, usePrefersReducedMotion } from '@/lib/motion'
 import { useMediaQuery } from '@/lib/hooks'
 import { cn } from '@/lib/cn'
 import { ECRAS, Telefone, type Historia } from './ComoFuncionaEcras'
-import { comVagaAgora, type PrevisaoDestaque } from './homeData'
+import { comVagaAgora, escolherHistoriaGratis, type PrevisaoDestaque } from './homeData'
 
+/** `gratis`: o mesmo passo dito para quem ainda não tem o Acesso Família (o que é grátis e o que o passe junta). */
 const PASSOS = [
   {
     curto: 'Procurar',
     titulo: 'Procure no mapa.',
     texto: 'Escreva a localidade e veja logo onde há vaga agora, onde abre em breve e onde há lista de espera.',
+    gratis: 'Escreva a localidade e veja as instituições da zona, e quantas têm vaga agora.',
   },
   {
     curto: 'Comparar',
     titulo: 'Compare com transparência.',
     texto: 'O preço de cada quarto, a previsão de vaga mês a mês e o selo de verificação, antes de telefonar.',
+    gratis: 'A faixa de preço e o selo de verificação de cada casa. Com o Acesso Família, também o preço de cada quarto e a previsão de vaga.',
   },
   {
     curto: 'Pedir vaga',
     titulo: 'Peça vaga e receba alertas.',
     texto: 'Envie o pedido com o perfil da pessoa. Avisamos no momento em que abrir um lugar.',
+    gratis: 'Com o Acesso Família, envie o pedido a várias casas com o perfil da pessoa. Avisamos quando abrir um lugar.',
   },
 ] as const
 
@@ -48,13 +52,30 @@ function Cabecalho({ className }: { className?: string }) {
  * para contar uma história: encontrá-lo no mapa → comparar → pedir vaga e ser avisado quando abre.
  * - Desktop: cena presa (280vh ≈ 1,9 ecrãs de scroll a mais); os passos acendem-se um a um e o ecrã do telemóvel muda.
  * - Telemóvel/tablet e movimento reduzido: passos empilhados, cada um com o seu ecrã a entrar ao aparecer.
+ *
+ * Versão grátis (`completo` falso): a instituição é escolhida sem olhar para as vagas, os ecrãs mostram só o que é
+ * grátis (faixa de preço, verificação) com o resto fechado, e o texto de cada passo diz o que junta o Acesso Família.
  */
-export function ComoFunciona({ lares, agora, previsao }: { lares: Lar[]; agora: number; previsao: PrevisaoDestaque | null }) {
+export function ComoFunciona({
+  lares,
+  agora,
+  previsao,
+  completo,
+}: {
+  lares: Lar[]
+  agora: number
+  previsao: PrevisaoDestaque | null
+  completo: boolean
+}) {
   const historia = useMemo<Historia | null>(() => {
-    if (previsao) return { lar: previsao.lar, est: previsao.est, lares, agora }
+    if (!completo) {
+      const l = escolherHistoriaGratis(lares)
+      return l ? { lar: l, est: estimarEspera(l), lares, agora, completo } : null
+    }
+    if (previsao) return { lar: previsao.lar, est: previsao.est, lares, agora, completo }
     const l = comVagaAgora(lares, 1)[0]
-    return l ? { lar: l, est: estimarEspera(l), lares, agora } : null
-  }, [lares, agora, previsao])
+    return l ? { lar: l, est: estimarEspera(l), lares, agora, completo } : null
+  }, [lares, agora, previsao, completo])
   const desktop = useMediaQuery('(min-width: 1024px)')
   const reduzido = usePrefersReducedMotion()
   if (!historia) return null
@@ -111,7 +132,7 @@ const Palco = memo(function Palco({ ativo, h, irPara }: { ativo: number; h: Hist
             >
               <p className="text-sm font-semibold text-ink-mute tabular">Passo {i + 1} de 3</p>
               <h3 className="mt-2 text-3xl font-semibold text-ink xl:text-4xl">{s.titulo}</h3>
-              <p className="mt-4 max-w-md text-xl text-ink-mute">{s.texto}</p>
+              <p className="mt-4 max-w-md text-xl text-ink-mute">{h.completo ? s.texto : s.gratis}</p>
             </div>
           ))}
         </Reveal>
@@ -198,7 +219,7 @@ function PassoEmpilhado({ i, h }: { i: number; h: Historia }) {
       <Reveal className="text-center md:text-left">
         <p className="text-sm font-semibold text-ink-mute tabular">Passo {i + 1} de 3</p>
         <h3 className="mt-1.5 text-2xl font-semibold text-ink sm:text-3xl">{s.titulo}</h3>
-        <p className="mx-auto mt-2 max-w-md text-lg text-ink-mute md:mx-0">{s.texto}</p>
+        <p className="mx-auto mt-2 max-w-md text-lg text-ink-mute md:mx-0">{h.completo ? s.texto : s.gratis}</p>
       </Reveal>
       <div ref={ref} className="flex justify-center">
         <Reveal variant="scale" duration={900}>

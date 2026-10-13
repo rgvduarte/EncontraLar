@@ -4,7 +4,9 @@
  */
 import type { Distrito, Lar } from '@/types'
 import { disponibilidade, estimarEspera, vagaParaNovos, type EstimativaEspera } from '@/lib/forecast'
-import { avaliarLar, type MatchResult } from '@/lib/matching'
+import { avaliarLar, type MatchResult, type Razao } from '@/lib/matching'
+import { resumoDisponibilidade } from '@/lib/acesso'
+import { COMODIDADE_FALTA, COMODIDADE_LABEL, CUIDADO_FRASE, CUIDADO_LABEL } from '@/lib/labels'
 import { distanceKm } from '@/lib/geo'
 import { LUGARES, type LugarPesquisa } from '@/data/localidades'
 import { DEMO_LAR_ID } from '@/data/seed'
@@ -68,6 +70,51 @@ export function comVagaAgora(lares: Lar[], limite = 12): Lar[] {
     .slice(0, limite)
 }
 
+// ————————————————————————————————————————— versão grátis (só agregados: o "quantas", nunca o "quais")
+
+/**
+ * Abaixo disto a versão grátis não diz quantas têm vaga num conjunto: com 1 a 4 casas, "quantas" seria "quais".
+ * O mesmo limite da pesquisa (MIN_AGREGADO em features/search/gratis.ts) e do VagasBoard.
+ */
+export const MIN_AGREGADO = 5
+
+/** Quantos lares e residências têm vaga agora (sem dizer quais). */
+export function contarComVaga(lares: Lar[]): number {
+  return resumoDisponibilidade(lares.filter(residencial)).comVaga
+}
+
+export interface VagasDistrito {
+  distrito: Distrito
+  /** lares e residências do distrito com vaga para quem pede hoje */
+  comVaga: number
+  total: number
+  /** latitude média das instituições do distrito (para ordenar as etiquetas de norte para sul) */
+  lat: number
+}
+
+/**
+ * Os `n` distritos com mais lares e residências com vaga agora (em empate, onde há mais instituições).
+ * Para as etiquetas do mapa na versão grátis: devolve só contagens, nenhuma instituição. Ficam de fora os
+ * distritos com menos de `MIN_AGREGADO` casas e aqueles em que todas têm vaga (aí a contagem diria quais).
+ */
+export function vagasPorDistrito(lares: Lar[], n = 3): VagasDistrito[] {
+  const grupos = new Map<Distrito, Lar[]>()
+  for (const l of lares) {
+    if (!residencial(l)) continue
+    const g = grupos.get(l.distrito)
+    if (g) g.push(l)
+    else grupos.set(l.distrito, [l])
+  }
+  return [...grupos]
+    .map(([distrito, ls]) => {
+      const { comVaga, total } = resumoDisponibilidade(ls)
+      return { distrito, comVaga, total, lat: ls.reduce((s, l) => s + l.lat, 0) / ls.length }
+    })
+    .filter((d) => d.total >= MIN_AGREGADO && d.comVaga > 0 && d.comVaga < d.total)
+    .sort((a, b) => b.comVaga - a.comVaga || b.total - a.total || a.distrito.localeCompare(b.distrito, 'pt'))
+    .slice(0, n)
+}
+
 // ————————————————————————————————————————— exemplos reais para a grelha
 
 export interface PrevisaoDestaque {
@@ -110,6 +157,14 @@ export function escolherFichaPrecos(lares: Lar[]): Lar | null {
   return lares.filter(serve).sort((a, b) => b.numAvaliacoes - a.numAvaliacoes)[0] ?? null
 }
 
+/**
+ * A instituição da história "Como funciona" na versão grátis. Escolhida sem olhar para as vagas (ao contrário de
+ * `escolherPrevisao`, que procura uma sem vaga hoje): a escolha em si não diz nada sobre a disponibilidade.
+ */
+export function escolherHistoriaGratis(lares: Lar[]): Lar | null {
+  return escolherFichaPrecos(lares) ?? lares.find(residencial) ?? null
+}
+
 /** Perfil fictício usado para mostrar a compatibilidade (identificado como exemplo na página). */
 function perfilExemplo(lugar: LugarPesquisa) {
   return {
@@ -129,6 +184,19 @@ export interface ExemploMatch {
   lar: Lar
   match: MatchResult
   lugar: LugarPesquisa
+}
+
+/**
+ * Razões do exemplo que a versão grátis pode mostrar: só os cuidados e as comodidades pedidos no perfil
+ * (o que a ficha grátis também mostra). Ficam de fora o preço, a distância e a disponibilidade.
+ */
+export function razoesGratis({ match, lugar }: ExemploMatch): Razao[] {
+  const perfil = perfilExemplo(lugar)
+  const permitidas = new Set<string>([
+    ...perfil.necessidades.flatMap((n) => [CUIDADO_LABEL[n], `Sem ${CUIDADO_FRASE[n]}`]),
+    ...perfil.preferencias.flatMap((c) => [COMODIDADE_LABEL[c], COMODIDADE_FALTA[c]]),
+  ])
+  return match.razoes.filter((r) => permitidas.has(r.texto))
 }
 
 /** A melhor correspondência compatível para o perfil de exemplo, perto da primeira cidade que tenha uma. */

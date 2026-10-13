@@ -37,7 +37,9 @@ export function LinhasBloqueadas({ n = 3, rotulo, voltar, className }: LinhasBlo
   return (
     // grelha com as duas camadas na mesma célula: a altura é a maior das duas (o cartão nunca transborda)
     <div className={cn('grid', className)}>
-      <ul aria-hidden className="col-start-1 row-start-1 flex flex-col gap-2 [mask-image:linear-gradient(to_bottom,#000_35%,transparent)]">
+      {/* a máscara cria um contexto de empilhamento: sem pointer-events-none e sem z-index no cartão, as formas
+          ficavam por cima do botão (não clicável em telemóvel) */}
+      <ul aria-hidden className="pointer-events-none col-start-1 row-start-1 flex flex-col gap-2 [mask-image:linear-gradient(to_bottom,#000_35%,transparent)]">
         {Array.from({ length: linhas }, (_, i) => {
           const [a, b, c] = LARGURAS[i % LARGURAS.length]!
           return (
@@ -53,12 +55,12 @@ export function LinhasBloqueadas({ n = 3, rotulo, voltar, className }: LinhasBlo
         })}
       </ul>
 
-      <div className="col-start-1 row-start-1 flex items-center justify-center p-3">
+      <div className="relative z-10 col-start-1 row-start-1 flex items-center justify-center p-3">
         <div className="flex w-full max-w-sm flex-col items-center rounded-3xl bg-white px-6 py-6 text-center shadow-card ring-1 ring-black/5">
           <Lock aria-hidden className="size-5 text-ink-soft" />
-          <p className="mt-3 font-semibold text-ink">{rotulo ?? ACESSO_DISPONIVEL}</p>
+          <p className="mt-3 font-semibold text-ink">{rotulo ?? (instituicao ? ACESSO_PARA_LARES : ACESSO_DISPONIVEL)}</p>
           {instituicao ? (
-            <p className="mt-1 text-sm text-ink-mute">{ACESSO_PARA_LARES}</p>
+            rotulo != null && <p className="mt-1 text-sm text-ink-mute">{ACESSO_PARA_LARES}</p>
           ) : (
             <>
               {rotulo != null && <p className="mt-1 text-sm text-ink-mute">{ACESSO_DISPONIVEL}.</p>}

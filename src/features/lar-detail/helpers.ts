@@ -4,6 +4,7 @@
 import { useMemo } from 'react'
 import type { Lar, PerfilIdoso, RoomOffer, TipoQuarto } from '@/types'
 import { disponibilidade, estimarEspera, previsaoMensal, vagasLivres, type EstimativaEspera } from '@/lib/forecast'
+import { faixaPreco } from '@/lib/acesso'
 import { euro, intervaloMeses, num } from '@/lib/format'
 import { GRAU_LABEL, QUARTO_CURTO } from '@/lib/labels'
 
@@ -131,6 +132,21 @@ export function esperaEstimada(est: EstimativaEspera): string {
   if (Math.round(fim / 30) <= 1) return fim < 30 ? 'menos de 1 mês' : 'cerca de 1 mês'
   return intervaloMeses(est.diasOtimista, fim)
 }
+
+/**
+ * Faixa de preço da versão grátis, separada para desenhar: { valor: "1.000 € a 2.000 €", sufixo: "/mês" } ou
+ * { valor: "Conforme os rendimentos" } (IPSS/Misericórdia). Espaço inseparável antes do €: nunca fica sozinho numa linha.
+ */
+export function faixaPrecoPartes(lar: Pick<Lar, 'mensalidadeMin' | 'natureza'>): { valor: string; sufixo?: string } {
+  const t = faixaPreco(lar).replace(/ €/g, ' €')
+  return t.endsWith('/mês') ? { valor: t.slice(0, -4), sufixo: '/mês' } : { valor: t }
+}
+
+/** Caminho da ficha, sem pesquisa: o regresso depois de ativar o Acesso Família (`voltar`). */
+export const caminhoFicha = (lar: Pick<Lar, 'id'>) => `/lar/${lar.id}`
+
+/** Ação principal da versão grátis, sem revelar se há vaga ("Pedir vaga" vs "Entrar na lista" diria o estado). */
+export const pedirGenerico = (dados: Pick<DadosLar, 'centroDia'>) => (dados.centroDia ? 'Pedir lugar' : 'Pedir vaga')
 
 /** Preço para cartões e barras: "desde 1550 €" (privado) ou "450–1100 €" (IPSS/Misericórdia). */
 export function precoResumo(lar: Lar): { valor: string; desde: boolean } | null {

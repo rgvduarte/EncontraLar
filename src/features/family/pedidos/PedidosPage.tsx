@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useLocation } from 'react-router'
 import { ButtonLink } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/misc'
+import { ACESSO_DESDE, AvisoAcesso } from '@/components/acesso'
+import { useAcesso } from '@/lib/store'
+import { linkAcesso } from '@/lib/acesso'
 import { useDocumentTitle } from '@/lib/hooks'
 import { useLenis } from '@/components/motion'
 import { cn } from '@/lib/cn'
@@ -19,6 +22,7 @@ export default function PedidosPage() {
   useDocumentTitle('Os meus pedidos')
   const { ativos, emCurso, admitidos, terminados } = usePedidos()
   const { principal } = usePerfisOrdenados()
+  const { completo } = useAcesso()
   const { hash } = useLocation()
   const alvo = hash.startsWith('#pedido-') ? hash.slice(8) : null
   const [aba, setAba] = useState<Aba>(() => (alvo && terminados.some((p) => p.c.id === alvo) ? 'terminados' : 'ativos'))
@@ -55,6 +59,15 @@ export default function PedidosPage() {
   const lista = aba === 'ativos' ? ativos : terminados
   const contagem: Record<Aba, number> = { ativos: ativos.length, terminados: terminados.length }
   const pesquisa = principal ? pesquisaUrl(principal, { vaga: 'breve' }) : '/pesquisa?vaga=breve'
+  // versão grátis: pedir vaga é do Acesso Família — os estados vazios levam à página do passe
+  const acaoNovoPedido = completo ? (
+    <ButtonLink to={pesquisa}>Encontrar instituições com vaga</ButtonLink>
+  ) : (
+    <div className="flex flex-col items-center gap-2">
+      <ButtonLink to={linkAcesso('/familia/pedidos')}>Ver o Acesso Família</ButtonLink>
+      <span className="text-sm text-ink-mute">{ACESSO_DESDE}</span>
+    </div>
+  )
 
   const onKey = (e: KeyboardEvent) => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return
@@ -68,8 +81,12 @@ export default function PedidosPage() {
     return (
       <EmptyState
         title="Ainda não pediu vaga"
-        text="Na ficha de cada instituição há um botão “Pedir vaga”. Pode pedir em várias ao mesmo tempo e acompanhar tudo aqui."
-        action={<ButtonLink to={pesquisa}>Encontrar instituições com vaga</ButtonLink>}
+        text={
+          completo
+            ? 'Na ficha de cada instituição há um botão “Pedir vaga”. Pode pedir em várias ao mesmo tempo e acompanhar tudo aqui.'
+            : 'Com o Acesso Família, envia o perfil de cuidados a várias casas de uma vez e acompanha aqui cada pedido. Um pedido não obriga a nada.'
+        }
+        action={acaoNovoPedido}
       />
     )
   }
@@ -124,14 +141,19 @@ export default function PedidosPage() {
         </p>
       </div>
 
+      {/* versão grátis com pedidos (o passe terminou): os pedidos continuam a ser da família; um só aviso, aqui */}
+      {!completo && ativos.length > 0 && (
+        <AvisoAcesso
+          texto="Os pedidos continuam ativos e pode geri-los aqui. A previsão de espera, os contactos e novas visitas estão disponíveis com o Acesso Família."
+          voltar="/familia/pedidos"
+          className="mt-8"
+        />
+      )}
+
       <div ref={painel} id="pedidos-painel" role="tabpanel" aria-labelledby={`aba-${aba}`} className="mt-10 flex flex-col gap-12 sm:mt-8 sm:gap-8">
         {lista.length === 0 ? (
           aba === 'ativos' ? (
-            <EmptyState
-              title="Sem pedidos em curso"
-              text="Os pedidos anteriores estão em “Terminados”."
-              action={<ButtonLink to={pesquisa}>Encontrar instituições com vaga</ButtonLink>}
-            />
+            <EmptyState title="Sem pedidos em curso" text="Os pedidos anteriores estão em “Terminados”." action={acaoNovoPedido} />
           ) : (
             <EmptyState title="Nenhum pedido terminado" text="Os pedidos cancelados ou sem vaga ficam aqui, para referência." />
           )

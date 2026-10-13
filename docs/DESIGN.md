@@ -48,7 +48,7 @@ Vetores do produto: **geolocalização, perfil clínico, transparência** + **pr
 - Ícones `lucide-react` finos, pequenos, a acompanhar texto (nunca ícones dentro de círculos coloridos em grelha de 3).
 - Capas de instituição: `LarCover` (gradiente pastel + silhueta) — sem fotografias no protótipo.
 
-**Componentes de marca disponíveis** (`src/components/brand/`): `PortugalMap` (mapa em pontos, halftone), `MapLegend`, `VagasBoard` (lista "Atualizadas agora", tema claro/escuro), `ForecastStrip` (previsão mês a mês: % + barra fina; `variant="mini"`), `SeloVerificado` (roseta azul) e
+**Componentes de marca disponíveis** (`src/components/brand/`): `PortugalMap` (mapa em pontos, halftone), `MapLegend`, `VagasBoard` (lista "Atualizadas agora", tema claro/escuro; na versão grátis, só números por distrito: §12), `ForecastStrip` (previsão mês a mês: % + barra fina; `variant="mini"`), `SeloVerificado` (roseta azul) e
 `SeloNiveis` (os três níveis de verificação, ver §11).
 Os padrões da v1 (azulejo/calçada, `patterns.tsx`) foram **removidos**.
 `Reveal` (de `@/components/motion`): envolver blocos para entrada suave ao fazer scroll.
@@ -76,6 +76,7 @@ Famílias                               Instituições                  Contas
 /lar/:id       Ficha da instituição    /profissionais (hospitais e serviço social)
 /encontrar     Ajuda-me a escolher     /confirmar/:token (confirmar vagas sem sessão)
 /guia          Guia e apoios (#tipos #escolher #visita #apoios #alerta #faq #linhas)
+/acesso        Acesso Família (?voltar=<rota>&plano=acesso_30|acesso_90) — §12
 /sobre (#previsao), /como-ordenamos, /privacidade
 
 Painel da família  /familia · /familia/pedidos · /familia/guardados · /familia/perfil · /familia/conta
@@ -215,9 +216,9 @@ Não inventar valores intermédios (ex.: 1050) — usar esta escala.
 
 Regras de interface para o modelo aprovado (pormenor em `docs/MODELO-NEGOCIO.md`).
 
-- **Sem preços da plataforma.** Estar no EncontraLar é gratuito para todas as instituições; só os lares privados pagam uma
-  taxa fixa por cada pessoa que entra. O valor fica no contrato: nunca mostrar montantes, percentagens nem "planos". As
-  mensalidades das instituições continuam visíveis (são informação para as famílias). Ninguém paga para aparecer primeiro.
+- **Sem preços da plataforma para as instituições.** Estar no EncontraLar é gratuito para todas as instituições; só os lares
+  privados pagam uma taxa fixa por cada pessoa que entra. O valor fica no contrato: nunca mostrar montantes, percentagens nem
+  "planos". Ninguém paga para aparecer primeiro. (O passe das famílias, o Acesso Família, tem preço público: ver §12.)
 - **Pedido em duas fases (RGPD art. 9.º).** Antes de aceitar, a instituição vê só o resumo sem identificação (faixa etária,
   grau, cuidados, zona, orçamento, urgência, origem). "Aceitar e ver contacto" mostra o nome, o contacto e o perfil completo.
   Nunca desenhar o nome ou o contacto "desfocado" na primeira fase: simplesmente não aparecem.
@@ -239,3 +240,36 @@ Regras de interface para o modelo aprovado (pormenor em `docs/MODELO-NEGOCIO.md`
   com atalho para o seu painel e "Entrar com outra conta".
 - **Encaminhamentos com alta próxima** (até 7 dias) aparecem primeiro na lista de pedidos da instituição, com a data de alta
   em texto (nunca só por cor).
+
+## 12. Acesso Família (versão grátis vs. completa)
+
+As famílias pagam o acesso (pormenor em `src/lib/acesso.ts`): explorar é grátis e **genérico**; o **Acesso Família**
+(30 dias por 14,90 € ou 90 dias por 29,90 €, recomendado; IVA incluído; sem renovação automática; comprar de novo soma os
+dias) abre a camada viva. O portão é sempre `useAcesso().completo` (`@/lib/store`): famílias com passe ativo e profissionais
+de saúde (sempre, sem custos) veem tudo; visitantes, famílias sem passe e instituições (role `lar`) veem a versão grátis.
+
+| Grátis | Com o Acesso Família |
+|---|---|
+| Que instituições existem: nome, tipo, natureza, localidade, concelho | Que instituições têm vaga e quantos lugares |
+| Níveis de verificação | Preços por quarto |
+| Avaliação geral e n.º de avaliações (no máximo um excerto) | Previsão de espera |
+| Faixa de preço: `faixaPreco(lar)` ("1.000 € a 2.000 €/mês", "Conforme os rendimentos") | Contactos |
+| Descrição, serviços e cuidados; o guia e as páginas de conteúdo | Pedidos a várias casas, visitas, alertas de vaga |
+| Contagens agregadas: "43 com vaga agora nesta zona" (o quantas, nunca o quais) | Comparação |
+
+- **Os dados fechados não vão para o DOM.** Com `!completo` não se desenham escondidos, desfocados, `sr-only` nem em
+  `aria-label`: forma vazia ou nada (a proteção a sério vem do servidor). Agregados só em grupos que não apontem uma casa
+  (o `VagasBoard` só mostra distritos com 5 ou mais lares e residências).
+- **Tom calmo e honesto.** Nada de "premium", "desbloqueie já!", contagens decrescentes nem culpa. Os bloqueios são parte do
+  desenho (tile cinza com cadeado `aria-hidden` e texto a dizer o que está fechado), nunca parecem erros; a versão grátis tem
+  de continuar útil. Quem tem passe e os profissionais veem exatamente o que viam antes.
+- **Palavras fixas** (`@/components/acesso`): "Disponível com o Acesso Família", "Ver o Acesso Família", "desde 14,90 €",
+  "Informação para famílias com Acesso Família." (instituições: sem botão) e, onde fizer sentido, "Pagar não muda a ordem
+  dos resultados nem dá prioridade nas vagas."
+- **Componentes** (`@/components/acesso`): `BloqueioCartao` (bloco fechado padrão: título, frase, "Ver o Acesso Família",
+  "desde 14,90 €"; `compacto` numa linha), `LinhasBloqueadas` (formas cinzentas sem dados, estáticas, com o convite por cima),
+  `AvisoAcesso` (convite numa linha), `AcessoNecessarioModal` (ação paga: `pedir` · `visita` · `alerta` · `comparar` ·
+  `filtro` · `contactos`; os dois passes e o de 90 dias escolhido) e `useVoltarAtual()` (para `linkAcesso(voltar)`).
+  Já com portão: `LarCard` (faixa de preço e "Vagas e preços com Acesso Família"; `vista="completa"` só para dados da
+  própria instituição), `VagasBoard` ("Com vaga agora, por distrito", sem nomes) e o cabeçalho ("Acesso Família" no menu
+  Mapa de vagas; no menu da conta das famílias, "Ativo até 31 dez." ou "Ativar o Acesso Família").

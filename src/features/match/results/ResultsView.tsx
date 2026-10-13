@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 import { EmptyState } from '@/components/ui/misc'
 import { toast } from '@/components/ui/Toast'
 import { Reveal, useLenis } from '@/components/motion'
+import { useAcesso } from '@/lib/store'
 import { PESOS, recomendar, type MatchResult } from '@/lib/matching'
 import { vagaParaNovos } from '@/lib/forecast'
 import { plural } from '@/lib/format'
@@ -21,6 +22,7 @@ import { DiagnosisCard } from './DiagnosisCard'
 import { SavePanel } from './SavePanel'
 import { ResultsStats } from './ResultsStats'
 import { SaveBar } from './SaveBar'
+import { ResultadosGratis } from './ResultadosGratis'
 import { urlPesquisa } from './searchLink'
 import { procuraDoPerfil } from './procura'
 import { useRegistoProcura } from '@/features/search/procura'
@@ -53,6 +55,8 @@ export function ResultsView({
   user: User | null
 }) {
   const { r } = sessao
+  // versão grátis (visitantes, famílias sem passe, instituições): quantas e quantas com vaga, nunca quais
+  const { completo } = useAcesso()
   const p = useMemo(() => pessoa(r), [r])
   const perfil = useMemo(() => paraPerfilMatch(r), [r])
   const matches = useMemo(
@@ -74,8 +78,8 @@ export function ResultsView({
   // nenhuma sugestão cabe no orçamento: também vale a pena explicar o que limita
   const semNenhumaNoOrcamento = boas.length > 0 && perfil != null && !boas.some((m) => m.precoRef <= perfil.orcamentoMax)
   const diag = useMemo(
-    () => (boas.length < 3 || semNenhumaNoOrcamento ? diagnosticar(lares, r, p, matches) : null),
-    [boas.length, semNenhumaNoOrcamento, lares, r, p, matches],
+    () => (boas.length < 3 || semNenhumaNoOrcamento ? diagnosticar(lares, r, p, matches, { generico: !completo }) : null),
+    [boas.length, semNenhumaNoOrcamento, lares, r, p, matches, completo],
   )
   // com muitas sugestões, o diagnóstico vem antes da lista; com uma ou duas, depois
   const diagAntes = diag != null && boas.length >= 3
@@ -212,14 +216,17 @@ export function ResultsView({
           </h2>
         )}
 
-        {n > 0 && (
+        {n > 0 && completo && (
           <ol aria-label="Sugestões compatíveis" className="mt-6 divide-y divide-line">
             {boas.slice(0, limite).map((m, i) => (
               <RankedItem key={m.larId} lar={larPorId.get(m.larId)!} m={m} melhor={i === 0} />
             ))}
           </ol>
         )}
-        {n > limite && (
+        {n > 0 && !completo && (
+          <ResultadosGratis n={n} longe={longe.length} raio={raio} instituicao={user?.role === 'lar'} className="mt-6" />
+        )}
+        {completo && n > limite && (
           <div className="mt-6 text-center">
             <Button variant="subtle" size="lg" onClick={() => setLimite((l) => l + PAGINA)} className="w-full sm:w-auto">
               Mostrar mais {Math.min(PAGINA, n - limite)}
@@ -233,7 +240,12 @@ export function ResultsView({
           </Reveal>
         )}
 
-        {longe.length > 0 && (
+        {/* versão grátis sem sugestões no raio: só quantas há mais longe (o diagnóstico ajuda a alargar) */}
+        {!completo && n === 0 && longe.length > 0 && (
+          <ResultadosGratis n={0} longe={longe.length} raio={raio} instituicao={user?.role === 'lar'} className="border-t border-line pt-6" />
+        )}
+
+        {completo && longe.length > 0 && (
           <Switch
             checked={verLonge}
             onChange={setVerLonge}
@@ -243,7 +255,7 @@ export function ResultsView({
           />
         )}
 
-        {verLonge && longe.length > 0 && (
+        {completo && verLonge && longe.length > 0 && (
           <section
             aria-labelledby="longe-t"
             className="mt-16 transition-[opacity,translate] duration-700 ease-[cubic-bezier(.16,1,.3,1)] starting:translate-y-4 starting:opacity-0"
@@ -274,7 +286,7 @@ export function ResultsView({
           </section>
         )}
 
-        {outras.length > 0 && (
+        {completo && outras.length > 0 && (
           <Switch
             checked={verOutras}
             onChange={setVerOutras}
@@ -284,7 +296,7 @@ export function ResultsView({
           />
         )}
 
-        {verOutras && outras.length > 0 && (
+        {completo && verOutras && outras.length > 0 && (
           <section
             aria-labelledby="outras-t"
             className="mt-16 transition-[opacity,translate] duration-700 ease-[cubic-bezier(.16,1,.3,1)] starting:translate-y-4 starting:opacity-0"

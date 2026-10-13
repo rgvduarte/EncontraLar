@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { ChevronRight, Plus } from 'lucide-react'
 import type Lenis from 'lenis'
 import { Reveal } from './Entrada'
+import { PLANOS_FAMILIA, linkAcesso, precoTexto } from '@/lib/acesso'
 import { prefersReducedMotion } from '@/lib/motion'
 import { cn } from '@/lib/cn'
 
@@ -19,7 +20,14 @@ const PERGUNTAS: { id: string; q: string; a: ReactNode }[] = [
   {
     id: 'faq-gratuito',
     q: 'É gratuito?',
-    a: <>Sim, para as famílias é sempre gratuito: pesquisar, guardar, receber alertas e pedir vaga. O serviço é suportado pelas instituições que usam o painel de gestão.</>,
+    a: (
+      <>
+        Explorar é sempre grátis: pesquisar, ver as fichas, a faixa de preço e a verificação de cada casa. Para saber quais têm vaga,
+        os preços por quarto e a previsão de espera, e para pedir vaga a várias casas, há o Acesso Família:{' '}
+        {PLANOS_FAMILIA.map((p) => `${precoTexto(p.precoCentimos)} por ${p.nome}`).join(' ou ')}, sem renovação automática. Pagar
+        não muda a ordem nem dá prioridade nas vagas. <Mais to={linkAcesso()}>Acesso Família</Mais>
+      </>
+    ),
   },
   {
     id: 'faq-vaga-real',

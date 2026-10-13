@@ -47,11 +47,11 @@ export function Previa({ lar, assinatura }: { lar: Lar; assinatura: string }) {
   return (
     <div inert className="relative">
       <div ref={novo}>
-        <LarCard lar={atual.lar} />
+        <LarCard lar={atual.lar} vista="completa" />
       </div>
       {anterior && (
         <div ref={velho} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <LarCard lar={anterior} />
+          <LarCard lar={anterior} vista="completa" />
         </div>
       )}
     </div>

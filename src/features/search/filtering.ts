@@ -191,8 +191,8 @@ export function calcularAlivios(entradas: Entrada[], s: SearchState, completo = 
     const maior = opcoesRaio(s.local).find((r) => r > s.raio && conta({ raio: r }) > 0)
     if (maior) add('raio', `Alargar o raio para ${maior} km`, { raio: maior })
   }
-  if (s.vaga === 'agora') add('vaga-breve', 'Incluir vagas previstas em breve', { vaga: 'breve' })
-  if (s.vaga) add('vaga', `Retirar «${VAGA_LABEL[s.vaga]}»`, { vaga: null })
+  if (completo && s.vaga === 'agora') add('vaga-breve', 'Incluir vagas previstas em breve', { vaga: 'breve' })
+  if (completo && s.vaga) add('vaga', `Retirar «${VAGA_LABEL[s.vaga]}»`, { vaga: null })
   if (s.max != null && completo) {
     const degraus = [800, 1000, 1200, 1500, 1800, 2000, 2500, 3000, 4000].filter((v) => v > s.max!)
     const sobe = degraus.find((v) => conta({ max: v }) > 0)

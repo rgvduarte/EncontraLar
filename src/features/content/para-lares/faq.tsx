@@ -18,6 +18,22 @@ export const LARES_FAQ: FaqItem[] = [
     ),
   },
   {
+    q: 'As famílias pagam para ver as vagas?',
+    a: (
+      <>
+        <p>
+          Explorar é gratuito: qualquer pessoa vê a ficha, a faixa de preço, a verificação, as avaliações e quantas casas têm vaga em cada zona.
+          Para ver quais têm vaga, os preços por quarto e a previsão, e para enviar pedidos, as famílias podem comprar o Acesso Família. Os
+          profissionais de saúde veem tudo, sem custos.
+        </p>
+        <p>
+          O Acesso Família é pago só pelas famílias. Não muda a ordem dos resultados, não dá prioridade nas vagas e não é visível para as
+          instituições.
+        </p>
+      </>
+    ),
+  },
+  {
     q: 'Como se sabe que a pessoa entrou através do EncontraLar?',
     a: (
       <>
@@ -53,7 +69,7 @@ export const LARES_FAQ: FaqItem[] = [
     a: (
       <p>
         Não. Ninguém paga para aparecer primeiro e não há posições pagas: conforme a ordenação escolhida, a ordem depende da vaga, da distância,
-        do preço ou das avaliações das famílias.{' '}
+        do preço ou das avaliações das famílias. O Acesso Família, que as famílias podem comprar, também não mexe na ordem.{' '}
         <Link to="/como-ordenamos" className="link">
           Ver como ordenamos
         </Link>
@@ -96,7 +112,7 @@ export const LARES_FAQ: FaqItem[] = [
     q: 'E se não tivermos tempo para atualizar as vagas?',
     a: (
       <p>
-        Atualizar é um toque. Se nada mudou, basta confirmar. A ficha mostra sempre às famílias a data da última atualização, e uma casa
+        Atualizar é um toque. Se nada mudou, basta confirmar. Junto das vagas aparece sempre a data da última atualização, e uma casa
         atualizada inspira mais confiança.
       </p>
     ),

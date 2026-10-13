@@ -58,17 +58,22 @@ function Tile({
  * Clímax: a grelha "bento" monta-se. O tile da previsão (o diferenciador) é o tile-herói: aproxima-se com o
  * scroll (ScrollZoom) e as barras de cada mês enchem-se; os outros tiles entram a escalar, por colunas.
  * A lista "Atualizadas agora" roda sozinha (VagasBoard).
+ *
+ * Versão grátis (`completo` falso): nenhum tile diz que instituições têm vaga nem mostra preços exatos — previsão
+ * e compatibilidade como exemplos sem nome, preços pela faixa, e o VagasBoard (partilhado) só com contagens.
  */
 export function Bento({
   lares,
   stats,
   agora,
   previsao,
+  completo,
 }: {
   lares: Lar[]
   stats: HomeStats
   agora: number
   previsao: PrevisaoDestaque | null
+  completo: boolean
 }) {
   const ficha = useMemo(() => escolherFichaPrecos(lares), [lares])
   const exemplo = useMemo(() => exemploCompatibilidade(lares), [lares])
@@ -99,7 +104,7 @@ export function Bento({
                   <Mais to="/sobre#previsao">Como calculamos</Mais>
                 </div>
               </Reveal>
-              <PrevisaoCard previsao={previsao} agora={agora} animar />
+              <PrevisaoCard previsao={previsao} agora={agora} animar anonimo={!completo} />
             </div>
           </ScrollZoom>
         )}
@@ -108,7 +113,7 @@ export function Bento({
           <Tile
             titulo="Vagas em tempo real."
             frase="Cada instituição atualiza os seus lugares livres. Vê há quanto tempo foi."
-            acao={<Mais to="/pesquisa?vaga=agora">Ver vagas no mapa</Mais>}
+            acao={completo ? <Mais to="/pesquisa?vaga=agora">Ver vagas no mapa</Mais> : <Mais to="/pesquisa">Ver o mapa</Mais>}
             className="md:col-span-2"
           >
             {/* ajustes locais ao componente partilhado: a contagem do cabeçalho está limitada a 15 (escondida)
@@ -123,7 +128,7 @@ export function Bento({
               acao={<Mais to={`/lar/${ficha.id}`}>Ver a ficha</Mais>}
               delay={d(140)}
             >
-              <PrecosCard lar={ficha} />
+              <PrecosCard lar={ficha} completo={completo} />
             </Tile>
           )}
 
@@ -157,7 +162,7 @@ export function Bento({
                 </div>
               </div>
               <div className="min-w-0">
-                <MatchCard exemplo={exemplo} />
+                <MatchCard exemplo={exemplo} anonimo={!completo} />
               </div>
             </Reveal>
           )}

@@ -77,7 +77,7 @@ export function Sugestoes({ perfil, excluir }: { perfil: PerfilIdoso | undefined
           semNenhuma(false)
         ) : (
           <>
-            <p className="mt-6 max-w-3xl text-2xl leading-snug font-semibold tracking-tight sm:text-3xl">
+            <p className="mt-6 max-w-3xl text-xl leading-snug font-semibold tracking-tight sm:text-2xl">
               <Tween value={total} fromZero duration={900} /> {total === 1 ? 'compatível' : 'compatíveis'} com o perfil {deNome(perfil)},{' '}
               <span className={comVaga > 0 ? 'text-leaf-700' : 'text-ink-mute'}>
                 <Tween value={comVaga} fromZero duration={900} /> com vaga agora

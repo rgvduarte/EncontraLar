@@ -3,7 +3,6 @@ import type { Candidatura, Lar } from '@/types'
 import { LarCover } from '@/components/lar/LarCover'
 import { AvisoAcesso } from '@/components/acesso'
 import { useAcesso } from '@/lib/store'
-import { linkAcesso } from '@/lib/acesso'
 import type { PedidoComLar } from '../shared/data'
 import { AnimatedForecast } from '../shared/Forecast'
 import { useStagger } from '../shared/motion'
@@ -87,14 +86,12 @@ export function PedidosResumo({ ativos, terminados, pesquisa }: { ativos: Pedido
             </MoreLink>
           </div>
         ) : (
+          // versão grátis: só a frase — o "Ver o Acesso Família" está no mosaico do passe, logo acima
           <div className="mt-6 border-y border-line py-6">
             <p className="max-w-xl text-ink-soft">
-              Ainda sem pedidos em curso. Com o Acesso Família, envia o perfil de cuidados a várias casas de uma vez — um pedido
-              não obriga a nada.
+              Ainda sem pedidos em curso. Com o Acesso Família, pode pedir vaga em várias casas ao mesmo tempo — um pedido não
+              obriga a nada.
             </p>
-            <MoreLink to={linkAcesso('/familia')} className="mt-2">
-              Ver o Acesso Família
-            </MoreLink>
           </div>
         )
       ) : (

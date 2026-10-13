@@ -31,7 +31,7 @@ export function ProximaVisita({ visita, outras = 0, temPedidos }: { visita: Visi
           {temPedidos && !completo ? (
             // marcar visitas é do Acesso Família: o pedido de visita abre a explicação, não o formulário
             <button type="button" onClick={() => setModal(true)} className="link inline-flex min-h-12 shrink-0 items-center gap-0.5">
-              Marcar visita
+              Marcar visita<span className="sr-only"> (disponível com o Acesso Família)</span>
               <ChevronRight aria-hidden className="size-[1.05em] translate-y-px" />
             </button>
           ) : (
@@ -47,7 +47,9 @@ export function ProximaVisita({ visita, outras = 0, temPedidos }: { visita: Visi
 
   const { c, lar, quando: data } = visita
   const confirmada = c.visita?.estado === 'confirmada'
-  const morada = [lar.morada, `${lar.codigoPostal} ${lar.localidade}`.trim()].filter(Boolean).join(', ')
+  // versão grátis (passe terminado): a visita marcada continua à vista, mas a morada, o código postal e "Como chegar"
+  // são do Acesso Família (como na ficha): fica a localidade
+  const morada = completo ? [lar.morada, `${lar.codigoPostal} ${lar.localidade}`.trim()].filter(Boolean).join(', ') : ''
 
   return (
     <section aria-labelledby={titleId}>
@@ -94,10 +96,12 @@ export function ProximaVisita({ visita, outras = 0, temPedidos }: { visita: Visi
             >
               Adicionar ao calendário
             </Button>
-            <a href={mapsUrl(lar.lat, lar.lng)} target="_blank" rel="noreferrer" className="link inline-flex min-h-12 items-center">
-              Como chegar
-              <span className="sr-only"> (abre noutro separador)</span>
-            </a>
+            {completo && (
+              <a href={mapsUrl(lar.lat, lar.lng)} target="_blank" rel="noreferrer" className="link inline-flex min-h-12 items-center">
+                Como chegar
+                <span className="sr-only"> (abre noutro separador)</span>
+              </a>
+            )}
             <MoreLink to="/guia#visita">O que observar</MoreLink>
           </div>
           {outras > 0 && (

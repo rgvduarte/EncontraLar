@@ -1,10 +1,11 @@
-import { forwardRef } from 'react'
+import { forwardRef, useId } from 'react'
 import { LoaderCircle, Navigation, SlidersHorizontal } from 'lucide-react'
+import { ACESSO_DISPONIVEL } from '@/components/acesso'
 import { Checkbox } from '@/components/ui/Field'
 import { TIPO_LABEL, TIPO_RESUMO } from '@/lib/labels'
 import { cn } from '@/lib/cn'
-import { BudgetPill } from './BudgetControl'
-import { Count, DispDot, pillClasses, QuietSelect, TogglePill } from './Chips'
+import { BudgetFaixasPill, BudgetPill } from './BudgetControl'
+import { Count, DispDot, pillClasses, PilulaBloqueada, QuietSelect, TogglePill } from './Chips'
 import { PillPopover } from './PillPopover'
 import { PlaceCombobox } from './PlaceCombobox'
 import type { SearchModel } from './useSearch'
@@ -16,10 +17,30 @@ export interface Geo {
   localizar: () => void
 }
 
-/** "Com vaga agora" e "Agora ou em breve" — usados na barra do desktop e do telemóvel. */
+/**
+ * "Com vaga agora" e "Agora ou em breve" — usados na barra do desktop e do telemóvel.
+ * Versão grátis: as mesmas pílulas, com cadeado; tocar abre o convite do Acesso Família em vez de filtrar.
+ */
 export function VagaPills({ model }: { model: SearchModel }) {
-  const { state, update } = model
+  const { state, update, completo, pedirAcesso } = model
+  const fechado = useId()
   const setVaga = (v: VagaFiltro) => update({ vaga: state.vaga === v ? null : v })
+  if (!completo) {
+    return (
+      <>
+        <PilulaBloqueada descricao={fechado} onClick={() => pedirAcesso({ vaga: 'agora' })}>
+          {VAGA_LABEL.agora}
+        </PilulaBloqueada>
+        <PilulaBloqueada descricao={fechado} onClick={() => pedirAcesso({ vaga: 'breve' })}>
+          {VAGA_LABEL.breve}
+        </PilulaBloqueada>
+        {/* referido por aria-describedby: lido mesmo escondido, sem ocupar lugar na fila deslizante */}
+        <span id={fechado} hidden>
+          {ACESSO_DISPONIVEL}
+        </span>
+      </>
+    )
+  }
   return (
     <>
       <TogglePill pressed={state.vaga === 'agora'} onClick={() => setVaga('agora')}>
@@ -120,11 +141,16 @@ export const FilterBar = forwardRef<HTMLDivElement, Props>(function FilterBar({ 
           onGeo={geo.localizar}
           onTexto={(q) => update({ q })}
           trailing={<PesquisaExtras model={model} geo={geo} />}
+          completo={model.completo}
         />
         <div role="group" aria-label="Filtros" className="flex flex-wrap items-center gap-2">
           <VagaPills model={model} />
           <TipoPill model={model} />
-          <BudgetPill value={state.max} onChange={(max) => update({ max })} precos={precos} />
+          {model.completo ? (
+            <BudgetPill value={state.max} onChange={(max) => update({ max })} precos={precos} />
+          ) : (
+            <BudgetFaixasPill value={state.max} onChange={(max) => update({ max })} />
+          )}
           <button type="button" onClick={onMaisFiltros} aria-haspopup="dialog" className={pillClasses(nMais > 0)}>
             <SlidersHorizontal aria-hidden className="size-4" />
             Mais filtros

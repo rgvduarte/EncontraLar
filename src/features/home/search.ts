@@ -5,7 +5,7 @@
 import type { Distrito, Lar } from '@/types'
 import { DISTRITOS, LOCALIDADES, LUGARES, type LugarPesquisa } from '@/data/localidades'
 import { distanceKm } from '@/lib/geo'
-import { temVaga } from './homeData'
+import { MIN_AGREGADO, temVaga } from './homeData'
 
 /** Raio usado em "Perto de mim" (um dos valores aceites pela pesquisa). */
 export const RAIO_PERTO = 15
@@ -31,21 +31,20 @@ export interface Opcao {
   /** linha secundária (tipo de sugestão), lida pelo leitor de ecrã */
   detalhe: string
   total: number
-  comVaga: number
+  /**
+   * quantas têm vaga agora; `null` na versão grátis quando não se pode dizer: numa instituição sugerida pelo
+   * nome, ou num lugar com menos de `MIN_AGREGADO` instituições (aí "quantas" seria "quais")
+   */
+  comVaga: number | null
   lugar?: LugarPesquisa
   distrito?: Distrito
   larId?: string
 }
 
-function contar(lares: Lar[], pertence: (l: Lar) => boolean) {
-  let total = 0
-  let comVaga = 0
-  for (const l of lares) {
-    if (!pertence(l)) continue
-    total++
-    if (temVaga(l)) comVaga++
-  }
-  return { total, comVaga }
+function contar(lares: Lar[], pertence: (l: Lar) => boolean, completo: boolean): { total: number; comVaga: number | null } {
+  const grupo = lares.filter(pertence)
+  if (!completo && grupo.length < MIN_AGREGADO) return { total: grupo.length, comVaga: null }
+  return { total: grupo.length, comVaga: grupo.filter(temVaga).length }
 }
 
 /** "do Porto", "da Guarda", "de Braga", "dos Açores" */
@@ -63,7 +62,12 @@ function relevancia(label: string, q: string): number {
   return -1
 }
 
-export function sugerir(texto: string, lares: Lar[], limite = 7): Opcao[] {
+/**
+ * Sugestões para o texto escrito. `completo` falso (versão grátis, sem Acesso Família): as instituições sugeridas
+ * pelo nome não trazem o estado de vaga; lugares e distritos mantêm as contagens agregadas ("6 com vaga") a
+ * partir de `MIN_AGREGADO` instituições.
+ */
+export function sugerir(texto: string, lares: Lar[], limite = 7, completo = true): Opcao[] {
   const q = normalizar(texto.trim())
   const lugarOpcao = (l: LugarPesquisa): Opcao => ({
     id: `lugar:${l.label}`,
@@ -73,7 +77,7 @@ export function sugerir(texto: string, lares: Lar[], limite = 7): Opcao[] {
       ? 'Zona da cidade'
       : `Concelho · ${l.distrito === 'Madeira' || l.distrito === 'Açores' ? l.distrito : `distrito ${deDistrito(l.distrito)}`}`,
     lugar: l,
-    ...contar(lares, (x) => distanceKm(l, x) <= l.raio),
+    ...contar(lares, (x) => distanceKm(l, x) <= l.raio, completo),
   })
 
   if (!q) {
@@ -107,7 +111,7 @@ export function sugerir(texto: string, lares: Lar[], limite = 7): Opcao[] {
       label: nomeDistrito(d),
       detalhe: 'Todo o distrito',
       distrito: d,
-      ...contar(lares, (x) => x.distrito === d),
+      ...contar(lares, (x) => x.distrito === d, completo),
     }))
 
   const instituicoes =
@@ -124,7 +128,7 @@ export function sugerir(texto: string, lares: Lar[], limite = 7): Opcao[] {
             detalhe: `Instituição · ${l.localidade}`,
             larId: l.id,
             total: 1,
-            comVaga: temVaga(l) ? 1 : 0,
+            comVaga: completo ? (temVaga(l) ? 1 : 0) : null,
           }))
       : []
 

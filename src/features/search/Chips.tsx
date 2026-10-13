@@ -1,5 +1,5 @@
 import { forwardRef, useId, type ButtonHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Lock } from 'lucide-react'
 import type { Disponibilidade } from '@/types'
 import { cn } from '@/lib/cn'
 
@@ -23,6 +23,53 @@ export const TogglePill = forwardRef<HTMLButtonElement, TogglePillProps>(functio
     </button>
   )
 })
+
+/**
+ * Versão grátis: pílula de um filtro fechado (vaga). Vê-se e toca-se como as outras, com um cadeado pequeno;
+ * em vez de filtrar, abre o convite do Acesso Família. `descricao` = id do texto que diz o que está fechado
+ * (o cadeado é decorativo).
+ */
+export function PilulaBloqueada({ descricao, onClick, children }: { descricao: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} aria-haspopup="dialog" aria-describedby={descricao} className={pillClasses(false)}>
+      <Lock aria-hidden className="size-3.5 shrink-0 text-ink-mute" strokeWidth={2.25} />
+      {children}
+    </button>
+  )
+}
+
+/** Grupo de rádios nativos com aspeto de pílula (preta quando escolhida). */
+export function RadioPills<T extends string | number | null>({
+  opcoes,
+  value,
+  onChange,
+  label,
+}: {
+  opcoes: { v: T; label: string }[]
+  value: T
+  onChange: (v: T) => void
+  /** nome do grupo, quando não está dentro de um <fieldset> com legenda */
+  label?: string
+}) {
+  const name = useId()
+  return (
+    <div role={label ? 'radiogroup' : undefined} aria-label={label} className="flex flex-wrap gap-2">
+      {opcoes.map((o) => (
+        <label
+          key={String(o.v)}
+          className={cn(
+            'inline-flex min-h-12 cursor-pointer items-center rounded-full px-4.5 text-sm font-medium transition-colors duration-200',
+            'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-terra-500',
+            value === o.v ? 'bg-ink text-white' : 'bg-sand text-ink hover:bg-sand-deep',
+          )}
+        >
+          <input type="radio" name={name} className="sr-only" checked={value === o.v} onChange={() => onChange(o.v)} />
+          {o.label}
+        </label>
+      ))}
+    </div>
+  )
+}
 
 /**
  * Estado de vaga com forma própria (nunca só cor):

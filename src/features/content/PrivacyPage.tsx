@@ -74,15 +74,27 @@ export default function PrivacyPage() {
               <strong>Da sua atividade:</strong> instituições guardadas, alertas de vaga, pedidos e visitas.
             </p>
             <p>
+              <strong>Do Acesso Família, se o comprar:</strong> o passe, as datas, o método de pagamento e o valor.
+            </p>
+            <p>
               <strong>Da conta de um profissional de saúde:</strong> nome, email, telefone, organização e serviço, e os casos que acompanha.
             </p>
           </Bloco>
 
           <Bloco titulo="Para quê">
             <p>
-              Para sugerir instituições compatíveis, enviar os pedidos que decidir fazer e avisar quando abrir uma vaga. Não vendemos dados, nem os
-              usamos para publicidade.
+              Para sugerir instituições compatíveis, enviar os pedidos que decidir fazer e avisar quando abrir uma vaga. Se comprar o Acesso
+              Família, também para o ativar e emitir a fatura-recibo. Não vendemos dados, nem os usamos para publicidade.
             </p>
+          </Bloco>
+
+          <Bloco titulo="Pagamentos do Acesso Família">
+            <p>
+              Os pagamentos (MB WAY, Multibanco ou cartão) são processados pela <strong>Stripe</strong>. Os dados do cartão ou da conta bancária
+              ficam com a Stripe: <strong>nunca os vemos nem os guardamos</strong>. Do pagamento, guardamos só o passe, as datas, o método e o
+              valor.
+            </p>
+            <p>A fatura-recibo é emitida por um programa de faturação certificado pela Autoridade Tributária.</p>
           </Bloco>
 
           <Bloco titulo="Dados de saúde">
@@ -147,6 +159,7 @@ export default function PrivacyPage() {
               Enquanto a conta estiver ativa. Se apagar a conta, apagamos o perfil e os pedidos. Os pedidos que já enviou passam também a ser tratados
               pelas instituições que os receberam, segundo as obrigações legais delas.
             </p>
+            <p>Os registos de pagamento e as faturas ficam guardados pelo prazo que a lei fiscal exige, mesmo depois de apagar a conta.</p>
           </Bloco>
 
           <Bloco titulo="Os seus direitos">
@@ -167,8 +180,8 @@ export default function PrivacyPage() {
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-ink-soft">
               Nada é enviado para um servidor. Contas, perfis, pedidos, casos, pesquisas sem resultados e a lista da visita ficam guardados só neste
-              navegador (no armazenamento local). Os prazos de conservação e a validade do link de confirmação só se aplicam na versão com
-              servidor. Pode apagar tudo aqui.
+              navegador (no armazenamento local). Os pagamentos do Acesso Família são simulados: nada é cobrado nem enviado à Stripe, e não há
+              fatura. Os prazos de conservação e a validade do link de confirmação só se aplicam na versão com servidor. Pode apagar tudo aqui.
             </p>
             <Button variant="primary" className="mt-6 w-full py-3 whitespace-normal text-balance sm:w-auto" onClick={() => setConfirmar(true)}>
               Apagar os dados deste navegador

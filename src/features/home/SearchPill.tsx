@@ -29,8 +29,10 @@ type EstadoGeo = { s: 'idle' } | { s: 'loading' } | { s: 'erro'; msg: string }
 /**
  * Pesquisa em forma de pílula: combobox acessível (padrão ARIA 1.2 "list autocomplete") sobre os lugares,
  * botão "Perto de mim" e "Procurar". Escolher uma sugestão leva logo aos resultados.
+ * Versão grátis (`completo` falso): lugares e distritos mantêm as contagens ("6 com vaga"); uma instituição
+ * sugerida pelo nome não diz se tem vaga.
  */
-export function SearchPill({ lares }: { lares: Lar[] }) {
+export function SearchPill({ lares, completo }: { lares: Lar[]; completo: boolean }) {
   const navigate = useNavigate()
   const inputId = useId()
   const listId = useId()
@@ -54,7 +56,7 @@ export function SearchPill({ lares }: { lares: Lar[] }) {
     else window.scrollTo({ top: alvo, behavior: 'smooth' })
   }
 
-  const opcoes = useMemo(() => sugerir(texto, lares), [texto, lares])
+  const opcoes = useMemo(() => sugerir(texto, lares, undefined, completo), [texto, lares, completo])
   const vazio = !texto.trim()
   const mostrar = open && opcoes.length > 0
   const optId = (i: number) => `${listId}-opt-${i}`
@@ -263,15 +265,20 @@ export function SearchPill({ lares }: { lares: Lar[] }) {
                   )}
                 </span>
               </span>
+              {/* comVaga null (versão grátis): uma instituição, ou um lugar com poucas, não diz se tem vaga */}
               <span className="shrink-0 text-right text-sm leading-snug tabular">
                 {o.kind === 'lar' ? (
-                  <span className={o.comVaga ? 'font-medium text-leaf-700' : 'text-ink-mute'}>{o.comVaga ? 'Com vaga' : 'Sem vaga hoje'}</span>
+                  o.comVaga != null && (
+                    <span className={o.comVaga ? 'font-medium text-leaf-700' : 'text-ink-mute'}>{o.comVaga ? 'Com vaga' : 'Sem vaga hoje'}</span>
+                  )
                 ) : (
                   <>
-                    <span className={cn('block', o.comVaga ? 'font-medium text-leaf-700' : 'text-ink-mute')}>
-                      {o.comVaga ? `${o.comVaga} com vaga` : 'Sem vaga hoje'}
-                    </span>
-                    <span className="hidden text-ink-mute sm:block">
+                    {o.comVaga != null && (
+                      <span className={cn('block', o.comVaga ? 'font-medium text-leaf-700' : 'text-ink-mute')}>
+                        {o.comVaga ? `${o.comVaga} com vaga` : 'Sem vaga hoje'}
+                      </span>
+                    )}
+                    <span className={cn('text-ink-mute', o.comVaga != null ? 'hidden sm:block' : 'block')}>
                       {o.total} {o.total === 1 ? 'instituição' : 'instituições'}
                     </span>
                   </>

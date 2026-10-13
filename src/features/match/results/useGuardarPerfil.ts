@@ -4,7 +4,7 @@
  */
 import type { PerfilIdoso, User } from '@/types'
 import { toast } from '@/components/ui/Toast'
-import { savePerfil, usePerfis, type PerfilInput } from '@/lib/store'
+import { savePerfil, useAcesso, usePerfis, type PerfilInput } from '@/lib/store'
 import { paraPerfilInput, type Rascunho } from '../model'
 import { pessoa } from '../language'
 import { escreverSessao, KEY_PERFIL_RASCUNHO } from '../useMatchSession'
@@ -33,6 +33,7 @@ export const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] ?? nom
 export function useGuardarPerfil(r: Rascunho, user: User | null, onGuardado: (id: string) => void) {
   const p = pessoa(r)
   const perfis = usePerfis()
+  const { completo } = useAcesso()
   /** sem nome e não é para o próprio: é preciso perguntar antes de guardar */
   const precisaNome = !r.nome.trim() && !p.proprio
   const existente = r.id ? perfis.find((x) => x.id === r.id) : undefined
@@ -52,7 +53,8 @@ export function useGuardarPerfil(r: Rascunho, user: User | null, onGuardado: (id
     }
     escreverSessao(KEY_PERFIL_RASCUNHO, null)
     onGuardado(perfil.id)
-    toast.success(r.id ? 'Alterações guardadas' : `Perfil de ${perfil.nome} guardado`, 'Avisamos quando abrir vaga.')
+    // os avisos de vaga são do Acesso Família: sem passe, não se prometem
+    toast.success(r.id ? 'Alterações guardadas' : `Perfil de ${perfil.nome} guardado`, completo ? 'Avisamos quando abrir vaga.' : 'Fica no seu painel.')
     return perfil
   }
 

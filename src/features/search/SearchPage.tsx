@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { flushSync } from 'react-dom'
 import { useLocation, useNavigationType } from 'react-router'
+import { AcessoNecessarioModal } from '@/components/acesso'
 import { Reveal } from '@/components/motion/Reveal'
 import { useLenis } from '@/components/motion/SmoothScroll'
 import { prefersReducedMotion } from '@/lib/motion'
@@ -11,6 +12,7 @@ import { FilterBar } from './FilterBar'
 import { FiltersModal, type ModoFiltros, type Rascunho } from './FiltersModal'
 import { refTitulo } from './focoTitulo'
 import { filtrar, noLocal, passaFiltros } from './filtering'
+import { agregadoVisivel } from './gratis'
 import { MobileBar, ViewToggle } from './MobileBar'
 import { procuraDaPesquisa, useRegistoProcura } from './procura'
 import { cardDomId, NotaFinal, PAGINA, ResultsList } from './ResultsList'
@@ -53,10 +55,14 @@ function guardar(chave: string, valor: string) {
  * Movimento (funcional, subtil): a lista entra em cascata ao abrir e sempre que os filtros/ordem mudam
  * (e volta ao topo); contagens deslizam; lista ⇄ mapa faz cross-fade (View Transitions, com recurso a
  * uma entrada CSS); marcadores entram em "salpico"; a folha do marcador sobe do fundo e fecha a deslizar.
+ *
+ * Acesso Família (`useAcesso().completo`, via useSearch): sem ele a pesquisa é a versão grátis (gratis.ts) —
+ * filtros e ordem por vaga à vista mas fechados (abrem o AcessoNecessarioModal), uma lista só, mapa neutro,
+ * orçamento por faixas e só totais agregados. Com ele (e para profissionais) tudo fica como sempre foi.
  */
 export default function SearchPage() {
   const model = useSearch()
-  const { state, entradas, resultados, comVaga, update } = model
+  const { state, entradas, resultados, comVaga, update, completo } = model
   const desktop = useMediaQuery('(min-width: 1024px)')
   const titulo = tituloPesquisa(state)
   useDocumentTitle(titulo)
@@ -137,10 +143,14 @@ export default function SearchPage() {
 
   // ——— modal de filtros (contagem ao vivo com o rascunho)
   const [modal, setModal] = useState<ModoFiltros | null>(null)
-  const contarRascunho = useCallback((r: Rascunho) => filtrar(entradas, { ...state, ...r }).length, [entradas, state])
+  const contarRascunho = useCallback((r: Rascunho) => filtrar(entradas, { ...state, ...r }, completo).length, [entradas, state, completo])
+  // mensalidades exatas na zona (histograma do orçamento): só na camada completa
   const precos = useMemo(
-    () => entradas.filter((e) => noLocal(e, state.local, state.raio) && passaFiltros(e, { ...state, max: null })).map((e) => e.lar.mensalidadeMin),
-    [entradas, state],
+    () =>
+      completo
+        ? entradas.filter((e) => noLocal(e, state.local, state.raio) && passaFiltros(e, { ...state, max: null })).map((e) => e.lar.mensalidadeMin)
+        : [],
+    [entradas, state, completo],
   )
 
   // ——— altura da barra fixa (para o mapa fixo e o scroll-margin dos cartões)
@@ -213,6 +223,7 @@ export default function SearchPage() {
           destaqueId={destaqueLista}
           onHover={setListHoverId}
           mostrarDistancia={Boolean(centroDe(state.local))}
+          completo={completo}
         />
       ) : (
         <EmptyResults key={geracao} model={model} />
@@ -236,11 +247,17 @@ export default function SearchPage() {
       onSelect={onSelect}
       onZona={onZona}
       mobile={!desktop}
+      completo={completo}
     />
   )
 
   const modalAberto = modal != null
   const estilo = { '--barra': `${barH}px` } as CSSProperties
+
+  // versão grátis: tocar num filtro ou ordem por vaga abre o convite; ao ativar, volta à pesquisa com ele aplicado
+  const acesso = (
+    <AcessoNecessarioModal open={model.pedidoAcesso.aberto} onClose={model.fecharAcesso} acao="filtro" voltar={model.pedidoAcesso.voltar || undefined} />
+  )
 
   if (desktop) {
     return (
@@ -263,7 +280,10 @@ export default function SearchPage() {
           contar={contarRascunho}
           precos={precos}
           onApply={(r) => update(r)}
+          completo={completo}
+          onBloqueado={model.pedirAcesso}
         />
+        {!completo && acesso}
       </div>
     )
   }
@@ -277,7 +297,8 @@ export default function SearchPage() {
             {titulo}
           </h1>
           <p className="sr-only" aria-live="polite">
-            {resultados.length} instituições, {comVaga} com vaga agora
+            {resultados.length} instituições
+            {(completo || agregadoVisivel(resultados.length)) && `, ${comVaga} com vaga agora`}
           </p>
           {/* o mapa ocupa exatamente o espaço entre a barra de pesquisa e a barra de abas */}
           <div className={cn('relative min-h-[22rem] flex-1', entrada === 'mapa' && 'el-vista-mapa')} style={{ viewTransitionName: 'el-mapa' }}>
@@ -296,7 +317,10 @@ export default function SearchPage() {
         contar={contarRascunho}
         precos={precos}
         onApply={(r) => update(r)}
+        completo={completo}
+        onBloqueado={model.pedirAcesso}
       />
+      {!completo && acesso}
     </div>
   )
 }

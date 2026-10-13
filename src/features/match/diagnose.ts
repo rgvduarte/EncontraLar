@@ -1,6 +1,9 @@
 /**
  * Quando há poucas (ou nenhumas) sugestões: qual é o requisito que mais está a limitar,
  * explicado com números reais da zona, e ajustes de um clique.
+ *
+ * `generico` (versão grátis, sem Acesso Família): só números agregados. Não diz o preço da instituição mais
+ * barata nem a que distância há vaga (seria apontar para uma casa concreta); a mediana só com 3 ou mais.
  */
 import type { Cuidado, Lar } from '@/types'
 import { CUIDADO_FRASE, CUIDADOS_CRITICOS, GRAU_PESSOAS } from '@/lib/labels'
@@ -37,7 +40,16 @@ function raioAte(perto: LarPerto[], raioAtual: number, ok: (l: Lar) => boolean):
   return raio <= RAIO_MAX ? { raio, d: alvo.d } : null
 }
 
-export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: MatchResult[]): Diagnostico | null {
+/** Com menos instituições do que isto, uma "mediana" é o preço de uma casa concreta. */
+const MIN_AGREGADO = 3
+
+export function diagnosticar(
+  lares: Lar[],
+  r: Rascunho,
+  p: Pessoa,
+  matches: MatchResult[],
+  { generico = false }: { generico?: boolean } = {},
+): Diagnostico | null {
   if (!r.local || !r.grau || r.orcamentoMax == null) return null
   const grau = r.grau
   const orc = r.orcamentoMax
@@ -145,6 +157,26 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
   if (cabem === 0) {
     const min = Math.min(...precos)
     const med = mediana(precos)!
+    if (generico) {
+      const quem =
+        compat.length === 1
+          ? `A única instituição que pode receber ${p.a} a menos de ${r.raioKm}\u00a0km pede`
+          : `As ${compat.length} instituições que podem receber ${p.a} a menos de ${r.raioKm}\u00a0km pedem`
+      const v = teto50(med)
+      return {
+        chave: 'orcamento',
+        titulo: 'O orçamento está abaixo dos preços da zona',
+        texto: `${quem} mais do que ${euro(orc)} por mês, o orçamento indicado.`,
+        ajustes: [
+          ...(compat.length >= MIN_AGREGADO && v > orc && v <= 5000
+            ? [{ label: `Subir para ${euro(v)} (mediana)`, patch: { orcamentoMax: v } }]
+            : [{ label: 'Rever o orçamento', passo: 4 }]),
+          ...(r.quarto !== 'indiferente' && r.quarto !== 'duplo'
+            ? [{ label: 'Considerar quarto duplo', patch: { quarto: 'duplo' as const } }]
+            : []),
+        ],
+      }
+    }
     const opcoes = [teto50(min), teto50(med)].filter((v, i, a) => v > orc && a.indexOf(v) === i && v <= 5000)
     return {
       chave: 'orcamento',
@@ -172,7 +204,9 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
       titulo: 'Não há vaga hoje tão perto',
       texto: `Há ${compat.length} ${compat.length === 1 ? 'instituição compatível' : 'instituições compatíveis'} na zona, mas nenhuma tem vaga para um novo pedido neste momento.`,
       ajustes: [
-        ...(alt ? [{ label: `Alargar para ${alt.raio} km (há vaga a ${km(alt.d)})`, patch: { raioKm: alt.raio } }] : []),
+        ...(alt
+          ? [{ label: generico ? `Alargar o raio para ${alt.raio} km` : `Alargar para ${alt.raio} km (há vaga a ${km(alt.d)})`, patch: { raioKm: alt.raio } }]
+          : []),
         { label: 'Incluir lares com vaga prevista em breve', patch: { urgencia: '1-3meses' as const } },
       ],
     }
@@ -196,7 +230,10 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
         compat.length === 1
           ? 'Há só uma instituição compatível na zona.'
           : `Só ${cabem} das ${compat.length} instituições compatíveis da zona ${cabem === 1 ? 'cabe' : 'cabem'} em ${euro(orc)} por mês.`,
-      ajustes: v > orc ? [{ label: `Experimentar até ${euro(v)} (mediana da zona)`, patch: { orcamentoMax: v } }] : [],
+      ajustes:
+        v > orc && (!generico || compat.length >= MIN_AGREGADO)
+          ? [{ label: `Experimentar até ${euro(v)} (mediana da zona)`, patch: { orcamentoMax: v } }]
+          : [],
     }
   }
   if (chave === 'disponibilidade') {
@@ -205,7 +242,9 @@ export function diagnosticar(lares: Lar[], r: Rascunho, p: Pessoa, matches: Matc
       chave: 'urgencia',
       titulo: 'A urgência pesa contra as listas de espera',
       texto: 'As instituições compatíveis da zona têm pouca vaga para o prazo que indicou.',
-      ajustes: alt ? [{ label: `Alargar para ${alt.raio} km (há vaga a ${km(alt.d)})`, patch: { raioKm: alt.raio } }] : [],
+      ajustes: alt
+        ? [{ label: generico ? `Alargar o raio para ${alt.raio} km` : `Alargar para ${alt.raio} km (há vaga a ${km(alt.d)})`, patch: { raioKm: alt.raio } }]
+        : [],
     }
   }
   return {

@@ -163,13 +163,16 @@ function ResumoPorDistrito({ lares, linhas = 5, className, theme = 'light' }: Va
                 to={`/pesquisa?distrito=${encodeURIComponent(d.distrito)}`}
                 className={cn('group flex items-center gap-4 rounded-2xl px-4 py-3 transition-colors', dark ? 'hover:bg-white/8' : 'hover:bg-sand')}
               >
+                {/* a contagem na linha do nome; o total numa linha inteira (no telemóvel não cabia ao lado) */}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{d.distrito}</span>
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className="truncate font-medium">{d.distrito}</span>
+                    <span className={cn('shrink-0 text-sm font-semibold tabular', dark ? 'text-leaf-200' : 'text-leaf-700')}>{num(d.comVaga)} com vaga</span>
+                  </span>
                   <span className={cn('block truncate text-sm', dark ? 'text-pine-400' : 'text-ink-mute')}>
-                    {num(d.total)} lares e residências
+                    de {num(d.total)} lares e residências
                   </span>
                 </span>
-                <span className={cn('shrink-0 text-sm font-semibold tabular', dark ? 'text-leaf-200' : 'text-leaf-700')}>{num(d.comVaga)} com vaga</span>
                 <ChevronRight aria-hidden className={cn('size-4 shrink-0', dark ? 'text-pine-500' : 'text-ink-mute/60')} />
               </Link>
             </li>
