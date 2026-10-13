@@ -2,23 +2,29 @@
  * A base de demonstração (seed.sql + demo/utilizadores-demo.sql) reproduz o modo demonstração
  * (createSeed) através da vista pública, das RPC e dos mappers — e as salvaguardas do script de
  * demonstração. Inclui o modelo de negócio: profissional e casos, encaminhamentos, entradas, a
- * avaliação verificada, a procura sem resposta e os links de confirmação das vagas.
+ * avaliação verificada, a procura sem resposta e os links de confirmação das vagas; e a equipa de
+ * terreno: a modalidade dos lares privados (só o dono e a equipa a leem) e as visitas (só a equipa).
  */
 import type { PGlite } from '@electric-sql/pglite'
 import { createHash } from 'node:crypto'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { createSeed, DEMO_FAMILIA_ID, DEMO_LAR_ID, DEMO_LAR_USER_ID, DEMO_PRO_ID } from '@/data/seed'
-import { origemDe, resumirProcuras, resumoAnonimo } from '@/lib/negocio'
+import { createSeed, DEMO_EQUIPA_ID, DEMO_FAMILIA_ID, DEMO_LAR_ID, DEMO_LAR_USER_ID, DEMO_PRO_ID } from '@/data/seed'
+import { cobrancaEntradaTexto, compromissoAte, planoDoLar } from '@/lib/acesso'
+import { niveisVerificacao, origemDe, resumirProcuras, resumoAnonimo } from '@/lib/negocio'
 import {
   candidaturaDeLinha,
   casoDeLinha,
   eCandidaturaMinimizada,
   larDeLinha,
   painelDeLinha,
+  painelEquipaDeLinha,
   pedidoRecebidoDeLinha,
+  planoDeLinha,
   procuraNaZonaDeLinha,
   reviewDeLinha,
   vagasPorTokenDeLinha,
+  visitaDeLinha,
+  visitaParaRpc,
 } from '@/lib/supabase-mappers'
 import type {
   AvaliacaoPublicaRow,
@@ -26,14 +32,17 @@ import type {
   CandidaturaRow,
   CasoRow,
   InstituicaoPublicaRow,
+  PainelEquipaRow,
   PainelInstituicaoRow,
   PedidoRecebidoRow,
+  PlanoDaInstituicaoRow,
   ProcuraNaZonaRow,
   VagasPorTokenRow,
+  VisitaRow,
 } from '@/lib/supabase-mappers'
 import type { Candidatura, Lar } from '@/types'
 import { AGORA_SEED, contasDemo, desbloqueioDe } from '../../scripts/gerar-seed-sql'
-import { admin, criarBase, criarUtilizador, erro, json, lerSql, q } from './helpers'
+import { admin, criarBase, criarUtilizador, erro, json, lerSql, q, rpc } from './helpers'
 
 let db: PGlite
 const adm = <T = Record<string, unknown>>(sql: string, params: unknown[] = []) => admin<T>(db, sql, params)
@@ -90,10 +99,11 @@ describe('script das contas de demonstração (utilizadores-demo.sql)', () => {
     await adm("update auth.users set email_confirmed_at = now() where email = 'rui.sousa@exemplo.pt'")
   })
 
-  it('liga as contas (famílias, gestora e assistente social): a gestora fica dona do lar de demonstração', async () => {
-    // a equipa de terreno é interna (só no protótipo): não tem conta na base
-    expect(contas).toHaveLength(proto.users.filter((u) => u.role !== 'equipa').length)
+  it('liga as contas (famílias, gestora, assistente social e equipa): a gestora fica dona do lar de demonstração', async () => {
+    // todas as contas do protótipo, incluindo a da equipa de terreno (papel interno, em app_metadata)
+    expect(contas).toHaveLength(proto.users.length)
     expect(contas.find((c) => c.role === 'profissional')).toMatchObject({ email: 'social@exemplo.pt', organizacao: { tipo: 'hospital' } })
+    expect(contas.filter((c) => c.role === 'equipa')).toEqual([expect.objectContaining({ email: 'equipa@exemplo.pt', nome: 'Sofia Ramos' })])
     await db.exec(demoSql())
     await db.exec(demoSql()) // segunda vez: não faz nada
     const [t] = await adm<{ t: string }>("select created_at::text t from public.candidaturas where id = md5('encontralar:c-ana-1')::uuid")
@@ -118,10 +128,11 @@ describe('script das contas de demonstração (utilizadores-demo.sql)', () => {
     expect(d!.n).toBe(contas.length)
     const [pro] = await q<{ role: string; organizacao: unknown }>(db, uuid.get(DEMO_PRO_ID)!, 'select role, organizacao from public.perfis_utilizador')
     expect(pro).toEqual({ role: 'profissional', organizacao: proto.users.find((u) => u.id === DEMO_PRO_ID)!.organizacao })
+    expect(await q(db, uuid.get(DEMO_EQUIPA_ID)!, 'select role, demonstracao from public.perfis_utilizador')).toEqual([{ role: 'equipa', demonstracao: true }])
   })
 
   it('as notificações do protótipo chegam às contas de demonstração e as rotas apontam para registos que existem', async () => {
-    for (const id of [DEMO_FAMILIA_ID, DEMO_LAR_USER_ID, DEMO_PRO_ID]) {
+    for (const id of [DEMO_FAMILIA_ID, DEMO_LAR_USER_ID, DEMO_PRO_ID, DEMO_EQUIPA_ID]) {
       const r = await q<{ titulo: string }>(db, uuid.get(id)!, "select titulo from public.notificacoes where titulo <> 'Bem-vindo(a) ao EncontraLar' order by titulo")
       expect(r.map((x) => x.titulo), id).toEqual(proto.notificacoes.filter((n) => n.userId === id).map((n) => n.titulo).sort())
     }
@@ -272,6 +283,60 @@ describe('ida e volta: base de demonstração → mappers = createSeed', () => {
     const [r] = await json<VagasPorTokenRow>(db, 'anon', 'select * from public.vagas_por_token($1)', [lar.confirmacaoToken])
     expect(vagasPorTokenDeLinha(r!)).toMatchObject({ larId: lar.id, nome: lar.nome, quartos: lar.quartos.map(({ tipo, total, livres }) => ({ tipo, total, livres })) })
   })
+
+  it('a modalidade dos lares privados: a gestora lê a sua (painel_instituicao) e a equipa a de todas (painel_equipa), iguais ao protótipo', async () => {
+    const lar = proto.lares.find((l) => l.id === DEMO_LAR_ID)!
+    expect(lar.planoInstituicao).toBe('por_entrada')
+    const gestora = uuid.get(DEMO_LAR_USER_ID)!
+    const [p] = await json<PainelInstituicaoRow>(db, gestora, 'select * from public.painel_instituicao()')
+    const painel = painelDeLinha(p!, gestora)
+    expect(painel.dono).toMatchObject({ planoInstituicao: lar.planoInstituicao, planoDesde: desloca(lar.planoDesde) })
+    expect(painel.compromissoAte).toBeUndefined()
+    // o painel privado da gestora mostra o mesmo que o protótipo
+    const [v] = await json<InstituicaoPublicaRow>(db, gestora, 'select * from public.instituicoes_publicas where id = $1', [DEMO_LAR_ID])
+    const daBd = larDeLinha(v!, [], painel.dono)
+    expect(cobrancaEntradaTexto(daBd)).toBe(cobrancaEntradaTexto(lar))
+    expect(planoDoLar(daBd)).toBe('por_entrada')
+
+    // a equipa: uma linha por ficha de demonstração, com a modalidade e se já tem gestor
+    const equipa = uuid.get(DEMO_EQUIPA_ID)!
+    const linhas = (await json<PainelEquipaRow>(db, equipa, 'select * from public.painel_equipa()')).map(painelEquipaDeLinha)
+    expect(linhas).toHaveLength(proto.lares.length)
+    const comModalidade = proto.lares.filter((l) => l.planoInstituicao)
+    expect(comModalidade.map((l) => l.planoInstituicao).sort()).toEqual(['mensal', 'por_entrada'])
+    for (const l of proto.lares) {
+      const r = linhas.find((x) => x.larId === l.id)
+      expect(r, l.id).toBeDefined()
+      expect({ ...r!.dono, temGestor: r!.temGestor }, l.id).toEqual({ planoInstituicao: l.planoInstituicao, planoDesde: desloca(l.planoDesde), temGestor: !!l.ownerId })
+      const ate = compromissoAte({ ...l, planoDesde: desloca(l.planoDesde) })
+      // o mesmo instante (calculado no fuso de Lisboa na BD; no fuso desta máquina no protótipo)
+      if (ate) expect(Math.abs(Date.parse(r!.compromissoAte!) - Date.parse(ate)), l.id).toBeLessThanOrEqual(3_600_000)
+      else expect(r!.compromissoAte, l.id).toBeUndefined()
+    }
+    // mais ninguém: famílias, a assistente social e a gestora (só a sua, no painel) não veem o painel da equipa
+    for (const outro of [DEMO_FAMILIA_ID, DEMO_LAR_USER_ID, DEMO_PRO_ID]) expect(await q(db, uuid.get(outro)!, 'select * from public.painel_equipa()'), outro).toEqual([])
+    for (const quem of ['anon', gestora]) expect(await erro(db, quem, 'select plano from public.instituicoes')).toMatch(/permission denied/)
+  })
+
+  it('as visitas da equipa voltam iguais pelo visitaDeLinha e só a equipa as lê', async () => {
+    const equipa = uuid.get(DEMO_EQUIPA_ID)!
+    const linhas = await json<VisitaRow>(db, equipa, 'select * from public.visitas order by data desc')
+    expect(linhas).toHaveLength(proto.visitas.length)
+    expect(new Set(linhas.map((r) => r.resultado))).toEqual(new Set(['aderiu', 'interessado', 'voltar', 'recusou']))
+    for (const v of proto.visitas) {
+      const r = linhas.find((x) => x.id === uuidDemo(v.id))
+      expect(r, v.id).toBeDefined()
+      const daBd = visitaDeLinha(r!)
+      expect({ ...daBd, proximoContacto: diasBd(daBd.proximoContacto) }, v.id).toEqual({
+        ...v, id: uuidDemo(v.id), equipaId: equipa, data: desloca(v.data, desvioDemo), proximoContacto: diasProto(v.proximoContacto),
+      })
+      // quem aderiu como privado tem a modalidade registada na ficha (como no protótipo)
+      if (v.resultado === 'aderiu' && v.plano) expect(proto.lares.find((l) => l.id === v.larId)!.planoInstituicao, v.id).toBe(v.plano)
+    }
+    // famílias, gestora e assistente social não leem nenhuma (nem a visita à sua ficha); anon nem tem acesso
+    for (const outro of [DEMO_FAMILIA_ID, DEMO_LAR_USER_ID, DEMO_PRO_ID]) expect(await q(db, uuid.get(outro)!, 'select id from public.visitas'), outro).toEqual([])
+    expect(await erro(db, 'anon', 'select id from public.visitas')).toMatch(/permission denied/)
+  })
 })
 
 describe('a base de demonstração continua a funcionar pelas RPC', () => {
@@ -300,5 +365,45 @@ describe('a base de demonstração continua a funcionar pelas RPC', () => {
     await q(db, luis, 'select public.confirmar_entrada_familia($1, current_date)', [uuidDemo('c-fam-7')])
     const [av] = await q<{ verificada: boolean }>(db, luis, 'select verificada from public.avaliar_lar($1, 4, $2, $3)', [uuidDemo('c-fam-7'), 'A minha mãe está bem cuidada.', aspetos])
     expect(av!.verificada).toBe(true)
+  })
+
+  it('a gestora muda para a mensalidade: a entrada seguinte fica incluída e voltar à taxa por entrada já não dá', async () => {
+    const gestora = uuid.get(DEMO_LAR_USER_ID)!
+    const [m] = await json<PlanoDaInstituicaoRow>(db, gestora, "select * from public.escolher_plano_instituicao('mensal')")
+    expect(planoDeLinha(m!)).toMatchObject({ larId: DEMO_LAR_ID, planoInstituicao: 'mensal' })
+    expect(await erro(db, gestora, "select * from public.escolher_plano_instituicao('por_entrada')")).toMatch(/^A mensalidade tem um compromisso de 12 meses: pode mudar a partir de \d{1,2} de [a-zç]+ de \d{4}\.$/)
+    // o pedido com a vaga aceite e ainda sem entrada (como em src/lib/visitas.test.ts)
+    const c = proto.candidaturas.find((x) => x.larId === DEMO_LAR_ID && x.estado === 'aceite' && !x.entrada)!
+    const [e] = await q<{ entrada_taxa: string }>(db, gestora, 'select entrada_taxa from public.marcar_entrada($1, current_date)', [uuidDemo(c.id)])
+    expect(e!.entrada_taxa).toBe('incluida')
+    // as entradas confirmadas antes da mudança mantêm a taxa
+    const antes = proto.candidaturas.filter((x) => x.larId === DEMO_LAR_ID && x.entrada).map((x) => uuidDemo(x.id))
+    const taxas = await q<{ entrada_taxa: string }>(db, gestora, 'select entrada_taxa from public.pedidos_recebidos() where id = any($1::uuid[])', [antes])
+    expect(taxas.map((t) => t.entrada_taxa)).toEqual(antes.map(() => 'aplicavel'))
+  })
+
+  it('a equipa volta à casa "interessada": adere com mensalidade, a ficha ganha o selo e a modalidade (só para a equipa)', async () => {
+    const equipa = uuid.get(DEMO_EQUIPA_ID)!
+    const v3 = proto.visitas.find((v) => v.resultado === 'interessado')!
+    const alvo = proto.lares.find((l) => l.id === v3.larId)!
+    expect([alvo.natureza, alvo.verificacao.estado, !!alvo.ownerId]).toEqual(['privado', 'nao_verificado', false])
+    const [quarto] = alvo.quartos
+    const r = await rpc<VisitaRow>(db, equipa, 'registar_visita', visitaParaRpc({
+      larId: alvo.id, resultado: 'aderiu', plano: 'mensal', licenca: alvo.verificacao.licenca,
+      verificacao: { licencaConfirmada: true, instalacoesVistas: true, vagasConfirmadas: true, precosConfirmados: false },
+      quartos: [{ tipo: quarto!.tipo, livres: 1, precoMin: 1, precoMax: 1 }],
+      responsavel: { nome: 'Paula Reis', cargo: 'Diretora técnica', email: 'paula.reis@exemplo.pt' },
+      criarConta: true,
+    }))
+    expect(visitaDeLinha(r[0]!)).toMatchObject({ larId: alvo.id, equipaId: equipa, resultado: 'aderiu', plano: 'mensal' })
+    const [ficha] = await json<InstituicaoPublicaRow>(db, 'anon', 'select * from public.instituicoes_publicas where id = $1', [alvo.id])
+    const daBd = larDeLinha(ficha!)
+    expect(niveisVerificacao(daBd)).toMatchObject({ licenca: true, visitado: true })
+    expect(daBd.quartos.find((x) => x.tipo === quarto!.tipo)).toMatchObject({ livres: Math.min(1, quarto!.total), precoMin: quarto!.precoMin, precoMax: quarto!.precoMax })
+    // a vista pública continua sem a modalidade; a equipa vê-a (a ficha ainda não tem gestor: a conta vai por convite)
+    expect(planoDoLar(daBd)).toBe('por_entrada')
+    const [eq] = (await json<PainelEquipaRow>(db, equipa, 'select * from public.painel_equipa() where instituicao_id = $1', [alvo.id])).map(painelEquipaDeLinha)
+    expect(eq).toMatchObject({ temGestor: false, dono: { planoInstituicao: 'mensal' } })
+    expect(await q(db, equipa, 'select id from public.visitas')).toHaveLength(proto.visitas.length + 1)
   })
 })

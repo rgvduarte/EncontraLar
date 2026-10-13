@@ -216,9 +216,14 @@ Não inventar valores intermédios (ex.: 1050) — usar esta escala.
 
 Regras de interface para o modelo aprovado (pormenor em `docs/MODELO-NEGOCIO.md`).
 
-- **Sem preços da plataforma para as instituições.** Estar no EncontraLar é gratuito para todas as instituições; só os lares
-  privados pagam uma taxa fixa por cada pessoa que entra. O valor fica no contrato: nunca mostrar montantes, percentagens nem
-  "planos". Ninguém paga para aparecer primeiro. (O passe das famílias, o Acesso Família, tem preço público: ver §12.)
+- **Valores das instituições só em superfícies privadas.** Estar no EncontraLar é gratuito para todas as instituições; os
+  lares privados escolhem a modalidade: **por entrada** (taxa fixa por cada pessoa que entra) ou **mensalidade** (valor fixo,
+  sem taxa por entrada, compromisso de 12 meses). IPSS e Misericórdias não pagam.
+  - **Páginas públicas** (`/para-lares`, perguntas frequentes): as duas modalidades **sem valores**.
+  - **Painel da instituição, ecrãs da equipa e folheto da visita:** os valores, sempre com "+ IVA" (`valorPlanoTexto`,
+    `cobrancaEntradaTexto`). As duas modalidades aparecem com o mesmo peso, sem "recomendado": só o ponto de equilíbrio
+    honesto ("compensa a partir de 3 entradas por ano").
+  - Ninguém paga para aparecer primeiro. (O passe das famílias, o Acesso Família, tem preço público: ver §12.)
 - **Pedido em duas fases (RGPD art. 9.º).** Antes de aceitar, a instituição vê só o resumo sem identificação (faixa etária,
   grau, cuidados, zona, orçamento, urgência, origem). "Aceitar e ver contacto" mostra o nome, o contacto e o perfil completo.
   Nunca desenhar o nome ou o contacto "desfocado" na primeira fase: simplesmente não aparecem.
@@ -229,10 +234,16 @@ Regras de interface para o modelo aprovado (pormenor em `docs/MODELO-NEGOCIO.md`
   - "Entrou" / "Marcar entrada" (instituição)
   - "Já entrou?" / "Confirmar entrada" (família ou profissional)
   - "Entrada verificada" (as duas confirmações)
-  - "Taxa fixa por entrada · conforme contrato" (privado) / "Isenta — setor social" (IPSS e Misericórdias)
+  - Taxa de uma entrada (`TAXA_TEXTO`, igual a `cobrancaEntradaTexto`): "Taxa fixa: 150 € + IVA por entrada" (privado, por
+    entrada) / "Incluída na mensalidade (29 € + IVA por mês)" (privado, mensalidade) / "Isenta — setor social" (IPSS e
+    Misericórdias). Uma entrada passada mostra a taxa com que ficou (`entrada.taxa`), não a modalidade de hoje.
   - "Avaliação verificada" (só de quem confirmou a entrada)
 - **Selo em três níveis.** `SeloNiveis({ lar })` (`components/brand/SeloVerificado`) lista "Licença confirmada",
   "Visitada pela equipa" e "Avaliações verificadas", com visto ou círculo vazio e o estado em texto para leitores de ecrã.
+  "Licença confirmada" exige que a equipa a tenha confirmado (`verificacao.licencaConfirmadaEm`, ou a visita): o número
+  declarado no registo não chega.
+- **Equipa de terreno** (`role 'equipa'`, interna): `/visitas` com `RequireAuth role="equipa"`, pensada para o telemóvel à
+  porta da instituição. Vê a camada completa e nunca vê convites para comprar o Acesso Família.
 - **Área do profissional** (`role 'profissional'`, assistentes sociais de hospitais, centros de saúde e autarquias):
   `/casos` com `RequireAuth role="profissional"` e o `DashboardShell`. O menu da conta diz "Os meus casos" e mostra a
   organização por baixo do nome; no telemóvel, a barra de abas tem Casos, Novo caso, Mapa e Início. As notificações de um

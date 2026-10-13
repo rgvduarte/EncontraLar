@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
   FileText,
   FolderOpen,
   Info,
@@ -41,11 +42,12 @@ const PAINEL: Record<Role, { label: string; icon: LucideIcon }> = {
   familia: { label: 'O meu painel', icon: LayoutDashboard },
   lar: { label: 'Painel da instituição', icon: LayoutDashboard },
   profissional: { label: 'Os meus casos', icon: FolderOpen },
-  equipa: { label: 'Visitas', icon: FolderOpen },
+  equipa: { label: 'Visitas', icon: ClipboardCheck },
 }
 
-/** Onde trabalha o profissional ("Hospital de Vale Formoso"), por baixo do nome; as outras contas não têm. */
-const organizacaoDe = (user: User): string | undefined => (user.role === 'profissional' ? user.organizacao?.nome : undefined)
+/** Por baixo do nome: onde trabalha o profissional ("Hospital de Vale Formoso") ou "Equipa de terreno"; as outras contas não têm. */
+const organizacaoDe = (user: User): string | undefined =>
+  user.role === 'profissional' ? user.organizacao?.nome : user.role === 'equipa' ? 'Equipa de terreno' : undefined
 
 /** Último dia do Acesso Família: "31 dez." (com o ano quando não é o atual: "1 jan. 2027"). */
 function ateCurto(iso: string): string {

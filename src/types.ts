@@ -112,8 +112,13 @@ export interface Lar {
     estado: EstadoVerificacao
     /** data da última auditoria presencial EncontraLar */
     data?: string
-    /** nº de alvará/licença de funcionamento */
+    /** nº de alvará/licença de funcionamento (declarado pela instituição no registo) */
     licenca: string
+    /**
+     * ISO — a equipa confirmou a licença (no registo da Segurança Social ou na visita). Sem isto, o número é só
+     * declarado: não conta para o nível «Licença confirmada».
+     */
+    licencaConfirmadaEm?: string
     ultimaInspecao?: string
   }
   avaliacao: number

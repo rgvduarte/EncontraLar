@@ -1,15 +1,17 @@
 import { Link } from 'react-router'
 import { ChevronRight } from 'lucide-react'
-import type { Candidatura } from '@/types'
+import type { Candidatura, Lar } from '@/types'
+import { cobrancaEntradaTexto } from '@/lib/acesso'
 import { entradaVerificada } from '@/lib/negocio'
 import { entradasEsteAno } from '../lib/derive'
 import { useAgora } from '../lib/hooks'
 
 /**
  * Atalho para /gestao/entradas — no telemóvel a barra de abas tem 5 separadores fixos e as Entradas
- * não cabem lá; aqui ficam a um toque. O cartão inteiro é a ligação (alvo grande).
+ * não cabem lá; aqui ficam a um toque. O cartão inteiro é a ligação (alvo grande). A última linha diz o que
+ * cada entrada custa hoje (a modalidade em vigor, que se muda na página Entradas).
  */
-export function EntradasCard({ cands }: { cands: Candidatura[] }) {
+export function EntradasCard({ lar, cands }: { lar: Lar; cands: Candidatura[] }) {
   const agora = useAgora()
   const ano = entradasEsteAno(cands, agora)
   const aguardar = ano.filter((c) => !entradaVerificada(c)).length
@@ -28,6 +30,7 @@ export function EntradasCard({ cands }: { cands: Candidatura[] }) {
           Entradas: {ano.length} este ano
         </span>
         <span className="block text-sm text-ink-mute">{nota.length ? nota.join(' · ') : 'Quem entrou através do EncontraLar'}</span>
+        <span className="mt-1.5 block border-t border-line-strong/60 pt-1.5 text-sm text-ink-soft">{cobrancaEntradaTexto(lar)}</span>
       </span>
       <ChevronRight aria-hidden className="size-5 shrink-0 text-ink-mute transition-transform duration-200 group-hover:translate-x-0.5" />
     </Link>

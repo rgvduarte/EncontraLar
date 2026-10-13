@@ -53,8 +53,8 @@ export interface NovoUtilizador {
   email: string | null
   nome?: string
   telefone?: string
-  /** papel definido por um administrador (app_metadata) */
-  roleAdmin?: 'familia' | 'lar' | 'profissional' | string
+  /** papel definido por um administrador (app_metadata) — o único caminho para 'equipa' */
+  roleAdmin?: 'familia' | 'lar' | 'profissional' | 'equipa' | string
   /** papel escolhido no formulário de registo (user_metadata) */
   roleRegisto?: 'familia' | 'lar' | 'profissional' | string
   /** outros campos de app_metadata (definidos pelo administrador, ex.: organizacao) */
@@ -131,6 +131,18 @@ export async function json<T = Record<string, unknown>>(db: PGlite, quem: Quem, 
   const linhas = await q<{ j: T[] | string }>(db, quem, `select coalesce(json_agg(t), '[]'::json) as j from (${sql}) t`, params)
   const j = linhas[0]!.j
   return typeof j === 'string' ? (JSON.parse(j) as T[]) : j
+}
+
+/**
+ * Chama uma RPC como o supabase-js (`rpc(nome, args)`): argumentos com nome (os undefined não vão, valendo o
+ * valor por omissão da função), objetos e listas de objetos em JSON (jsonb), listas de valores como arrays.
+ * Devolve o resultado em JSON, como o PostgREST.
+ */
+export async function rpc<T = Record<string, unknown>>(db: PGlite, quem: Quem, nome: string, args: object = {}): Promise<T[]> {
+  const entradas = Object.entries(args).filter(([, v]) => v !== undefined)
+  const emJson = (v: unknown) => v !== null && typeof v === 'object' && !(Array.isArray(v) && v.every((x) => x === null || typeof x !== 'object'))
+  const sql = `select * from public.${nome}(${entradas.map(([k], i) => `${k} => $${i + 1}`).join(', ')})`
+  return json<T>(db, quem, sql, entradas.map(([, v]) => (emJson(v) ? JSON.stringify(v) : v)))
 }
 
 /** Executa como administrador (postgres — equivalente ao SQL Editor / MCP execute_sql). */

@@ -10,15 +10,16 @@ import { admin, criarBase, MIGRACOES } from './helpers'
 
 const TABELAS = [
   'avaliacoes', 'candidatura_eventos', 'candidaturas', 'casos', 'favoritos', 'instituicoes', 'notificacoes',
-  'perfis_cuidados', 'perfis_utilizador', 'procuras_anonimas', 'quartos', 'saidas_mensais',
+  'perfis_cuidados', 'perfis_utilizador', 'procuras_anonimas', 'quartos', 'saidas_mensais', 'visitas',
 ]
 
 const RPC_PUBLICAS = [
   'aceitar_candidatura', 'atualizar_caso', 'atualizar_estado_candidatura', 'avaliar_lar', 'cancelar_candidatura',
   'candidatar', 'confirmar_entrada_familia', 'confirmar_vagas_atualizadas', 'confirmar_vagas_por_token', 'confirmar_visita',
-  'criar_caso', 'definir_vagas', 'enviar_caso', 'marcar_entrada', 'minhas_avaliacoes', 'painel_instituicao',
-  'pedidos_recebidos', 'pedir_visita', 'procura_na_zona', 'registar_entrada', 'registar_procura',
-  'registar_vaga_libertada', 'renovar_token_confirmacao', 'responder_vaga', 'vagas_por_token',
+  'criar_caso', 'definir_vagas', 'enviar_caso', 'escolher_plano_instituicao', 'marcar_entrada', 'minhas_avaliacoes',
+  'painel_equipa', 'painel_instituicao', 'pedidos_recebidos', 'pedir_visita', 'procura_na_zona', 'registar_entrada',
+  'registar_procura', 'registar_vaga_libertada', 'registar_visita', 'renovar_token_confirmacao', 'responder_vaga',
+  'vagas_por_token',
 ]
 
 /** As únicas RPC sem sessão: a pesquisa anónima e o link de confirmação das vagas. */
@@ -100,8 +101,8 @@ describe('migrações', () => {
     for (const v of r) expect(v.reloptions).toContain('security_invoker=true')
   })
 
-  it('anon não tem privilégios em dados pessoais nem de saúde', async () => {
-    for (const t of ['perfis_utilizador', 'perfis_cuidados', 'candidaturas', 'candidatura_eventos', 'favoritos', 'notificacoes', 'casos', 'procuras_anonimas']) {
+  it('anon não tem privilégios em dados pessoais nem de saúde (nem nas visitas da equipa)', async () => {
+    for (const t of ['perfis_utilizador', 'perfis_cuidados', 'candidaturas', 'candidatura_eventos', 'favoritos', 'notificacoes', 'casos', 'procuras_anonimas', 'visitas']) {
       const [r] = await adm<{ s: boolean; i: boolean; u: boolean; d: boolean }>(
         `select has_table_privilege('anon', $1, 'select') s, has_table_privilege('anon', $1, 'insert') i,
                 has_table_privilege('anon', $1, 'update') u, has_table_privilege('anon', $1, 'delete') d`,
@@ -111,8 +112,8 @@ describe('migrações', () => {
     }
   })
 
-  it('clientes não escrevem candidaturas, eventos, notificações, casos, avaliações nem procura (só funções de servidor)', async () => {
-    for (const t of ['candidaturas', 'candidatura_eventos', 'notificacoes', 'casos', 'procuras_anonimas']) {
+  it('clientes não escrevem candidaturas, eventos, notificações, casos, avaliações, procura nem visitas (só funções de servidor)', async () => {
+    for (const t of ['candidaturas', 'candidatura_eventos', 'notificacoes', 'casos', 'procuras_anonimas', 'visitas']) {
       const [r] = await adm<{ i: boolean; u: boolean; d: boolean }>(
         `select has_table_privilege('authenticated', $1, 'insert') i, has_table_privilege('authenticated', $1, 'update') u,
                 has_table_privilege('authenticated', $1, 'delete') d`,
@@ -134,7 +135,15 @@ describe('migrações', () => {
     expect(r!.q).toMatch(/desbloqueada_em IS NOT NULL/)
   })
 
-  it('o papel do utilizador, a publicação e a verificação das fichas não são editáveis pelos clientes', async () => {
+  it('a equipa só lê as visitas do seu "mundo" (política com mundo_equipa) e ninguém as escreve diretamente', async () => {
+    const r = await adm<{ policyname: string; cmd: string; roles: string[]; q: string }>(
+      "select policyname, cmd, roles::text[] as roles, qual as q from pg_policies where tablename = 'visitas'",
+    )
+    expect(r.map(({ policyname, cmd, roles }) => ({ policyname, cmd, roles }))).toEqual([{ policyname: 'visitas_select_equipa', cmd: 'SELECT', roles: ['authenticated'] }])
+    expect(r[0]!.q).toMatch(/mundo_equipa/)
+  })
+
+  it('o papel do utilizador, a publicação, a verificação e a modalidade das fichas não são editáveis pelos clientes', async () => {
     const [r] = await adm<Record<string, boolean>>(`
       select has_column_privilege('authenticated', 'public.perfis_utilizador', 'role', 'update') as role,
              has_column_privilege('authenticated', 'public.perfis_utilizador', 'demonstracao', 'update') as conta_demo,
@@ -149,18 +158,23 @@ describe('migrações', () => {
              has_column_privilege('authenticated', 'public.instituicoes', 'atualizado_em', 'update') as frescura,
              has_column_privilege('authenticated', 'public.instituicoes', 'nome', 'update') as nome_ficha,
              has_column_privilege('authenticated', 'public.quartos', 'livres', 'update') as livres,
-             has_column_privilege('anon', 'public.avaliacoes', 'user_id', 'select') as autor_avaliacao`)
+             has_column_privilege('anon', 'public.avaliacoes', 'user_id', 'select') as autor_avaliacao,
+             has_column_privilege('authenticated', 'public.instituicoes', 'plano', 'update') as plano,
+             has_column_privilege('authenticated', 'public.instituicoes', 'plano', 'insert') as plano_ao_criar,
+             has_column_privilege('authenticated', 'public.instituicoes', 'plano_desde', 'update') as plano_desde`)
     expect(r).toEqual({
       role: false, conta_demo: false, nome: true, organizacao: false, verificacao: false, publicar: false, publicar_ao_criar: false, ficha_demo: false,
       lista_offline: false, dono: false, frescura: false, nome_ficha: true, livres: false, autor_avaliacao: false,
+      plano: false, plano_ao_criar: false, plano_desde: false,
     })
   })
 
-  it('colunas internas não são legíveis por anon nem authenticated (owner_id, visualizacoes_30d, autor_id, token do link)', async () => {
+  it('colunas internas não são legíveis por anon nem authenticated (owner_id, visualizacoes_30d, autor_id, token do link, modalidade)', async () => {
     const r = await adm<{ papel: string; coluna: string; pode: boolean }>(`
       select papel, coluna, has_column_privilege(papel, tabela, coluna, 'select') as pode
         from (values ('public.instituicoes', 'owner_id'), ('public.instituicoes', 'visualizacoes_30d'),
                      ('public.instituicoes', 'confirmacao_token_hash'), ('public.instituicoes', 'confirmacao_token_expira_em'),
+                     ('public.instituicoes', 'plano'), ('public.instituicoes', 'plano_desde'),
                      ('public.candidatura_eventos', 'autor_id'), ('public.avaliacoes', 'user_id'),
                      ('public.avaliacoes', 'candidatura_id')) as c (tabela, coluna)
         cross join (values ('anon'), ('authenticated')) as p (papel)`)
@@ -169,7 +183,7 @@ describe('migrações', () => {
       "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'instituicoes_publicas'",
     )
     const colunas = vista.map((c) => c.column_name)
-    for (const interna of ['owner_id', 'visualizacoes_30d', 'lista_espera_offline', 'lista_espera_online', 'confirmacao_token_hash', 'confirmacao_token_expira_em']) {
+    for (const interna of ['owner_id', 'visualizacoes_30d', 'lista_espera_offline', 'lista_espera_online', 'confirmacao_token_hash', 'confirmacao_token_expira_em', 'plano', 'plano_desde']) {
       expect(colunas).not.toContain(interna)
     }
     expect(colunas).toEqual(expect.arrayContaining(['lista_espera', 'publicado', 'demonstracao', 'vagas_livres', 'historico_saidas']))
@@ -219,6 +233,7 @@ describe('migrações', () => {
       ...RPC_PUBLICAS.map((f) => `private.${f}`),
       'private.tem_papel',
       'private.minha_instituicao',
+      'private.mundo_equipa',
     ])
     expect(r.filter((x) => x.auth).map((x) => x.f).sort()).toEqual([...permitidas].sort())
   })
@@ -234,14 +249,15 @@ describe('migrações', () => {
 describe('seed (supabase/seed.sql)', () => {
   const proto = createSeed(AGORA_SEED)
 
-  it('carrega as instituições, quartos, saídas, avaliações e procura do protótipo, todas marcadas como demonstração', async () => {
-    const [r] = await adm<{ i: number; q: number; s: number; a: number; p: number; d: number; t: number; pa: number }>(`
+  it('carrega as instituições (com a modalidade dos privados), quartos, saídas, avaliações e procura do protótipo, todas marcadas como demonstração', async () => {
+    const [r] = await adm<{ i: number; q: number; s: number; a: number; p: number; d: number; t: number; pa: number; m: string[] }>(`
       select (select count(*)::int from public.instituicoes) i, (select count(*)::int from public.quartos) q,
              (select count(*)::int from public.saidas_mensais) s, (select count(*)::int from public.avaliacoes) a,
              (select count(*)::int from public.instituicoes where publicado and owner_id is null) p,
              (select count(*)::int from public.instituicoes where demonstracao) d,
              (select count(*)::int from public.instituicoes where confirmacao_token_hash is not null) t,
-             (select count(*)::int from public.procuras_anonimas) pa`)
+             (select count(*)::int from public.procuras_anonimas) pa,
+             (select array_agg(id || ':' || plano order by id) from public.instituicoes where plano is not null) m`)
     expect(r).toEqual({
       i: proto.lares.length,
       q: proto.lares.reduce((n, l) => n + l.quartos.length, 0),
@@ -251,6 +267,7 @@ describe('seed (supabase/seed.sql)', () => {
       d: proto.lares.length,
       t: proto.lares.length,
       pa: proto.procuras.length,
+      m: proto.lares.filter((l) => l.planoInstituicao).map((l) => `${l.id}:${l.planoInstituicao}`).sort(),
     })
   })
 

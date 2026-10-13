@@ -26,6 +26,13 @@
     }
   },
   {
+    "email": "equipa@exemplo.pt",
+    "role": "equipa",
+    "nome": "Sofia Ramos",
+    "telefone": "910 000 520",
+    "palavraPasse": "demo1234"
+  },
+  {
     "email": "rui.sousa@exemplo.pt",
     "role": "familia",
     "nome": "Rui Sousa",

@@ -1,6 +1,26 @@
 import { describe, expect, it } from 'vitest'
 import type { Candidatura, EstadoCandidatura, Lar, PerfilIdoso } from '@/types'
-import { entradasEsteAno, entradasUltimos12Meses, ordenarNovos, pedidosPorTratar, vagaAceiteHaPouco, verificarCompatibilidade, DIA_MS } from './derive'
+import { cobrancaEntradaTexto, compromissoAte, ENTRADAS_ANO_MENSAL_COMPENSA, PLANOS_INSTITUICAO, valorPlanoTexto } from '@/lib/acesso'
+import {
+  comparacaoModalidades,
+  comparacaoPartes,
+  compromissoSeMudarAgora,
+  entradasEsteAno,
+  entradasTexto,
+  entradasUltimos12Meses,
+  estadoModalidade,
+  ordenarNovos,
+  partesValorPlano,
+  pedidosPorTratar,
+  TAXA_NAO_CONTA,
+  TAXA_TEXTO,
+  taxaAoMarcarTexto,
+  taxaDaEntradaTexto,
+  vagaAceiteHaPouco,
+  valorMaisIva,
+  verificarCompatibilidade,
+  DIA_MS,
+} from './derive'
 import { altaTexto, necessidadesTexto, nomePedido, perfilLinha, quemPediu, relacaoTexto } from '../shared/pedidoBits'
 import { acoesDoPedido } from '../pedidos/acoes'
 
@@ -132,5 +152,127 @@ describe('entradas', () => {
     const cands = [comEntrada('2026-09-01'), comEntrada('2025-12-01'), comEntrada('2025-09-01'), cand('aceite')]
     expect(entradasUltimos12Meses(cands, agora).map((c) => c.entrada!.data)).toEqual(['2026-09-01', '2025-12-01'])
     expect(entradasEsteAno(cands, agora)).toHaveLength(1)
+  })
+})
+
+// ————————————————————————————————————————— modalidade e taxa das entradas (lares privados)
+
+/** O formato pt-PT põe um espaço inseparável antes do € (e o painel junta "+ IVA" com espaços inseparáveis). */
+const txt = (s: string | null) => s?.replace(/ /g, ' ') ?? null
+
+describe('modalidade: comparação dos últimos 12 meses', () => {
+  const agora = Date.parse('2026-10-12T12:00:00.000Z')
+  const entrou = (data: string, criadaEm = `${data.slice(0, 8)}01T10:00:00.000Z`, taxa: 'aplicavel' | 'incluida' = 'aplicavel') =>
+    cand('admitida', { criadaEm, entrada: { data, confirmadaLarEm: `${data}T10:00:00.000Z`, taxa } })
+
+  it('sem entradas que contem: só a regra geral (null)', () => {
+    expect(comparacaoModalidades([], agora)).toBeNull()
+    // entrada com mais de 12 meses e entrada fora da janela de atribuição (mais de 12 meses depois do pedido)
+    const antiga = entrou('2025-09-01')
+    const foraDaJanela = entrou('2026-09-01', '2025-08-01T10:00:00.000Z')
+    expect(comparacaoModalidades([antiga, foraDaJanela, cand('aceite')], agora)).toBeNull()
+  })
+
+  it('conta só as entradas atribuídas dos últimos 12 meses, com os valores das modalidades', () => {
+    const cands = [entrou('2026-09-01'), entrou('2025-12-01', '2025-11-20T10:00:00.000Z', 'incluida'), entrou('2025-09-01'), entrou('2026-09-20', '2025-08-01T10:00:00.000Z'), cand('aceite')]
+    const c = comparacaoModalidades(cands, agora)!
+    expect(c.entradas).toBe(2)
+    expect(c.porEntradaCentimos).toBe(2 * PLANOS_INSTITUICAO.por_entrada.valorCentimos)
+    expect(c.mensalCentimos).toBe(12 * PLANOS_INSTITUICAO.mensal.valorCentimos)
+    const { periodo, valores } = comparacaoPartes(c)
+    expect(txt(`${periodo} → ${valores}`)).toBe('Nos últimos 12 meses: 2 entradas → por entrada pagaria 300 € + IVA; com mensalidade, 348 € + IVA.')
+  })
+
+  it('uma entrada, no singular; e a regra geral vem da constante (3 entradas por ano)', () => {
+    const c = comparacaoModalidades([entrou('2026-10-01')], agora)!
+    expect(txt(comparacaoPartes(c).periodo)).toBe('Nos últimos 12 meses: 1 entrada')
+    expect(txt(comparacaoPartes(c).valores)).toBe('por entrada pagaria 150 € + IVA; com mensalidade, 348 € + IVA.')
+    expect(ENTRADAS_ANO_MENSAL_COMPENSA).toBe(3)
+    expect(entradasTexto(ENTRADAS_ANO_MENSAL_COMPENSA)).toBe('3 entradas')
+    // na regra geral, a mensalidade compensa mesmo: 12 mensalidades < 3 entradas, mas não < 2
+    expect(12 * PLANOS_INSTITUICAO.mensal.valorCentimos).toBeLessThan(ENTRADAS_ANO_MENSAL_COMPENSA * PLANOS_INSTITUICAO.por_entrada.valorCentimos)
+    expect(12 * PLANOS_INSTITUICAO.mensal.valorCentimos).toBeGreaterThan((ENTRADAS_ANO_MENSAL_COMPENSA - 1) * PLANOS_INSTITUICAO.por_entrada.valorCentimos)
+  })
+
+  it('valores com "+ IVA", sem cêntimos quando redondos, iguais aos da modalidade', () => {
+    expect(txt(valorMaisIva(34800))).toBe('348 € + IVA')
+    expect(txt(valorMaisIva(1490))).toBe('14,90 € + IVA')
+    for (const p of ['por_entrada', 'mensal'] as const) {
+      const { valor, resto } = partesValorPlano(p)
+      expect(`${valor} ${resto}`).toBe(valorPlanoTexto(p))
+    }
+    expect(txt(partesValorPlano('por_entrada').valor)).toBe('150 €')
+    expect(partesValorPlano('mensal').resto).toBe('+ IVA por mês')
+  })
+})
+
+describe('modalidade: o que se pode escolher', () => {
+  const agora = Date.parse('2026-10-13T12:00:00.000Z')
+  const dias = (n: number) => new Date(agora - n * DIA_MS).toISOString()
+  const privado = (extra: Partial<Lar> = {}) => ({ natureza: 'privado' as const, ...extra })
+
+  it('IPSS e Misericórdias: nada a escolher (null)', () => {
+    expect(estadoModalidade({ natureza: 'ipss' }, agora)).toBeNull()
+    expect(estadoModalidade({ natureza: 'misericordia' }, agora)).toBeNull()
+  })
+
+  it('privado sem modalidade registada: por entrada, e as duas disponíveis', () => {
+    expect(estadoModalidade(privado(), agora)).toEqual({ atual: 'por_entrada', desde: null, compromissoAte: null, disponivel: { por_entrada: true, mensal: true } })
+    expect(estadoModalidade(privado({ planoInstituicao: 'por_entrada', planoDesde: dias(64) }), agora)?.desde).toBe(dias(64))
+  })
+
+  it('mensalidade dentro do compromisso: "Por entrada" indisponível até ao fim do compromisso', () => {
+    const lar = privado({ planoInstituicao: 'mensal', planoDesde: dias(21) })
+    const e = estadoModalidade(lar, agora)!
+    expect(e.atual).toBe('mensal')
+    expect(e.disponivel).toEqual({ por_entrada: false, mensal: true })
+    expect(e.compromissoAte).toBe(compromissoAte(lar))
+    const ate = Date.parse(e.compromissoAte!)
+    expect(Math.round((ate - Date.parse(dias(21))) / DIA_MS)).toBeGreaterThanOrEqual(365)
+    // no próprio instante em que o compromisso acaba, já pode voltar (a mesma regra do store)
+    expect(estadoModalidade(lar, ate - 1)!.disponivel.por_entrada).toBe(false)
+    expect(estadoModalidade(lar, ate)).toEqual({ atual: 'mensal', desde: dias(21), compromissoAte: null, disponivel: { por_entrada: true, mensal: true } })
+  })
+
+  it('mensalidade há mais de 12 meses: pode voltar à taxa por entrada', () => {
+    const e = estadoModalidade(privado({ planoInstituicao: 'mensal', planoDesde: dias(400) }), agora)!
+    expect(e.disponivel.por_entrada).toBe(true)
+    expect(e.compromissoAte).toBeNull()
+  })
+
+  it('quem muda agora para a mensalidade fica até daqui a 12 meses', () => {
+    const ate = compromissoSeMudarAgora(agora)
+    expect(ate).toBe(compromissoAte(privado({ planoInstituicao: 'mensal', planoDesde: new Date(agora).toISOString() })))
+    expect(new Date(ate).getFullYear()).toBe(2027)
+  })
+})
+
+describe('taxa de cada entrada', () => {
+  it('os textos são os da modalidade correspondente, com "+ IVA" e sem "conforme contrato"', () => {
+    expect(TAXA_TEXTO.aplicavel).toBe(cobrancaEntradaTexto({ natureza: 'privado', planoInstituicao: 'por_entrada' }))
+    expect(TAXA_TEXTO.incluida).toBe(cobrancaEntradaTexto({ natureza: 'privado', planoInstituicao: 'mensal' }))
+    expect(TAXA_TEXTO.isenta).toBe(cobrancaEntradaTexto({ natureza: 'misericordia' }))
+    expect(txt(TAXA_TEXTO.aplicavel)).toBe('Taxa fixa: 150 € + IVA por entrada')
+    expect(txt(TAXA_TEXTO.incluida)).toBe('Incluída na mensalidade (29 € + IVA por mês)')
+    expect(TAXA_TEXTO.isenta).toBe('Isenta — setor social')
+    for (const t of Object.values(TAXA_TEXTO)) expect(t).not.toMatch(/contrato|publicad/i)
+  })
+
+  it('uma entrada registada mantém a taxa com que ficou, mesmo depois de mudar de modalidade', () => {
+    const c = cand('admitida', { criadaEm: '2026-09-01T10:00:00.000Z', entrada: { data: '2026-10-01', confirmadaFamiliaEm: '2026-10-01T18:00:00.000Z', taxa: 'aplicavel' } })
+    expect(txt(taxaDaEntradaTexto(c))).toBe('Taxa fixa: 150 € + IVA por entrada')
+    // a casa já passou à mensalidade, mas a família registou a entrada antes: ao marcar, a taxa é a dessa altura
+    expect(txt(taxaAoMarcarTexto(c, { natureza: 'privado', planoInstituicao: 'mensal' }, '2026-10-01'))).toBe('Taxa fixa: 150 € + IVA por entrada')
+    expect(taxaDaEntradaTexto(cand('aceite'))).toBeNull()
+  })
+
+  it('por registar: a modalidade em vigor hoje; e não conta se entrou mais de 12 meses depois do pedido', () => {
+    const c = cand('aceite', { criadaEm: '2026-09-01T10:00:00.000Z' })
+    expect(txt(taxaAoMarcarTexto(c, { natureza: 'privado', planoInstituicao: 'mensal' }, '2026-10-12'))).toBe('Incluída na mensalidade (29 € + IVA por mês)')
+    expect(txt(taxaAoMarcarTexto(c, { natureza: 'privado' }, '2026-10-12'))).toBe('Taxa fixa: 150 € + IVA por entrada')
+    expect(taxaAoMarcarTexto(c, { natureza: 'ipss' }, '2026-10-12')).toBe('Isenta — setor social')
+    expect(taxaAoMarcarTexto(c, { natureza: 'privado' }, '2027-10-12')).toBe(TAXA_NAO_CONTA)
+    const tarde = cand('admitida', { criadaEm: '2025-01-10T10:00:00.000Z', entrada: { data: '2026-10-01', confirmadaLarEm: '2026-10-01T10:00:00.000Z', taxa: 'aplicavel' } })
+    expect(taxaDaEntradaTexto(tarde)).toBe(TAXA_NAO_CONTA)
   })
 })

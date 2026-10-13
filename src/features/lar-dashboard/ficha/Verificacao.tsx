@@ -15,8 +15,9 @@ export function Verificacao({ lar }: { lar: Lar }) {
           <h2 id="verificacao-titulo" className="text-xl font-semibold">
             Instituição verificada
           </h2>
+          {/* o nome do nível, como as famílias o leem na ficha (SeloNiveis) e como o aviso da visita o anuncia */}
           <p className="text-ink-mute">
-            {v.data ? `Visita e documentos confirmados a ${dataLonga(v.data)}` : 'Visita e documentos confirmados'}
+            {v.data ? `Visitada pela equipa a ${dataLonga(v.data)}` : 'Documentos confirmados'}
             {v.licenca ? ` · licença n.º ${v.licenca}` : ''}.
           </p>
         </div>

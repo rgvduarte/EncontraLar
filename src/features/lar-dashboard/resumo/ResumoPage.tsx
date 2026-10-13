@@ -26,7 +26,7 @@ export default function ResumoPage({ lar, cands, user, n }: { lar: Lar; cands: C
         <AttentionList lar={lar} cands={cands} />
         <div className="flex flex-col gap-12">
           <Reveal variant="blur" delay={40}>
-            <EntradasCard cands={cands} />
+            <EntradasCard lar={lar} cands={cands} />
           </Reveal>
           <Reveal variant="blur" delay={80}>
             <VagaLibertadaPanel lar={lar} />

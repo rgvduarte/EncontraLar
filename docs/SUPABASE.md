@@ -9,9 +9,9 @@ Este documento explica como pôr a base de dados real a funcionar, passo a passo
 | Pasta / ficheiro | O que é |
 | --- | --- |
 | `supabase/migrations/*.sql` | Esquema, segurança (RLS), lógica de negócio, Realtime e trabalhos agendados. Aplicar **por ordem**. |
-| `supabase/seed.sql` | 162 fichas **fictícias** (demonstração), com o hash do link de confirmação, e 84 pesquisas sem vagas. **Nunca em produção.** |
-| `supabase/demo/contas-demo.json` | As 11 contas de demonstração (geradas a partir de `src/data/seed.ts`), incluindo a assistente social. |
-| `supabase/demo/utilizadores-demo.sql` | Liga essas contas aos dados de demonstração. **Nunca em produção.** |
+| `supabase/seed.sql` | 162 fichas **fictícias** (demonstração), com o hash do link de confirmação e a modalidade dos 2 lares privados que a escolheram, e 84 pesquisas sem vagas. **Nunca em produção.** |
+| `supabase/demo/contas-demo.json` | As 12 contas de demonstração (geradas a partir de `src/data/seed.ts`), incluindo a assistente social e a equipa de terreno. |
+| `supabase/demo/utilizadores-demo.sql` | Liga essas contas aos dados de demonstração (pedidos, casos, avaliação, as 6 visitas da equipa). **Nunca em produção.** |
 | `scripts/criar-contas-demo.mjs` | Cria as contas de demonstração pela Auth Admin API. |
 | `scripts/gerar-seed-sql.ts` | Gera os três ficheiros de demonstração (`npm run db:seed-sql`). |
 | `supabase/tests/` | Testes das migrações em PGlite (Postgres em WASM), sem rede: `npm test`. |
@@ -25,14 +25,16 @@ Este documento explica como pôr a base de dados real a funcionar, passo a passo
   coluna a coluna (`20261012190100_seguranca.sql`, `20261012190400_endurecimento_seguranca.sql`).
 - **Lógica sensível no schema `private`** (não exposto na Data API) em funções `SECURITY DEFINER` com
   `search_path = ''` e verificação de `auth.uid()`; a Data API só vê invólucros `SECURITY INVOKER` em `public`.
-- **Papéis**: `familia`, `lar` e `profissional` (assistente social), guardados em `perfis_utilizador.role`.
-  O administrador define-os em `app_metadata.role` (sincronizado por trigger). No registo, o formulário pode
-  pedir `lar` ou `profissional` em `user_metadata` — aceitável porque `lar` só permite criar **um rascunho**
-  de ficha, por publicar e "pendente", e `profissional` só permite criar casos (perfis que o próprio escreve)
-  e enviá-los a fichas verificadas, como uma família. A organização do profissional
-  (`perfis_utilizador.organizacao`) vem de `app_metadata.organizacao` ou do registo, é validada no servidor e
-  **não é editável** pelo utilizador. Contas anónimas são sempre `familia`. `user_metadata` nunca é usado em
-  políticas.
+- **Papéis**: `familia`, `lar`, `profissional` (assistente social) e `equipa` (equipa de terreno, interna),
+  guardados em `perfis_utilizador.role`. O administrador define-os em `app_metadata.role` (sincronizado por
+  trigger). No registo, o formulário pode pedir `lar` ou `profissional` em `user_metadata` — aceitável porque
+  `lar` só permite criar **um rascunho** de ficha, por publicar e "pendente", e `profissional` só permite criar
+  casos (perfis que o próprio escreve) e enviá-los a fichas verificadas, como uma família. **`equipa` nunca vem
+  do registo** (em `user_metadata` é ignorado: a conta fica `familia`) nem de uma conta anónima: só do
+  administrador, e tirá-lo do `app_metadata` devolve a conta a `familia` (secção 13). A organização do
+  profissional (`perfis_utilizador.organizacao`) vem de `app_metadata.organizacao` ou do registo, é validada no
+  servidor e **não é editável** pelo utilizador. Contas anónimas são sempre `familia`. `user_metadata` nunca é
+  usado em políticas.
 - **Privacidade em duas fases (RGPD art. 9.º)** — secção 12: antes de aceitar um pedido, o lar **não lê a
   linha** (nem contacto, nem nome, nem notas, nem mensagem, nem histórico); vê só um resumo sem identificação
   (`pedidos_recebidos()`). Imposto pela política RLS, não pela interface.
@@ -40,14 +42,20 @@ Este documento explica como pôr a base de dados real a funcionar, passo a passo
   só recebe uma **cópia reduzida** do perfil (`private.snapshot_perfil`: sem coordenadas, raio, id nem datas)
   através de um pedido que a família lhe enviou, com consentimento explícito (`candidaturas.consentimento_em`), e
   **só se a ficha estiver publicada, verificada, tiver gestor e for do mesmo "mundo"** (demonstração ↔ real).
-- **Publicar e verificar fichas é sempre decisão do administrador** (secção 6). Mudar nome, morada, contactos,
-  licença, natureza, tipo ou acordo com a Segurança Social numa ficha verificada fá-la voltar a "pendente".
+- **Publicar fichas é sempre decisão do administrador** (secção 6). **Verificar** é do administrador ou da
+  equipa de terreno, na visita (licença + instalações = selo «Visitada pela equipa», secção 13). Mudar nome,
+  morada, contactos, licença, natureza, tipo ou acordo com a Segurança Social numa ficha verificada fá-la voltar
+  a "pendente".
 - **Minimização**: cancelar um pedido retira de imediato os dados de saúde à instituição (fica nome e idade);
   apagar um perfil minimiza os pedidos já encerrados desse perfil; pedidos recusados são minimizados 30 dias
   depois (pg_cron). As notas do histórico e das notificações vão junto.
-- **Dados internos** (`owner_id`, `visualizacoes_30d`, `confirmacao_token_hash`, `candidatura_eventos.autor_id`,
-  `avaliacoes.user_id`, `avaliacoes.candidatura_id`) não são legíveis por `anon`/`authenticated`; o gestor obtém
-  os da sua ficha com a RPC `painel_instituicao()` e o autor das avaliações as suas com `minhas_avaliacoes()`.
+- **Dados internos** (`owner_id`, `visualizacoes_30d`, `confirmacao_token_hash`, `plano`/`plano_desde` — a
+  modalidade comercial dos lares privados —, `candidatura_eventos.autor_id`, `avaliacoes.user_id`,
+  `avaliacoes.candidatura_id`) não são legíveis por `anon`/`authenticated`; o gestor obtém os da sua ficha com a
+  RPC `painel_instituicao()`, a equipa a modalidade de todas com `painel_equipa()` e o autor das avaliações as
+  suas com `minhas_avaliacoes()`.
+- **Visitas da equipa** (`visitas`): só contas `equipa` as leem (e só as do seu "mundo", demonstração ou real);
+  escrita só por `registar_visita()`. Instituições e famílias nunca as leem.
 - **Avaliações verificadas**: só pela RPC `avaliar_lar`, por **famílias** que fizeram o pedido e **confirmaram a
   entrada**, uma por pedido (um profissional confirma a entrada em nome da pessoa, mas não avalia). Não há
   escrita direta na tabela.
@@ -100,8 +108,11 @@ passar a usar o CLI, alinhe o histórico com `supabase migration repair` antes d
 | `20261012190600_agendamentos.sql` | pg_cron: expirar propostas (15 min) e minimizar pedidos (diário). |
 | `20261012190700_modelo_negocio_tipos.sql` | Valores novos dos enums: `role_utilizador` `profissional`, `estado_candidatura` `admitida` (ficheiro à parte: um valor novo só se usa depois de a transação terminar). |
 | `20261012190800_modelo_negocio.sql` | Modelo de negócio: casos, encaminhamentos, entradas e taxa, duas fases, avaliações verificadas, procura anónima, link de confirmação, RPC novas e pg_cron da procura. |
+| `20261013100000_equipa_modalidade_tipos.sql` | Valores novos dos enums: `role_utilizador` `equipa`, `taxa_entrada` `incluida` (ficheiro à parte, pela mesma razão do `0700`). |
+| `20261013100100_equipa_modalidade.sql` | Equipa de terreno e modalidade (secção 13): `instituicoes.plano`/`plano_desde`, `escolher_plano_instituicao`, taxa `incluida`, papel `equipa`, tabela `visitas`, `registar_visita`, `painel_equipa`, `painel_instituicao` com a modalidade. |
 
-As migrações já aplicadas **nunca se editam**: qualquer mudança é um ficheiro novo com um prefixo maior.
+As migrações já aplicadas **nunca se editam**: qualquer mudança é um ficheiro novo com um prefixo maior (hoje, maior
+do que `20261013100100`).
 
 ---
 
@@ -144,6 +155,9 @@ select jobname, schedule, command, active from cron.job where jobname like 'enco
   (`src/lib/supabase-mappers.ts`) envia `role: 'profissional'` e `organizacao: { nome, tipo, servico? }`; o
   trigger lê-os **uma vez**. Pelo administrador: `app_metadata: { role: 'profissional', organizacao: {…} }`
   (tem prioridade e pode ser mudado depois — é sincronizado).
+- Contas `equipa` (equipa de terreno): **só** pelo administrador — Auth Admin API com `app_metadata: { role:
+  'equipa' }` e o e-mail confirmado. Não há registo público para este papel. Os gestores das instituições que
+  aderem numa visita recebem um **convite por e-mail** (secção 13, TODO), nunca uma palavra-passe provisória.
 
 ---
 
@@ -181,9 +195,15 @@ update public.instituicoes set publicado = false where id = 'lar-exemplo';
 - Uma ficha cujo gestor apagou a conta sai automaticamente da pesquisa (`publicado = false`).
 - O nº de inscrições offline na lista de espera (`lista_espera_offline`) só é alterado pelo administrador
   (não há interface; mexer-lhe muda a posição seguinte da lista).
-- Mudar o papel de alguém: Auth Admin API, `app_metadata.role` (`familia`/`lar`/`profissional`); a organização
-  de um profissional em `app_metadata.organizacao` (`{ "nome": "…", "tipo": "hospital" | "centro_saude" |
-  "autarquia" | "outro", "servico": "…" }`).
+- Mudar o papel de alguém: Auth Admin API, `app_metadata.role` (`familia`/`lar`/`profissional`/`equipa`); a
+  organização de um profissional em `app_metadata.organizacao` (`{ "nome": "…", "tipo": "hospital" |
+  "centro_saude" | "autarquia" | "outro", "servico": "…" }`).
+- **Equipa de terreno**: dar o acesso = `app_metadata.role = 'equipa'`; tirá-lo (saída da equipa) = mudar o papel
+  ou apagá-lo do `app_metadata` (a conta volta a `familia`) e terminar as sessões (os tokens já emitidos valem até
+  expirarem — secção 4). A conta de demonstração da equipa só vê e só visita fichas de demonstração.
+- Modalidade fora das regras (exceção comercial acordada, ex.: sair da mensalidade antes dos 12 meses), como
+  `postgres`: `update public.instituicoes set plano = 'por_entrada', plano_desde = now() where id = 'lar-x';`
+  (só lares privados: a base de dados recusa uma modalidade numa IPSS/Misericórdia).
 - Links de confirmação das vagas para o envio periódico (SMS/e-mail): `select private.emitir_token_confirmacao('lar-x')`
   (como `postgres`, num trabalho de servidor) devolve o token **uma vez** e guarda só o hash; validade de 30 dias
   (`confirmacao_token_expira_em`). O gestor também gera um link novo no painel (`renovar_token_confirmacao()`),
@@ -194,15 +214,17 @@ update public.instituicoes set publicado = false where id = 'lar-exemplo';
 ## 7. Dados de demonstração — NUNCA no projeto de produção
 
 As fichas do seed são fictícias (com selos de verificação e avaliações inventados) e as contas `lar@exemplo.pt`,
-`familia@exemplo.pt` e `social@exemplo.pt` têm a palavra-passe **pública** do ecrã de entrada. Os links de
-confirmação das fichas de demonstração usam os tokens do protótipo (`tokenConfirmacao`, previsíveis a partir do
-id): numa base de demonstração qualquer pessoa pode "confirmar" vagas de fichas fictícias — mais uma razão para
-nunca carregar o seed em produção (lá os tokens são aleatórios, ≈ 244 bits). Use um **ramo** do Supabase
+`familia@exemplo.pt`, `social@exemplo.pt` e `equipa@exemplo.pt` têm a palavra-passe **pública** do ecrã de
+entrada. Os links de confirmação das fichas de demonstração usam os tokens do protótipo (`tokenConfirmacao`,
+previsíveis a partir do id): numa base de demonstração qualquer pessoa pode "confirmar" vagas de fichas fictícias
+— mais uma razão para nunca carregar o seed em produção (lá os tokens são aleatórios, ≈ 244 bits). Use um **ramo** do Supabase
 (`create_branch` no MCP, plano Pro) ou um **projeto à parte**.
 
 Mesmo que sejam carregados por engano, ficam isolados: `instituicoes.demonstracao = true` e
 `perfis_utilizador.demonstracao = true` — contas reais não enviam pedidos a fichas de demonstração, contas de
-demonstração não enviam pedidos nem avaliações a fichas reais, e fichas sem gestor não recebem pedidos.
+demonstração não enviam pedidos nem avaliações a fichas reais, fichas sem gestor não recebem pedidos, e a conta de
+demonstração da equipa não lê visitas reais nem regista visitas a fichas reais (nem a equipa real a fichas de
+demonstração).
 A vista pública expõe `demonstracao` para a interface poder mostrar um aviso.
 
 1. **Seed** (≈ 730 KB — grande demais para o SQL Editor ou para uma chamada `execute_sql`):
@@ -215,12 +237,16 @@ A vista pública expõe `demonstracao` para a interface poder mostrar um aviso.
    ```bash
    SUPABASE_URL=https://<ref-do-ramo>.supabase.co SUPABASE_SECRET_KEY=sb_secret_… node scripts/criar-contas-demo.mjs
    ```
-   O script recusa o projeto principal (salvo `--projeto-principal`) e **não altera contas que já existam**.
+   O script recusa o projeto principal (salvo `--projeto-principal`) e **não altera contas que já existam**. A conta
+   `equipa@exemplo.pt` leva `app_metadata.role = 'equipa'`, como as outras levam o seu papel (o script tem de aceitar
+   os quatro papéis de `contas-demo.json`).
 3. **Ligar** as contas aos dados: corra `supabase/demo/utilizadores-demo.sql` como `postgres` (SQL Editor do
    ramo). O script recusa contas sem `app_metadata.role` ou com o e-mail por confirmar — quem se tenha
    registado primeiro com um desses e-mails não fica com a ficha nem com os pedidos. Liga também a assistente
-   social (organização, 3 casos e 4 encaminhamentos), as entradas registadas e a avaliação verificada (a
-   importada pelo seed passa a pertencer à família que confirmou a entrada).
+   social (organização, 3 casos e 4 encaminhamentos), as entradas registadas, a avaliação verificada (a
+   importada pelo seed passa a pertencer à família que confirmou a entrada) e as 6 visitas da equipa de terreno no
+   distrito do Porto. A modalidade dos dois lares privados que a escolheram (o de demonstração, por entrada, e um
+   na mensalidade) já vem do `seed.sql`.
 4. Com o Supabase ligado, o acesso de demonstração do ecrã de entrada (`DemoAccess`) deve ser escondido ou
    apontar para o ramo.
 
@@ -259,10 +285,11 @@ select jobid, status, return_message, start_time from cron.job_run_details order
 `src/lib/database.types.ts` foi escrito à mão a partir das migrações. Depois de migrar, regenere-o com o MCP
 (`generate_typescript_types`) ou com `npx supabase@<versão> gen types typescript --project-id kdyvsxzputvuyauddmwg`
 e substitua o ficheiro; depois `npm run typecheck`. Os tipos gerados não refletem privilégios por coluna nem
-RLS: `owner_id`, `visualizacoes_30d`, `confirmacao_token_*`, `autor_id`, `avaliacoes.user_id` e
-`avaliacoes.candidatura_id` existem nos tipos mas não podem ser selecionados pelos clientes (use listas de
-colunas explícitas, `painel_instituicao()` e `minhas_avaliacoes()`); `procuras_anonimas` aparece nos tipos mas
-só se usa pelas RPC. Os tipos de retorno `PedidoRecebido` e `VagasPorToken` (no topo do ficheiro escrito à mão)
+RLS: `owner_id`, `visualizacoes_30d`, `confirmacao_token_*`, `plano`, `plano_desde`, `autor_id`,
+`avaliacoes.user_id` e `avaliacoes.candidatura_id` existem nos tipos mas não podem ser selecionados pelos
+clientes (use listas de colunas explícitas, `painel_instituicao()`, `painel_equipa()` e `minhas_avaliacoes()`);
+`procuras_anonimas` aparece nos tipos mas só se usa pelas RPC; `visitas` só devolve linhas a contas `equipa`. Os
+tipos de retorno `PedidoRecebido`, `VagasPorToken` e `PlanoDaInstituicao` (no topo do ficheiro escrito à mão)
 passam a vir inline no ficheiro gerado.
 
 ---
@@ -283,9 +310,17 @@ passam a vir inline no ficheiro gerado.
   taxa (privado/IPSS/Misericórdia), entradas, profissionais e casos, avaliações verificadas, procura anónima
   (anon escreve, ninguém lê, agregados só do próprio distrito, limites) e link de confirmação (token certo/errado,
   expirado, renovado; hash ilegível).
+- `terreno.test.ts` — equipa de terreno e modalidade (espelha `src/lib/visitas.test.ts`): o papel `equipa` só
+  pelo administrador (registo, conta anónima, retirar o papel), quem regista e lê visitas (e o isolamento
+  demonstração ↔ real), selo e 1.º nível, vagas e preços só confirmados, cuidados, IPSS sem modalidade, dados mal
+  formados, compromisso na adesão; a modalidade invisível para anon, famílias, outras instituições e o próprio
+  dono na tabela, `escolher_plano_instituicao` (só o dono de um privado, mesma modalidade, compromisso com a data
+  no erro), a natureza que deixa de ser privada; taxa `aplicavel`/`incluida`/`isenta` fixada na primeira
+  confirmação; a migração sobre uma base já em uso.
 - `prototipo.test.ts` — seed + contas de demonstração = `createSeed`: 162 fichas, 14 pedidos (lidos por quem os
-  fez e, no painel do lar, só o resumo dos que não foram aceites), 3 casos, procura do distrito e link de
-  confirmação, de ida e volta pelos mappers.
+  fez e, no painel do lar, só o resumo dos que não foram aceites), 3 casos, procura do distrito, link de
+  confirmação, a modalidade (pela gestora e pela equipa) e as 6 visitas (só pela equipa), de ida e volta pelos
+  mappers; a gestora muda para a mensalidade (entrada seguinte `incluida`) e a equipa regista uma adesão.
 
 ---
 
@@ -311,6 +346,14 @@ passam a vir inline no ficheiro gerado.
   à frente da RPC.
 - **Fornecedores de autenticação** (só e-mail? Google/Apple?), confirmação de e-mail e duração do JWT.
 - **Projeto de demonstração**: ramo do Supabase (plano Pro) ou projeto gratuito à parte?
+- **Visitas e avisos de vaga** (fica como no protótipo): quando a equipa confirma mais lugares livres do que a ficha
+  tinha, `registar_visita` atualiza as vagas mas não avisa as famílias em lista de espera nem quem segue a ficha
+  (o lar, com `definir_vagas`, avisa). Se o cliente quiser, basta chamar `private.avisar_nova_vaga` por tipo de
+  quarto que subiu.
+- **Fichas por publicar e a equipa**: a equipa só vê na pesquisa as fichas publicadas (RLS), por isso visita as do
+  catálogo; um rascunho registado por um lar é publicado pelo administrador antes da visita. O selo da equipa
+  passa a ficha a "verificada" — com gestor e publicada, recebe pedidos (e dados de saúde). Se o cliente quiser uma
+  segunda verificação, o selo pode passar a "pendente" até o administrador confirmar.
 
 ---
 
@@ -328,7 +371,7 @@ imposto pela base de dados.
 | `perfis_utilizador.organizacao` | `{ nome, tipo, servico? }` das contas `profissional`. |
 | `candidaturas.origem`, `caso_id`, `organizacao`, `alta_prevista` | Encaminhamento: `origem = 'profissional'`; o autor (`user_id`) é o profissional. |
 | `candidaturas.desbloqueada_em` | O lar aceitou o pedido (antes disso não lê a linha). |
-| `candidaturas.entrada_data`, `entrada_confirmada_lar_em`, `entrada_confirmada_familia_em`, `entrada_taxa` | Entrada na instituição (estado `admitida`); `entrada_taxa` = `aplicavel` (privado) ou `isenta` (IPSS/Misericórdia). |
+| `candidaturas.entrada_data`, `entrada_confirmada_lar_em`, `entrada_confirmada_familia_em`, `entrada_taxa` | Entrada na instituição (estado `admitida`); `entrada_taxa` = `aplicavel` (privado por entrada), `incluida` (privado com mensalidade, desde `20261013100100`) ou `isenta` (IPSS/Misericórdia). |
 | `avaliacoes.candidatura_id` | O pedido com entrada confirmada que justifica a avaliação verificada (único). |
 | `instituicoes.confirmacao_token_hash`, `confirmacao_token_expira_em` | SHA-256 do token do link `/confirmar/:token` e a validade. O token em bruto nunca é guardado. |
 
@@ -384,7 +427,7 @@ o Realtime de `candidaturas` só traz os aceites — use o aviso (`notificacoes`
 | --- | --- | --- |
 | `pedidos_recebidos()` | lar | Pedidos da sua ficha: resumo sempre; dados completos e histórico só dos aceites. |
 | `aceitar_candidatura(id)` | lar (dono) | "Aceitar e ver contacto". |
-| `marcar_entrada(id, data)` | lar (dono) | Só de `aceite`/`admitida`; `admitida`, confirmação do lar, taxa pela natureza; avisa o autor. Data não futura nem anterior ao pedido. |
+| `marcar_entrada(id, data)` | lar (dono) | Só de `aceite`/`admitida`; `admitida`, confirmação do lar, taxa pela natureza e pela modalidade (secção 13); avisa o autor. Data não futura nem anterior ao pedido. |
 | `confirmar_entrada_familia(id, data)` | autor do pedido | O mesmo do outro lado; avisa o lar. A primeira confirmação fixa a data e a taxa. |
 | `avaliar_lar(candidatura_id, nota, texto, aspetos)` | família autora do pedido | Só contas `familia` e só com a entrada confirmada pela família; uma por pedido; `verificada`; atualiza média e total. |
 | `minhas_avaliacoes()` | autenticado | As suas avaliações e o pedido de cada uma. |
@@ -418,3 +461,121 @@ o Realtime de `candidaturas` só traz os aceites — use o aviso (`notificacoes`
 | `responderConfirmacao(token, aindaTem)` | `rpc('confirmar_vagas_por_token', { p_token, p_ainda_tem })` | `vagasPorTokenDeLinha` |
 | `register({ role: 'profissional', organizacao })` | `auth.signUp({ …, options: { data: dadosRegisto(input) } })` | `utilizadorDeLinha` (com `organizacao`) |
 
+---
+
+## 13. Equipa de terreno, modalidade dos lares privados e taxa incluída (`20261013100000` e `20261013100100`)
+
+Contrato: `docs/MODELO-NEGOCIO.md` (decisões de 13/10/2026). O que o protótipo faz em `src/lib/store.ts`
+(`escolherPlanoInstituicao`, `registarVisita`, `useVisitas`, `registarConfirmacaoEntrada`), `src/lib/acesso.ts`
+(`compromissoAte`, `podeMudarPlano`) e `src/lib/negocio.ts` (`taxaPara`) passa a ser imposto pela base de dados.
+Os **valores** (150 € + IVA por entrada, 29 € + IVA por mês) não vivem na base de dados (nem nos comentários, que o
+PostgREST pode expor): só no painel privado, nos ecrãs da equipa e na faturação.
+
+### Tabelas, colunas e tipos novos
+
+| Tabela / coluna / tipo | O que é |
+| --- | --- |
+| `plano_instituicao` | `por_entrada` (por omissão) ou `mensal` (compromisso de 12 meses). |
+| `instituicoes.plano`, `plano_desde` | Modalidade de um lar **privado** e desde quando vigora. `null` = por entrada (como `planoInstituicao` ausente no protótipo). Restrições: só privados (`instituicoes_plano_so_privados`) e sempre com a data (`instituicoes_plano_com_data`). Se a ficha deixa de ser privada (o dono corrige a natureza), a modalidade apaga-se (trigger). **Interno**: fora da vista pública, sem privilégio de leitura ou escrita para `anon`/`authenticated`. |
+| `taxa_entrada` `incluida` | Entrada num lar privado com mensalidade: sem taxa por entrada. |
+| `role_utilizador` `equipa` | Equipa de terreno (conta interna). |
+| `resultado_visita` | `aderiu`, `interessado`, `voltar`, `recusou`. |
+| `visitas` | Uma visita (`Visita` no protótipo): ficha, conta da equipa (`equipa_id`), `data`, `resultado`, o que foi confirmado (`licenca_confirmada`, `instalacoes_vistas`, `vagas_confirmadas`, `precos_confirmados`), responsável (`responsavel_nome`, `_cargo`, `_telefone`, `_email`), `plano` (só na adesão de um privado), `notas`, `proximo_contacto` (só `interessado`/`voltar`), `conta_criada_id` (preenchido pelo convite, ver TODO), `demonstracao` (o "mundo" da ficha). |
+
+### Quem lê e escreve o quê
+
+| | anon | família / profissional | lar (gestor) | equipa |
+| --- | --- | --- | --- | --- |
+| `instituicoes.plano`, `plano_desde` | — | — | a sua, em `painel_instituicao()`; muda com `escolher_plano_instituicao` | todas as do seu "mundo", em `painel_equipa()`; muda na adesão (`registar_visita`) |
+| `visitas` | — (sem privilégio) | — (0 linhas) | — (0 linhas, nem as da sua ficha) | lê as do seu "mundo"; escreve só por `registar_visita` |
+| `painel_equipa()` | — | vazio | vazio | uma linha por ficha: `tem_gestor`, `plano`, `plano_desde`, `compromisso_ate` |
+
+O "mundo" é `demonstracao`: a conta de demonstração da equipa (palavra-passe pública) só vê e só visita fichas de
+demonstração; a equipa real só as reais (`private.mundo_equipa()`, na política de `visitas` e em `painel_equipa`).
+
+### Regras
+
+1. **Papel `equipa`**: só por `app_metadata.role` (administrador). `user_metadata.role = 'equipa'` no registo é
+   ignorado (conta `familia`); uma conta anónima nunca é da equipa; apagar ou mudar o papel no `app_metadata` tira-o
+   (a conta passa a `familia` — sem isto, o acesso ficava esquecido em `perfis_utilizador`). As RPC da equipa
+   recusam sessões anónimas.
+2. **Modalidade** (`escolher_plano_instituicao`, como `escolherPlanoInstituicao`): só o dono (`lar`) de um lar
+   **privado** (IPSS/Misericórdia → "As IPSS e Misericórdias não têm custos."). A mesma modalidade não muda nada
+   (nem a data). Para a mensalidade, sempre; de volta à taxa por entrada só no fim do compromisso — senão o erro diz
+   a data ("A mensalidade tem um compromisso de 12 meses: pode mudar a partir de 13 de outubro de 2027."). Cada
+   mudança regista `plano_desde = now()`. O fim do compromisso (`private.compromisso_ate`) é o mesmo instante de
+   `compromissoAte` no protótipo (12 meses na hora de Lisboa; 29 de fevereiro passa a 1 de março).
+3. **Taxa da entrada**: a primeira confirmação (do lar ou da família) fixa-a com a modalidade em vigor nesse momento
+   (`private.taxa_para(instituicao)`, como `taxaPara(lar)`): privado + mensalidade → `incluida`; privado por entrada →
+   `aplicavel`; IPSS/Misericórdia → `isenta`. Mudar de modalidade depois não altera entradas já confirmadas. A
+   leitura da ficha é feita com a linha bloqueada, por isso uma mudança de modalidade simultânea espera.
+4. **Visita** (`registar_visita`, como `registarVisita`): só contas `equipa`, só fichas do seu "mundo"; bloqueia a
+   ficha e depois os quartos (a ordem das outras RPC).
+   - licença **e** instalações confirmadas → selo «Visitada pela equipa»: `verificado`, `verificacao_data = now()`;
+   - só a licença → 1.º nível (`nao_verificado` passa a `pendente`; as outras ficam); `p_licenca` atualiza o n.º;
+   - `p_quartos` só nas partes confirmadas (vagas e/ou preços), por tipo de quarto que a ficha já tem (o primeiro de
+     cada tipo): livres entre 0 e o total; preços inteiros, o máximo nunca abaixo do mínimo; renova a frescura;
+   - `p_cuidados` substitui a lista; `aderiu` num privado → modalidade (por omissão, por entrada);
+   - o próximo contacto só fica para `interessado`/`voltar`; textos aparados, email em minúsculas e validado;
+   - com o selo, o gestor (se houver) recebe "Visitada pela equipa" (`/gestao/ficha`);
+   - a visita **não publica** a ficha (publicar continua a ser do administrador).
+
+   Duas diferenças em relação ao `registarVisita` do protótipo, de propósito: na adesão, a modalidade respeita o
+   compromisso (como já faz o formulário da visita — mensalidade → por entrada só no fim dos 12 meses) e repetir a
+   modalidade em vigor **não recomeça** o compromisso (o protótipo regista `planoDesde` em todas as adesões).
+
+### RPC novas (todas `SECURITY DEFINER` em `private`, invólucro `SECURITY INVOKER` em `public`)
+
+| RPC | Quem | Faz |
+| --- | --- | --- |
+| `escolher_plano_instituicao(p_plano)` | lar (dono de um privado) | Muda a modalidade (regras acima). Devolve `instituicao_id`, `plano`, `plano_desde`, `compromisso_ate`. |
+| `registar_visita(p_instituicao_id, p_resultado, p_verificacao, p_licenca, p_responsavel, p_plano, p_notas, p_proximo_contacto, p_quartos, p_cuidados)` | equipa | Regista a visita e aplica-a à ficha (regras acima). `p_verificacao` = `{ licenca_confirmada, instalacoes_vistas, vagas_confirmadas, precos_confirmados }`; `p_responsavel` = `{ nome, cargo, telefone, email }`; `p_quartos` = `[{ tipo, livres, preco_min, preco_max }]`. Devolve a visita (selo = licença e instalações). |
+| `painel_equipa()` | equipa | Por ficha do seu "mundo": se tem gestor e a modalidade em vigor, com o fim do compromisso. |
+| `painel_instituicao()` (alterada) | lar | Ganha `plano`, `plano_desde` e `compromisso_ate`. |
+
+### Do protótipo para o Supabase
+
+| Função do store | Supabase | Mapper (`src/lib/supabase-mappers.ts`) |
+| --- | --- | --- |
+| `escolherPlanoInstituicao(plano)` | `rpc('escolher_plano_instituicao', { p_plano })` | `planoDeLinha` |
+| `lar.planoInstituicao` / `planoDesde` (dono) | `rpc('painel_instituicao')` | `painelDeLinha(r).dono` → `larDeLinha(linha, reviews, dono)` |
+| `lar.planoInstituicao` / `ownerId` (equipa) | `rpc('painel_equipa')` | `painelEquipaDeLinha` (`temGestor`, `dono`) |
+| `registarVisita(input)` | `rpc('registar_visita', visitaParaRpc(input))` | `visitaDeLinha`; `selo` = licença e instalações confirmadas |
+| `useVisitas()` | `from('visitas').select('*').order('data', { ascending: false })` | `visitaDeLinha` |
+| `registarVisita({ criarConta: true })` | Edge Function de convite (TODO abaixo) | — |
+
+### TODO (produção) — conta do responsável na adesão: convite por Edge Function
+
+A conta do responsável **não é criada em SQL**: criar utilizadores exige a Auth Admin API (chave secreta), que
+nunca vai para o navegador nem para a base de dados. A palavra-passe provisória mostrada uma vez é **só do
+protótipo**. Na produção:
+
+1. O formulário da visita chama `registar_visita` e, se o responsável quiser a conta (`criarConta`, só na adesão
+   e com a ficha sem gestor), chama uma Edge Function `convidar-gestor` com `{ visita_id }` e o JWT da equipa.
+2. A Edge Function (Deno, chave secreta só nas variáveis do servidor):
+   - valida o JWT e confirma que a conta é `equipa` (`perfis_utilizador.role`) e do mesmo "mundo" da ficha;
+   - lê a visita: `resultado = 'aderiu'`, `responsavel_email` preenchido, ficha ainda sem gestor (`owner_id is null`);
+   - convida: `auth.admin.inviteUserByEmail(email, { data: { role: 'lar', nome, telefone }, redirectTo })` (o perfil e o
+     aviso de boas-vindas nascem logo no convite, já como `lar`) e `auth.admin.updateUserById(id, { app_metadata:
+     { role: 'lar' } })` — o papel fica também definido pelo administrador;
+   - liga a conta, numa transação: `instituicoes.owner_id = id` e `visitas.conta_criada_id = id`;
+   - e-mail que já tem conta: não liga nada sozinha — devolve o caso à equipa (ligar uma conta existente a uma
+     ficha é decisão do administrador, como no `utilizadores-demo.sql`).
+3. O gestor define a palavra-passe ao aceitar o convite (PKCE: no mesmo navegador — diga-o no e-mail). O aviso do
+   selo foi para o gestor que já existia; um gestor convidado depois recebe o de boas-vindas.
+4. Até lá, o administrador cria a conta pela Auth Admin API (`app_metadata: { role: 'lar' }`) e liga-a à ficha
+   (`update public.instituicoes set owner_id = '<uuid>' where id = 'lar-x'`).
+
+### TODO — faturação (Stripe + Moloni), por desenhar
+
+A faturação ainda não existe na base de dados. Ganchos para quando for desenhada:
+
+- **Por entrada**: cada `candidaturas` com `entrada_taxa = 'aplicavel'` (fixada na primeira confirmação) e a
+  entrada dentro da janela de atribuição de 12 meses do pedido (`entrada_data` até 365 dias depois de
+  `created_at`, como `entradaAtribuida` no protótipo) é uma linha de fatura. `incluida` e `isenta` nunca se faturam.
+- **Mensalidade**: `instituicoes.plano = 'mensal'` desde `plano_desde`, com o compromisso até
+  `private.compromisso_ate(...)`; uma subscrição mensal.
+- **Onde avisar o serviço de faturação**: a modalidade só muda em `escolher_plano_instituicao` (dono) e em
+  `registar_visita` (adesão) — e, por exceção, pelo administrador. Hoje fica só a modalidade atual e `plano_desde`:
+  para faturar com segurança vai ser preciso um histórico das modalidades (tabela própria, ou o registo do Stripe).
+- Fichas de demonstração (`demonstracao = true`) nunca chegam à faturação.

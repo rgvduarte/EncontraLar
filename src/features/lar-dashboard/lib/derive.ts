@@ -406,3 +406,119 @@ export function entradasEsteAno(cands: Candidatura[], agora = Date.now()): Candi
   const ano = String(new Date(agora).getFullYear())
   return entradasDoLar(cands).filter((c) => c.entrada!.data.startsWith(ano))
 }
+
+// ————————————————————————————————————————— taxa de cada entrada (fixada quando a entrada fica registada)
+
+/**
+ * Linha da taxa de uma entrada. Fica fixada quando a entrada é registada (pela casa ou pela família) e não muda se a
+ * instituição mudar depois de modalidade. Os textos são os da modalidade correspondente (`cobrancaEntradaTexto`):
+ * o painel diz o mesmo na entrada, no pedido e na modalidade em vigor. Painel privado: os valores aparecem, com IVA.
+ */
+export const TAXA_TEXTO: Record<TaxaEntrada, string> = {
+  aplicavel: cobrancaEntradaTexto({ natureza: 'privado', planoInstituicao: 'por_entrada' }),
+  incluida: cobrancaEntradaTexto({ natureza: 'privado', planoInstituicao: 'mensal' }),
+  isenta: cobrancaEntradaTexto({ natureza: 'ipss' }),
+}
+
+/** A pessoa entrou mais de 12 meses depois do pedido: a entrada não conta para a plataforma. */
+export const TAXA_NAO_CONTA = 'Não conta: entrou mais de 12 meses depois do pedido'
+
+/** Uma entrada já registada: a taxa com que ficou (mesmo que a modalidade tenha mudado depois), ou "não conta". */
+export function taxaDaEntradaTexto(c: Pick<Candidatura, 'entrada' | 'criadaEm'>): string | null {
+  if (!c.entrada) return null
+  return entradaAtribuida(c) ? TAXA_TEXTO[c.entrada.taxa] : TAXA_NAO_CONTA
+}
+
+/**
+ * Ao marcar a entrada no dia `dia` (AAAA-MM-DD): se a família já a registou, a taxa ficou fixada nessa altura;
+ * senão, fica com a da modalidade em vigor hoje.
+ */
+export function taxaAoMarcarTexto(c: Pick<Candidatura, 'entrada' | 'criadaEm'>, lar: Pick<Lar, 'natureza' | 'planoInstituicao'>, dia: string): string {
+  if (c.entrada) return taxaDaEntradaTexto(c)!
+  const conta = entradaAtribuida({ criadaEm: c.criadaEm, entrada: { data: dia, taxa: taxaPara(lar) } })
+  return conta ? cobrancaEntradaTexto(lar) : TAXA_NAO_CONTA
+}
+
+// ————————————————————————————————————————— modalidade (instituições privadas: por entrada ou mensalidade)
+
+export interface EstadoModalidade {
+  /** a modalidade em vigor */
+  atual: PlanoInstituicao
+  /** ISO — desde quando vigora (fichas antigas podem não ter a data) */
+  desde: string | null
+  /** ISO — fim do compromisso da mensalidade enquanto ainda não chegou; null quando pode mudar já */
+  compromissoAte: string | null
+  /** o que pode escolher agora (a modalidade em vigor conta como disponível) */
+  disponivel: Record<PlanoInstituicao, boolean>
+}
+
+/**
+ * O que o cartão "Modalidade" mostra. null para IPSS e Misericórdias: não pagam, não há nada a escolher.
+ * Para a mensalidade muda-se sempre; de volta à taxa por entrada, só no fim do compromisso (a mesma regra do store).
+ */
+export function estadoModalidade(lar: Pick<Lar, 'natureza' | 'planoInstituicao' | 'planoDesde'>, agora = Date.now()): EstadoModalidade | null {
+  const atual = planoDoLar(lar)
+  if (!atual) return null
+  const livre = podeMudarPlano(lar, agora)
+  return {
+    atual,
+    desde: lar.planoDesde ?? null,
+    compromissoAte: livre ? null : compromissoAte(lar),
+    disponivel: { por_entrada: atual === 'por_entrada' || livre, mensal: true },
+  }
+}
+
+/** ISO — até quando fica na mensalidade quem muda para ela agora (para o dizer antes de confirmar). */
+export const compromissoSeMudarAgora = (agora = Date.now()): string =>
+  compromissoAte({ natureza: 'privado', planoInstituicao: 'mensal', planoDesde: new Date(agora).toISOString() })!
+
+const semCentimos = (s: string) => s.replace(',00', '')
+
+/** "300 € + IVA" — montantes das instituições (painel privado), sempre com "+ IVA" (espaços inseparáveis: nunca parte). */
+export const valorMaisIva = (centimos: number) => `${semCentimos(precoTexto(centimos))}\u00a0+\u00a0IVA`
+
+/** "150 €" e "+ IVA por entrada": o valor da modalidade em duas partes (o número em destaque). Juntas, dão `valorPlanoTexto`. */
+export function partesValorPlano(p: PlanoInstituicao): { valor: string; resto: string } {
+  const info = PLANOS_INSTITUICAO[p]
+  return { valor: semCentimos(precoTexto(info.valorCentimos)), resto: `+ IVA ${info.unidade}` }
+}
+
+/** "3 entradas" · "1 entrada" */
+export const entradasTexto = (n: number) => `${n} ${n === 1 ? 'entrada' : 'entradas'}`
+
+/** A comparação usa o mesmo período da página Entradas: os últimos 12 meses (12 mensalidades). */
+export const MESES_COMPARACAO = 12
+
+export interface ComparacaoModalidades {
+  /** entradas que contaram (atribuídas ao EncontraLar) nos últimos 12 meses */
+  entradas: number
+  /** o que pagaria por entrada nesses 12 meses (cêntimos, + IVA) */
+  porEntradaCentimos: number
+  /** 12 mensalidades (cêntimos, + IVA) */
+  mensalCentimos: number
+}
+
+/**
+ * Com as entradas reais dos últimos 12 meses (só as que contam), quanto pagaria em cada modalidade — calculado a
+ * partir dos valores das modalidades, nunca escrito à mão. null sem entradas: fica só a regra geral.
+ */
+export function comparacaoModalidades(cands: Candidatura[], agora = Date.now()): ComparacaoModalidades | null {
+  const entradas = entradasUltimos12Meses(cands, agora).filter(entradaAtribuida).length
+  if (entradas < 1) return null
+  return {
+    entradas,
+    porEntradaCentimos: entradas * PLANOS_INSTITUICAO.por_entrada.valorCentimos,
+    mensalCentimos: MESES_COMPARACAO * PLANOS_INSTITUICAO.mensal.valorCentimos,
+  }
+}
+
+/**
+ * "Nos últimos 12 meses: 2 entradas" → "por entrada pagaria 300 € + IVA; com mensalidade, 348 € + IVA."
+ * Em duas partes: a seta entre elas é só visual (o leitor de ecrã ouve uma vírgula).
+ */
+export function comparacaoPartes(c: ComparacaoModalidades): { periodo: string; valores: string } {
+  return {
+    periodo: `Nos últimos ${MESES_COMPARACAO} meses: ${entradasTexto(c.entradas)}`,
+    valores: `por entrada pagaria ${valorMaisIva(c.porEntradaCentimos)}; com mensalidade, ${valorMaisIva(c.mensalCentimos)}.`,
+  }
+}

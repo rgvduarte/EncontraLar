@@ -113,7 +113,10 @@ describe('dados internos', () => {
     expect(await q(db, 'anon', 'select id, nome, lista_espera from public.instituicoes_publicas where id = $1', [base.instituicao])).toHaveLength(1)
 
     const painel = await q<Record<string, unknown>>(db, base.lar, 'select * from public.painel_instituicao()')
-    expect(painel).toEqual([{ id: base.instituicao, publicado: true, verificacao_estado: 'verificado', visualizacoes_30d: 0, lista_espera_offline: 0, lista_espera_online: 0 }])
+    expect(painel).toEqual([{
+      id: base.instituicao, publicado: true, verificacao_estado: 'verificado', visualizacoes_30d: 0, lista_espera_offline: 0, lista_espera_online: 0,
+      plano: null, plano_desde: null, compromisso_ate: null,
+    }])
     expect(await q(db, base.familia, 'select * from public.painel_instituicao()')).toEqual([])
     expect(await erro(db, 'anon', 'select * from public.painel_instituicao()')).toMatch(/permission denied/)
   })

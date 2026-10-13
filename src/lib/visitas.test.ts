@@ -100,7 +100,7 @@ describe('equipa de terreno: registo de visitas', () => {
     if (alvo) {
       const r = registarVisita({ larId: alvo.id, resultado: 'interessado', verificacao: { ...nada, licencaConfirmada: true }, licenca: '123/2020', proximoContacto: '2026-11-15' })
       expect(r).toMatchObject({ ok: true, selo: false, visita: { proximoContacto: '2026-11-15', plano: undefined } })
-      expect(lar(alvo.id).verificacao).toMatchObject({ estado: 'pendente', licenca: '123/2020' })
+      expect(lar(alvo.id).verificacao).toMatchObject({ estado: 'nao_verificado', licenca: '123/2020', licencaConfirmadaEm: expect.any(String) })
       expect(niveisVerificacao(lar(alvo.id))).toMatchObject({ licenca: true, visitado: false })
     }
     const outro = semDono('privado')

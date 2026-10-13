@@ -1,21 +1,17 @@
 import { useEffect, useState } from 'react'
-import type { Candidatura, Lar, TaxaEntrada } from '@/types'
+import type { Candidatura, Lar } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { InputField } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from '@/components/ui/Toast'
 import { marcarEntrada } from '@/lib/store'
 import { isoDia } from '@/lib/format'
-import { taxaPara } from '@/lib/negocio'
+import { taxaAoMarcarTexto } from '../lib/derive'
 import { diaCurto } from '../shared/pedidoBits'
 import type { Acao } from './acoes'
 
-/** Linha da taxa de uma entrada (fixada quando a entrada é confirmada). */
-export const TAXA_TEXTO: Record<TaxaEntrada, string> = {
-  aplicavel: 'Taxa fixa por entrada · conforme contrato',
-  incluida: 'Incluída na mensalidade',
-  isenta: 'Isenta — setor social',
-}
+/** Linha da taxa de uma entrada (aplicavel · incluida · isenta), fixada quando a entrada fica registada. Vive em lib/derive. */
+export { TAXA_TEXTO } from '../lib/derive'
 
 /**
  * "Marcar entrada": o dia em que a pessoa entrou (hoje, por omissão). Se a família já confirmou do lado dela,
@@ -80,7 +76,8 @@ export function EntradaModal({ c, lar, acao, open, onClose }: { c: Candidatura; 
           />
         )}
         <p className="text-ink-soft">{acao.explica}</p>
-        <p className="text-sm text-ink-mute">{TAXA_TEXTO[taxaPara(lar)]}.</p>
+        {/* já registada pela família: fica a taxa dessa altura; senão, a da modalidade em vigor hoje */}
+        <p className="text-sm text-ink-mute">{taxaAoMarcarTexto(c, lar, diaFamilia ?? data)}.</p>
       </div>
     </Modal>
   )

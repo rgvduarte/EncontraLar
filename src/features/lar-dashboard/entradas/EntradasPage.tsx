@@ -1,17 +1,18 @@
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useLocation } from 'react-router'
 import { Check, Clock } from 'lucide-react'
 import type { Candidatura, Lar } from '@/types'
-import { Reveal } from '@/components/motion'
+import { Reveal, useScrollTo } from '@/components/motion'
 import { tempoRelativo } from '@/lib/format'
-import { entradaAtribuida, entradaVerificada, origemDe, taxaPara } from '@/lib/negocio'
+import { entradaVerificada, origemDe } from '@/lib/negocio'
 import { cn } from '@/lib/cn'
-import { entradasDoLar, entradasUltimos12Meses } from '../lib/derive'
+import { entradasDoLar, entradasUltimos12Meses, taxaDaEntradaTexto } from '../lib/derive'
 import { useAgora } from '../lib/hooks'
 import { Numero } from '../shared/motion'
 import { diaCurto, verPedidoHref } from '../shared/pedidoBits'
 import { MoreLink, SectionTitle } from '../shared/ui'
-import { TAXA_TEXTO } from '../pedidos/EntradaModal'
 import { PedidoAcoes } from '../pedidos/PedidoAcoes'
+import { Modalidade } from './Modalidade'
 
 /** "Família" ou "Encaminhado por <organização>". */
 const origemTexto = (c: Candidatura) => (origemDe(c) === 'profissional' && c.encaminhamento ? `Encaminhado por ${c.encaminhamento.organizacao}` : 'Família')
@@ -48,7 +49,6 @@ function Campo({ k, children, className }: { k: string; children: ReactNode; cla
 function LinhaEntrada({ c, lar, agora, indice }: { c: Candidatura; lar: Lar; agora: number; indice: number }) {
   const e = c.entrada!
   const verificada = entradaVerificada(c)
-  const conta = entradaAtribuida(c)
   const familia = c.encaminhamento ? 'Quem encaminhou' : 'Família'
   return (
     <li>
@@ -83,8 +83,9 @@ function LinhaEntrada({ c, lar, agora, indice }: { c: Candidatura; lar: Lar; ago
                     : 'A aguardar a sua confirmação'}
               </span>
             </Campo>
+            {/* a taxa com que a entrada ficou registada (não muda se a modalidade mudar depois) */}
             <Campo k="Taxa" className="max-sm:col-span-2">
-              {conta ? TAXA_TEXTO[e.taxa] : 'Não conta: entrou mais de 12 meses depois do pedido'}
+              {taxaDaEntradaTexto(c)}
             </Campo>
           </dl>
           {!e.confirmadaLarEm && <PedidoAcoes c={c} lar={lar} agora={agora} apenasPrincipal verHref={verPedidoHref(c)} className="mt-5 max-sm:w-full" />}
@@ -95,8 +96,27 @@ function LinhaEntrada({ c, lar, agora, indice }: { c: Candidatura; lar: Lar; ago
 }
 
 /**
- * /gestao/entradas — quem entrou através do EncontraLar: o dia, a origem, as confirmações (casa e família)
- * e a linha da taxa. Sem valores em euros: o valor da taxa está no contrato, não no site.
+ * /gestao/entradas#modalidade → desce até à secção (HashRouter: as âncoras fazem-se com scroll, nunca com href="#id").
+ * useScrollTo volta a medir a página antes de deslocar: o painel é carregado de forma diferida.
+ */
+function useAncora(id: string) {
+  const { hash } = useLocation()
+  const scrollTo = useScrollTo()
+  const ir = useRef(scrollTo)
+  ir.current = scrollTo
+  useEffect(() => {
+    if (hash !== `#${id}`) return
+    const raf = requestAnimationFrame(() => {
+      const el = document.getElementById(id)
+      if (el) ir.current(el)
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [hash, id])
+}
+
+/**
+ * /gestao/entradas — quem entrou através do EncontraLar: o dia, a origem, as confirmações (casa e família) e a taxa
+ * de cada entrada; depois, a modalidade (#modalidade). Painel privado: os valores aparecem, sempre com "+ IVA".
  */
 export default function EntradasPage({ lar, cands }: { lar: Lar; cands: Candidatura[] }) {
   const agora = useAgora()
@@ -105,7 +125,8 @@ export default function EntradasPage({ lar, cands }: { lar: Lar; cands: Candidat
   const porMarcar = useMemo(() => cands.filter((c) => c.estado === 'aceite').sort((a, b) => b.atualizadaEm.localeCompare(a.atualizadaEm)), [cands])
   const verificadas = ano.filter(entradaVerificada).length
   const aguardar = ano.length - verificadas
-  const taxa = taxaPara(lar)
+  const privado = lar.natureza === 'privado'
+  useAncora('modalidade')
 
   return (
     <div className="flex flex-col gap-14 sm:gap-16">
@@ -163,21 +184,27 @@ export default function EntradasPage({ lar, cands }: { lar: Lar; cands: Candidat
       </section>
 
       <Reveal>
+        <Modalidade lar={lar} cands={cands} agora={agora} />
+      </Reveal>
+
+      <Reveal>
         <section aria-labelledby="entradas-como" className="tile">
           <h2 id="entradas-como" className="text-xl font-semibold">
             Como funciona
           </h2>
           <div className="mt-3 flex max-w-2xl flex-col gap-3 text-ink-soft">
             <p>
-              Estar no EncontraLar é gratuito. As instituições privadas pagam uma taxa fixa por cada pessoa que entra através da plataforma: sem mensalidade e
-              sem percentagem. IPSS e Misericórdias não pagam.
+              Estar no EncontraLar é gratuito, com tudo incluído, e ninguém paga para aparecer primeiro. As instituições privadas escolhem a modalidade: por
+              entrada ou mensalidade. IPSS e Misericórdias não pagam.
             </p>
             <p>
               Só conta a entrada que acontece até 12 meses depois do primeiro pedido feito aqui, confirmada pela instituição ou pela família. Com as duas
               confirmações, a entrada fica verificada e a família pode deixar uma avaliação verificada.
             </p>
+            {privado && (
+              <p>Cada entrada fica com a taxa da modalidade em vigor no dia em que é registada: mudar de modalidade não altera as entradas anteriores.</p>
+            )}
           </div>
-          <p className="mt-4 font-medium">A sua instituição: {TAXA_TEXTO[taxa]}</p>
         </section>
       </Reveal>
     </div>

@@ -16,6 +16,9 @@
  *   * candidatura_eventos.autor_id, avaliacoes.user_id e avaliacoes.candidatura_id também não são legíveis
  *     (o autor obtém as suas avaliações com minhas_avaliacoes());
  *   * instituicoes.confirmacao_token_hash/confirmacao_token_expira_em não são legíveis (só o hash do link);
+ *   * instituicoes.plano/plano_desde (modalidade dos lares privados) não são legíveis nem graváveis: o dono
+ *     lê-as em painel_instituicao() e muda-as com escolher_plano_instituicao(); a equipa lê-as em painel_equipa();
+ *   * visitas só é legível por contas 'equipa' (do mesmo "mundo") e só se escreve por registar_visita();
  *   * candidaturas: o LAR só lê as linhas que aceitou (desbloqueada_em); antes disso usa a RPC
  *     pedidos_recebidos(), que devolve o resumo sem identificação;
  *   * procuras_anonimas não é legível nem gravável pelos clientes (registar_procura / procura_na_zona);
@@ -76,6 +79,14 @@ type VagasPorToken = {
   quartos: Json
   vagas_livres: number
   atualizado_em: string
+}
+
+/** Linha de escolher_plano_instituicao(): a modalidade em vigor depois da escolha (null = por entrada). */
+type PlanoDaInstituicao = {
+  instituicao_id: string
+  plano: Database['public']['Enums']['plano_instituicao'] | null
+  plano_desde: string | null
+  compromisso_ate: string | null
 }
 
 export type Database = {
@@ -374,6 +385,8 @@ export type Database = {
           visualizacoes_30d: number
           confirmacao_token_hash: string | null
           confirmacao_token_expira_em: string | null
+          plano: Database['public']['Enums']['plano_instituicao'] | null
+          plano_desde: string | null
           created_at: string
           updated_at: string
         }
@@ -423,6 +436,8 @@ export type Database = {
           visualizacoes_30d?: number
           confirmacao_token_hash?: string | null
           confirmacao_token_expira_em?: string | null
+          plano?: Database['public']['Enums']['plano_instituicao'] | null
+          plano_desde?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -472,6 +487,8 @@ export type Database = {
           visualizacoes_30d?: number
           confirmacao_token_hash?: string | null
           confirmacao_token_expira_em?: string | null
+          plano?: Database['public']['Enums']['plano_instituicao'] | null
+          plano_desde?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -725,6 +742,77 @@ export type Database = {
           FK<'saidas_mensais_instituicao_id_fkey', 'instituicao_id', 'instituicoes_publicas'>,
         ]
       }
+      visitas: {
+        Row: {
+          id: string
+          instituicao_id: string
+          equipa_id: string | null
+          data: string
+          resultado: Database['public']['Enums']['resultado_visita']
+          licenca_confirmada: boolean
+          instalacoes_vistas: boolean
+          vagas_confirmadas: boolean
+          precos_confirmados: boolean
+          responsavel_nome: string | null
+          responsavel_cargo: string | null
+          responsavel_telefone: string | null
+          responsavel_email: string | null
+          plano: Database['public']['Enums']['plano_instituicao'] | null
+          notas: string | null
+          proximo_contacto: string | null
+          conta_criada_id: string | null
+          demonstracao: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          instituicao_id: string
+          equipa_id?: string | null
+          data?: string
+          resultado: Database['public']['Enums']['resultado_visita']
+          licenca_confirmada?: boolean
+          instalacoes_vistas?: boolean
+          vagas_confirmadas?: boolean
+          precos_confirmados?: boolean
+          responsavel_nome?: string | null
+          responsavel_cargo?: string | null
+          responsavel_telefone?: string | null
+          responsavel_email?: string | null
+          plano?: Database['public']['Enums']['plano_instituicao'] | null
+          notas?: string | null
+          proximo_contacto?: string | null
+          conta_criada_id?: string | null
+          demonstracao?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          instituicao_id?: string
+          equipa_id?: string | null
+          data?: string
+          resultado?: Database['public']['Enums']['resultado_visita']
+          licenca_confirmada?: boolean
+          instalacoes_vistas?: boolean
+          vagas_confirmadas?: boolean
+          precos_confirmados?: boolean
+          responsavel_nome?: string | null
+          responsavel_cargo?: string | null
+          responsavel_telefone?: string | null
+          responsavel_email?: string | null
+          plano?: Database['public']['Enums']['plano_instituicao'] | null
+          notas?: string | null
+          proximo_contacto?: string | null
+          conta_criada_id?: string | null
+          demonstracao?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          FK<'visitas_instituicao_id_fkey', 'instituicao_id', 'instituicoes'>,
+          FK<'visitas_instituicao_id_fkey', 'instituicao_id', 'instituicoes_publicas'>,
+          FK<'visitas_equipa_id_fkey', 'equipa_id', 'perfis_utilizador'>,
+          FK<'visitas_conta_criada_id_fkey', 'conta_criada_id', 'perfis_utilizador'>,
+        ]
+      }
     }
     Views: {
       instituicoes_publicas: {
@@ -846,6 +934,10 @@ export type Database = {
         Args: { p_caso_id: string; p_instituicao_ids: string[]; p_mensagem?: string }
         Returns: Database['public']['Tables']['candidaturas']['Row'][]
       }
+      escolher_plano_instituicao: {
+        Args: { p_plano: Database['public']['Enums']['plano_instituicao'] }
+        Returns: PlanoDaInstituicao[]
+      }
       marcar_entrada: {
         Args: { p_candidatura_id: string; p_data: string }
         Returns: Database['public']['Tables']['candidaturas']['Row']
@@ -861,6 +953,16 @@ export type Database = {
           created_at: string
         }[]
       }
+      painel_equipa: {
+        Args: never
+        Returns: {
+          instituicao_id: string
+          tem_gestor: boolean
+          plano: Database['public']['Enums']['plano_instituicao'] | null
+          plano_desde: string | null
+          compromisso_ate: string | null
+        }[]
+      }
       painel_instituicao: {
         Args: never
         Returns: {
@@ -870,6 +972,9 @@ export type Database = {
           visualizacoes_30d: number
           lista_espera_offline: number
           lista_espera_online: number
+          plano: Database['public']['Enums']['plano_instituicao'] | null
+          plano_desde: string | null
+          compromisso_ate: string | null
         }[]
       }
       pedidos_recebidos: {
@@ -911,6 +1016,24 @@ export type Database = {
         Args: { p_instituicao_id: string; p_tipo: Database['public']['Enums']['tipo_quarto'] }
         Returns: number
       }
+      registar_visita: {
+        Args: {
+          p_instituicao_id: string
+          p_resultado: Database['public']['Enums']['resultado_visita']
+          /** { licenca_confirmada?, instalacoes_vistas?, vagas_confirmadas?, precos_confirmados? } (booleanos) */
+          p_verificacao?: Json
+          p_licenca?: string
+          /** { nome?, cargo?, telefone?, email? } */
+          p_responsavel?: Json
+          p_plano?: Database['public']['Enums']['plano_instituicao']
+          p_notas?: string
+          p_proximo_contacto?: string
+          /** [{ tipo, livres, preco_min, preco_max }] */
+          p_quartos?: Json
+          p_cuidados?: string[]
+        }
+        Returns: Database['public']['Tables']['visitas']['Row']
+      }
       renovar_token_confirmacao: {
         Args: never
         Returns: string
@@ -932,8 +1055,10 @@ export type Database = {
       grau_dependencia: 'autonomo' | 'ligeira' | 'moderada' | 'grave'
       natureza: 'ipss' | 'misericordia' | 'privado'
       origem_pedido: 'familia' | 'profissional'
-      role_utilizador: 'familia' | 'lar' | 'profissional'
-      taxa_entrada: 'aplicavel' | 'isenta'
+      plano_instituicao: 'por_entrada' | 'mensal'
+      resultado_visita: 'aderiu' | 'interessado' | 'voltar' | 'recusou'
+      role_utilizador: 'familia' | 'lar' | 'profissional' | 'equipa'
+      taxa_entrada: 'aplicavel' | 'incluida' | 'isenta'
       tipo_notificacao: 'vaga' | 'candidatura' | 'visita' | 'sistema'
       tipo_quarto: 'individual' | 'duplo' | 'casal'
       tipo_resposta: 'erpi' | 'residencia' | 'centro_dia'
@@ -968,8 +1093,10 @@ export const Constants = {
       grau_dependencia: ['autonomo', 'ligeira', 'moderada', 'grave'],
       natureza: ['ipss', 'misericordia', 'privado'],
       origem_pedido: ['familia', 'profissional'],
-      role_utilizador: ['familia', 'lar', 'profissional'],
-      taxa_entrada: ['aplicavel', 'isenta'],
+      plano_instituicao: ['por_entrada', 'mensal'],
+      resultado_visita: ['aderiu', 'interessado', 'voltar', 'recusou'],
+      role_utilizador: ['familia', 'lar', 'profissional', 'equipa'],
+      taxa_entrada: ['aplicavel', 'incluida', 'isenta'],
       tipo_notificacao: ['vaga', 'candidatura', 'visita', 'sistema'],
       tipo_quarto: ['individual', 'duplo', 'casal'],
       tipo_resposta: ['erpi', 'residencia', 'centro_dia'],

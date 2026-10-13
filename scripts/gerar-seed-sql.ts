@@ -16,7 +16,7 @@ import { createHash } from 'node:crypto'
 import { createSeed, DEMO_FAMILIA_ID, DEMO_LAR_ID, DEMO_LAR_USER_ID, DEMO_PASSWORD, DEMO_PRO_ID } from '@/data/seed'
 import { diaPorExtenso } from '@/lib/format'
 import { taxaPara } from '@/lib/negocio'
-import type { Candidatura, Caso, DB, Lar, Notificacao, Organizacao, PerfilIdoso, ProcuraAnonima, User } from '@/types'
+import type { Candidatura, Caso, DB, Lar, Notificacao, Organizacao, PerfilIdoso, ProcuraAnonima, User, Visita } from '@/types'
 
 /** Data de referência do seed (igual à usada em src/data/seed.test.ts). */
 export const AGORA_SEED = Date.UTC(2026, 9, 12, 10, 0, 0)
@@ -80,11 +80,14 @@ const COLUNAS_INSTITUICAO = [
   'lista_espera_offline', 'estadia_media_meses', 'acordo_ss', 'incluido', 'extras', 'graus', 'cuidados',
   'comodidades', 'equipa_cuidadores_por_10', 'equipa_enfermeiros', 'equipa_medico_horas_semana', 'licenca',
   'verificacao_estado', 'verificacao_data', 'ultima_inspecao', 'avaliacao_media', 'num_avaliacoes', 'fundacao',
-  'atualizado_em', 'capa', 'visualizacoes_30d', 'confirmacao_token_hash',
+  'atualizado_em', 'capa', 'visualizacoes_30d', 'confirmacao_token_hash', 'plano', 'plano_desde',
 ]
 
 function linhaInstituicao(l: Lar, agora: number): string {
   if (!ID_VALIDO.test(l.id)) throw new Error(`id de instituição inválido para a BD: ${l.id}`)
+  // modalidade (dado interno): só lares privados, sempre com a data (restrições instituicoes_plano_*)
+  if ((l.planoInstituicao || l.planoDesde) && l.natureza !== 'privado') throw new Error(`${l.id}: modalidade num lar que não é privado`)
+  if (!!l.planoInstituicao !== !!l.planoDesde) throw new Error(`${l.id}: modalidade sem data (ou data sem modalidade)`)
   const v = [
     lit(l.id), 'true', 'true', lit(l.nome), lit(l.tipo), lit(l.natureza), lit(l.resumo), lit(l.descricao), lit(l.morada),
     lit(l.codigoPostal || null), lit(l.localidade), lit(l.concelho), lit(l.distrito), lit(l.regiao), lit(l.lat), lit(l.lng),
@@ -97,6 +100,7 @@ function linhaInstituicao(l: Lar, agora: number): string {
     lit(l.avaliacao), lit(l.numAvaliacoes), lit(l.fundacao), rel(l.atualizadoEm, agora), jsonb(l.capa),
     lit(l.visualizacoes30d),
     l.confirmacaoToken ? `decode('${hashToken(l.confirmacaoToken)}', 'hex')` : 'null',
+    lit(l.planoInstituicao ?? null), rel(l.planoDesde, agora),
   ]
   return `  (${v.join(', ')})`
 }
@@ -121,8 +125,9 @@ export function gerarSeedSql(agora = AGORA_SEED, db: DB = createSeed(agora)): st
     '-- SÓ PARA BASES DE DEMONSTRAÇÃO (local, ramo do Supabase ou projeto à parte) — NUNCA em produção.',
     '-- As fichas ficam marcadas demonstracao = true: só recebem pedidos de contas de demonstração.',
     '--',
-    `-- ${lares.length} instituições (com o hash SHA-256 do link de confirmação das vagas), os seus quartos,`,
-    `-- 12 meses de saídas, avaliações e ${db.procuras.length} pesquisas sem vagas (procura anónima).`,
+    `-- ${lares.length} instituições (com o hash SHA-256 do link de confirmação das vagas e, nos lares privados que a`,
+    `-- escolheram, a modalidade — dado interno), os seus quartos, 12 meses de saídas, avaliações e`,
+    `-- ${db.procuras.length} pesquisas sem vagas (procura anónima).`,
     '-- As datas são relativas ao momento em que este ficheiro corre (now() − intervalo).',
     '-- Contas de utilizador NÃO são criadas aqui (no Supabase alojado criam-se pela Auth Admin API);',
     '-- todas as fichas ficam sem dono (owner_id null). Para ligar as contas de demonstração ao lar',
@@ -232,13 +237,12 @@ function variavelConta(u: User): string {
 }
 
 /**
- * A equipa de terreno é uma conta interna (criada à parte, com permissões de administração no servidor):
- * fica fora do SQL de demonstração, tal como as visitas que regista no protótipo.
+ * Contas da base de demonstração: todas as do protótipo, incluindo a da equipa de terreno (papel interno
+ * 'equipa', que só o administrador atribui — aqui pela Auth Admin API, em app_metadata). Fica marcada como
+ * demonstração: só lê e só visita fichas de demonstração (registar_visita, política de visitas).
  */
-const utilizadoresBD = (db: DB) => db.users.filter((u) => u.role !== 'equipa')
-
 export function contasDemo(db: DB = createSeed(AGORA_SEED)): ContaDemo[] {
-  return utilizadoresBD(db).map((u) => ({
+  return db.users.map((u) => ({
     email: u.email.toLowerCase(),
     role: u.role,
     nome: u.nome,
@@ -357,20 +361,43 @@ function linhaNotificacao(n: Notificacao, agora: number, userVar: string, porId:
   return `  (${v.join(', ')})`
 }
 
+const EMAIL_VALIDO = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+
+/** Visita da equipa de terreno (como registar_visita a guardaria: texto aparado, email em minúsculas). */
+function linhaVisita(v: Visita, agora: number, varDe: Map<string, string>, porLar: Map<string, Lar>, papelDe: Map<string, User['role']>): string {
+  const lar = porLar.get(v.larId)
+  if (!lar) throw new Error(`visita ${v.id}: instituição ${v.larId} em falta`)
+  if (papelDe.get(v.equipaId) !== 'equipa') throw new Error(`visita ${v.id}: ${v.equipaId} não é uma conta da equipa`)
+  if (v.plano && (v.resultado !== 'aderiu' || lar.natureza !== 'privado')) throw new Error(`visita ${v.id}: modalidade só na adesão de um lar privado`)
+  if (v.proximoContacto && v.resultado !== 'interessado' && v.resultado !== 'voltar') throw new Error(`visita ${v.id}: próximo contacto só para "interessado" e "voltar"`)
+  if (v.contaCriadaId && (v.resultado !== 'aderiu' || !varDe.has(v.contaCriadaId))) throw new Error(`visita ${v.id}: conta criada inválida`)
+  const r = v.responsavel
+  const email = r?.email?.trim().toLowerCase() || null
+  if (email && !EMAIL_VALIDO.test(email)) throw new Error(`visita ${v.id}: email do responsável inválido`)
+  const t = (x: string | undefined) => lit(x?.trim() || null)
+  const val = [
+    uuidDe(v.id), lit(v.larId), varDe.get(v.equipaId)!, rel(v.data, agora), lit(v.resultado),
+    lit(v.verificacao.licencaConfirmada), lit(v.verificacao.instalacoesVistas), lit(v.verificacao.vagasConfirmadas), lit(v.verificacao.precosConfirmados),
+    t(r?.nome), t(r?.cargo), t(r?.telefone), lit(email), lit(v.plano ?? null), t(v.notas), diaRel(v.proximoContacto, agora),
+    v.contaCriadaId ? varDe.get(v.contaCriadaId)! : 'null', 'true', rel(v.data, agora),
+  ]
+  return `  (${val.join(', ')})`
+}
+
 /**
  * Liga as contas de demonstração (criadas antes pela Auth Admin API) aos dados de demonstração:
  * a gestora fica dona de DEMO_LAR_ID; Ana, as famílias fictícias e a assistente social recebem os
  * perfis, casos, pedidos (com encaminhamentos e entradas), histórico, favoritos e notificações do
  * protótipo; a avaliação verificada fica ligada ao pedido que lhe dá direito — o painel do lar fica
- * igual ao modo demonstração.
+ * igual ao modo demonstração; a equipa de terreno fica com as visitas do piloto no Porto.
  */
 export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): string {
   const lar = db.lares.find((l) => l.id === DEMO_LAR_ID)
-  const familia = utilizadoresBD(db).find((u) => u.id === DEMO_FAMILIA_ID)
-  const gestora = utilizadoresBD(db).find((u) => u.id === DEMO_LAR_USER_ID)
+  const familia = db.users.find((u) => u.id === DEMO_FAMILIA_ID)
+  const gestora = db.users.find((u) => u.id === DEMO_LAR_USER_ID)
   if (!lar || !familia || !gestora) throw new Error('seed sem lar/contas de demonstração')
 
-  const varDe = new Map(utilizadoresBD(db).map((u) => [u.id, variavelConta(u)]))
+  const varDe = new Map(db.users.map((u) => [u.id, variavelConta(u)]))
   if (new Set(varDe.values()).size !== varDe.size) throw new Error('variáveis de conta repetidas')
   const contas = contasDemo(db)
 
@@ -400,6 +427,8 @@ export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): st
   }
   const online = db.candidaturas.filter((c) => c.larId === DEMO_LAR_ID && (c.estado === 'lista_espera' || c.estado === 'vaga_proposta')).length
   if (lar.listaEspera < online) throw new Error('lista de espera do lar de demonstração menor do que as inscrições online')
+  const papelDe = new Map(db.users.map((u) => [u.id, u.role]))
+  const visitas = db.visitas
 
   const out: string[] = [
     '-- =====================================================================================',
@@ -407,7 +436,7 @@ export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): st
     '-- Origem: src/data/seed.ts via scripts/gerar-seed-sql.ts → `npm run db:seed-sql`.',
     '--',
     '-- SÓ PARA BASES DE DEMONSTRAÇÃO (local, ramo do Supabase ou projeto à parte) — NUNCA em produção:',
-    '-- as contas lar@ e familia@ têm palavra-passe pública (mostrada no ecrã de entrada).',
+    '-- as contas lar@, familia@, social@ e equipa@ têm palavra-passe pública (mostrada no ecrã de entrada).',
     '--',
     '-- Pré-requisitos:',
     '--   1. migrações aplicadas e supabase/seed.sql carregado;',
@@ -420,7 +449,7 @@ export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): st
     '',
     'do $demo$',
     'declare',
-    ...utilizadoresBD(db).map((u) => `  ${varDe.get(u.id)} uuid;`),
+    ...db.users.map((u) => `  ${varDe.get(u.id)} uuid;`),
     '  v_invalidas text;',
     'begin',
     `  if not exists (select 1 from public.instituicoes where id = ${lit(DEMO_LAR_ID)} and demonstracao) then`,
@@ -439,7 +468,7 @@ export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): st
     '  if v_invalidas is not null then',
     "    raise exception 'Contas de demonstração em falta ou inválidas (e-mail por confirmar ou sem app_metadata.role): %. Crie-as com scripts/criar-contas-demo.mjs — ver docs/SUPABASE.md.', v_invalidas;",
     '  end if;',
-    ...utilizadoresBD(db).map((u) => `  ${varDe.get(u.id)} := (select id from auth.users where lower(email) = ${lit(u.email.toLowerCase())});`),
+    ...db.users.map((u) => `  ${varDe.get(u.id)} := (select id from auth.users where lower(email) = ${lit(u.email.toLowerCase())});`),
     '',
     `  if exists (select 1 from public.instituicoes where id = ${lit(DEMO_LAR_ID)} and owner_id is not null and owner_id <> v_lar) then`,
     `    raise exception 'A ficha ${DEMO_LAR_ID} já tem outro gestor — nada foi alterado.';`,
@@ -450,7 +479,7 @@ export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): st
     '  end if;',
     '',
     '  -- contas de demonstração: só interagem com fichas de demonstração (o papel já veio do app_metadata)',
-    ...utilizadoresBD(db).map(
+    ...db.users.map(
       (u) =>
         `  update public.perfis_utilizador set demonstracao = true, nome = ${lit(u.nome)}, telefone = ${lit(u.telefone ?? null)}, organizacao = ${u.organizacao ? jsonb(u.organizacao) : 'null'} where id = ${varDe.get(u.id)};`,
     ),
@@ -490,9 +519,18 @@ export function gerarDemoSql(agora = AGORA_SEED, db: DB = createSeed(agora)): st
     '  -- notificações de exemplo',
     '  insert into public.notificacoes (user_id, tipo, titulo, texto, instituicao_id, candidatura_id, link, lida, created_at) values',
     db.notificacoes.map((n) => linhaNotificacao(n, agora, varDe.get(n.userId)!, porId, idsLigaveis)).join(',\n') + ';',
-    'end;',
-    '$demo$;',
-    '',
   )
+  if (visitas.length) {
+    out.push(
+      '',
+      '  -- visitas da equipa de terreno (piloto no distrito do Porto); a modalidade das fichas vem do seed.sql',
+      '  insert into public.visitas (id, instituicao_id, equipa_id, data, resultado, licenca_confirmada, instalacoes_vistas,',
+      '    vagas_confirmadas, precos_confirmados, responsavel_nome, responsavel_cargo, responsavel_telefone, responsavel_email,',
+      '    plano, notas, proximo_contacto, conta_criada_id, demonstracao, created_at)',
+      '  values',
+      visitas.map((v) => linhaVisita(v, agora, varDe, porLar, papelDe)).join(',\n') + ';',
+    )
+  }
+  out.push('end;', '$demo$;', '')
   return out.join('\n')
 }

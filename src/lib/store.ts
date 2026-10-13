@@ -1358,8 +1358,10 @@ export function registarVisita(input: RegistoVisitaInput): RegistoVisitaResultad
   if (input.verificacao.licencaConfirmada) {
     const licenca = input.licenca?.trim() || lar.verificacao.licenca
     // licença confirmada sem ver as instalações: 1.º nível (licença), sem o selo da visita
-    const estado = selo ? 'verificado' : lar.verificacao.estado === 'nao_verificado' ? 'pendente' : lar.verificacao.estado
-    novoLar = { ...novoLar, verificacao: { ...novoLar.verificacao, licenca, estado, ...(selo ? { data: agora } : {}) } }
+    novoLar = {
+      ...novoLar,
+      verificacao: { ...novoLar.verificacao, licenca, licencaConfirmadaEm: agora, ...(selo ? { estado: 'verificado' as const, data: agora } : {}) },
+    }
   }
   if (input.quartos?.length && (input.verificacao.vagasConfirmadas || input.verificacao.precosConfirmados)) {
     const quartos = novoLar.quartos.map((q) => {

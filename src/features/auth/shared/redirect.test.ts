@@ -84,6 +84,42 @@ describe('área dos casos (profissional)', () => {
   })
 })
 
+describe('área da equipa de terreno (/visitas)', () => {
+  it('só a equipa segue para as visitas; as outras contas vão para o seu painel', () => {
+    expect(roleDoCaminho('/visitas')).toBe('equipa')
+    expect(roleDoCaminho('/visitas/lar-sao-bento')).toBe('equipa')
+    expect(roleDoCaminho('/visitas?seg=acompanhar')).toBe('equipa')
+    expect(roleDoCaminho('/visitasx')).toBeNull()
+    expect(destinoAposEntrar('/visitas/lar-sao-bento', 'equipa')).toBe('/visitas/lar-sao-bento')
+    expect(destinoAposEntrar('/visitas?seg=acompanhar&distrito=Porto', 'equipa')).toBe('/visitas?seg=acompanhar&distrito=Porto')
+    expect(destinoAposEntrar('/visitas', 'familia')).toBe('/familia')
+    expect(destinoAposEntrar('/visitas/lar-sao-bento', 'lar')).toBe('/gestao')
+    expect(destinoAposEntrar('/visitas', 'profissional')).toBe('/casos')
+    // nunca é uma página pública para onde voltar depois de criar uma conta
+    expect(voltarPublico('/visitas/lar-sao-bento')).toBeNull()
+    expect(destinoAposRegistoProfissional('/visitas')).toBe('/casos')
+  })
+
+  it('leva a equipa às visitas, por omissão, e nunca às áreas das outras contas', () => {
+    expect(destinoAposEntrar(null, 'equipa')).toBe('/visitas')
+    expect(destinoAposEntrar('/entrar', 'equipa')).toBe('/visitas')
+    expect(destinoAposEntrar('/gestao/vagas', 'equipa')).toBe('/visitas')
+    expect(destinoAposEntrar('/casos/caso-1', 'equipa')).toBe('/visitas')
+    expect(destinoAposEntrar('/familia', 'equipa')).toBe('/visitas')
+    // o site público continua aberto (a ficha de um lar, a pesquisa)
+    expect(destinoAposEntrar('/lar/lar-sao-bento', 'equipa')).toBe('/lar/lar-sao-bento')
+    expect(destinoAposEntrar('/pesquisa?distrito=Porto', 'equipa')).toBe('/pesquisa?distrito=Porto')
+  })
+
+  it('descreve o destino', () => {
+    expect(motivoDoDestino('/visitas', lares)).toBe('abrir as visitas da equipa')
+    expect(motivoDoDestino('/visitas?seg=acompanhar', lares)).toBe('abrir as visitas da equipa')
+    expect(motivoDoDestino('/visitas/lar-sao-bento', lares)).toBe('abrir o registo da visita')
+    expect(motivoDoDestino('/visitas/lar-sao-bento/feita', lares)).toBe('abrir o registo da visita')
+    expect(motivoDoDestino('/visitas/conta', lares)).toBe('abrir os dados da sua conta')
+  })
+})
+
 describe('Acesso Família (/acesso)', () => {
   // o que o bloqueio da ficha manda: /acesso com o plano e o caminho de volta (já codificado)
   const acesso = `/acesso?plano=acesso_90&voltar=${encodeURIComponent('/lar/lar-sao-bento?acao=pedir')}`

@@ -3,11 +3,11 @@
 -- Origem: src/data/seed.ts via scripts/gerar-seed-sql.ts → `npm run db:seed-sql`.
 --
 -- SÓ PARA BASES DE DEMONSTRAÇÃO (local, ramo do Supabase ou projeto à parte) — NUNCA em produção:
--- as contas lar@ e familia@ têm palavra-passe pública (mostrada no ecrã de entrada).
+-- as contas lar@, familia@, social@ e equipa@ têm palavra-passe pública (mostrada no ecrã de entrada).
 --
 -- Pré-requisitos:
 --   1. migrações aplicadas e supabase/seed.sql carregado;
---   2. as 11 contas de supabase/demo/contas-demo.json criadas pela Auth Admin API
+--   2. as 12 contas de supabase/demo/contas-demo.json criadas pela Auth Admin API
 --      (scripts/criar-contas-demo.mjs — NUNCA por SQL em auth.users), com o e-mail confirmado e o
 --      papel em app_metadata. Uma conta registada por outra pessoa com o mesmo e-mail não tem
 --      app_metadata.role e é recusada: o script não entrega a ficha a quem só conhece o e-mail.
@@ -19,6 +19,7 @@ declare
   v_familia uuid;
   v_lar uuid;
   v_profissional uuid;
+  v_equipa_sofia uuid;
   v_fam_0 uuid;
   v_fam_1 uuid;
   v_fam_2 uuid;
@@ -39,6 +40,7 @@ begin
       ('familia@exemplo.pt', 'familia'),
       ('lar@exemplo.pt', 'lar'),
       ('social@exemplo.pt', 'profissional'),
+      ('equipa@exemplo.pt', 'equipa'),
       ('rui.sousa@exemplo.pt', 'familia'),
       ('sandra.lopes@exemplo.pt', 'familia'),
       ('carlos.pinto@exemplo.pt', 'familia'),
@@ -58,6 +60,7 @@ begin
   v_familia := (select id from auth.users where lower(email) = 'familia@exemplo.pt');
   v_lar := (select id from auth.users where lower(email) = 'lar@exemplo.pt');
   v_profissional := (select id from auth.users where lower(email) = 'social@exemplo.pt');
+  v_equipa_sofia := (select id from auth.users where lower(email) = 'equipa@exemplo.pt');
   v_fam_0 := (select id from auth.users where lower(email) = 'rui.sousa@exemplo.pt');
   v_fam_1 := (select id from auth.users where lower(email) = 'sandra.lopes@exemplo.pt');
   v_fam_2 := (select id from auth.users where lower(email) = 'carlos.pinto@exemplo.pt');
@@ -79,6 +82,7 @@ begin
   update public.perfis_utilizador set demonstracao = true, nome = 'Ana Ferreira', telefone = '912 000 101', organizacao = null where id = v_familia;
   update public.perfis_utilizador set demonstracao = true, nome = 'Helena Marques', telefone = '220 000 042', organizacao = null where id = v_lar;
   update public.perfis_utilizador set demonstracao = true, nome = 'Marta Correia', telefone = '225 000 310', organizacao = '{"nome":"Hospital de Vale Formoso","tipo":"hospital","servico":"Serviço Social"}'::jsonb where id = v_profissional;
+  update public.perfis_utilizador set demonstracao = true, nome = 'Sofia Ramos', telefone = '910 000 520', organizacao = null where id = v_equipa_sofia;
   update public.perfis_utilizador set demonstracao = true, nome = 'Rui Sousa', telefone = '936 000 214', organizacao = null where id = v_fam_0;
   update public.perfis_utilizador set demonstracao = true, nome = 'Sandra Lopes', telefone = '917 000 388', organizacao = null where id = v_fam_1;
   update public.perfis_utilizador set demonstracao = true, nome = 'Carlos Pinto', telefone = '965 000 127', organizacao = null where id = v_fam_2;
@@ -336,5 +340,17 @@ begin
   (v_lar, 'candidatura', 'Confirme a entrada', 'Registou a entrada de Olívia Barros. A família ainda não confirmou; enviámos-lhe um lembrete.', null, md5('encontralar:c-fam-7')::uuid, '/gestao/pedidos?pedido=' || md5('encontralar:c-fam-7')::uuid::text, true, now() - interval '950400 seconds'),
   (v_profissional, 'candidatura', 'Em análise', 'O pedido para Albano Teixeira está em análise no Centro Social Fonte Clara.', 'lar-centro-social-fonte-clara', md5('encontralar:c-pro-2')::uuid, '/casos/' || md5('encontralar:caso-1')::uuid::text, false, now() - interval '17280 seconds'),
   (v_profissional, 'candidatura', 'Não foi possível', 'O Lar Residencial Rainha Santa não tem, neste momento, condições para receber Albano Teixeira. Nota: Não temos enfermagem durante a noite.', 'lar-lar-residencial-rainha-santa', md5('encontralar:c-pro-3')::uuid, '/casos/' || md5('encontralar:caso-1')::uuid::text, true, now() - interval '25920 seconds');
+
+  -- visitas da equipa de terreno (piloto no distrito do Porto); a modalidade das fichas vem do seed.sql
+  insert into public.visitas (id, instituicao_id, equipa_id, data, resultado, licenca_confirmada, instalacoes_vistas,
+    vagas_confirmadas, precos_confirmados, responsavel_nome, responsavel_cargo, responsavel_telefone, responsavel_email,
+    plano, notas, proximo_contacto, conta_criada_id, demonstracao, created_at)
+  values
+  (md5('encontralar:v-1')::uuid, 'lar-jardins-do-douro', v_equipa_sofia, now() - interval '5529600 seconds', 'aderiu', true, true, true, true, 'Helena Marques', 'Diretora técnica', '220 000 042', 'lar@exemplo.pt', 'por_entrada', 'Quer começar pela unidade de demências. Pediu formação para a equipa administrativa.', null, null, true, now() - interval '5529600 seconds'),
+  (md5('encontralar:v-2')::uuid, 'lar-residencia-senior-lirios-do-campo', v_equipa_sofia, now() - interval '1814400 seconds', 'aderiu', true, true, true, true, 'Paulo Antunes', 'Sócio-gerente', null, null, 'mensal', 'Prefere um custo fixo por mês. Casa pequena: cada cama vazia pesa muito.', null, null, true, now() - interval '1814400 seconds'),
+  (md5('encontralar:v-3')::uuid, 'lar-casa-bem-estar-do-douro', v_equipa_sofia, now() - interval '518400 seconds', 'interessado', true, false, false, false, null, null, null, null, null, 'Gostou da lista de espera digital. Vai falar com o sócio antes de decidir.', current_date + 5, null, true, now() - interval '518400 seconds'),
+  (md5('encontralar:v-4')::uuid, 'lar-residencia-senior-monte-alegre', v_equipa_sofia, now() - interval '259200 seconds', 'voltar', false, false, false, false, null, null, null, null, null, 'A diretora estava de férias. Voltar na próxima semana, de manhã.', current_date + 2, null, true, now() - interval '259200 seconds'),
+  (md5('encontralar:v-5')::uuid, 'lar-residencia-senior-ternura', v_equipa_sofia, now() - interval '1036800 seconds', 'recusou', false, false, false, false, null, null, null, null, null, 'Lista de espera cheia; não vê necessidade por agora. Voltar a tentar daqui a 6 meses.', null, null, true, now() - interval '1036800 seconds'),
+  (md5('encontralar:v-6')::uuid, 'lar-lar-residencial-rainha-santa', v_equipa_sofia, now() - interval '2592000 seconds', 'aderiu', true, true, true, true, null, null, null, null, null, 'IPSS: sem custos. Interesse em reduzir os telefonemas de famílias.', null, null, true, now() - interval '2592000 seconds');
 end;
 $demo$;

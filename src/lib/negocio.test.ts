@@ -33,6 +33,14 @@ describe('regras do modelo de negócio', () => {
     expect(faixaEtaria(97)).toBe('95 ou mais')
   })
 
+  it('a licença só conta como confirmada depois de a equipa a confirmar (declarar no registo não chega)', () => {
+    const v = (verificacao: Parameters<typeof niveisVerificacao>[0]['verificacao']) => niveisVerificacao({ verificacao, reviews: [] })
+    expect(v({ estado: 'pendente', licenca: '12/2020' }).licenca).toBe(false)
+    expect(v({ estado: 'pendente', licenca: '12/2020', licencaConfirmadaEm: '2026-10-01T10:00:00Z' }).licenca).toBe(true)
+    expect(v({ estado: 'nao_verificado', licenca: '', licencaConfirmadaEm: '2026-10-01T10:00:00Z' }).licenca).toBe(false)
+    expect(v({ estado: 'verificado', licenca: '12/2020', data: '2026-10-01T10:00:00Z' })).toMatchObject({ licenca: true, visitado: true })
+  })
+
   it('o contacto só fica visível depois de o lar aceitar o pedido', () => {
     expect(contactoVisivel({})).toBe(false)
     expect(contactoVisivel({ desbloqueadaEm: '2026-10-01T10:00:00Z' })).toBe(true)

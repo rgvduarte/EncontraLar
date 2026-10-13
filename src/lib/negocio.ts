@@ -99,7 +99,8 @@ export interface NiveisVerificacao {
 
 export function niveisVerificacao(lar: Pick<Lar, 'verificacao' | 'reviews'>): NiveisVerificacao {
   return {
-    licenca: lar.verificacao.estado !== 'nao_verificado' && !!lar.verificacao.licenca,
+    // declarar o número no registo não chega: a equipa tem de o confirmar (ou ter visitado a casa)
+    licenca: !!lar.verificacao.licenca && (lar.verificacao.estado === 'verificado' || !!lar.verificacao.licencaConfirmadaEm),
     visitado: lar.verificacao.estado === 'verificado' && !!lar.verificacao.data,
     avaliacoesVerificadas: lar.reviews.some((r) => r.verificada),
   }

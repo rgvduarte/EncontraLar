@@ -464,6 +464,8 @@ function gerarLar(ctx: Ctx, loc: Localidade, idx: number, i: number): Lar {
       estado: estadoVer,
       data: estadoVer === 'verificado' ? new Date(agora - rng.int(20, 300) * DIA).toISOString() : undefined,
       licenca: `${rng.int(10, 999)}/${rng.int(Math.max(fundacao, 2000), 2025)}`,
+      // em análise: a licença já foi confirmada no registo da Segurança Social; falta a visita (sem gastar o rng)
+      licencaConfirmadaEm: estadoVer === 'pendente' ? new Date(agora - 45 * DIA).toISOString() : undefined,
       ultimaInspecao: rng.chance(0.85) ? new Date(agora - rng.int(60, 900) * DIA).toISOString() : undefined,
     },
     avaliacao,

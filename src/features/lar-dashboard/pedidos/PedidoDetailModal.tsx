@@ -14,10 +14,10 @@ import {
 } from '@/lib/labels'
 import { resumoAnonimo } from '@/lib/negocio'
 import { cn } from '@/lib/cn'
+import { taxaDaEntradaTexto } from '../lib/derive'
 import { altaTexto, bloqueado, diaCurto, nomeContacto, nomePedido, relacaoTexto } from '../shared/pedidoBits'
 import { PedidoAcoes } from './PedidoAcoes'
 import { acoesDoPedido } from './acoes'
-import { TAXA_TEXTO } from './EntradaModal'
 import { AvisoBloqueio, CompatLines, ContactoLinks, EntradaLinha, EstadoTag, OrigemBadges, PropostaLinha, VisitaLinha } from './partes'
 
 function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
@@ -138,7 +138,8 @@ export function PedidoDetailModal({ c, lar, agora, open = true, onClose }: { c: 
               <Linha k={c.encaminhamento ? 'Quem encaminhou' : 'Família'}>
                 {c.entrada.confirmadaFamiliaEm ? `Confirmou a ${dataLonga(c.entrada.confirmadaFamiliaEm)}` : 'Ainda não confirmou'}
               </Linha>
-              <Linha k="Taxa">{TAXA_TEXTO[c.entrada.taxa]}</Linha>
+              {/* a taxa com que a entrada ficou registada: não muda se a modalidade mudar depois */}
+              <Linha k="Taxa">{taxaDaEntradaTexto(c)}</Linha>
             </dl>
           </Bloco>
         )}

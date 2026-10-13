@@ -4,7 +4,7 @@ import type { Role, User } from '@/types'
 import { loginDemo } from '@/lib/store'
 import { prefersReducedMotion, useInView } from '@/lib/motion'
 import { toast } from '@/components/ui/Toast'
-import { DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_PASSWORD, DEMO_PRO_EMAIL } from '@/data/seed'
+import { DEMO_EQUIPA_EMAIL, DEMO_FAMILIA_EMAIL, DEMO_LAR_EMAIL, DEMO_PASSWORD, DEMO_PRO_EMAIL } from '@/data/seed'
 import { cn } from '@/lib/cn'
 import { InlineSpinner } from '../shared/InlineSpinner'
 import { Appear } from '../shared/Appear'
@@ -30,6 +30,13 @@ const CONTAS: { role: Role; titulo: string; descricao: string; email: string }[]
     titulo: 'Entrar como assistente social',
     descricao: 'Casos, altas previstas e encaminhamentos.',
     email: DEMO_PRO_EMAIL,
+  },
+  {
+    // conta interna: quem visita as instituições (piloto no Porto)
+    role: 'equipa',
+    titulo: 'Entrar como equipa de terreno',
+    descricao: 'Modo visita: verificar e registar instituições.',
+    email: DEMO_EQUIPA_EMAIL,
   },
 ]
 
@@ -111,8 +118,8 @@ function Divisoria() {
 }
 
 /**
- * "ou experimente sem conta": três contas fictícias (família, instituição, assistente social), um toque e está dentro.
- * A família tem o Acesso Família ativo; a versão grátis vê-se sem entrar ou com uma conta nova.
+ * "ou experimente sem conta": quatro contas fictícias (família, instituição, assistente social e equipa de terreno),
+ * um toque e está dentro. A família tem o Acesso Família ativo; a versão grátis vê-se sem entrar ou com uma conta nova.
  */
 export function DemoAccess({
   onSuccess,

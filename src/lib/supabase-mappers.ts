@@ -11,6 +11,9 @@
  *     estar minimizada ({nome, idade, minimizado_em}) depois de o pedido ser cancelado/recusado:
  *     nesse caso devolvemos PerfilMinimizado em vez de inventar grau/necessidades;
  *   * owner_id e visualizacoes_30d não são legíveis pelos clientes: vêm de painel_instituicao();
+ *   * a modalidade dos lares privados (planoInstituicao/planoDesde) também não: o dono lê a sua em
+ *     painel_instituicao() e a equipa a de todas em painel_equipa() — nunca a vista pública;
+ *   * visitas: só a equipa as lê (visitaDeLinha) e só registar_visita as escreve (visitaParaRpc);
  *   * DUAS FASES (RGPD art. 9.º): o lar só lê na tabela os pedidos que aceitou; a lista completa do
  *     painel vem de pedidos_recebidos() → pedidoRecebidoDeLinha (pedidos por aceitar só com o resumo
  *     sem identificação: nome, contacto, notas e mensagem nunca chegam ao navegador do lar).
@@ -29,6 +32,7 @@ import type {
   Notificacao,
   Organizacao,
   PerfilIdoso,
+  PlanoInstituicao,
   ProcuraAnonima,
   Regiao,
   Review,
@@ -37,9 +41,10 @@ import type {
   TipoOrganizacao,
   TipoQuarto,
   User,
+  Visita,
 } from '@/types'
 import type { Database, Json, Tables, TablesInsert, TablesUpdate } from './database.types'
-import type { atualizarCaso, AvaliacaoInput, CasoInput, PerfilInput, RegisterInput } from './store'
+import type { atualizarCaso, AvaliacaoInput, CasoInput, PerfilInput, RegisterInput, RegistoVisitaInput } from './store'
 import { LOCALIDADES, LUGARES } from '@/data/localidades'
 
 export type InstituicaoPublicaRow = Tables<'instituicoes_publicas'>
@@ -57,6 +62,9 @@ export type PedidoRecebidoRow = Rpc['pedidos_recebidos']['Returns'][number]
 export type ProcuraNaZonaRow = Rpc['procura_na_zona']['Returns'][number]
 export type VagasPorTokenRow = Rpc['vagas_por_token']['Returns'][number]
 export type MinhaAvaliacaoRow = Rpc['minhas_avaliacoes']['Returns'][number]
+export type PlanoDaInstituicaoRow = Rpc['escolher_plano_instituicao']['Returns'][number]
+export type PainelEquipaRow = Rpc['painel_equipa']['Returns'][number]
+export type VisitaRow = Tables<'visitas'>
 /** Argumentos de uma RPC, para supabase.rpc(nome, args). */
 export type ArgsRpc<N extends keyof Rpc> = Rpc[N]['Args']
 
@@ -98,17 +106,21 @@ export function quartosDeJson(v: Json | null | undefined): RoomOffer[] {
   })
 }
 
-/** Dados do dono (painel_instituicao) que a vista pública não expõe. */
+/** Dados internos (painel_instituicao do dono; a modalidade também em painel_equipa) que a vista pública não expõe. */
 export interface DadosDoDono {
   /** auth.uid() do gestor, quando a ficha é a da sessão atual */
   ownerId?: string
   visualizacoes30d?: number
+  /** só lares privados que já escolheram (ausente = por entrada) */
+  planoInstituicao?: PlanoInstituicao
+  planoDesde?: string
 }
 
 /**
  * Linha de instituicoes_publicas → Lar. As avaliações (texto) carregam-se à parte e ficam da mais
- * recente para a mais antiga (como no protótipo). ownerId/visualizacoes30d só para a ficha do
- * próprio gestor (painel_instituicao); nas restantes ficam undefined/0.
+ * recente para a mais antiga (como no protótipo). ownerId/visualizacoes30d/modalidade só para a ficha do
+ * próprio gestor (painel_instituicao) ou, a modalidade, para a equipa (painel_equipa); nas restantes
+ * ficam undefined/0 (por entrada, como no protótipo).
  */
 export function larDeLinha(r: InstituicaoPublicaRow, reviews: Review[] = [], dono: DadosDoDono = {}): Lar {
   const capa = obj(r.capa)
@@ -162,10 +174,22 @@ export function larDeLinha(r: InstituicaoPublicaRow, reviews: Review[] = [], don
     capa: { hue: num(capa.hue as number, 152), variante: num(capa.variante as number) },
     ownerId: dono.ownerId,
     visualizacoes30d: dono.visualizacoes30d ?? 0,
+    planoInstituicao: dono.planoInstituicao,
+    planoDesde: dono.planoDesde,
   }
 }
 
-/** Resultado de painel_instituicao() (dono) → id da ficha gerida e dados internos. */
+/** Modalidade guardada (plano, plano_desde) → campos do Lar; null = por entrada (ausente, como no protótipo). */
+const modalidade = (plano: PlanoInstituicao | null | undefined, desde: string | null | undefined): Pick<DadosDoDono, 'planoInstituicao' | 'planoDesde'> => ({
+  planoInstituicao: opcional(plano),
+  planoDesde: iso(desde),
+})
+
+/**
+ * Resultado de painel_instituicao() (dono) → id da ficha gerida e dados internos, incluindo a modalidade
+ * (dono.planoInstituicao/planoDesde, para larDeLinha) e o fim do compromisso da mensalidade
+ * (compromissoAte, o mesmo instante que compromissoAte(lar) em src/lib/acesso.ts).
+ */
 export function painelDeLinha(r: PainelInstituicaoRow, ownerId: string) {
   return {
     larId: r.id,
@@ -173,8 +197,18 @@ export function painelDeLinha(r: PainelInstituicaoRow, ownerId: string) {
     verificacao: r.verificacao_estado,
     listaEsperaOffline: num(r.lista_espera_offline),
     listaEsperaOnline: num(r.lista_espera_online),
-    dono: { ownerId, visualizacoes30d: num(r.visualizacoes_30d) } satisfies DadosDoDono,
+    compromissoAte: iso(r.compromisso_ate),
+    dono: { ownerId, visualizacoes30d: num(r.visualizacoes_30d), ...modalidade(r.plano, r.plano_desde) } satisfies DadosDoDono,
   }
+}
+
+/**
+ * Resultado de escolher_plano_instituicao() → a modalidade em vigor depois da escolha (escolherPlanoInstituicao
+ * no protótipo devolve só { ok }; aqui vem também a data e o fim do compromisso, para atualizar o painel).
+ * Uma escolha recusada (IPSS, compromisso por cumprir…) chega como erro da RPC, com a mensagem do protótipo.
+ */
+export function planoDeLinha(r: PlanoDaInstituicaoRow) {
+  return { larId: r.instituicao_id, ...modalidade(r.plano, r.plano_desde), compromissoAte: iso(r.compromisso_ate) }
 }
 
 /**
@@ -678,6 +712,90 @@ export function vagasPorTokenDeLinha(r: VagasPorTokenRow) {
     }),
     vagasLivres: num(r.vagas_livres),
     atualizadoEm: isoObrigatorio(r.atualizado_em),
+  }
+}
+
+// ————————————————————————————————————————— equipa de terreno (visitas)
+
+/**
+ * Linha de painel_equipa() → o que a equipa precisa de cada ficha e que a vista pública não tem: se já tem
+ * gestor (a conta do responsável só se cria quando não tem — o protótipo usa !lar.ownerId) e a modalidade
+ * em vigor (dono, para larDeLinha) com o fim do compromisso.
+ */
+export function painelEquipaDeLinha(r: PainelEquipaRow) {
+  return {
+    larId: r.instituicao_id,
+    temGestor: r.tem_gestor,
+    compromissoAte: iso(r.compromisso_ate),
+    dono: modalidade(r.plano, r.plano_desde) satisfies DadosDoDono,
+  }
+}
+
+/**
+ * Linha de visitas → Visita. O selo «Visitada pela equipa» desta visita é licencaConfirmada && instalacoesVistas
+ * (registarVisita devolve-o como `selo`). contaCriadaId fica preenchido quando a Edge Function de convite liga a
+ * conta do responsável à visita (no protótipo: a conta com palavra-passe provisória).
+ */
+export function visitaDeLinha(r: VisitaRow): Visita {
+  const temResponsavel = !!(r.responsavel_nome || r.responsavel_cargo || r.responsavel_telefone || r.responsavel_email)
+  return {
+    id: r.id,
+    larId: r.instituicao_id,
+    equipaId: r.equipa_id ?? '',
+    data: isoObrigatorio(r.data),
+    resultado: r.resultado,
+    verificacao: {
+      licencaConfirmada: r.licenca_confirmada,
+      instalacoesVistas: r.instalacoes_vistas,
+      vagasConfirmadas: r.vagas_confirmadas,
+      precosConfirmados: r.precos_confirmados,
+    },
+    responsavel: temResponsavel
+      ? {
+          nome: r.responsavel_nome ?? '',
+          cargo: opcional(r.responsavel_cargo),
+          telefone: opcional(r.responsavel_telefone),
+          email: opcional(r.responsavel_email),
+        }
+      : undefined,
+    plano: opcional(r.plano),
+    notas: opcional(r.notas),
+    proximoContacto: opcional(r.proximo_contacto),
+    contaCriadaId: opcional(r.conta_criada_id),
+  }
+}
+
+/**
+ * registarVisita(input) → argumentos de registar_visita. O servidor apara os textos, guarda o email em
+ * minúsculas, só aplica as partes confirmadas e ignora o plano fora da adesão de um lar privado (como o
+ * protótipo). `criarConta` NÃO vai para a RPC: a conta do responsável é criada por convite (Auth Admin API numa
+ * Edge Function — docs/SUPABASE.md), nunca com uma palavra-passe provisória.
+ */
+export function visitaParaRpc(input: RegistoVisitaInput): ArgsRpc<'registar_visita'> {
+  const r = input.responsavel
+  return {
+    p_instituicao_id: input.larId,
+    p_resultado: input.resultado,
+    p_verificacao: {
+      licenca_confirmada: input.verificacao.licencaConfirmada,
+      instalacoes_vistas: input.verificacao.instalacoesVistas,
+      vagas_confirmadas: input.verificacao.vagasConfirmadas,
+      precos_confirmados: input.verificacao.precosConfirmados,
+    },
+    p_licenca: input.licenca?.trim() || undefined,
+    p_responsavel: r
+      ? {
+          nome: r.nome,
+          ...(r.cargo !== undefined ? { cargo: r.cargo } : {}),
+          ...(r.telefone !== undefined ? { telefone: r.telefone } : {}),
+          ...(r.email !== undefined ? { email: r.email } : {}),
+        }
+      : undefined,
+    p_plano: input.plano,
+    p_notas: input.notas?.trim() || undefined,
+    p_proximo_contacto: input.proximoContacto || undefined,
+    p_quartos: input.quartos?.map((q) => ({ tipo: q.tipo, livres: q.livres, preco_min: q.precoMin, preco_max: q.precoMax })),
+    p_cuidados: input.cuidados,
   }
 }
 

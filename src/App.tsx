@@ -25,6 +25,8 @@ const ProfissionaisPage = lazy(() => import('@/features/pro/ProfissionaisPage'))
 const ConfirmarPage = lazy(() => import('@/features/confirmar/ConfirmarPage'))
 // Acesso Família: o passe das famílias (vagas, preços, previsão, contactos, pedidos) — docs/DESIGN.md §12
 const AcessoPage = lazy(() => import('@/features/acesso/AcessoPage'))
+// equipa de terreno: modo visita (verificação e adesão das instituições, piloto no Porto)
+const VisitasApp = lazy(() => import('@/features/visitas/VisitasApp'))
 const NotFoundPage = lazy(() => import('@/features/content/NotFoundPage'))
 
 // HashRouter: URLs do tipo /#/pesquisa — funciona no GitHub Pages sem configuração de servidor.
@@ -64,6 +66,14 @@ const router = createHashRouter([
             element: (
               <RequireAuth role="profissional">
                 <CasosApp />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: 'visitas/*',
+            element: (
+              <RequireAuth role="equipa">
+                <VisitasApp />
               </RequireAuth>
             ),
           },

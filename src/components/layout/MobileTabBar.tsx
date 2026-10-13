@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router'
 import {
   BarChart3,
   CircleUserRound,
+  ClipboardCheck,
   Compass,
   FileText,
   FolderOpen,
@@ -18,6 +19,8 @@ import {
 import { useCandidaturasDoLar, useCurrentUser } from '@/lib/store'
 import { pedidosPorTratar } from '@/features/lar-dashboard/lib/derive'
 import { usePropostasPendentes } from '@/features/pro/shared/data'
+import { contactosLabel, useContactosUrgentes } from '@/features/visitas/useContactos'
+import { ultimaLista } from '@/features/visitas/lista/params'
 import { useLenis } from '@/components/motion/SmoothScroll'
 import { prefersReducedMotion } from '@/lib/motion'
 import { cn } from '@/lib/cn'
@@ -79,6 +82,8 @@ export function MobileTabBar() {
   const porTratar = user?.role === 'lar' ? pedidosPorTratar(pedidos) : 0
   // profissional: o mesmo número que a barra lateral dos casos (vagas propostas à espera de resposta)
   const propostas = usePropostasPendentes()
+  // equipa de terreno: o mesmo número que a barra lateral das visitas (contactos para hoje ou em atraso)
+  const contactos = useContactosUrgentes()
 
   useEffect(() => {
     document.documentElement.dataset.tabbar = visible ? 'on' : 'off'
@@ -103,6 +108,22 @@ export function MobileTabBar() {
           // a pesquisa serve para escolher instituições a quem enviar o caso: volta à última desta sessão
           { to: ultimaPesquisa(), label: 'Mapa', icon: Map },
           { to: '/', label: 'Início', icon: House, end: true },
+        ]
+      : user?.role === 'equipa'
+      ? [
+          // Visitas fica ativo na lista, no formulário e no ecrã final de uma visita (a conta tem separador próprio);
+          // volta à última vista da lista (segmento, distrito e pesquisa)
+          {
+            to: ultimaLista(),
+            label: 'Visitas',
+            icon: ClipboardCheck,
+            ativo: (p: string) => /^\/visitas(\/|$)/.test(p) && !/^\/visitas\/conta(\/|$)/.test(p),
+            badge: contactos,
+            badgeLabel: contactosLabel(contactos),
+          },
+          // o site público, como o veem as famílias (a equipa tem acesso completo): volta à última pesquisa
+          { to: ultimaPesquisa(), label: 'Mapa', icon: Map },
+          { to: '/visitas/conta', label: 'Conta', icon: CircleUserRound },
         ]
       : user?.role === 'lar'
       ? [
@@ -134,7 +155,7 @@ export function MobileTabBar() {
       data-fundo-do-menu
       className="fixed inset-x-0 bottom-0 z-[1000] border-t border-black/[0.08] bg-white/88 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 lg:hidden"
     >
-      {/* uma coluna por separador (5 para famílias e instituições, 4 para profissionais) */}
+      {/* uma coluna por separador (5 para famílias e instituições, 4 para profissionais, 3 para a equipa de terreno) */}
       <ul className="mx-auto grid h-[4.25rem] max-w-xl" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((t) => {
           const raiz = t.to.split('?')[0]!

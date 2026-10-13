@@ -6,6 +6,7 @@ const AREA: { prefix: string; role: Role }[] = [
   { prefix: '/familia', role: 'familia' },
   { prefix: '/gestao', role: 'lar' },
   { prefix: '/casos', role: 'profissional' },
+  { prefix: '/visitas', role: 'equipa' },
 ]
 
 /** Só aceitamos caminhos internos ("/…"), nunca "//…" nem "/\…" (que o navegador trataria como outro domínio). */
@@ -90,6 +91,9 @@ const DESTINOS: [RegExp, string][] = [
   [/^\/casos\/novo/, 'um caso novo'],
   [/^\/casos\/[^/?#]+/, 'a ficha do caso'],
   [/^\/casos/, 'os seus casos'],
+  [/^\/visitas\/conta/, 'os dados da sua conta'],
+  [/^\/visitas\/[^/?#]+/, 'o registo da visita'],
+  [/^\/visitas/, 'as visitas da equipa'],
   [/^\/encontrar/, 'o questionário "Ajuda-me a escolher"'],
   [/^\/pesquisa/, 'a pesquisa que estava a fazer'],
   [/^\/acesso(?:[/?#]|$)/, 'a página do Acesso Família'],
