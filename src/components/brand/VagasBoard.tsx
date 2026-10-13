@@ -6,7 +6,7 @@ import { vagaParaNovos, vagasLivres } from '@/lib/forecast'
 import { num, tempoRelativo } from '@/lib/format'
 import { QUARTO_CURTO } from '@/lib/labels'
 import { useMediaQuery } from '@/lib/hooks'
-import { resumoDisponibilidade } from '@/lib/acesso'
+import { MIN_AGREGADO, resumoDisponibilidade } from '@/lib/acesso'
 import { useAcesso } from '@/lib/store'
 import { AvisoAcesso } from '@/components/acesso'
 import { cn } from '@/lib/cn'
@@ -122,10 +122,9 @@ function ListaAoVivo({ lares, linhas = 5, className, titulo = 'Atualizadas agora
 }
 
 /**
- * Distritos com menos instituições do que isto não aparecem sozinhos: com 1 ou 2 casas, "1 com vaga" diria qual é.
- * Contam no total do país.
+ * Distritos com menos de MIN_AGREGADO instituições não aparecem sozinhos: com 1 ou 2 casas, "1 com vaga" diria
+ * qual é. Contam no total do país.
  */
-const MIN_POR_DISTRITO = 5
 
 /** Versão grátis: quantas casas têm vaga agora em cada distrito (sem nomes), e onde ver quais são. */
 function ResumoPorDistrito({ lares, linhas = 5, className, theme = 'light' }: VagasBoardProps) {
@@ -135,7 +134,7 @@ function ResumoPorDistrito({ lares, linhas = 5, className, theme = 'light' }: Va
     const por = new Map<Distrito, Lar[]>()
     for (const l of residenciais) por.set(l.distrito, [...(por.get(l.distrito) ?? []), l])
     const distritos = [...por]
-      .filter(([, ls]) => ls.length >= MIN_POR_DISTRITO)
+      .filter(([, ls]) => ls.length >= MIN_AGREGADO)
       .map(([distrito, ls]) => ({ distrito, ...resumoDisponibilidade(ls) }))
       .filter((d) => d.comVaga > 0)
       .sort((a, b) => b.comVaga - a.comVaga || b.total - a.total || a.distrito.localeCompare(b.distrito, 'pt'))

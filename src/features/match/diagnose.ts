@@ -10,6 +10,7 @@ import { CUIDADO_FRASE, CUIDADOS_CRITICOS, GRAU_PESSOAS } from '@/lib/labels'
 import { precoReferencia, type MatchResult } from '@/lib/matching'
 import { vagaParaNovos } from '@/lib/forecast'
 import { euro, km } from '@/lib/format'
+import { MIN_AGREGADO } from '@/lib/acesso'
 import { comDistancia, mediana, residenciais, type LarPerto } from './area'
 import { deLocal, listaE, type Pessoa } from './language'
 import { RAIO_MAX, type Rascunho } from './model'
@@ -39,9 +40,6 @@ function raioAte(perto: LarPerto[], raioAtual: number, ok: (l: Lar) => boolean):
   const raio = teto5(alvo.d + 0.5)
   return raio <= RAIO_MAX ? { raio, d: alvo.d } : null
 }
-
-/** Com menos instituições do que isto, uma "mediana" é o preço de uma casa concreta. */
-const MIN_AGREGADO = 3
 
 export function diagnosticar(
   lares: Lar[],

@@ -61,7 +61,5 @@ export function ignoradosGratis(s: SearchState): Ignorados | null {
   return s.vaga || ordem ? { vaga: s.vaga, ordem } : null
 }
 
-/** Abaixo disto a versão grátis não diz quantas têm vaga: com 1 ou 2 resultados, "quantas" seria "quais". */
-export const MIN_AGREGADO = 5
-
-export const agregadoVisivel = (n: number) => n >= MIN_AGREGADO
+/** O limite das contagens agregadas é um só, em @/lib/acesso (aqui reexportado para a pesquisa). */
+export { agregadoVisivel, MIN_AGREGADO } from '@/lib/acesso'

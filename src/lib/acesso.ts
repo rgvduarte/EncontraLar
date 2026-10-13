@@ -138,6 +138,14 @@ export function faixaPreco(lar: Pick<Lar, 'mensalidadeMin' | 'natureza'>): strin
   return 'Mais de 2.000 €/mês'
 }
 
+/**
+ * Abaixo disto a versão grátis não diz quantas têm vaga (nem medianas de preço) num conjunto: com 1 a 4 casas,
+ * "quantas" seria "quais". Um só limite para a pesquisa, a página inicial, o quadro de vagas e o questionário.
+ */
+export const MIN_AGREGADO = 5
+
+export const agregadoVisivel = (n: number) => n >= MIN_AGREGADO
+
 /** Números agregados de uma zona (o "quantas", nunca o "quais") — o que a versão grátis pode mostrar. */
 export function resumoDisponibilidade(lares: Parameters<typeof estimarEspera>[0][]): { total: number; comVaga: number; breve: number } {
   let comVaga = 0

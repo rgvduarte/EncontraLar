@@ -10,6 +10,7 @@ import { COMODIDADE_FALTA, COMODIDADE_LABEL, CUIDADO_FRASE, CUIDADO_LABEL } from
 import { distanceKm } from '@/lib/geo'
 import { LUGARES, type LugarPesquisa } from '@/data/localidades'
 import { DEMO_LAR_ID } from '@/data/seed'
+import { MIN_AGREGADO } from '@/lib/acesso'
 
 /** Vaga para quem pede hoje (um lugar livre que a lista de espera vai ocupar não conta). */
 export const temVaga = (l: Lar) => vagaParaNovos(l)
@@ -72,11 +73,8 @@ export function comVagaAgora(lares: Lar[], limite = 12): Lar[] {
 
 // ————————————————————————————————————————— versão grátis (só agregados: o "quantas", nunca o "quais")
 
-/**
- * Abaixo disto a versão grátis não diz quantas têm vaga num conjunto: com 1 a 4 casas, "quantas" seria "quais".
- * O mesmo limite da pesquisa (MIN_AGREGADO em features/search/gratis.ts) e do VagasBoard.
- */
-export const MIN_AGREGADO = 5
+/** O limite das contagens agregadas é um só, em @/lib/acesso (aqui reexportado para a página inicial). */
+export { MIN_AGREGADO }
 
 /** Quantos lares e residências têm vaga agora (sem dizer quais). */
 export function contarComVaga(lares: Lar[]): number {
